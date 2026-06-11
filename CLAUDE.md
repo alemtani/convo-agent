@@ -41,3 +41,7 @@ No test suite exists yet.
 - Environment-based configuration — no hardcoded secrets
 - CORS allows `http://localhost:3000` for local frontend development
 - Git commit messages use conventional commits (e.g. `feat: scaffold backend`)
+
+## Design reference
+
+See `docs/DESIGN.md` for the full architecture spec, data flow, data models, MVP scope, build order, and technical risk assessment.
