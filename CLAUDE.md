@@ -21,6 +21,7 @@ deferred, not in the hot path).
 - aiosqlite (async SQLite) — durable learning state only, not transcripts
 - Pydantic for data validation
 - python-dotenv for environment config
+- pytest + pytest-asyncio + httpx (test suite; `live` marker for real-API tests)
 - Frontend: mobile-first responsive web (PWA); transcript held in `localStorage`
 
 ## Key files and directories
@@ -50,7 +51,9 @@ kb/zh/                 # knowledge base (git-versioned markdown)
   index.md
   <topic>/{topic,vocab,grammar,dialogues}.md
 frontend/              # mobile-first PWA (DM thread, push-to-talk, localStorage)
+tests/                 # pytest; mirrors backend/ modules; fixtures/ holds recorded responses
 schema.sql
+pytest.ini             # asyncio_mode=auto; default run excludes the `live` marker
 .env.example
 .gitignore
 ```
@@ -62,7 +65,32 @@ source .venv/bin/activate
 uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-No test suite exists yet.
+## Testing & verification
+
+Run the suite: `pytest -q` (repo root, venv active). A **Stop hook**
+(`.claude/hooks/run-tests.sh`) runs it after every turn and blocks the turn from
+ending on failure — a turn is not "done" until tests pass. Show the test output
+as evidence; don't claim success without it.
+
+**YOU MUST write a failing test first for any deterministic logic**, then make
+it pass. Verification is tiered by how deterministic the code is:
+
+- **Pure logic & local I/O — real red-green TDD.** `kb.py` parsing, `profile.py`
+  selection-weighting (pure math) + CRUD (temp SQLite), `orchestrator.py`
+  turn-bounding, `models.py` validation, `main.py` routes (httpx `TestClient`,
+  workers mocked).
+- **Prompt-cache invariant — assert without spending tokens.** The cacheable
+  prefix must be **byte-identical across turns**, and the `cache_control`
+  breakpoint must sit *after* the stable block. Assert the assembled request,
+  not a live response.
+- **Claude / Azure boundaries — contract tests.** Mock the SDK client; assert
+  the *request we build* (model id, breakpoint placement, message roles) and
+  that we *parse a recorded response* correctly. Never assert exact model text.
+- **LLM / Azure behavior — evals, not asserts.** Structural invariants (valid
+  JSON, feedback cites only KB vocab, reply stays in HSK band) and the live
+  `cache_read_input_tokens > 0` smoke test are marked `@pytest.mark.live` —
+  they need keys and cost money, so they are **excluded from the default run**.
+  Invoke explicitly with `pytest -m live`.
 
 ## Development conventions
 

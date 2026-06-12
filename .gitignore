@@ -23,6 +23,9 @@ frontend/dist/
 .vscode/
 .idea/
 
+# Claude Code — personal, machine-local settings (shared config lives in settings.json)
+.claude/settings.local.json
+
 # OS
 .DS_Store
 Thumbs.db
