@@ -16,21 +16,38 @@ So it is a reusable authoring tool (the topic-generator agent calls it), not a
 one-off.
 """
 import argparse
+import os
 import re
 import sys
 
 from pypinyin import Style, pinyin as _pp
 
-# Extra readings the curated vocab table won't contain (proper names used in
-# seed dialogues). Kept tiny and explicit; everything else falls back to pypinyin.
-PROPER_NAMES = {"小明": "xiǎomíng", "小王": "xiǎo wáng", "小李": "xiǎo lǐ"}
-
 PUNCT = "，。！？、：；…“”‘’（）"
 
 
+def _name_pinyin(name):
+    """Proper-name reading via pypinyin, syllables joined (names are one word).
+    pypinyin is reliable for names — no neutral-tone curation needed here."""
+    return "".join(s[0] for s in _pp(name, style=Style.TONE))
+
+
+def _proper_names(vocab_md_path):
+    """Proper-name readings, keyed off the `proper_names` whitelist in the sibling
+    topic.md frontmatter — the single source of truth shared with validate.py
+    (no separate hardcoded list to drift)."""
+    topic_md = os.path.join(os.path.dirname(os.path.abspath(vocab_md_path)), "topic.md")
+    if not os.path.exists(topic_md):
+        return {}
+    with open(topic_md, encoding="utf-8") as f:
+        m = re.search(r"^proper_names:\s*\[(.*?)\]", f.read(), re.M)
+    names = [w.strip() for w in m.group(1).split(",") if w.strip()] if m else []
+    return {n: _name_pinyin(n) for n in names}
+
+
 def load_lexicon(vocab_md_path):
-    """word -> curated pinyin, from the markdown tables in a topic's vocab.md."""
-    lex = dict(PROPER_NAMES)
+    """word -> pinyin: curated readings from the vocab.md tables, plus proper
+    names (from topic.md frontmatter) rendered via pypinyin."""
+    lex = _proper_names(vocab_md_path)
     row = re.compile(r"^\|\s*([一-鿿]+)\s*\|\s*([A-Za-zǖǘǚǜüāáǎàēéěèīíǐìōóǒòūúǔùǘǚ\s]+?)\s*\|")
     with open(vocab_md_path, encoding="utf-8") as f:
         for line in f:

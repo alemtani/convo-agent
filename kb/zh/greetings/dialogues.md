@@ -19,7 +19,7 @@ sandhi). Regenerate after editing a line.
 > **A:** 我叫小明。你叫什么名字？
 > _wǒ jiào xiǎomíng. nǐ jiào shénme míngzi?_
 > **B:** 我叫小王。
-> _wǒ jiào xiǎo wáng._
+> _wǒ jiào xiǎowáng._
 > **A:** 认识你很高兴。
 > _rènshi nǐ hěn gāoxìng._
 > **B:** 认识你很高兴。
