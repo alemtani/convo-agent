@@ -105,6 +105,9 @@ A topic does **not** declare an HSK band. The band ceiling ("what vocab is fair
 game") is a property of the *learner*, not the topic — it's universal
 (`config.HSK_BAND_CEILING`) and applies to every topic at once. A topic's own
 highest band is *derived* from its vocab (for ordering/gating), not authored.
+The ceiling lives in `kb/zh/_hsk/ceiling.json`, owned by the KB authoring
+workflow and consumed by `config.HSK_BAND_CEILING` (tooling → service, not the
+reverse).
 
 - **DB row** = `topic_id → kb_path` pointer + `content_hash` (to detect when the
   committed KB changed). Not the content.

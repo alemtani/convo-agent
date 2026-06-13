@@ -108,6 +108,27 @@ it pass. Verification is tiered by how deterministic the code is:
 - CORS allows `http://localhost:3000` for local frontend development
 - Git commit messages use conventional commits (e.g. `feat: scaffold backend`)
 
+## Delivery — branch + PR, always
+
+Ship every unit of work as a **branch + GitHub PR for review**, never commit
+straight to `main`. The reviewer reads the diff and leaves inline comments; when
+addressing them, push fixes and **reply on each review thread**. Steps: branch
+from `main` → commit (conventional) → `git push -u` → `gh pr create` with a body
+explaining the *why*. This is the standing workflow, not just for large changes.
+
+## Knowledge-base authoring (separate from the service)
+
+Authoring/updating topic KBs is a **dev-time workflow you invoke directly** (the
+`kb-topic` skill, `.claude/skills/kb-topic/`), not part of the FastAPI app —
+nothing in `backend/` imports it and it never runs in the request path. Its
+guardrail is `kb/zh/_tools/validate.py` (run by the skill and by hand), **not** a
+pytest suite — the Stop-hook test gate is for `backend/` correctness only. Tools:
+`kb/zh/_hsk/build.py` (regenerate the pinned `word→band` index),
+`kb/zh/_tools/annotate_pinyin.py` (dialogue pinyin from curated vocab),
+`kb/zh/_tools/validate.py` (scope/membership guardrail). The band ceiling is
+universal and lives in `kb/zh/_hsk/ceiling.json` (consumed by `config`, never the
+reverse).
+
 ## Design reference
 
 See `docs/DESIGN.md` for the full architecture spec, data flow, data models,

@@ -1,0 +1,4 @@
+{
+  "_note": "The learner's current HSK band ceiling — what vocab is fair game, universal across all topics. Owned by the KB authoring workflow; the service consumes it via backend.config.HSK_BAND_CEILING. Single-user for now; moves to the per-user profile when multi-user. Raise this one number to unlock higher-band vocab everywhere.",
+  "band_ceiling": 2
+}
