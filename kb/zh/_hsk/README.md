@@ -1,53 +1,59 @@
-# HSK 3.0 reference wordlist (source of truth for band membership)
+# HSK 3.0 reference index (source of truth for band membership)
 
-`hsk-3.0.json` is the **authoritative band-membership list** that every
+`hsk-3.0.json` is the **authoritative band-membership index** that every
 `vocab.md` is checked against (see `CLAUDE.md` / `DESIGN.md`: vocab is *verified*
 against a public HSK list, not recalled from memory). The topic-generator agent
 *selects* vocab from this file; it never invents in-band words.
 
-## It holds the whole universe; consumers filter by band ceiling
+## Lean by design: `word → band`, nothing else
 
-The file contains **all HSK 3.0 bands (1–7)**, each word tagged with its `band`.
-It is deliberately not scoped to bands 1–2 — the learner advances, and the scope
-should not be welded into a filename. Expanding a learner (or a topic) to a
-higher band is therefore **raising a number at use time**, not regenerating this
-file:
+The file is a flat `{word: band}` map for **all HSK 3.0 bands (1–7)** — no pinyin,
+gloss, or POS. Reasons:
 
-- a topic declares its ceiling in `topic.md` frontmatter (`hsk_band: [1, 2]`);
-- the validator/agent reads that ceiling and accepts words with `band ≤ ceiling`.
+- The list is **not trusted** for pinyin/gloss anyway (one dictionary sense, often
+  the wrong one for a beginner — see quirks below), so `vocab.md` curates those.
+- Validation only needs membership + band, so the rich fields were dead weight
+  (~1.2 MB → ~120 KB).
+- The agent fetches *richer* data (gloss for drafting) **on demand for the ~30
+  words a topic actually uses**, never the whole corpus locally.
 
-So extending `greetings` to band 3 later = change the frontmatter range and
-re-validate; the data is already present. (Band 7 is the combined HSK 7–9
-advanced band.)
+It is **authoring-time only** — never shipped to the client or read at runtime —
+so it stays small and doubles as the offline fixture for validation tests.
 
-## Re-runnable, not a one-shot
+## The ceiling is universal, not per-band-in-the-file
 
-`build.py` regenerates `hsk-3.0.json` from the upstream wordlists:
+The file holds every band so the data is never the bottleneck. *Which* bands are
+fair game is `config.HSK_BAND_CEILING` (the learner's current level), applied
+uniformly across all topics — raise it once and every topic may use higher-band
+words. A topic's own highest band is *derived* from its vocab, not authored.
+
+## Re-runnable and pinned
+
+`build.py` regenerates `hsk-3.0.json` from the upstream wordlists, pinned to a
+specific commit so a word can't silently drift between bands under us:
 
 ```bash
 python build.py               # all bands (default)
-python build.py --max-band 2  # materialize only bands 1–2, if you ever want a lean file
+python build.py --max-band 2  # materialize only bands 1–2, for a leaner file
 ```
 
-- Source: [`drkameleon/complete-hsk-vocabulary`](https://github.com/drkameleon/complete-hsk-vocabulary),
-  `wordlists/exclusive/new/{1..7}.json` (HSK 3.0 / "new" standard).
-- Distilled to `{word: {pinyin, gloss, pos, band}}` (10,969 words;
-  band 1 = 506, band 2 = 750, …).
-- Requires no extra deps (stdlib `urllib`).
+- Source: [`drkameleon/complete-hsk-vocabulary`](https://github.com/drkameleon/complete-hsk-vocabulary)
+  @ `7ac65bf` (pinned in `build.py`), `wordlists/exclusive/new/{1..7}.json`
+  (HSK 3.0 / "new" standard; band 7 = the combined 7–9 advanced band).
+- 10,969 words (band 1 = 506, band 2 = 750, …). Stdlib only (`urllib`).
+- Bump the pin deliberately when you want to pick up upstream corrections.
 
 ## What it is and isn't authoritative for
 
 - **Authoritative:** *membership* — "is this word in HSK 3.0, and at which band?"
   This is the band-drift guard.
-- **NOT authoritative:** pinyin/gloss for some function words and polysemes. The
-  source picks one dictionary sense, occasionally the wrong one for a beginner
-  context. Examples found while authoring `greetings/`:
-  - 吗 → listed as `má` "(coll.) what?"; the question particle is neutral-tone `ma`.
+- **NOT authoritative:** pinyin/gloss (dropped from the file). Examples found while
+  authoring `greetings/` of why the source's readings can't be trusted:
+  - 吗 → `má` "(coll.) what?"; the question particle is neutral-tone `ma`.
   - 也 → `Yě` "surname Ye"; the adverb "also" is `yě`.
   - 累 → `lěi` "to accumulate"; the "tired" sense is `lèi`.
-  So `vocab.md` carries **curated** pinyin/gloss; the validator uses this file
-  only for the membership check, and `_tools/annotate_pinyin.py` derives dialogue
-  pinyin from the curated `vocab.md`, not from this list.
+  So `vocab.md` carries **curated** pinyin/gloss, and `_tools/annotate_pinyin.py`
+  derives dialogue pinyin from the curated `vocab.md`, not from this list.
 
 ## Compounds
 

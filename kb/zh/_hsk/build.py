@@ -1,26 +1,31 @@
 #!/usr/bin/env python3
-"""Regenerate the HSK 3.0 membership list from the upstream wordlists.
+"""Regenerate the HSK 3.0 membership index from the upstream wordlists.
 
-This is the re-runnable source of `hsk-3.0.json` (replaces the one-shot curl).
-The output is the *universe* of HSK 3.0 words with a `band` per word; consumers
-(the validator, the topic-generator agent) filter to a learner's current band
-ceiling. Expanding the learner's scope is therefore raising a number at use
-time, not regenerating this file.
+The output `hsk-3.0.json` is the *band-drift guard* and nothing more: a lean
+`{word: band}` map for every HSK 3.0 word (all bands). It deliberately drops
+pinyin/gloss/pos — the list is not trusted for those (see README), the validator
+only needs membership + band, and the topic-generator agent fetches richer data
+on demand for the handful of words a topic actually uses.
+
+It is authoring-time only (never shipped or read at runtime), so it stays small
+and doubles as the offline fixture for validation tests.
+
+Pinned to an upstream commit (not `main`) so regeneration is reproducible and a
+word can't silently drift between bands under us.
 
 Usage:
     python build.py                 # all bands (1-7); default
     python build.py --max-band 2    # materialize only bands 1-2
-
-Source: drkameleon/complete-hsk-vocabulary, wordlists/exclusive/new/<level>.json
-(HSK 3.0 / "new" standard). Level 7 is the combined HSK 7-9 advanced band.
 """
 import argparse
 import json
 import urllib.request
 
-RAW = ("https://raw.githubusercontent.com/drkameleon/"
-       "complete-hsk-vocabulary/main/wordlists/exclusive/new/{level}.json")
-LEVELS = [1, 2, 3, 4, 5, 6, 7]  # 7 == the combined 7-9 band
+# Pinned: drkameleon/complete-hsk-vocabulary @ this commit. Bump deliberately.
+UPSTREAM_SHA = "7ac65bf1a6387d35f1ade478906172a19311c7f9"
+RAW = ("https://raw.githubusercontent.com/drkameleon/complete-hsk-vocabulary/"
+       f"{UPSTREAM_SHA}/wordlists/exclusive/new/{{level}}.json")
+LEVELS = [1, 2, 3, 4, 5, 6, 7]  # 7 == the combined 7-9 advanced band
 
 
 def fetch(level):
@@ -34,15 +39,9 @@ def distill(max_band):
         if band > max_band:
             break
         for e in fetch(band):
-            form = e["forms"][0]
-            out[e["simplified"]] = {
-                "pinyin": form["transcriptions"]["pinyin"],
-                "gloss": (form["meanings"][0] if form["meanings"] else "").strip(),
-                "pos": e.get("pos", []),
-                "band": band,
-            }
-    # stable order: band, then pinyin — keeps diffs small across rebuilds
-    return dict(sorted(out.items(), key=lambda kv: (kv[1]["band"], kv[1]["pinyin"])))
+            out[e["simplified"]] = band
+    # stable order: band, then word — keeps diffs small across rebuilds
+    return dict(sorted(out.items(), key=lambda kv: (kv[1], kv[0])))
 
 
 def main():
@@ -54,10 +53,11 @@ def main():
 
     words = distill(args.max_band)
     with open(args.out, "w", encoding="utf-8") as f:
-        json.dump(words, f, ensure_ascii=False, indent=1)
+        json.dump(words, f, ensure_ascii=False, separators=(",", ":"))
+        f.write("\n")
     by_band = {}
-    for w in words.values():
-        by_band[w["band"]] = by_band.get(w["band"], 0) + 1
+    for b in words.values():
+        by_band[b] = by_band.get(b, 0) + 1
     print(f"wrote {args.out}: {len(words)} words; per band {dict(sorted(by_band.items()))}")
 
 
