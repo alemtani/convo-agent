@@ -20,3 +20,12 @@ are short — 2–4 words — per the beginner-disfluency mitigation in the desi
 
 **Scope discipline.** Dialogues use only `target_vocab` plus the compositional
 greeting phrases listed in `vocab.md`. No vocab outside HSK band 1–2 appears.
+
+**Extending this topic.** `hsk_band` is a *ceiling*, not a fixed scope. As the
+learner advances, widen the range (e.g. `[1, 2, 3]`), add the new vocab/grammar,
+and re-validate against `_hsk/hsk-3.0.json` at the new ceiling — the wordlist
+already holds every band, so this is additive, not a regeneration. Incorporation
+into the running app needs no schema change: the DB holds only a
+`topic_id → kb_path + content_hash` pointer (`DESIGN.md`), so editing this
+markdown changes the hash and the loader folds the new content into the cached
+prefix on the next session.

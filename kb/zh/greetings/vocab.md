@@ -1,6 +1,6 @@
 # Vocabulary — Greetings (你好)
 
-All single words below are verified ∈ HSK 3.0 band 1–2 (`_hsk/band1-2.json`).
+All single words below are verified ∈ HSK 3.0 band 1–2 (`_hsk/hsk-3.0.json`).
 Pinyin/gloss are **curated** for a beginner greeting context (see `_hsk/README.md`
 for why the raw list isn't trusted for these fields). Band shown per word.
 
@@ -53,4 +53,8 @@ for why the raw list isn't trusted for these fields). Band shown per word.
 
 ## Question words used in dialogues (band 1)
 
-什么 shénme (what) · 谁 shéi (who) · 这 zhè (this)
+| 汉字 | pinyin | gloss | band |
+|---|---|---|---|
+| 什么 | shénme | what | 1 |
+| 谁 | shéi | who | 1 |
+| 这 | zhè | this | 1 |
