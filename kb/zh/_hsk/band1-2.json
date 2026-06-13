@@ -1,0 +1,10679 @@
+{
+ "别": {
+  "pinyin": "Bié",
+  "gloss": "surname Bie",
+  "pos": [
+   "d",
+   "v",
+   "r",
+   "vn"
+  ],
+  "band": 1
+ },
+ "白": {
+  "pinyin": "Bái",
+  "gloss": "surname Bai",
+  "pos": [
+   "a",
+   "nr",
+   "d",
+   "b",
+   "v",
+   "g"
+  ],
+  "band": 1
+ },
+ "班": {
+  "pinyin": "Bān",
+  "gloss": "surname Ban",
+  "pos": [
+   "n",
+   "q",
+   "nr"
+  ],
+  "band": 1
+ },
+ "包": {
+  "pinyin": "Bāo",
+  "gloss": "surname Bao",
+  "pos": [
+   "v",
+   "n",
+   "q"
+  ],
+  "band": 1
+ },
+ "北京": {
+  "pinyin": "Běi jīng",
+  "gloss": "Beijing, capital of the People's Republic of China",
+  "pos": [
+   "ns"
+  ],
+  "band": 1
+ },
+ "百": {
+  "pinyin": "Bǎi",
+  "gloss": "surname Bai",
+  "pos": [
+   "m",
+   "t"
+  ],
+  "band": 1
+ },
+ "比": {
+  "pinyin": "Bǐ",
+  "gloss": "Belgium",
+  "pos": [
+   "p",
+   "v",
+   "n",
+   "b"
+  ],
+  "band": 1
+ },
+ "常": {
+  "pinyin": "Cháng",
+  "gloss": "surname Chang",
+  "pos": [
+   "d",
+   "nr"
+  ],
+  "band": 1
+ },
+ "车": {
+  "pinyin": "Chē",
+  "gloss": "surname Che",
+  "pos": [
+   "n",
+   "q"
+  ],
+  "band": 1
+ },
+ "错": {
+  "pinyin": "Cuò",
+  "gloss": "surname Cuo",
+  "pos": [
+   "v",
+   "n"
+  ],
+  "band": 1
+ },
+ "大学": {
+  "pinyin": "Dà xué",
+  "gloss": "the Great Learning, one of the Four Books 四书 in Confucianism",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "东": {
+  "pinyin": "Dōng",
+  "gloss": "surname Dong",
+  "pos": [
+   "f",
+   "b"
+  ],
+  "band": 1
+ },
+ "都": {
+  "pinyin": "Dū",
+  "gloss": "surname Du",
+  "pos": [
+   "d",
+   "g"
+  ],
+  "band": 1
+ },
+ "国": {
+  "pinyin": "Guó",
+  "gloss": "surname Guo",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "关": {
+  "pinyin": "Guān",
+  "gloss": "surname Guan",
+  "pos": [
+   "v",
+   "n",
+   "nr"
+  ],
+  "band": 1
+ },
+ "过": {
+  "pinyin": "Guō",
+  "gloss": "surname Guo",
+  "pos": [
+   "u",
+   "v",
+   "d",
+   "g"
+  ],
+  "band": 1
+ },
+ "高": {
+  "pinyin": "Gāo",
+  "gloss": "surname Gao",
+  "pos": [
+   "a",
+   "ad",
+   "v",
+   "g"
+  ],
+  "band": 1
+ },
+ "还": {
+  "pinyin": "Huán",
+  "gloss": "surname Huan",
+  "pos": [
+   "d",
+   "v"
+  ],
+  "band": 1
+ },
+ "花": {
+  "pinyin": "Huā",
+  "gloss": "surname Hua",
+  "pos": [
+   "v",
+   "n",
+   "a"
+  ],
+  "band": 1
+ },
+ "汉语": {
+  "pinyin": "Hàn yǔ",
+  "gloss": "Chinese language",
+  "pos": [
+   "nz"
+  ],
+  "band": 1
+ },
+ "后": {
+  "pinyin": "Hòu",
+  "gloss": "surname Hou",
+  "pos": [
+   "f",
+   "g",
+   "t"
+  ],
+  "band": 1
+ },
+ "教": {
+  "pinyin": "Jiào",
+  "gloss": "surname Jiao",
+  "pos": [
+   "v",
+   "g"
+  ],
+  "band": 1
+ },
+ "楼": {
+  "pinyin": "Lóu",
+  "gloss": "surname Lou",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "路": {
+  "pinyin": "Lù",
+  "gloss": "surname Lu",
+  "pos": [
+   "n",
+   "qv"
+  ],
+  "band": 1
+ },
+ "冷": {
+  "pinyin": "Lěng",
+  "gloss": "surname Leng",
+  "pos": [
+   "a",
+   "ad",
+   "g"
+  ],
+  "band": 1
+ },
+ "毛": {
+  "pinyin": "Máo",
+  "gloss": "surname Mao",
+  "pos": [
+   "nr",
+   "n",
+   "q"
+  ],
+  "band": 1
+ },
+ "门": {
+  "pinyin": "Mén",
+  "gloss": "surname Men",
+  "pos": [
+   "n",
+   "q"
+  ],
+  "band": 1
+ },
+ "年": {
+  "pinyin": "Nián",
+  "gloss": "surname Nian",
+  "pos": [
+   "qt",
+   "t",
+   "n"
+  ],
+  "band": 1
+ },
+ "南": {
+  "pinyin": "Nán",
+  "gloss": "surname Nan",
+  "pos": [
+   "b",
+   "f"
+  ],
+  "band": 1
+ },
+ "能": {
+  "pinyin": "Néng",
+  "gloss": "surname Neng",
+  "pos": [
+   "v",
+   "g"
+  ],
+  "band": 1
+ },
+ "那": {
+  "pinyin": "Nā",
+  "gloss": "surname Na",
+  "pos": [
+   "r",
+   "c"
+  ],
+  "band": 1
+ },
+ "钱": {
+  "pinyin": "Qián",
+  "gloss": "surname Qian",
+  "pos": [
+   "n",
+   "nr"
+  ],
+  "band": 1
+ },
+ "日": {
+  "pinyin": "Rì",
+  "gloss": "abbr. for 本, Japan",
+  "pos": [
+   "t",
+   "g",
+   "b",
+   "qt"
+  ],
+  "band": 1
+ },
+ "水": {
+  "pinyin": "Shuǐ",
+  "gloss": "surname Shui",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "山": {
+  "pinyin": "Shān",
+  "gloss": "surname Shan",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "书": {
+  "pinyin": "Shū",
+  "gloss": "abbr. for 书经",
+  "pos": [
+   "n",
+   "g"
+  ],
+  "band": 1
+ },
+ "三": {
+  "pinyin": "Sān",
+  "gloss": "surname San",
+  "pos": [
+   "m",
+   "t"
+  ],
+  "band": 1
+ },
+ "西": {
+  "pinyin": "Xī",
+  "gloss": "the West",
+  "pos": [
+   "f",
+   "b"
+  ],
+  "band": 1
+ },
+ "新": {
+  "pinyin": "Xīn",
+  "gloss": "abbr. for Xinjiang 疆 or Singapore 坡",
+  "pos": [
+   "a",
+   "d",
+   "b"
+  ],
+  "band": 1
+ },
+ "星期日": {
+  "pinyin": "Xīng qī rì",
+  "gloss": "Sunday",
+  "pos": [
+   "t"
+  ],
+  "band": 1
+ },
+ "星期天": {
+  "pinyin": "Xīng qī tiān",
+  "gloss": "Sunday",
+  "pos": [
+   "t"
+  ],
+  "band": 1
+ },
+ "元": {
+  "pinyin": "Yuán",
+  "gloss": "surname Yuan",
+  "pos": [
+   "q",
+   "tg"
+  ],
+  "band": 1
+ },
+ "也": {
+  "pinyin": "Yě",
+  "gloss": "surname Ye",
+  "pos": [
+   "d",
+   "y",
+   "u",
+   "b"
+  ],
+  "band": 1
+ },
+ "中": {
+  "pinyin": "Zhōng",
+  "gloss": "China",
+  "pos": [
+   "f",
+   "b",
+   "v"
+  ],
+  "band": 1
+ },
+ "中国": {
+  "pinyin": "Zhōng guó",
+  "gloss": "China",
+  "pos": [
+   "ns"
+  ],
+  "band": 1
+ },
+ "中文": {
+  "pinyin": "Zhōng wén",
+  "gloss": "Chinese language",
+  "pos": [
+   "nz"
+  ],
+  "band": 1
+ },
+ "坐": {
+  "pinyin": "Zuò",
+  "gloss": "surname Zuo",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "左": {
+  "pinyin": "Zuǒ",
+  "gloss": "surname Zuo",
+  "pos": [
+   "f",
+   "a"
+  ],
+  "band": 1
+ },
+ "别的": {
+  "pinyin": "bié de",
+  "gloss": "else",
+  "pos": [
+   "r"
+  ],
+  "band": 1
+ },
+ "别人": {
+  "pinyin": "bié ren",
+  "gloss": "other people; others; other person",
+  "pos": [
+   "r"
+  ],
+  "band": 1
+ },
+ "爸": {
+  "pinyin": "bà",
+  "gloss": "father",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "爸爸": {
+  "pinyin": "bà ba",
+  "gloss": "(coll.) father; dad",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "半": {
+  "pinyin": "bàn",
+  "gloss": "half",
+  "pos": [
+   "m"
+  ],
+  "band": 1
+ },
+ "半年": {
+  "pinyin": "bàn nián",
+  "gloss": "half a year",
+  "pos": [
+   "nr"
+  ],
+  "band": 1
+ },
+ "半天": {
+  "pinyin": "bàn tiān",
+  "gloss": "half of the day",
+  "pos": [
+   "mq",
+   "t"
+  ],
+  "band": 1
+ },
+ "白天": {
+  "pinyin": "bái tiān",
+  "gloss": "daytime",
+  "pos": [
+   "t"
+  ],
+  "band": 1
+ },
+ "病": {
+  "pinyin": "bìng",
+  "gloss": "illness",
+  "pos": [
+   "n",
+   "v"
+  ],
+  "band": 1
+ },
+ "病人": {
+  "pinyin": "bìng rén",
+  "gloss": "sick person",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "不": {
+  "pinyin": "bù",
+  "gloss": "no; not so",
+  "pos": [
+   "d"
+  ],
+  "band": 1
+ },
+ "不对": {
+  "pinyin": "bù duì",
+  "gloss": "incorrect",
+  "pos": [
+   "a"
+  ],
+  "band": 1
+ },
+ "不大": {
+  "pinyin": "bù dà",
+  "gloss": "not very",
+  "pos": [
+   "d"
+  ],
+  "band": 1
+ },
+ "不客气": {
+  "pinyin": "bù kè qi",
+  "gloss": "you're welcome",
+  "pos": [],
+  "band": 1
+ },
+ "不用": {
+  "pinyin": "bù yòng",
+  "gloss": "need not",
+  "pos": [
+   "d"
+  ],
+  "band": 1
+ },
+ "八": {
+  "pinyin": "bā",
+  "gloss": "eight; 8",
+  "pos": [
+   "m",
+   "t"
+  ],
+  "band": 1
+ },
+ "吧": {
+  "pinyin": "bā",
+  "gloss": "bar (loanword) (serving drinks, or providing Internet access etc)",
+  "pos": [
+   "y"
+  ],
+  "band": 1
+ },
+ "帮": {
+  "pinyin": "bāng",
+  "gloss": "old variant of 帮",
+  "pos": [
+   "v",
+   "q"
+  ],
+  "band": 1
+ },
+ "帮忙": {
+  "pinyin": "bāng máng",
+  "gloss": "to help",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 1
+ },
+ "包子": {
+  "pinyin": "bāo zi",
+  "gloss": "bao (steamed stuffed bun)",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "杯": {
+  "pinyin": "bēi",
+  "gloss": "cup",
+  "pos": [
+   "q",
+   "g"
+  ],
+  "band": 1
+ },
+ "杯子": {
+  "pinyin": "bēi zi",
+  "gloss": "cup",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "北": {
+  "pinyin": "běi",
+  "gloss": "north",
+  "pos": [
+   "f"
+  ],
+  "band": 1
+ },
+ "北边": {
+  "pinyin": "běi biān",
+  "gloss": "north",
+  "pos": [
+   "f"
+  ],
+  "band": 1
+ },
+ "本": {
+  "pinyin": "běn",
+  "gloss": "root",
+  "pos": [
+   "r",
+   "q",
+   "d",
+   "n"
+  ],
+  "band": 1
+ },
+ "本子": {
+  "pinyin": "běn zi",
+  "gloss": "book",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "床": {
+  "pinyin": "chuáng",
+  "gloss": "bed",
+  "pos": [
+   "n",
+   "q"
+  ],
+  "band": 1
+ },
+ "穿": {
+  "pinyin": "chuān",
+  "gloss": "to wear",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "唱": {
+  "pinyin": "chàng",
+  "gloss": "to sing",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "唱歌": {
+  "pinyin": "chàng gē",
+  "gloss": "to sing a song",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 1
+ },
+ "茶": {
+  "pinyin": "chá",
+  "gloss": "tea",
+  "pos": [
+   "n",
+   "g"
+  ],
+  "band": 1
+ },
+ "常常": {
+  "pinyin": "cháng cháng",
+  "gloss": "frequently",
+  "pos": [
+   "d"
+  ],
+  "band": 1
+ },
+ "重": {
+  "pinyin": "chóng",
+  "gloss": "to repeat",
+  "pos": [
+   "a",
+   "d",
+   "v",
+   "q",
+   "g"
+  ],
+  "band": 1
+ },
+ "差": {
+  "pinyin": "chā",
+  "gloss": "difference; discrepancy",
+  "pos": [
+   "a",
+   "v",
+   "g"
+  ],
+  "band": 1
+ },
+ "车票": {
+  "pinyin": "chē piào",
+  "gloss": "ticket (for a bus or train)",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "车上": {
+  "pinyin": "chē shàng",
+  "gloss": "Car",
+  "pos": [
+   "s"
+  ],
+  "band": 1
+ },
+ "车站": {
+  "pinyin": "chē zhàn",
+  "gloss": "rail station",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "吃": {
+  "pinyin": "chī",
+  "gloss": "to eat; to consume",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "吃饭": {
+  "pinyin": "chī fàn",
+  "gloss": "to have a meal",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 1
+ },
+ "出": {
+  "pinyin": "chū",
+  "gloss": "to go out",
+  "pos": [
+   "v",
+   "q"
+  ],
+  "band": 1
+ },
+ "出来": {
+  "pinyin": "chū lái",
+  "gloss": "to come out",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "出去": {
+  "pinyin": "chū qù",
+  "gloss": "to go out",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "菜": {
+  "pinyin": "cài",
+  "gloss": "dish (type of food)",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "次": {
+  "pinyin": "cì",
+  "gloss": "next in sequence",
+  "pos": [
+   "qv",
+   "a",
+   "g"
+  ],
+  "band": 1
+ },
+ "从": {
+  "pinyin": "cóng",
+  "gloss": "variant of 从",
+  "pos": [
+   "p",
+   "g"
+  ],
+  "band": 1
+ },
+ "地": {
+  "pinyin": "de",
+  "gloss": "-ly",
+  "pos": [
+   "u",
+   "n"
+  ],
+  "band": 1
+ },
+ "的": {
+  "pinyin": "de",
+  "gloss": "of; ~'s (possessive particle)",
+  "pos": [
+   "u",
+   "n"
+  ],
+  "band": 1
+ },
+ "电": {
+  "pinyin": "diàn",
+  "gloss": "lightning",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "电话": {
+  "pinyin": "diàn huà",
+  "gloss": "telephone",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "电脑": {
+  "pinyin": "diàn nǎo",
+  "gloss": "computer",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "电视": {
+  "pinyin": "diàn shì",
+  "gloss": "television; TV",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "电视机": {
+  "pinyin": "diàn shì jī",
+  "gloss": "television set",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "电影": {
+  "pinyin": "diàn yǐng",
+  "gloss": "movie; film",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "电影院": {
+  "pinyin": "diàn yǐng yuàn",
+  "gloss": "cinema; movie theater",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "点": {
+  "pinyin": "diǎn",
+  "gloss": "point",
+  "pos": [
+   "qt",
+   "n",
+   "t",
+   "v"
+  ],
+  "band": 1
+ },
+ "对": {
+  "pinyin": "duì",
+  "gloss": "right; correct",
+  "pos": [
+   "p",
+   "v",
+   "q",
+   "a"
+  ],
+  "band": 1
+ },
+ "对不起": {
+  "pinyin": "duì bu qǐ",
+  "gloss": "I'm sorry; excuse me; I beg your pardon",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "多": {
+  "pinyin": "duō",
+  "gloss": "many; much",
+  "pos": [
+   "a",
+   "m",
+   "ad",
+   "d",
+   "v",
+   "g"
+  ],
+  "band": 1
+ },
+ "多少": {
+  "pinyin": "duō shǎo",
+  "gloss": "number",
+  "pos": [
+   "r"
+  ],
+  "band": 1
+ },
+ "大": {
+  "pinyin": "dà",
+  "gloss": "big; large; great",
+  "pos": [
+   "a",
+   "d",
+   "n",
+   "g"
+  ],
+  "band": 1
+ },
+ "大学生": {
+  "pinyin": "dà xué shēng",
+  "gloss": "university student",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "到": {
+  "pinyin": "dào",
+  "gloss": "to reach; to arrive",
+  "pos": [
+   "v",
+   "p"
+  ],
+  "band": 1
+ },
+ "打": {
+  "pinyin": "dá",
+  "gloss": "dozen (loanword)",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "得到": {
+  "pinyin": "dé dào",
+  "gloss": "to get",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "弟": {
+  "pinyin": "dì",
+  "gloss": "younger brother",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "第": {
+  "pinyin": "dì",
+  "gloss": "(prefix indicating ordinal number, as in 六 \"sixth\")",
+  "pos": [
+   "m"
+  ],
+  "band": 1
+ },
+ "弟弟": {
+  "pinyin": "dì di",
+  "gloss": "younger brother",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "地点": {
+  "pinyin": "dì diǎn",
+  "gloss": "place",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "地方": {
+  "pinyin": "dì fāng",
+  "gloss": "region",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "地上": {
+  "pinyin": "dì shang",
+  "gloss": "on the ground",
+  "pos": [
+   "s"
+  ],
+  "band": 1
+ },
+ "地图": {
+  "pinyin": "dì tú",
+  "gloss": "map",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "第二": {
+  "pinyin": "dì èr",
+  "gloss": "second",
+  "pos": [
+   "m"
+  ],
+  "band": 1
+ },
+ "动": {
+  "pinyin": "dòng",
+  "gloss": "(of sth) to move",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 1
+ },
+ "动作": {
+  "pinyin": "dòng zuò",
+  "gloss": "movement; motion; action",
+  "pos": [
+   "n",
+   "v"
+  ],
+  "band": 1
+ },
+ "读": {
+  "pinyin": "dòu",
+  "gloss": "comma",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "读书": {
+  "pinyin": "dú shū",
+  "gloss": "to read a book",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 1
+ },
+ "等": {
+  "pinyin": "děng",
+  "gloss": "class",
+  "pos": [
+   "v",
+   "u"
+  ],
+  "band": 1
+ },
+ "东边": {
+  "pinyin": "dōng bian",
+  "gloss": "east",
+  "pos": [
+   "f"
+  ],
+  "band": 1
+ },
+ "东西": {
+  "pinyin": "dōng xī",
+  "gloss": "east and west",
+  "pos": [
+   "n",
+   "f",
+   "nr"
+  ],
+  "band": 1
+ },
+ "打车": {
+  "pinyin": "dǎ chē",
+  "gloss": "to take a taxi (in town)",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "打电话": {
+  "pinyin": "dǎ diàn huà",
+  "gloss": "to make a telephone call",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "打开": {
+  "pinyin": "dǎ kāi",
+  "gloss": "to open",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "打球": {
+  "pinyin": "dǎ qiú",
+  "gloss": "to play ball",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 1
+ },
+ "饭": {
+  "pinyin": "fàn",
+  "gloss": "cooked rice",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "饭店": {
+  "pinyin": "fàn diàn",
+  "gloss": "restaurant",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "放": {
+  "pinyin": "fàng",
+  "gloss": "to put",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "放假": {
+  "pinyin": "fàng jià",
+  "gloss": "to have a holiday or vacation",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "放学": {
+  "pinyin": "fàng xué",
+  "gloss": "to dismiss students at the end of the school day",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "房间": {
+  "pinyin": "fáng jiān",
+  "gloss": "room",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "房子": {
+  "pinyin": "fáng zi",
+  "gloss": "house",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "飞": {
+  "pinyin": "fēi",
+  "gloss": "to fly",
+  "pos": [
+   "v",
+   "g",
+   "vn"
+  ],
+  "band": 1
+ },
+ "非常": {
+  "pinyin": "fēi cháng",
+  "gloss": "very; really",
+  "pos": [
+   "d",
+   "b"
+  ],
+  "band": 1
+ },
+ "飞机": {
+  "pinyin": "fēi jī",
+  "gloss": "airplane",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "分": {
+  "pinyin": "fēn",
+  "gloss": "to divide; to separate",
+  "pos": [
+   "t",
+   "qt",
+   "v",
+   "g",
+   "n",
+   "d"
+  ],
+  "band": 1
+ },
+ "风": {
+  "pinyin": "fēng",
+  "gloss": "wind",
+  "pos": [
+   "n",
+   "g"
+  ],
+  "band": 1
+ },
+ "贵": {
+  "pinyin": "guì",
+  "gloss": "expensive",
+  "pos": [
+   "a",
+   "r",
+   "b",
+   "g"
+  ],
+  "band": 1
+ },
+ "国家": {
+  "pinyin": "guó jiā",
+  "gloss": "country; nation; state",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "国外": {
+  "pinyin": "guó wài",
+  "gloss": "abroad",
+  "pos": [
+   "s"
+  ],
+  "band": 1
+ },
+ "关上": {
+  "pinyin": "guān shàng",
+  "gloss": "to close (a door)",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "干什么": {
+  "pinyin": "gàn shén me",
+  "gloss": "what are you doing?",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "告诉": {
+  "pinyin": "gào sù",
+  "gloss": "to press charges; to file a complaint",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "干": {
+  "pinyin": "gān",
+  "gloss": "old variant of 干",
+  "pos": [
+   "v",
+   "a"
+  ],
+  "band": 1
+ },
+ "干净": {
+  "pinyin": "gān jìng",
+  "gloss": "clean",
+  "pos": [
+   "a",
+   "ad"
+  ],
+  "band": 1
+ },
+ "高兴": {
+  "pinyin": "gāo xìng",
+  "gloss": "happy",
+  "pos": [
+   "a",
+   "an"
+  ],
+  "band": 1
+ },
+ "哥": {
+  "pinyin": "gē",
+  "gloss": "elder brother",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "歌": {
+  "pinyin": "gē",
+  "gloss": "song",
+  "pos": [
+   "n",
+   "g"
+  ],
+  "band": 1
+ },
+ "哥哥": {
+  "pinyin": "gē ge",
+  "gloss": "older brother",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "跟": {
+  "pinyin": "gēn",
+  "gloss": "heel",
+  "pos": [
+   "p",
+   "v"
+  ],
+  "band": 1
+ },
+ "个": {
+  "pinyin": "gě",
+  "gloss": "used in 自个儿",
+  "pos": [
+   "q",
+   "g"
+  ],
+  "band": 1
+ },
+ "给": {
+  "pinyin": "gěi",
+  "gloss": "to",
+  "pos": [
+   "p",
+   "v",
+   "u"
+  ],
+  "band": 1
+ },
+ "工人": {
+  "pinyin": "gōng rén",
+  "gloss": "worker",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "工作": {
+  "pinyin": "gōng zuò",
+  "gloss": "to work",
+  "pos": [
+   "vn",
+   "v",
+   "n"
+  ],
+  "band": 1
+ },
+ "话": {
+  "pinyin": "huà",
+  "gloss": "dialect",
+  "pos": [
+   "n",
+   "v"
+  ],
+  "band": 1
+ },
+ "坏": {
+  "pinyin": "huài",
+  "gloss": "bad",
+  "pos": [
+   "a",
+   "v"
+  ],
+  "band": 1
+ },
+ "会": {
+  "pinyin": "huì",
+  "gloss": "can; to have the skill; to know how to",
+  "pos": [
+   "v",
+   "n"
+  ],
+  "band": 1
+ },
+ "回": {
+  "pinyin": "huí",
+  "gloss": "to circle",
+  "pos": [
+   "v",
+   "qv"
+  ],
+  "band": 1
+ },
+ "回到": {
+  "pinyin": "huí dào",
+  "gloss": "to return to",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "回答": {
+  "pinyin": "huí dá",
+  "gloss": "to reply; to answer",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 1
+ },
+ "回家": {
+  "pinyin": "huí jiā",
+  "gloss": "to return home",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "回来": {
+  "pinyin": "huí lai",
+  "gloss": "to return; to come back",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "回去": {
+  "pinyin": "huí qu",
+  "gloss": "to return",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "火车": {
+  "pinyin": "huǒ chē",
+  "gloss": "train",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "汉字": {
+  "pinyin": "hàn zì",
+  "gloss": "Chinese character",
+  "pos": [
+   "nz",
+   "n"
+  ],
+  "band": 1
+ },
+ "还是": {
+  "pinyin": "hái shi",
+  "gloss": "still (as before)",
+  "pos": [
+   "c",
+   "d",
+   "v"
+  ],
+  "band": 1
+ },
+ "还有": {
+  "pinyin": "hái yǒu",
+  "gloss": "furthermore",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "孩子": {
+  "pinyin": "hái zi",
+  "gloss": "child",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "行": {
+  "pinyin": "háng",
+  "gloss": "row",
+  "pos": [
+   "v",
+   "g",
+   "q",
+   "a",
+   "n"
+  ],
+  "band": 1
+ },
+ "号": {
+  "pinyin": "háo",
+  "gloss": "roar",
+  "pos": [
+   "q",
+   "n",
+   "v"
+  ],
+  "band": 1
+ },
+ "和": {
+  "pinyin": "hé",
+  "gloss": "old variant of 和",
+  "pos": [
+   "cc",
+   "p",
+   "v",
+   "qv",
+   "g",
+   "n"
+  ],
+  "band": 1
+ },
+ "后边": {
+  "pinyin": "hòu bian",
+  "gloss": "the back; the rear; the last bit",
+  "pos": [
+   "f"
+  ],
+  "band": 1
+ },
+ "后天": {
+  "pinyin": "hòu tiān",
+  "gloss": "the day after tomorrow",
+  "pos": [
+   "n",
+   "t"
+  ],
+  "band": 1
+ },
+ "喝": {
+  "pinyin": "hē",
+  "gloss": "to drink",
+  "pos": [
+   "g",
+   "vn"
+  ],
+  "band": 1
+ },
+ "很": {
+  "pinyin": "hěn",
+  "gloss": "(adverb of degree)",
+  "pos": [
+   "d"
+  ],
+  "band": 1
+ },
+ "好": {
+  "pinyin": "hǎo",
+  "gloss": "good",
+  "pos": [
+   "a",
+   "d",
+   "v"
+  ],
+  "band": 1
+ },
+ "好吃": {
+  "pinyin": "hǎo chī",
+  "gloss": "tasty",
+  "pos": [
+   "a"
+  ],
+  "band": 1
+ },
+ "好看": {
+  "pinyin": "hǎo kàn",
+  "gloss": "good-looking",
+  "pos": [
+   "a"
+  ],
+  "band": 1
+ },
+ "好听": {
+  "pinyin": "hǎo tīng",
+  "gloss": "pleasant to hear",
+  "pos": [
+   "a"
+  ],
+  "band": 1
+ },
+ "好玩儿": {
+  "pinyin": "hǎo wán r",
+  "gloss": "erhua variant of 好玩",
+  "pos": [
+   "a"
+  ],
+  "band": 1
+ },
+ "见": {
+  "pinyin": "jiàn",
+  "gloss": "to see",
+  "pos": [
+   "v",
+   "g"
+  ],
+  "band": 1
+ },
+ "见面": {
+  "pinyin": "jiàn miàn",
+  "gloss": "to meet; to see each other",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "叫": {
+  "pinyin": "jiào",
+  "gloss": "to shout",
+  "pos": [
+   "v",
+   "p",
+   "n"
+  ],
+  "band": 1
+ },
+ "教学楼": {
+  "pinyin": "jiào xué lóu",
+  "gloss": "teaching block",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "介绍": {
+  "pinyin": "jiè shào",
+  "gloss": "to introduce (sb to sb)",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 1
+ },
+ "就": {
+  "pinyin": "jiù",
+  "gloss": "(after a suppositional clause) in that case; then",
+  "pos": [
+   "d",
+   "p",
+   "c",
+   "v"
+  ],
+  "band": 1
+ },
+ "家": {
+  "pinyin": "jiā",
+  "gloss": "used in 家伙 and 家俱",
+  "pos": [
+   "n",
+   "q"
+  ],
+  "band": 1
+ },
+ "家里": {
+  "pinyin": "jiā lǐ",
+  "gloss": "home",
+  "pos": [
+   "s",
+   "n"
+  ],
+  "band": 1
+ },
+ "家人": {
+  "pinyin": "jiā rén",
+  "gloss": "family member",
+  "pos": [
+   "n",
+   "nr"
+  ],
+  "band": 1
+ },
+ "间": {
+  "pinyin": "jiān",
+  "gloss": "between",
+  "pos": [
+   "q",
+   "f",
+   "v",
+   "g"
+  ],
+  "band": 1
+ },
+ "姐": {
+  "pinyin": "jiě",
+  "gloss": "older sister",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "姐姐": {
+  "pinyin": "jiě jie",
+  "gloss": "older sister",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "九": {
+  "pinyin": "jiǔ",
+  "gloss": "nine",
+  "pos": [
+   "m",
+   "t",
+   "b"
+  ],
+  "band": 1
+ },
+ "觉得": {
+  "pinyin": "jué de",
+  "gloss": "to think that ...; to feel that ...",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "记": {
+  "pinyin": "jì",
+  "gloss": "to record",
+  "pos": [
+   "v",
+   "g",
+   "q"
+  ],
+  "band": 1
+ },
+ "记得": {
+  "pinyin": "jì de",
+  "gloss": "to remember",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "记住": {
+  "pinyin": "jì zhu",
+  "gloss": "to remember",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "进": {
+  "pinyin": "jìn",
+  "gloss": "to go forward",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "进来": {
+  "pinyin": "jìn lái",
+  "gloss": "to come in",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "进去": {
+  "pinyin": "jìn qù",
+  "gloss": "to go in",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "几": {
+  "pinyin": "jī",
+  "gloss": "small table",
+  "pos": [
+   "m",
+   "d"
+  ],
+  "band": 1
+ },
+ "机场": {
+  "pinyin": "jī chǎng",
+  "gloss": "airport; airfield",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "鸡蛋": {
+  "pinyin": "jī dàn",
+  "gloss": "(chicken) egg",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "机票": {
+  "pinyin": "jī piào",
+  "gloss": "air ticket",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "今年": {
+  "pinyin": "jīn nián",
+  "gloss": "this year",
+  "pos": [
+   "t"
+  ],
+  "band": 1
+ },
+ "今天": {
+  "pinyin": "jīn tiān",
+  "gloss": "today",
+  "pos": [
+   "t"
+  ],
+  "band": 1
+ },
+ "块": {
+  "pinyin": "kuài",
+  "gloss": "lump; chunk; piece",
+  "pos": [
+   "q",
+   "g"
+  ],
+  "band": 1
+ },
+ "快": {
+  "pinyin": "kuài",
+  "gloss": "rapid",
+  "pos": [
+   "a",
+   "d",
+   "g"
+  ],
+  "band": 1
+ },
+ "看病": {
+  "pinyin": "kàn bìng",
+  "gloss": "to visit a doctor",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 1
+ },
+ "看到": {
+  "pinyin": "kàn dào",
+  "gloss": "to see",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "看见": {
+  "pinyin": "kàn jiàn",
+  "gloss": "to see",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "课": {
+  "pinyin": "kè",
+  "gloss": "subject",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "课本": {
+  "pinyin": "kè běn",
+  "gloss": "textbook",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "课文": {
+  "pinyin": "kè wén",
+  "gloss": "text",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "开": {
+  "pinyin": "kāi",
+  "gloss": "to open (transitive or intransitive)",
+  "pos": [
+   "v",
+   "q"
+  ],
+  "band": 1
+ },
+ "开车": {
+  "pinyin": "kāi chē",
+  "gloss": "to drive a car",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 1
+ },
+ "开会": {
+  "pinyin": "kāi huì",
+  "gloss": "to hold a meeting",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "开玩笑": {
+  "pinyin": "kāi wán xiào",
+  "gloss": "to play a joke",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "看": {
+  "pinyin": "kān",
+  "gloss": "to look after",
+  "pos": [
+   "v",
+   "u"
+  ],
+  "band": 1
+ },
+ "渴": {
+  "pinyin": "kě",
+  "gloss": "thirsty",
+  "pos": [
+   "a",
+   "v"
+  ],
+  "band": 1
+ },
+ "考": {
+  "pinyin": "kǎo",
+  "gloss": "to beat",
+  "pos": [
+   "v",
+   "g"
+  ],
+  "band": 1
+ },
+ "考试": {
+  "pinyin": "kǎo shì",
+  "gloss": "to take an exam",
+  "pos": [
+   "vn",
+   "v"
+  ],
+  "band": 1
+ },
+ "口": {
+  "pinyin": "kǒu",
+  "gloss": "mouth",
+  "pos": [
+   "q",
+   "n"
+  ],
+  "band": 1
+ },
+ "了": {
+  "pinyin": "le",
+  "gloss": "(completed action marker)",
+  "pos": [
+   "y",
+   "u",
+   "v"
+  ],
+  "band": 1
+ },
+ "六": {
+  "pinyin": "liù",
+  "gloss": "six",
+  "pos": [
+   "m",
+   "t"
+  ],
+  "band": 1
+ },
+ "两": {
+  "pinyin": "liǎng",
+  "gloss": "two",
+  "pos": [
+   "m",
+   "t"
+  ],
+  "band": 1
+ },
+ "来": {
+  "pinyin": "lái",
+  "gloss": "to come",
+  "pos": [
+   "v",
+   "f",
+   "m",
+   "u",
+   "y"
+  ],
+  "band": 1
+ },
+ "来到": {
+  "pinyin": "lái dào",
+  "gloss": "to arrive; to come",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "零": {
+  "pinyin": "líng",
+  "gloss": "zero",
+  "pos": [
+   "m",
+   "t",
+   "g"
+  ],
+  "band": 1
+ },
+ "楼上": {
+  "pinyin": "lóu shàng",
+  "gloss": "upstairs",
+  "pos": [
+   "s",
+   "f"
+  ],
+  "band": 1
+ },
+ "楼下": {
+  "pinyin": "lóu xià",
+  "gloss": "downstairs",
+  "pos": [
+   "s"
+  ],
+  "band": 1
+ },
+ "路口": {
+  "pinyin": "lù kǒu",
+  "gloss": "crossing",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "路上": {
+  "pinyin": "lù shang",
+  "gloss": "on the road",
+  "pos": [
+   "s"
+  ],
+  "band": 1
+ },
+ "累": {
+  "pinyin": "lěi",
+  "gloss": "to accumulate",
+  "pos": [
+   "a",
+   "v",
+   "an"
+  ],
+  "band": 1
+ },
+ "老": {
+  "pinyin": "lǎo",
+  "gloss": "prefix used before the surname of a person or a numeral indicating the order of birth of the children in a family or to indicate affection or familiarity",
+  "pos": [
+   "a",
+   "d",
+   "g"
+  ],
+  "band": 1
+ },
+ "老人": {
+  "pinyin": "lǎo rén",
+  "gloss": "old man or woman",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "老师": {
+  "pinyin": "lǎo shī",
+  "gloss": "teacher",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "里": {
+  "pinyin": "lǐ",
+  "gloss": "variant of 里",
+  "pos": [
+   "f",
+   "q"
+  ],
+  "band": 1
+ },
+ "里边": {
+  "pinyin": "lǐ bian",
+  "gloss": "inside",
+  "pos": [
+   "f"
+  ],
+  "band": 1
+ },
+ "们": {
+  "pinyin": "men",
+  "gloss": "plural marker for pronouns, and nouns referring to individuals",
+  "pos": [
+   "k"
+  ],
+  "band": 1
+ },
+ "面包": {
+  "pinyin": "miàn bāo",
+  "gloss": "bread",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "面条儿": {
+  "pinyin": "miàn tiáo r",
+  "gloss": "erhua variant of 面条",
+  "pos": [],
+  "band": 1
+ },
+ "慢": {
+  "pinyin": "màn",
+  "gloss": "slow",
+  "pos": [
+   "a",
+   "ad"
+  ],
+  "band": 1
+ },
+ "吗": {
+  "pinyin": "má",
+  "gloss": "(coll.) what?",
+  "pos": [
+   "y"
+  ],
+  "band": 1
+ },
+ "忙": {
+  "pinyin": "máng",
+  "gloss": "busy",
+  "pos": [
+   "v",
+   "a",
+   "ad",
+   "g",
+   "an"
+  ],
+  "band": 1
+ },
+ "妹": {
+  "pinyin": "mèi",
+  "gloss": "younger sister",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "妹妹": {
+  "pinyin": "mèi mei",
+  "gloss": "younger sister",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "没": {
+  "pinyin": "méi",
+  "gloss": "(negative prefix for verbs) have not; not",
+  "pos": [
+   "d",
+   "v"
+  ],
+  "band": 1
+ },
+ "没关系": {
+  "pinyin": "méi guān xi",
+  "gloss": "it doesn't matter",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "没什么": {
+  "pinyin": "méi shén me",
+  "gloss": "nothing",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "没事儿": {
+  "pinyin": "méi shì r",
+  "gloss": "to have spare time",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "没有": {
+  "pinyin": "méi yǒu",
+  "gloss": "haven't",
+  "pos": [
+   "v",
+   "d"
+  ],
+  "band": 1
+ },
+ "门口": {
+  "pinyin": "mén kǒu",
+  "gloss": "doorway",
+  "pos": [
+   "s"
+  ],
+  "band": 1
+ },
+ "门票": {
+  "pinyin": "mén piào",
+  "gloss": "ticket (for theater, cinema etc)",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "明白": {
+  "pinyin": "míng bai",
+  "gloss": "clear",
+  "pos": [
+   "v",
+   "a",
+   "an"
+  ],
+  "band": 1
+ },
+ "明年": {
+  "pinyin": "míng nián",
+  "gloss": "next year",
+  "pos": [
+   "t"
+  ],
+  "band": 1
+ },
+ "明天": {
+  "pinyin": "míng tiān",
+  "gloss": "tomorrow",
+  "pos": [
+   "t"
+  ],
+  "band": 1
+ },
+ "名字": {
+  "pinyin": "míng zi",
+  "gloss": "name (of a person or thing)",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "妈": {
+  "pinyin": "mā",
+  "gloss": "ma",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "妈妈": {
+  "pinyin": "mā ma",
+  "gloss": "mama",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "马路": {
+  "pinyin": "mǎ lù",
+  "gloss": "street",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "马上": {
+  "pinyin": "mǎ shàng",
+  "gloss": "at once",
+  "pos": [
+   "d",
+   "s"
+  ],
+  "band": 1
+ },
+ "买": {
+  "pinyin": "mǎi",
+  "gloss": "to buy",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "米饭": {
+  "pinyin": "mǐ fàn",
+  "gloss": "(cooked) rice",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "呢": {
+  "pinyin": "ne",
+  "gloss": "particle indicating that a previously asked question is to be applied to the preceding word (\"What about ...?\", \"And ...?\")",
+  "pos": [
+   "y"
+  ],
+  "band": 1
+ },
+ "牛奶": {
+  "pinyin": "niú nǎi",
+  "gloss": "cow's milk",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "那边": {
+  "pinyin": "nà bian",
+  "gloss": "over there",
+  "pos": [
+   "r"
+  ],
+  "band": 1
+ },
+ "那里": {
+  "pinyin": "nà li",
+  "gloss": "there; that place",
+  "pos": [
+   "r"
+  ],
+  "band": 1
+ },
+ "那儿": {
+  "pinyin": "nà r",
+  "gloss": "there",
+  "pos": [
+   "r"
+  ],
+  "band": 1
+ },
+ "那些": {
+  "pinyin": "nà xiē",
+  "gloss": "those",
+  "pos": [
+   "r"
+  ],
+  "band": 1
+ },
+ "拿": {
+  "pinyin": "ná",
+  "gloss": "old variant of 拿",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "男": {
+  "pinyin": "nán",
+  "gloss": "male",
+  "pos": [
+   "b",
+   "g"
+  ],
+  "band": 1
+ },
+ "难": {
+  "pinyin": "nán",
+  "gloss": "difficult (to...)",
+  "pos": [
+   "ad",
+   "a",
+   "v",
+   "g"
+  ],
+  "band": 1
+ },
+ "南边": {
+  "pinyin": "nán bian",
+  "gloss": "south",
+  "pos": [
+   "f"
+  ],
+  "band": 1
+ },
+ "男孩儿": {
+  "pinyin": "nán hái r",
+  "gloss": "erhua variant of 男孩",
+  "pos": [],
+  "band": 1
+ },
+ "男朋友": {
+  "pinyin": "nán péng you",
+  "gloss": "boyfriend",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "男人": {
+  "pinyin": "nán rén",
+  "gloss": "a man",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "男生": {
+  "pinyin": "nán shēng",
+  "gloss": "schoolboy",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "您": {
+  "pinyin": "nín",
+  "gloss": "you (courteous, as opposed to informal 你)",
+  "pos": [
+   "r"
+  ],
+  "band": 1
+ },
+ "哪": {
+  "pinyin": "nǎ",
+  "gloss": "how",
+  "pos": [
+   "r",
+   "y"
+  ],
+  "band": 1
+ },
+ "哪里": {
+  "pinyin": "nǎ lǐ",
+  "gloss": "where?",
+  "pos": [
+   "r"
+  ],
+  "band": 1
+ },
+ "哪儿": {
+  "pinyin": "nǎ r",
+  "gloss": "where?",
+  "pos": [
+   "r"
+  ],
+  "band": 1
+ },
+ "哪些": {
+  "pinyin": "nǎ xiē",
+  "gloss": "which ones?",
+  "pos": [
+   "r"
+  ],
+  "band": 1
+ },
+ "奶": {
+  "pinyin": "nǎi",
+  "gloss": "breast",
+  "pos": [
+   "n",
+   "v"
+  ],
+  "band": 1
+ },
+ "奶奶": {
+  "pinyin": "nǎi nai",
+  "gloss": "(informal) grandma (paternal grandmother)",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "你": {
+  "pinyin": "nǐ",
+  "gloss": "you (informal, as opposed to courteous 您)",
+  "pos": [
+   "r"
+  ],
+  "band": 1
+ },
+ "你们": {
+  "pinyin": "nǐ men",
+  "gloss": "you (plural)",
+  "pos": [
+   "r"
+  ],
+  "band": 1
+ },
+ "女": {
+  "pinyin": "nǚ",
+  "gloss": "female",
+  "pos": [
+   "b",
+   "g"
+  ],
+  "band": 1
+ },
+ "女孩儿": {
+  "pinyin": "nǚ hái r",
+  "gloss": "erhua variant of 女孩",
+  "pos": [],
+  "band": 1
+ },
+ "女朋友": {
+  "pinyin": "nǚ péng you",
+  "gloss": "girlfriend",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "女人": {
+  "pinyin": "nǚ rén",
+  "gloss": "woman",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "女生": {
+  "pinyin": "nǚ shēng",
+  "gloss": "schoolgirl",
+  "pos": [
+   "n",
+   "nr"
+  ],
+  "band": 1
+ },
+ "女儿": {
+  "pinyin": "nǚ ér",
+  "gloss": "daughter",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "票": {
+  "pinyin": "piào",
+  "gloss": "ticket",
+  "pos": [
+   "n",
+   "q"
+  ],
+  "band": 1
+ },
+ "旁边": {
+  "pinyin": "páng biān",
+  "gloss": "side; adjacent place",
+  "pos": [
+   "f"
+  ],
+  "band": 1
+ },
+ "跑": {
+  "pinyin": "páo",
+  "gloss": "(of an animal) to paw (the ground)",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "朋友": {
+  "pinyin": "péng you",
+  "gloss": "friend",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "前": {
+  "pinyin": "qián",
+  "gloss": "front",
+  "pos": [
+   "f",
+   "v"
+  ],
+  "band": 1
+ },
+ "前边": {
+  "pinyin": "qián bian",
+  "gloss": "front",
+  "pos": [
+   "f"
+  ],
+  "band": 1
+ },
+ "钱包": {
+  "pinyin": "qián bāo",
+  "gloss": "purse",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "前天": {
+  "pinyin": "qián tiān",
+  "gloss": "the day before yesterday",
+  "pos": [
+   "t",
+   "n"
+  ],
+  "band": 1
+ },
+ "球": {
+  "pinyin": "qiú",
+  "gloss": "ball",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "汽车": {
+  "pinyin": "qì chē",
+  "gloss": "car",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "去": {
+  "pinyin": "qù",
+  "gloss": "to go",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "去年": {
+  "pinyin": "qù nián",
+  "gloss": "last year",
+  "pos": [
+   "t"
+  ],
+  "band": 1
+ },
+ "七": {
+  "pinyin": "qī",
+  "gloss": "seven",
+  "pos": [
+   "m",
+   "t"
+  ],
+  "band": 1
+ },
+ "起": {
+  "pinyin": "qǐ",
+  "gloss": "to rise",
+  "pos": [
+   "v",
+   "q",
+   "f"
+  ],
+  "band": 1
+ },
+ "起床": {
+  "pinyin": "qǐ chuáng",
+  "gloss": "to get out of bed",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "起来": {
+  "pinyin": "qǐ lai",
+  "gloss": "to stand up",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "请": {
+  "pinyin": "qǐng",
+  "gloss": "to ask",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "请假": {
+  "pinyin": "qǐng jià",
+  "gloss": "to request leave of absence",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "请进": {
+  "pinyin": "qǐng jìn",
+  "gloss": "\"please come in\"",
+  "pos": [],
+  "band": 1
+ },
+ "请问": {
+  "pinyin": "qǐng wèn",
+  "gloss": "Excuse me, may I ask...?",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "请坐": {
+  "pinyin": "qǐng zuò",
+  "gloss": "please, have a seat",
+  "pos": [],
+  "band": 1
+ },
+ "热": {
+  "pinyin": "rè",
+  "gloss": "to warm up",
+  "pos": [
+   "a",
+   "n",
+   "k",
+   "v",
+   "ad",
+   "an"
+  ],
+  "band": 1
+ },
+ "认识": {
+  "pinyin": "rèn shi",
+  "gloss": "to know",
+  "pos": [
+   "v",
+   "n",
+   "vn"
+  ],
+  "band": 1
+ },
+ "认真": {
+  "pinyin": "rèn zhēn",
+  "gloss": "conscientious",
+  "pos": [
+   "a",
+   "ad"
+  ],
+  "band": 1
+ },
+ "人": {
+  "pinyin": "rén",
+  "gloss": "person; people",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "日期": {
+  "pinyin": "rì qī",
+  "gloss": "date",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "肉": {
+  "pinyin": "ròu",
+  "gloss": "meat",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "睡": {
+  "pinyin": "shuì",
+  "gloss": "to sleep",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 1
+ },
+ "说": {
+  "pinyin": "shuì",
+  "gloss": "to persuade",
+  "pos": [
+   "v",
+   "g"
+  ],
+  "band": 1
+ },
+ "睡觉": {
+  "pinyin": "shuì jiào",
+  "gloss": "to go to bed",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "说话": {
+  "pinyin": "shuō huà",
+  "gloss": "to speak",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 1
+ },
+ "水果": {
+  "pinyin": "shuǐ guǒ",
+  "gloss": "fruit",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "上边": {
+  "pinyin": "shàng bian",
+  "gloss": "the top",
+  "pos": [
+   "f",
+   "n"
+  ],
+  "band": 1
+ },
+ "上班": {
+  "pinyin": "shàng bān",
+  "gloss": "to go to work",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 1
+ },
+ "上车": {
+  "pinyin": "shàng chē",
+  "gloss": "to get on or into (a bus, train, car etc)",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "上次": {
+  "pinyin": "shàng cì",
+  "gloss": "last time",
+  "pos": [
+   "t"
+  ],
+  "band": 1
+ },
+ "上课": {
+  "pinyin": "shàng kè",
+  "gloss": "to go to class",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 1
+ },
+ "上网": {
+  "pinyin": "shàng wǎng",
+  "gloss": "to go online",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 1
+ },
+ "上午": {
+  "pinyin": "shàng wǔ",
+  "gloss": "morning",
+  "pos": [
+   "t"
+  ],
+  "band": 1
+ },
+ "上学": {
+  "pinyin": "shàng xué",
+  "gloss": "to go to school",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "谁": {
+  "pinyin": "shéi",
+  "gloss": "who",
+  "pos": [
+   "r"
+  ],
+  "band": 1
+ },
+ "什么": {
+  "pinyin": "shén me",
+  "gloss": "what?",
+  "pos": [
+   "r"
+  ],
+  "band": 1
+ },
+ "事": {
+  "pinyin": "shì",
+  "gloss": "matter",
+  "pos": [
+   "n",
+   "g"
+  ],
+  "band": 1
+ },
+ "试": {
+  "pinyin": "shì",
+  "gloss": "to test",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 1
+ },
+ "是": {
+  "pinyin": "shì",
+  "gloss": "to be (followed by substantives only)",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "是不是": {
+  "pinyin": "shì bù shì",
+  "gloss": "is or isn't",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "十": {
+  "pinyin": "shí",
+  "gloss": "ten",
+  "pos": [
+   "m",
+   "t"
+  ],
+  "band": 1
+ },
+ "时候": {
+  "pinyin": "shí hou",
+  "gloss": "time",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "时间": {
+  "pinyin": "shí jiān",
+  "gloss": "time",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "树": {
+  "pinyin": "shù",
+  "gloss": "tree",
+  "pos": [
+   "n",
+   "v"
+  ],
+  "band": 1
+ },
+ "商场": {
+  "pinyin": "shāng chǎng",
+  "gloss": "shopping mall",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "商店": {
+  "pinyin": "shāng diàn",
+  "gloss": "store; shop",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "身上": {
+  "pinyin": "shēn shang",
+  "gloss": "on the body",
+  "pos": [
+   "s"
+  ],
+  "band": 1
+ },
+ "身体": {
+  "pinyin": "shēn tǐ",
+  "gloss": "the body",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "生病": {
+  "pinyin": "shēng bìng",
+  "gloss": "to fall ill",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "生气": {
+  "pinyin": "shēng qì",
+  "gloss": "to get angry",
+  "pos": [
+   "a",
+   "n",
+   "v",
+   "an"
+  ],
+  "band": 1
+ },
+ "生日": {
+  "pinyin": "shēng rì",
+  "gloss": "birthday",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "书包": {
+  "pinyin": "shū bāo",
+  "gloss": "schoolbag",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "书店": {
+  "pinyin": "shū diàn",
+  "gloss": "bookstore",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "上": {
+  "pinyin": "shǎng",
+  "gloss": "used in 上声",
+  "pos": [
+   "f",
+   "v",
+   "g"
+  ],
+  "band": 1
+ },
+ "少": {
+  "pinyin": "shǎo",
+  "gloss": "few",
+  "pos": [
+   "a",
+   "ad",
+   "v",
+   "d",
+   "g"
+  ],
+  "band": 1
+ },
+ "手": {
+  "pinyin": "shǒu",
+  "gloss": "hand",
+  "pos": [
+   "n",
+   "q"
+  ],
+  "band": 1
+ },
+ "手机": {
+  "pinyin": "shǒu jī",
+  "gloss": "cell phone",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "岁": {
+  "pinyin": "suì",
+  "gloss": "variant of 岁, year",
+  "pos": [
+   "qt"
+  ],
+  "band": 1
+ },
+ "四": {
+  "pinyin": "sì",
+  "gloss": "four",
+  "pos": [
+   "m",
+   "t"
+  ],
+  "band": 1
+ },
+ "送": {
+  "pinyin": "sòng",
+  "gloss": "to send; to deliver; to transmit",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "天": {
+  "pinyin": "tiān",
+  "gloss": "day",
+  "pos": [
+   "qt",
+   "n"
+  ],
+  "band": 1
+ },
+ "天气": {
+  "pinyin": "tiān qì",
+  "gloss": "weather",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "太": {
+  "pinyin": "tài",
+  "gloss": "highest",
+  "pos": [
+   "d",
+   "b"
+  ],
+  "band": 1
+ },
+ "同学": {
+  "pinyin": "tóng xué",
+  "gloss": "to study at the same school",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "图书馆": {
+  "pinyin": "tú shū guǎn",
+  "gloss": "library",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "他": {
+  "pinyin": "tā",
+  "gloss": "he; him (used for either sex when the sex is unknown or unimportant)",
+  "pos": [
+   "r"
+  ],
+  "band": 1
+ },
+ "她": {
+  "pinyin": "tā",
+  "gloss": "she",
+  "pos": [
+   "r"
+  ],
+  "band": 1
+ },
+ "他们": {
+  "pinyin": "tā men",
+  "gloss": "they",
+  "pos": [
+   "r"
+  ],
+  "band": 1
+ },
+ "她们": {
+  "pinyin": "tā men",
+  "gloss": "they",
+  "pos": [
+   "r"
+  ],
+  "band": 1
+ },
+ "听到": {
+  "pinyin": "tīng dào",
+  "gloss": "to hear",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "听见": {
+  "pinyin": "tīng jiàn",
+  "gloss": "to hear",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "听写": {
+  "pinyin": "tīng xiě",
+  "gloss": "(of a pupil) to write down (in a dictation exercise)",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 1
+ },
+ "外": {
+  "pinyin": "wài",
+  "gloss": "outside",
+  "pos": [
+   "f"
+  ],
+  "band": 1
+ },
+ "外边": {
+  "pinyin": "wài bian",
+  "gloss": "outside",
+  "pos": [
+   "f"
+  ],
+  "band": 1
+ },
+ "外国": {
+  "pinyin": "wài guó",
+  "gloss": "foreign (country)",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "外语": {
+  "pinyin": "wài yǔ",
+  "gloss": "foreign language",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "忘": {
+  "pinyin": "wàng",
+  "gloss": "to forget",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "忘记": {
+  "pinyin": "wàng jì",
+  "gloss": "to forget",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "玩儿": {
+  "pinyin": "wán r",
+  "gloss": "to play",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "问": {
+  "pinyin": "wèn",
+  "gloss": "to ask; to inquire",
+  "pos": [
+   "v",
+   "g",
+   "vn"
+  ],
+  "band": 1
+ },
+ "晚": {
+  "pinyin": "wǎn",
+  "gloss": "evening",
+  "pos": [
+   "tg",
+   "a",
+   "ad"
+  ],
+  "band": 1
+ },
+ "晚饭": {
+  "pinyin": "wǎn fàn",
+  "gloss": "evening meal",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "晚上": {
+  "pinyin": "wǎn shang",
+  "gloss": "evening",
+  "pos": [
+   "t"
+  ],
+  "band": 1
+ },
+ "网上": {
+  "pinyin": "wǎng shàng",
+  "gloss": "online",
+  "pos": [
+   "s"
+  ],
+  "band": 1
+ },
+ "网友": {
+  "pinyin": "wǎng yǒu",
+  "gloss": "online friend",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "我": {
+  "pinyin": "wǒ",
+  "gloss": "I; me; my",
+  "pos": [
+   "r"
+  ],
+  "band": 1
+ },
+ "我们": {
+  "pinyin": "wǒ men",
+  "gloss": "we",
+  "pos": [
+   "r"
+  ],
+  "band": 1
+ },
+ "五": {
+  "pinyin": "wǔ",
+  "gloss": "five",
+  "pos": [
+   "m",
+   "t"
+  ],
+  "band": 1
+ },
+ "午饭": {
+  "pinyin": "wǔ fàn",
+  "gloss": "lunch",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "下": {
+  "pinyin": "xià",
+  "gloss": "down",
+  "pos": [
+   "v",
+   "f",
+   "qt",
+   "g"
+  ],
+  "band": 1
+ },
+ "下边": {
+  "pinyin": "xià bian",
+  "gloss": "under",
+  "pos": [
+   "f"
+  ],
+  "band": 1
+ },
+ "下班": {
+  "pinyin": "xià bān",
+  "gloss": "to finish work",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 1
+ },
+ "下车": {
+  "pinyin": "xià chē",
+  "gloss": "to get off or out of (a bus, train, car etc)",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 1
+ },
+ "下次": {
+  "pinyin": "xià cì",
+  "gloss": "next time",
+  "pos": [
+   "t"
+  ],
+  "band": 1
+ },
+ "下课": {
+  "pinyin": "xià kè",
+  "gloss": "to finish class",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 1
+ },
+ "下午": {
+  "pinyin": "xià wǔ",
+  "gloss": "afternoon",
+  "pos": [
+   "t"
+  ],
+  "band": 1
+ },
+ "下雨": {
+  "pinyin": "xià yǔ",
+  "gloss": "to rain",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "现在": {
+  "pinyin": "xiàn zài",
+  "gloss": "now",
+  "pos": [
+   "t"
+  ],
+  "band": 1
+ },
+ "笑": {
+  "pinyin": "xiào",
+  "gloss": "old variant of 笑",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 1
+ },
+ "谢谢": {
+  "pinyin": "xiè xie",
+  "gloss": "to thank",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "页": {
+  "pinyin": "xié",
+  "gloss": "head",
+  "pos": [
+   "q",
+   "g"
+  ],
+  "band": 1
+ },
+ "先": {
+  "pinyin": "xiān",
+  "gloss": "early",
+  "pos": [
+   "d",
+   "g"
+  ],
+  "band": 1
+ },
+ "先生": {
+  "pinyin": "xiān sheng",
+  "gloss": "teacher",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "写": {
+  "pinyin": "xiě",
+  "gloss": "to write",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "休息": {
+  "pinyin": "xiū xi",
+  "gloss": "rest",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 1
+ },
+ "想": {
+  "pinyin": "xiǎng",
+  "gloss": "to think (about)",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "小": {
+  "pinyin": "xiǎo",
+  "gloss": "small",
+  "pos": [
+   "a",
+   "ad"
+  ],
+  "band": 1
+ },
+ "小孩儿": {
+  "pinyin": "xiǎo hái r",
+  "gloss": "erhua variant of 小孩",
+  "pos": [],
+  "band": 1
+ },
+ "小姐": {
+  "pinyin": "xiǎo jie",
+  "gloss": "young lady",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "小朋友": {
+  "pinyin": "xiǎo péng yǒu",
+  "gloss": "child",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "小时": {
+  "pinyin": "xiǎo shí",
+  "gloss": "hour",
+  "pos": [
+   "n",
+   "q"
+  ],
+  "band": 1
+ },
+ "小学": {
+  "pinyin": "xiǎo xué",
+  "gloss": "elementary school; primary school",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "小学生": {
+  "pinyin": "xiǎo xué shēng",
+  "gloss": "primary school student",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "学": {
+  "pinyin": "xué",
+  "gloss": "to learn",
+  "pos": [
+   "v",
+   "g"
+  ],
+  "band": 1
+ },
+ "学生": {
+  "pinyin": "xué sheng",
+  "gloss": "student",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "学校": {
+  "pinyin": "xué xiào",
+  "gloss": "school",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "学习": {
+  "pinyin": "xué xí",
+  "gloss": "to learn",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 1
+ },
+ "学院": {
+  "pinyin": "xué yuàn",
+  "gloss": "college",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "西边": {
+  "pinyin": "xī biān",
+  "gloss": "west",
+  "pos": [
+   "f",
+   "nr"
+  ],
+  "band": 1
+ },
+ "新年": {
+  "pinyin": "xīn nián",
+  "gloss": "New Year",
+  "pos": [
+   "t"
+  ],
+  "band": 1
+ },
+ "星期": {
+  "pinyin": "xīng qī",
+  "gloss": "week",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "洗": {
+  "pinyin": "xǐ",
+  "gloss": "to wash; to bathe",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "喜欢": {
+  "pinyin": "xǐ huan",
+  "gloss": "to like; to be fond of",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 1
+ },
+ "洗手间": {
+  "pinyin": "xǐ shǒu jiān",
+  "gloss": "toilet",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "月": {
+  "pinyin": "yuè",
+  "gloss": "moon",
+  "pos": [
+   "n",
+   "t"
+  ],
+  "band": 1
+ },
+ "远": {
+  "pinyin": "yuǎn",
+  "gloss": "far",
+  "pos": [
+   "a",
+   "ad"
+  ],
+  "band": 1
+ },
+ "爷爷": {
+  "pinyin": "yé ye",
+  "gloss": "(coll.) father's father",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "用": {
+  "pinyin": "yòng",
+  "gloss": "to use",
+  "pos": [
+   "v",
+   "p",
+   "g"
+  ],
+  "band": 1
+ },
+ "右": {
+  "pinyin": "yòu",
+  "gloss": "(bound form) right; right-hand side",
+  "pos": [
+   "f",
+   "a"
+  ],
+  "band": 1
+ },
+ "右边": {
+  "pinyin": "yòu bian",
+  "gloss": "right side",
+  "pos": [
+   "f"
+  ],
+  "band": 1
+ },
+ "要": {
+  "pinyin": "yāo",
+  "gloss": "(bound form) to demand; to coerce",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "一": {
+  "pinyin": "yī",
+  "gloss": "one",
+  "pos": [
+   "m",
+   "d",
+   "t"
+  ],
+  "band": 1
+ },
+ "一边": {
+  "pinyin": "yī biān",
+  "gloss": "one side",
+  "pos": [
+   "d",
+   "f"
+  ],
+  "band": 1
+ },
+ "一半": {
+  "pinyin": "yī bàn",
+  "gloss": "half",
+  "pos": [
+   "m"
+  ],
+  "band": 1
+ },
+ "一点儿": {
+  "pinyin": "yī diǎn r",
+  "gloss": "erhua variant of 一点",
+  "pos": [
+   "mq"
+  ],
+  "band": 1
+ },
+ "衣服": {
+  "pinyin": "yī fu",
+  "gloss": "clothes",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "一会儿": {
+  "pinyin": "yī huì r",
+  "gloss": "a moment",
+  "pos": [
+   "mq"
+  ],
+  "band": 1
+ },
+ "一块儿": {
+  "pinyin": "yī kuài r",
+  "gloss": "erhua variant of 一块",
+  "pos": [
+   "d",
+   "s"
+  ],
+  "band": 1
+ },
+ "一起": {
+  "pinyin": "yī qǐ",
+  "gloss": "in the same place",
+  "pos": [
+   "s",
+   "d",
+   "nr"
+  ],
+  "band": 1
+ },
+ "医生": {
+  "pinyin": "yī shēng",
+  "gloss": "doctor",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "一下儿": {
+  "pinyin": "yī xià r",
+  "gloss": "erhua variant of 一下",
+  "pos": [],
+  "band": 1
+ },
+ "一些": {
+  "pinyin": "yī xiē",
+  "gloss": "some",
+  "pos": [
+   "mq"
+  ],
+  "band": 1
+ },
+ "医院": {
+  "pinyin": "yī yuàn",
+  "gloss": "hospital",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "一样": {
+  "pinyin": "yī yàng",
+  "gloss": "same",
+  "pos": [
+   "u",
+   "a",
+   "ad"
+  ],
+  "band": 1
+ },
+ "听": {
+  "pinyin": "yǐn",
+  "gloss": "smile (archaic)",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "有": {
+  "pinyin": "yǒu",
+  "gloss": "to have; there is",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "有的": {
+  "pinyin": "yǒu de",
+  "gloss": "(there are) some (who are...)",
+  "pos": [
+   "r"
+  ],
+  "band": 1
+ },
+ "有名": {
+  "pinyin": "yǒu míng",
+  "gloss": "famous",
+  "pos": [
+   "a"
+  ],
+  "band": 1
+ },
+ "有时": {
+  "pinyin": "yǒu shí",
+  "gloss": "sometimes",
+  "pos": [
+   "d"
+  ],
+  "band": 1
+ },
+ "有时候": {
+  "pinyin": "yǒu shí hou",
+  "gloss": "sometimes",
+  "pos": [
+   "d"
+  ],
+  "band": 1
+ },
+ "有些": {
+  "pinyin": "yǒu xiē",
+  "gloss": "some",
+  "pos": [
+   "r"
+  ],
+  "band": 1
+ },
+ "有用": {
+  "pinyin": "yǒu yòng",
+  "gloss": "useful",
+  "pos": [
+   "a",
+   "v"
+  ],
+  "band": 1
+ },
+ "有一些": {
+  "pinyin": "yǒu yī xiē",
+  "gloss": "somewhat",
+  "pos": [],
+  "band": 1
+ },
+ "雨": {
+  "pinyin": "yǔ",
+  "gloss": "rain",
+  "pos": [
+   "n",
+   "g"
+  ],
+  "band": 1
+ },
+ "桌子": {
+  "pinyin": "zhuō zi",
+  "gloss": "table",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "站": {
+  "pinyin": "zhàn",
+  "gloss": "station",
+  "pos": [
+   "v",
+   "n",
+   "q"
+  ],
+  "band": 1
+ },
+ "这": {
+  "pinyin": "zhè",
+  "gloss": "(pronoun) this; these",
+  "pos": [
+   "r"
+  ],
+  "band": 1
+ },
+ "这边": {
+  "pinyin": "zhè biān",
+  "gloss": "this side",
+  "pos": [
+   "r"
+  ],
+  "band": 1
+ },
+ "这里": {
+  "pinyin": "zhè lǐ",
+  "gloss": "variant of 这里",
+  "pos": [
+   "r"
+  ],
+  "band": 1
+ },
+ "这儿": {
+  "pinyin": "zhè r",
+  "gloss": "here",
+  "pos": [
+   "r"
+  ],
+  "band": 1
+ },
+ "这些": {
+  "pinyin": "zhè xiē",
+  "gloss": "these",
+  "pos": [
+   "r"
+  ],
+  "band": 1
+ },
+ "正在": {
+  "pinyin": "zhèng zài",
+  "gloss": "just at (that time)",
+  "pos": [
+   "d"
+  ],
+  "band": 1
+ },
+ "重要": {
+  "pinyin": "zhòng yào",
+  "gloss": "important",
+  "pos": [
+   "a"
+  ],
+  "band": 1
+ },
+ "住": {
+  "pinyin": "zhù",
+  "gloss": "to live",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "着": {
+  "pinyin": "zhāo",
+  "gloss": "(chess) move",
+  "pos": [
+   "u",
+   "v",
+   "n",
+   "q"
+  ],
+  "band": 1
+ },
+ "真": {
+  "pinyin": "zhēn",
+  "gloss": "really",
+  "pos": [
+   "d",
+   "a",
+   "g"
+  ],
+  "band": 1
+ },
+ "真的": {
+  "pinyin": "zhēn de",
+  "gloss": "really, truly, indeed",
+  "pos": [
+   "d",
+   "a"
+  ],
+  "band": 1
+ },
+ "正": {
+  "pinyin": "zhēng",
+  "gloss": "first month of the lunar year",
+  "pos": [
+   "d",
+   "b",
+   "a",
+   "v"
+  ],
+  "band": 1
+ },
+ "知道": {
+  "pinyin": "zhī dào",
+  "gloss": "to know; to become aware of",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "知识": {
+  "pinyin": "zhī shi",
+  "gloss": "knowledge",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "中间": {
+  "pinyin": "zhōng jiān",
+  "gloss": "the middle; the inside",
+  "pos": [
+   "f"
+  ],
+  "band": 1
+ },
+ "中午": {
+  "pinyin": "zhōng wǔ",
+  "gloss": "noon",
+  "pos": [
+   "t"
+  ],
+  "band": 1
+ },
+ "中学": {
+  "pinyin": "zhōng xué",
+  "gloss": "middle school",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "中学生": {
+  "pinyin": "zhōng xué shēng",
+  "gloss": "middle-school student",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "找": {
+  "pinyin": "zhǎo",
+  "gloss": "to try to find",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "找到": {
+  "pinyin": "zhǎo dào",
+  "gloss": "to find",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "准备": {
+  "pinyin": "zhǔn bèi",
+  "gloss": "preparation",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 1
+ },
+ "最": {
+  "pinyin": "zuì",
+  "gloss": "variant of 最",
+  "pos": [
+   "d",
+   "g"
+  ],
+  "band": 1
+ },
+ "最后": {
+  "pinyin": "zuì hòu",
+  "gloss": "final",
+  "pos": [
+   "f"
+  ],
+  "band": 1
+ },
+ "最好": {
+  "pinyin": "zuì hǎo",
+  "gloss": "best",
+  "pos": [
+   "d"
+  ],
+  "band": 1
+ },
+ "做": {
+  "pinyin": "zuò",
+  "gloss": "to make; to produce",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "坐下": {
+  "pinyin": "zuò xia",
+  "gloss": "to sit down",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "昨天": {
+  "pinyin": "zuó tiān",
+  "gloss": "yesterday",
+  "pos": [
+   "t"
+  ],
+  "band": 1
+ },
+ "左边": {
+  "pinyin": "zuǒ bian",
+  "gloss": "left",
+  "pos": [
+   "f"
+  ],
+  "band": 1
+ },
+ "再": {
+  "pinyin": "zài",
+  "gloss": "again; once more; re-",
+  "pos": [
+   "d",
+   "g"
+  ],
+  "band": 1
+ },
+ "在": {
+  "pinyin": "zài",
+  "gloss": "to exist; to be alive",
+  "pos": [
+   "p",
+   "v",
+   "d"
+  ],
+  "band": 1
+ },
+ "再见": {
+  "pinyin": "zài jiàn",
+  "gloss": "goodbye",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "在家": {
+  "pinyin": "zài jiā",
+  "gloss": "to be at home",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "字": {
+  "pinyin": "zì",
+  "gloss": "letter",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "怎么": {
+  "pinyin": "zěn me",
+  "gloss": "how?",
+  "pos": [
+   "r"
+  ],
+  "band": 1
+ },
+ "早": {
+  "pinyin": "zǎo",
+  "gloss": "early",
+  "pos": [
+   "ad",
+   "a",
+   "tg"
+  ],
+  "band": 1
+ },
+ "早饭": {
+  "pinyin": "zǎo fàn",
+  "gloss": "breakfast",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "早上": {
+  "pinyin": "zǎo shang",
+  "gloss": "early morning",
+  "pos": [
+   "t"
+  ],
+  "band": 1
+ },
+ "子": {
+  "pinyin": "zǐ",
+  "gloss": "son",
+  "pos": [
+   "g",
+   "q"
+  ],
+  "band": 1
+ },
+ "走": {
+  "pinyin": "zǒu",
+  "gloss": "to walk",
+  "pos": [
+   "v"
+  ],
+  "band": 1
+ },
+ "走路": {
+  "pinyin": "zǒu lù",
+  "gloss": "to walk",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 1
+ },
+ "爱": {
+  "pinyin": "ài",
+  "gloss": "to love; to be fond of; to like",
+  "pos": [
+   "v",
+   "vn",
+   "b"
+  ],
+  "band": 1
+ },
+ "爱好": {
+  "pinyin": "ài hào",
+  "gloss": "to like; to be fond of; to take pleasure in; to be keen on",
+  "pos": [
+   "n",
+   "v"
+  ],
+  "band": 1
+ },
+ "饿": {
+  "pinyin": "è",
+  "gloss": "to be hungry",
+  "pos": [
+   "v",
+   "a"
+  ],
+  "band": 1
+ },
+ "二": {
+  "pinyin": "èr",
+  "gloss": "two",
+  "pos": [
+   "m",
+   "t"
+  ],
+  "band": 1
+ },
+ "儿子": {
+  "pinyin": "ér zi",
+  "gloss": "son",
+  "pos": [
+   "n"
+  ],
+  "band": 1
+ },
+ "成": {
+  "pinyin": "Chéng",
+  "gloss": "surname Cheng",
+  "pos": [
+   "v",
+   "q"
+  ],
+  "band": 2
+ },
+ "春节": {
+  "pinyin": "Chūn jié",
+  "gloss": "Spring Festival (Chinese New Year)",
+  "pos": [
+   "t"
+  ],
+  "band": 2
+ },
+ "段": {
+  "pinyin": "Duàn",
+  "gloss": "surname Duan",
+  "pos": [
+   "q",
+   "g"
+  ],
+  "band": 2
+ },
+ "大门": {
+  "pinyin": "Dà mén",
+  "gloss": "the Doors, US rock band",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "蛋": {
+  "pinyin": "Dàn",
+  "gloss": "variant of 蜑",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "东北": {
+  "pinyin": "Dōng běi",
+  "gloss": "Northeast China",
+  "pos": [
+   "s"
+  ],
+  "band": 2
+ },
+ "东方": {
+  "pinyin": "Dōng fāng",
+  "gloss": "the East",
+  "pos": [
+   "s",
+   "f"
+  ],
+  "band": 2
+ },
+ "封": {
+  "pinyin": "Fēng",
+  "gloss": "surname Feng",
+  "pos": [
+   "q",
+   "v",
+   "g"
+  ],
+  "band": 2
+ },
+ "黄": {
+  "pinyin": "Huáng",
+  "gloss": "surname Huang or Hwang",
+  "pos": [
+   "nr",
+   "a",
+   "b"
+  ],
+  "band": 2
+ },
+ "红": {
+  "pinyin": "Hóng",
+  "gloss": "surname Hong",
+  "pos": [
+   "a",
+   "v",
+   "g"
+  ],
+  "band": 2
+ },
+ "黑": {
+  "pinyin": "Hēi",
+  "gloss": "abbr. for Heilongjiang province 黑龙江",
+  "pos": [
+   "a",
+   "g",
+   "b"
+  ],
+  "band": 2
+ },
+ "海": {
+  "pinyin": "Hǎi",
+  "gloss": "surname Hai",
+  "pos": [
+   "n",
+   "nr"
+  ],
+  "band": 2
+ },
+ "加": {
+  "pinyin": "Jiā",
+  "gloss": "Canada (abbr. for 大)",
+  "pos": [
+   "v",
+   "b"
+  ],
+  "band": 2
+ },
+ "角": {
+  "pinyin": "Jué",
+  "gloss": "surname Jue",
+  "pos": [
+   "n",
+   "q",
+   "g"
+  ],
+  "band": 2
+ },
+ "克": {
+  "pinyin": "Kè",
+  "gloss": "abbr. for 克罗地亚, Croatia",
+  "pos": [
+   "g",
+   "q",
+   "b",
+   "v"
+  ],
+  "band": 2
+ },
+ "凉": {
+  "pinyin": "Liáng",
+  "gloss": "the five Liang of the Sixteen Kingdoms, namely: Former Liang 前凉 (314-376), Later Liang 后凉 (386-403), Northern Liang 北凉 (398-439), Southern Liang 南凉 (397-414), Western Liang 西凉 (400-421)",
+  "pos": [
+   "a",
+   "v",
+   "ad",
+   "b",
+   "g"
+  ],
+  "band": 2
+ },
+ "蓝": {
+  "pinyin": "Lán",
+  "gloss": "surname Lan",
+  "pos": [
+   "a",
+   "g"
+  ],
+  "band": 2
+ },
+ "满": {
+  "pinyin": "Mǎn",
+  "gloss": "Manchu ethnic group",
+  "pos": [
+   "a",
+   "v",
+   "d",
+   "b"
+  ],
+  "band": 2
+ },
+ "米": {
+  "pinyin": "Mǐ",
+  "gloss": "surname Mi",
+  "pos": [
+   "n",
+   "q"
+  ],
+  "band": 2
+ },
+ "怕": {
+  "pinyin": "Pà",
+  "gloss": "surname Pa",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "平": {
+  "pinyin": "Píng",
+  "gloss": "surname Ping",
+  "pos": [
+   "a",
+   "v"
+  ],
+  "band": 2
+ },
+ "全": {
+  "pinyin": "Quán",
+  "gloss": "surname Quan",
+  "pos": [
+   "d",
+   "a"
+  ],
+  "band": 2
+ },
+ "题": {
+  "pinyin": "Tí",
+  "gloss": "surname Ti",
+  "pos": [
+   "n",
+   "v"
+  ],
+  "band": 2
+ },
+ "闻": {
+  "pinyin": "Wén",
+  "gloss": "surname Wen",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "向": {
+  "pinyin": "Xiàng",
+  "gloss": "surname Xiang",
+  "pos": [
+   "p",
+   "v",
+   "g"
+  ],
+  "band": 2
+ },
+ "雪": {
+  "pinyin": "Xuě",
+  "gloss": "surname Xue",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "西北": {
+  "pinyin": "Xī běi",
+  "gloss": "Northwest China (Shaanxi, Gansu, Qinghai, Ningxia, Xinjiang)",
+  "pos": [
+   "s",
+   "ns",
+   "f"
+  ],
+  "band": 2
+ },
+ "西方": {
+  "pinyin": "Xī fāng",
+  "gloss": "the West",
+  "pos": [
+   "s",
+   "f"
+  ],
+  "band": 2
+ },
+ "越": {
+  "pinyin": "Yuè",
+  "gloss": "generic word for peoples or states of south China or south Asia at different historical periods",
+  "pos": [
+   "d",
+   "g",
+   "b"
+  ],
+  "band": 2
+ },
+ "药水": {
+  "pinyin": "Yào shuǐ",
+  "gloss": "Yaksu in North Korea, near the border with Liaoning and Jiling province",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "鱼": {
+  "pinyin": "Yú",
+  "gloss": "surname Yu",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "阴": {
+  "pinyin": "Yīn",
+  "gloss": "surname Yin",
+  "pos": [
+   "a",
+   "g",
+   "ad",
+   "b"
+  ],
+  "band": 2
+ },
+ "英文": {
+  "pinyin": "Yīng wén",
+  "gloss": "English (language)",
+  "pos": [
+   "nz"
+  ],
+  "band": 2
+ },
+ "英语": {
+  "pinyin": "Yīng yǔ",
+  "gloss": "English (language)",
+  "pos": [
+   "nz"
+  ],
+  "band": 2
+ },
+ "友好": {
+  "pinyin": "Yǒu hǎo",
+  "gloss": "Youhao district of Yichun city 市, Heilongjiang",
+  "pos": [
+   "a",
+   "ad"
+  ],
+  "band": 2
+ },
+ "查": {
+  "pinyin": "Zhā",
+  "gloss": "surname Zha",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "中医": {
+  "pinyin": "Zhōng yī",
+  "gloss": "traditional Chinese medical science",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "周": {
+  "pinyin": "Zhōu",
+  "gloss": "surname Zhou",
+  "pos": [
+   "qt",
+   "nr",
+   "g",
+   "n",
+   "tg"
+  ],
+  "band": 2
+ },
+ "组": {
+  "pinyin": "Zǔ",
+  "gloss": "surname Zu",
+  "pos": [
+   "n",
+   "q",
+   "g",
+   "v"
+  ],
+  "band": 2
+ },
+ "变": {
+  "pinyin": "biàn",
+  "gloss": "to change",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "遍": {
+  "pinyin": "biàn",
+  "gloss": "variant of 遍",
+  "pos": [
+   "qv",
+   "v",
+   "d",
+   "a"
+  ],
+  "band": 2
+ },
+ "变成": {
+  "pinyin": "biàn chéng",
+  "gloss": "to change into",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "便宜": {
+  "pinyin": "biàn yí",
+  "gloss": "convenient",
+  "pos": [
+   "a",
+   "v",
+   "an"
+  ],
+  "band": 2
+ },
+ "边": {
+  "pinyin": "biān",
+  "gloss": "side",
+  "pos": [
+   "k",
+   "d",
+   "n"
+  ],
+  "band": 2
+ },
+ "表": {
+  "pinyin": "biǎo",
+  "gloss": "exterior surface",
+  "pos": [
+   "n",
+   "g"
+  ],
+  "band": 2
+ },
+ "办": {
+  "pinyin": "bàn",
+  "gloss": "to do",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "办法": {
+  "pinyin": "bàn fǎ",
+  "gloss": "means",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "办公室": {
+  "pinyin": "bàn gōng shì",
+  "gloss": "office",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "半夜": {
+  "pinyin": "bàn yè",
+  "gloss": "midnight",
+  "pos": [
+   "t"
+  ],
+  "band": 2
+ },
+ "报名": {
+  "pinyin": "bào míng",
+  "gloss": "to sign up",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 2
+ },
+ "报纸": {
+  "pinyin": "bào zhǐ",
+  "gloss": "newspaper",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "白色": {
+  "pinyin": "bái sè",
+  "gloss": "white",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "必须": {
+  "pinyin": "bì xū",
+  "gloss": "to have to",
+  "pos": [
+   "d"
+  ],
+  "band": 2
+ },
+ "不错": {
+  "pinyin": "bù cuò",
+  "gloss": "correct",
+  "pos": [
+   "a"
+  ],
+  "band": 2
+ },
+ "不但": {
+  "pinyin": "bù dàn",
+  "gloss": "not only (... but also ...)",
+  "pos": [
+   "c"
+  ],
+  "band": 2
+ },
+ "部分": {
+  "pinyin": "bù fen",
+  "gloss": "part",
+  "pos": [
+   "n",
+   "m"
+  ],
+  "band": 2
+ },
+ "不过": {
+  "pinyin": "bù guò",
+  "gloss": "only",
+  "pos": [
+   "c",
+   "d",
+   "u"
+  ],
+  "band": 2
+ },
+ "不够": {
+  "pinyin": "bù gòu",
+  "gloss": "not enough",
+  "pos": [
+   "a"
+  ],
+  "band": 2
+ },
+ "不好意思": {
+  "pinyin": "bù hǎo yì si",
+  "gloss": "to feel embarrassed",
+  "pos": [
+   "v",
+   "a"
+  ],
+  "band": 2
+ },
+ "不久": {
+  "pinyin": "bù jiǔ",
+  "gloss": "not long (after)",
+  "pos": [
+   "m",
+   "d",
+   "t"
+  ],
+  "band": 2
+ },
+ "不满": {
+  "pinyin": "bù mǎn",
+  "gloss": "resentful",
+  "pos": [
+   "an",
+   "a",
+   "v"
+  ],
+  "band": 2
+ },
+ "不如": {
+  "pinyin": "bù rú",
+  "gloss": "not equal to",
+  "pos": [
+   "v",
+   "c"
+  ],
+  "band": 2
+ },
+ "不少": {
+  "pinyin": "bù shǎo",
+  "gloss": "many",
+  "pos": [
+   "m"
+  ],
+  "band": 2
+ },
+ "不太": {
+  "pinyin": "bù tài",
+  "gloss": "Not too",
+  "pos": [
+   "nr"
+  ],
+  "band": 2
+ },
+ "不同": {
+  "pinyin": "bù tóng",
+  "gloss": "different",
+  "pos": [
+   "a",
+   "an"
+  ],
+  "band": 2
+ },
+ "不行": {
+  "pinyin": "bù xíng",
+  "gloss": "won't do",
+  "pos": [
+   "a"
+  ],
+  "band": 2
+ },
+ "不要": {
+  "pinyin": "bù yào",
+  "gloss": "don't!",
+  "pos": [
+   "d"
+  ],
+  "band": 2
+ },
+ "不一定": {
+  "pinyin": "bù yī dìng",
+  "gloss": "not necessarily",
+  "pos": [],
+  "band": 2
+ },
+ "不一会儿": {
+  "pinyin": "bù yīhuǐr5",
+  "gloss": "Take a short while",
+  "pos": [
+   "l"
+  ],
+  "band": 2
+ },
+ "班长": {
+  "pinyin": "bān zhǎng",
+  "gloss": "class monitor",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "帮助": {
+  "pinyin": "bāng zhù",
+  "gloss": "assistance; aid",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 2
+ },
+ "背": {
+  "pinyin": "bēi",
+  "gloss": "variant of 背",
+  "pos": [
+   "v",
+   "n"
+  ],
+  "band": 2
+ },
+ "北方": {
+  "pinyin": "běi fāng",
+  "gloss": "north",
+  "pos": [
+   "s",
+   "f"
+  ],
+  "band": 2
+ },
+ "饱": {
+  "pinyin": "bǎo",
+  "gloss": "to eat till full",
+  "pos": [
+   "a",
+   "ad",
+   "v"
+  ],
+  "band": 2
+ },
+ "笔": {
+  "pinyin": "bǐ",
+  "gloss": "pen",
+  "pos": [
+   "q",
+   "n"
+  ],
+  "band": 2
+ },
+ "笔记": {
+  "pinyin": "bǐ jì",
+  "gloss": "to take down (in writing)",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "笔记本": {
+  "pinyin": "bǐ jì běn",
+  "gloss": "notebook (stationery)",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "比如": {
+  "pinyin": "bǐ rú",
+  "gloss": "for example",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "比如说": {
+  "pinyin": "bǐ rú shuō",
+  "gloss": "for example",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "船": {
+  "pinyin": "chuán",
+  "gloss": "variant of 船",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "吹": {
+  "pinyin": "chuī",
+  "gloss": "to blow",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "差不多": {
+  "pinyin": "chà bu duō",
+  "gloss": "almost",
+  "pos": [
+   "l"
+  ],
+  "band": 2
+ },
+ "场": {
+  "pinyin": "cháng",
+  "gloss": "threshing floor",
+  "pos": [
+   "qv",
+   "g"
+  ],
+  "band": 2
+ },
+ "长": {
+  "pinyin": "cháng",
+  "gloss": "length",
+  "pos": [
+   "a",
+   "v",
+   "ad",
+   "g"
+  ],
+  "band": 2
+ },
+ "常见": {
+  "pinyin": "cháng jiàn",
+  "gloss": "commonly seen",
+  "pos": [
+   "a",
+   "v"
+  ],
+  "band": 2
+ },
+ "常用": {
+  "pinyin": "cháng yòng",
+  "gloss": "in common usage",
+  "pos": [
+   "a"
+  ],
+  "band": 2
+ },
+ "称": {
+  "pinyin": "chèn",
+  "gloss": "to fit",
+  "pos": [
+   "v",
+   "g",
+   "vn"
+  ],
+  "band": 2
+ },
+ "成绩": {
+  "pinyin": "chéng jì",
+  "gloss": "achievement",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "成为": {
+  "pinyin": "chéng wéi",
+  "gloss": "to become; to turn into",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "重点": {
+  "pinyin": "chóng diǎn",
+  "gloss": "to recount (e.g. results of election)",
+  "pos": [
+   "n",
+   "d"
+  ],
+  "band": 2
+ },
+ "重复": {
+  "pinyin": "chóng fù",
+  "gloss": "to repeat",
+  "pos": [
+   "v",
+   "vn",
+   "a"
+  ],
+  "band": 2
+ },
+ "重新": {
+  "pinyin": "chóng xīn",
+  "gloss": "again; once more; re-",
+  "pos": [
+   "d"
+  ],
+  "band": 2
+ },
+ "超过": {
+  "pinyin": "chāo guò",
+  "gloss": "to surpass",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "超市": {
+  "pinyin": "chāo shì",
+  "gloss": "supermarket (abbr. for 超级市场)",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "车辆": {
+  "pinyin": "chē liàng",
+  "gloss": "vehicle",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "离": {
+  "pinyin": "chī",
+  "gloss": "mythical beast (archaic)",
+  "pos": [
+   "v",
+   "p"
+  ],
+  "band": 2
+ },
+ "出发": {
+  "pinyin": "chū fā",
+  "gloss": "to set off",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "出国": {
+  "pinyin": "chū guó",
+  "gloss": "to go abroad; to leave the country",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 2
+ },
+ "出口": {
+  "pinyin": "chū kǒu",
+  "gloss": "an exit",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 2
+ },
+ "出门": {
+  "pinyin": "chū mén",
+  "gloss": "to go out",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 2
+ },
+ "出生": {
+  "pinyin": "chū shēng",
+  "gloss": "to be born",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 2
+ },
+ "出现": {
+  "pinyin": "chū xiàn",
+  "gloss": "to appear",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 2
+ },
+ "出院": {
+  "pinyin": "chū yuàn",
+  "gloss": "to leave hospital",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 2
+ },
+ "出租": {
+  "pinyin": "chū zū",
+  "gloss": "to rent",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 2
+ },
+ "出租车": {
+  "pinyin": "chū zū chē",
+  "gloss": "taxi",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "春天": {
+  "pinyin": "chūn tiān",
+  "gloss": "spring (season)",
+  "pos": [
+   "t"
+  ],
+  "band": 2
+ },
+ "菜单": {
+  "pinyin": "cài dān",
+  "gloss": "menu",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "才": {
+  "pinyin": "cái",
+  "gloss": "ability; talent",
+  "pos": [
+   "d",
+   "c",
+   "n"
+  ],
+  "band": 2
+ },
+ "层": {
+  "pinyin": "céng",
+  "gloss": "to pile on top of one another",
+  "pos": [
+   "qv",
+   "n"
+  ],
+  "band": 2
+ },
+ "词": {
+  "pinyin": "cí",
+  "gloss": "old variant of 词",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "词典": {
+  "pinyin": "cí diǎn",
+  "gloss": "dictionary",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "词语": {
+  "pinyin": "cí yǔ",
+  "gloss": "word (general term including monosyllables through to short phrases)",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "从小": {
+  "pinyin": "cóng xiǎo",
+  "gloss": "from childhood",
+  "pos": [
+   "d"
+  ],
+  "band": 2
+ },
+ "参观": {
+  "pinyin": "cān guān",
+  "gloss": "to look around",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 2
+ },
+ "参加": {
+  "pinyin": "cān jiā",
+  "gloss": "to participate",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "草": {
+  "pinyin": "cǎo",
+  "gloss": "variant of 草",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "草地": {
+  "pinyin": "cǎo dì",
+  "gloss": "lawn",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "的话": {
+  "pinyin": "de huà",
+  "gloss": "if (coming after a conditional clause)",
+  "pos": [
+   "u"
+  ],
+  "band": 2
+ },
+ "店": {
+  "pinyin": "diàn",
+  "gloss": "inn; old-style hotel",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "掉": {
+  "pinyin": "diào",
+  "gloss": "to fall",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "点头": {
+  "pinyin": "diǎn tóu",
+  "gloss": "to nod",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "鸟": {
+  "pinyin": "diǎo",
+  "gloss": "variant of 屌",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "队": {
+  "pinyin": "duì",
+  "gloss": "squadron",
+  "pos": [
+   "n",
+   "q"
+  ],
+  "band": 2
+ },
+ "对话": {
+  "pinyin": "duì huà",
+  "gloss": "to talk (with sb)",
+  "pos": [
+   "vn",
+   "v"
+  ],
+  "band": 2
+ },
+ "对面": {
+  "pinyin": "duì miàn",
+  "gloss": "(sitting) opposite",
+  "pos": [
+   "f",
+   "n",
+   "v"
+  ],
+  "band": 2
+ },
+ "队长": {
+  "pinyin": "duì zhǎng",
+  "gloss": "captain",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "多久": {
+  "pinyin": "duō jiǔ",
+  "gloss": "(of time) how long?",
+  "pos": [
+   "r",
+   "a"
+  ],
+  "band": 2
+ },
+ "多么": {
+  "pinyin": "duō me",
+  "gloss": "how (wonderful etc)",
+  "pos": [
+   "d",
+   "a"
+  ],
+  "band": 2
+ },
+ "多数": {
+  "pinyin": "duō shù",
+  "gloss": "majority; most",
+  "pos": [
+   "m"
+  ],
+  "band": 2
+ },
+ "多云": {
+  "pinyin": "duō yún",
+  "gloss": "cloudy (meteorology)",
+  "pos": [],
+  "band": 2
+ },
+ "短": {
+  "pinyin": "duǎn",
+  "gloss": "short",
+  "pos": [
+   "a"
+  ],
+  "band": 2
+ },
+ "短信": {
+  "pinyin": "duǎn xìn",
+  "gloss": "text message",
+  "pos": [],
+  "band": 2
+ },
+ "大部分": {
+  "pinyin": "dà bù fen",
+  "gloss": "in large part",
+  "pos": [
+   "m",
+   "n"
+  ],
+  "band": 2
+ },
+ "大多数": {
+  "pinyin": "dà duō shù",
+  "gloss": "(great) majority",
+  "pos": [
+   "m"
+  ],
+  "band": 2
+ },
+ "大大": {
+  "pinyin": "dà dà",
+  "gloss": "greatly",
+  "pos": [
+   "d",
+   "a"
+  ],
+  "band": 2
+ },
+ "大海": {
+  "pinyin": "dà hǎi",
+  "gloss": "sea",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "大家": {
+  "pinyin": "dà jiā",
+  "gloss": "everyone",
+  "pos": [
+   "r",
+   "n"
+  ],
+  "band": 2
+ },
+ "大量": {
+  "pinyin": "dà liàng",
+  "gloss": "great amount",
+  "pos": [
+   "m"
+  ],
+  "band": 2
+ },
+ "大人": {
+  "pinyin": "dà ren",
+  "gloss": "adult",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "大声": {
+  "pinyin": "dà shēng",
+  "gloss": "loud voice",
+  "pos": [
+   "d"
+  ],
+  "band": 2
+ },
+ "大小": {
+  "pinyin": "dà xiǎo",
+  "gloss": "dimension",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "大衣": {
+  "pinyin": "dà yī",
+  "gloss": "overcoat",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "大自然": {
+  "pinyin": "dà zì rán",
+  "gloss": "nature (the natural world)",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "带": {
+  "pinyin": "dài",
+  "gloss": "band",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "带来": {
+  "pinyin": "dài lái",
+  "gloss": "to bring",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "但": {
+  "pinyin": "dàn",
+  "gloss": "but; yet; however; still",
+  "pos": [
+   "c",
+   "d"
+  ],
+  "band": 2
+ },
+ "但是": {
+  "pinyin": "dàn shì",
+  "gloss": "but; however",
+  "pos": [
+   "c"
+  ],
+  "band": 2
+ },
+ "道": {
+  "pinyin": "dào",
+  "gloss": "road",
+  "pos": [
+   "qv",
+   "n",
+   "v"
+  ],
+  "band": 2
+ },
+ "到处": {
+  "pinyin": "dào chù",
+  "gloss": "everywhere",
+  "pos": [
+   "d"
+  ],
+  "band": 2
+ },
+ "道理": {
+  "pinyin": "dào li",
+  "gloss": "reason",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "道路": {
+  "pinyin": "dào lù",
+  "gloss": "road",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "得": {
+  "pinyin": "dé",
+  "gloss": "to obtain",
+  "pos": [
+   "u",
+   "v"
+  ],
+  "band": 2
+ },
+ "得出": {
+  "pinyin": "dé chū",
+  "gloss": "to obtain (a result); to arrive at (a conclusion)",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "地球": {
+  "pinyin": "dì qiú",
+  "gloss": "the earth",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "地铁": {
+  "pinyin": "dì tiě",
+  "gloss": "underground railway; subway",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "地铁站": {
+  "pinyin": "dì tiě zhàn",
+  "gloss": "subway station",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "动物": {
+  "pinyin": "dòng wù",
+  "gloss": "animal",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "动物园": {
+  "pinyin": "dòng wù yuán",
+  "gloss": "zoo",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "度": {
+  "pinyin": "dù",
+  "gloss": "to pass",
+  "pos": [
+   "qv",
+   "v",
+   "g"
+  ],
+  "band": 2
+ },
+ "读音": {
+  "pinyin": "dú yīn",
+  "gloss": "pronunciation",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "答应": {
+  "pinyin": "dā ying",
+  "gloss": "to answer; to respond",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "单位": {
+  "pinyin": "dān wèi",
+  "gloss": "unit (of measure)",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "当": {
+  "pinyin": "dāng",
+  "gloss": "(onom.) dong",
+  "pos": [
+   "p",
+   "v"
+  ],
+  "band": 2
+ },
+ "当时": {
+  "pinyin": "dāng shí",
+  "gloss": "then",
+  "pos": [
+   "t"
+  ],
+  "band": 2
+ },
+ "灯": {
+  "pinyin": "dēng",
+  "gloss": "lamp",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "等到": {
+  "pinyin": "děng dào",
+  "gloss": "to wait until",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "等于": {
+  "pinyin": "děng yú",
+  "gloss": "to equal",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "低": {
+  "pinyin": "dī",
+  "gloss": "low",
+  "pos": [
+   "a",
+   "ad",
+   "v"
+  ],
+  "band": 2
+ },
+ "提": {
+  "pinyin": "dī",
+  "gloss": "used in 防 and 溜",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "东南": {
+  "pinyin": "dōng nán",
+  "gloss": "southeast",
+  "pos": [
+   "f"
+  ],
+  "band": 2
+ },
+ "冬天": {
+  "pinyin": "dōng tiān",
+  "gloss": "winter",
+  "pos": [
+   "t"
+  ],
+  "band": 2
+ },
+ "打工": {
+  "pinyin": "dǎ gōng",
+  "gloss": "to work a temporary or casual job",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 2
+ },
+ "打算": {
+  "pinyin": "dǎ suàn",
+  "gloss": "to plan",
+  "pos": [
+   "v",
+   "n",
+   "vn"
+  ],
+  "band": 2
+ },
+ "打印": {
+  "pinyin": "dǎ yìn",
+  "gloss": "to affix a seal",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 2
+ },
+ "倒": {
+  "pinyin": "dǎo",
+  "gloss": "to fall; to collapse; to lie horizontally",
+  "pos": [
+   "v",
+   "d"
+  ],
+  "band": 2
+ },
+ "懂": {
+  "pinyin": "dǒng",
+  "gloss": "to understand",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "懂得": {
+  "pinyin": "dǒng de",
+  "gloss": "to understand; to know; to comprehend",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "饭馆": {
+  "pinyin": "fàn guǎn",
+  "gloss": "restaurant",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "放下": {
+  "pinyin": "fàng xià",
+  "gloss": "to lay down",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "放心": {
+  "pinyin": "fàng xīn",
+  "gloss": "to feel relieved",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 2
+ },
+ "份": {
+  "pinyin": "fèn",
+  "gloss": "classifier for gifts, newspaper, magazine, papers, reports, contracts etc",
+  "pos": [
+   "q"
+  ],
+  "band": 2
+ },
+ "复习": {
+  "pinyin": "fù xí",
+  "gloss": "to review",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 2
+ },
+ "服务": {
+  "pinyin": "fú wù",
+  "gloss": "to serve",
+  "pos": [
+   "vn",
+   "v"
+  ],
+  "band": 2
+ },
+ "发": {
+  "pinyin": "fā",
+  "gloss": "to send out",
+  "pos": [
+   "v",
+   "q"
+  ],
+  "band": 2
+ },
+ "发现": {
+  "pinyin": "fā xiàn",
+  "gloss": "to notice; to become aware of",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 2
+ },
+ "方便": {
+  "pinyin": "fāng biàn",
+  "gloss": "convenient",
+  "pos": [
+   "v",
+   "a",
+   "an"
+  ],
+  "band": 2
+ },
+ "方便面": {
+  "pinyin": "fāng biàn miàn",
+  "gloss": "instant noodles",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "方法": {
+  "pinyin": "fāng fǎ",
+  "gloss": "method",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "方面": {
+  "pinyin": "fāng miàn",
+  "gloss": "respect",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "方向": {
+  "pinyin": "fāng xiàng",
+  "gloss": "direction; orientation",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "分开": {
+  "pinyin": "fēn kāi",
+  "gloss": "to separate",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 2
+ },
+ "分数": {
+  "pinyin": "fēn shù",
+  "gloss": "(exam) grade",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "分钟": {
+  "pinyin": "fēn zhōng",
+  "gloss": "minute",
+  "pos": [
+   "qt"
+  ],
+  "band": 2
+ },
+ "过来": {
+  "pinyin": "guò lái",
+  "gloss": "to come over",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "过年": {
+  "pinyin": "guò nián",
+  "gloss": "to celebrate the Chinese New Year",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "过去": {
+  "pinyin": "guò qù",
+  "gloss": "(in the) past",
+  "pos": [
+   "v",
+   "t"
+  ],
+  "band": 2
+ },
+ "国际": {
+  "pinyin": "guó jì",
+  "gloss": "international",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "观点": {
+  "pinyin": "guān diǎn",
+  "gloss": "point of view",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "关机": {
+  "pinyin": "guān jī",
+  "gloss": "to turn off (a machine or device)",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "关心": {
+  "pinyin": "guān xīn",
+  "gloss": "to be concerned about",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 2
+ },
+ "广场": {
+  "pinyin": "guǎng chǎng",
+  "gloss": "public square; plaza",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "广告": {
+  "pinyin": "guǎng gào",
+  "gloss": "to advertise",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "干活儿": {
+  "pinyin": "gàn huó r",
+  "gloss": "erhua variant of 干活",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "个子": {
+  "pinyin": "gè zi",
+  "gloss": "height",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "够": {
+  "pinyin": "gòu",
+  "gloss": "enough (sufficient)",
+  "pos": [
+   "v",
+   "d"
+  ],
+  "band": 2
+ },
+ "顾客": {
+  "pinyin": "gù kè",
+  "gloss": "customer; client",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "故事": {
+  "pinyin": "gù shì",
+  "gloss": "old practice",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "故意": {
+  "pinyin": "gù yì",
+  "gloss": "deliberately; on purpose",
+  "pos": [
+   "d",
+   "b"
+  ],
+  "band": 2
+ },
+ "该": {
+  "pinyin": "gāi",
+  "gloss": "should",
+  "pos": [
+   "v",
+   "r"
+  ],
+  "band": 2
+ },
+ "干杯": {
+  "pinyin": "gān bēi",
+  "gloss": "to drink a toast",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "刚": {
+  "pinyin": "gāng",
+  "gloss": "hard",
+  "pos": [
+   "d",
+   "g"
+  ],
+  "band": 2
+ },
+ "刚才": {
+  "pinyin": "gāng cái",
+  "gloss": "just now",
+  "pos": [
+   "t"
+  ],
+  "band": 2
+ },
+ "刚刚": {
+  "pinyin": "gāng gang",
+  "gloss": "just recently",
+  "pos": [
+   "d"
+  ],
+  "band": 2
+ },
+ "高级": {
+  "pinyin": "gāo jí",
+  "gloss": "high level",
+  "pos": [
+   "a"
+  ],
+  "band": 2
+ },
+ "高中": {
+  "pinyin": "gāo zhōng",
+  "gloss": "senior high school",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "假": {
+  "pinyin": "gēi",
+  "gloss": "used in 掰",
+  "pos": [
+   "a",
+   "ad",
+   "n",
+   "g"
+  ],
+  "band": 2
+ },
+ "更": {
+  "pinyin": "gēng",
+  "gloss": "to change or replace",
+  "pos": [
+   "d"
+  ],
+  "band": 2
+ },
+ "公共汽车": {
+  "pinyin": "gōng gòng qì chē",
+  "gloss": "bus",
+  "pos": [],
+  "band": 2
+ },
+ "公交车": {
+  "pinyin": "gōng jiāo chē",
+  "gloss": "public transport vehicle",
+  "pos": [],
+  "band": 2
+ },
+ "公斤": {
+  "pinyin": "gōng jīn",
+  "gloss": "kilogram (kg)",
+  "pos": [
+   "q"
+  ],
+  "band": 2
+ },
+ "公路": {
+  "pinyin": "gōng lù",
+  "gloss": "highway",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "公里": {
+  "pinyin": "gōng lǐ",
+  "gloss": "kilometer",
+  "pos": [
+   "q",
+   "n"
+  ],
+  "band": 2
+ },
+ "公平": {
+  "pinyin": "gōng píng",
+  "gloss": "fair",
+  "pos": [
+   "a",
+   "ad",
+   "an"
+  ],
+  "band": 2
+ },
+ "公司": {
+  "pinyin": "gōng sī",
+  "gloss": "company; firm; corporation",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "公园": {
+  "pinyin": "gōng yuán",
+  "gloss": "park (for public recreation)",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "句": {
+  "pinyin": "gōu",
+  "gloss": "variant of 勾",
+  "pos": [
+   "q",
+   "g"
+  ],
+  "band": 2
+ },
+ "改": {
+  "pinyin": "gǎi",
+  "gloss": "to change",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "改变": {
+  "pinyin": "gǎi biàn",
+  "gloss": "to change",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 2
+ },
+ "感到": {
+  "pinyin": "gǎn dào",
+  "gloss": "to feel; to sense; to perceive",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "感动": {
+  "pinyin": "gǎn dòng",
+  "gloss": "to move (sb)",
+  "pos": [
+   "v",
+   "a",
+   "vn",
+   "an"
+  ],
+  "band": 2
+ },
+ "感觉": {
+  "pinyin": "gǎn jué",
+  "gloss": "feeling; impression; sensation",
+  "pos": [
+   "n",
+   "v"
+  ],
+  "band": 2
+ },
+ "感谢": {
+  "pinyin": "gǎn xiè",
+  "gloss": "(express) thanks",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 2
+ },
+ "狗": {
+  "pinyin": "gǒu",
+  "gloss": "dog",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "画": {
+  "pinyin": "huà",
+  "gloss": "to draw; to paint",
+  "pos": [
+   "n",
+   "v",
+   "q"
+  ],
+  "band": 2
+ },
+ "画家": {
+  "pinyin": "huà jiā",
+  "gloss": "painter",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "画儿": {
+  "pinyin": "huà r",
+  "gloss": "picture",
+  "pos": [],
+  "band": 2
+ },
+ "坏处": {
+  "pinyin": "huài chu",
+  "gloss": "harm",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "坏人": {
+  "pinyin": "huài rén",
+  "gloss": "bad person",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "换": {
+  "pinyin": "huàn",
+  "gloss": "to exchange",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "黄色": {
+  "pinyin": "huáng sè",
+  "gloss": "yellow (color)",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "回国": {
+  "pinyin": "huí guó",
+  "gloss": "to return to one's home country",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "或": {
+  "pinyin": "huò",
+  "gloss": "maybe",
+  "pos": [
+   "c",
+   "d"
+  ],
+  "band": 2
+ },
+ "或者": {
+  "pinyin": "huò zhě",
+  "gloss": "or",
+  "pos": [
+   "c",
+   "d"
+  ],
+  "band": 2
+ },
+ "活动": {
+  "pinyin": "huó dòng",
+  "gloss": "to exercise",
+  "pos": [
+   "vn",
+   "v"
+  ],
+  "band": 2
+ },
+ "花园": {
+  "pinyin": "huā yuán",
+  "gloss": "garden",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "欢迎": {
+  "pinyin": "huān yíng",
+  "gloss": "to welcome",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 2
+ },
+ "河": {
+  "pinyin": "hé",
+  "gloss": "river",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "合适": {
+  "pinyin": "hé shì",
+  "gloss": "suitable",
+  "pos": [
+   "a"
+  ],
+  "band": 2
+ },
+ "后来": {
+  "pinyin": "hòu lái",
+  "gloss": "afterwards; later",
+  "pos": [
+   "t"
+  ],
+  "band": 2
+ },
+ "红色": {
+  "pinyin": "hóng sè",
+  "gloss": "red (color)",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "护照": {
+  "pinyin": "hù zhào",
+  "gloss": "passport",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "湖": {
+  "pinyin": "hú",
+  "gloss": "lake",
+  "pos": [
+   "n",
+   "b"
+  ],
+  "band": 2
+ },
+ "黑板": {
+  "pinyin": "hēi bǎn",
+  "gloss": "blackboard",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "黑色": {
+  "pinyin": "hēi sè",
+  "gloss": "black",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "忽然": {
+  "pinyin": "hū rán",
+  "gloss": "suddenly; all of a sudden",
+  "pos": [
+   "d"
+  ],
+  "band": 2
+ },
+ "海边": {
+  "pinyin": "hǎi biān",
+  "gloss": "coast",
+  "pos": [
+   "s"
+  ],
+  "band": 2
+ },
+ "喊": {
+  "pinyin": "hǎn",
+  "gloss": "to yell",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "好处": {
+  "pinyin": "hǎo chǔ",
+  "gloss": "easy to get along with",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "好多": {
+  "pinyin": "hǎo duō",
+  "gloss": "many",
+  "pos": [
+   "m"
+  ],
+  "band": 2
+ },
+ "好久": {
+  "pinyin": "hǎo jiǔ",
+  "gloss": "quite a while",
+  "pos": [
+   "m"
+  ],
+  "band": 2
+ },
+ "好人": {
+  "pinyin": "hǎo rén",
+  "gloss": "good person",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "好事": {
+  "pinyin": "hǎo shì",
+  "gloss": "good action, deed, thing or work (also sarcastic, \"a fine thing indeed\")",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "好像": {
+  "pinyin": "hǎo xiàng",
+  "gloss": "as if",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "假期": {
+  "pinyin": "jià qī",
+  "gloss": "vacation",
+  "pos": [
+   "t"
+  ],
+  "band": 2
+ },
+ "件": {
+  "pinyin": "jiàn",
+  "gloss": "item",
+  "pos": [
+   "q",
+   "g"
+  ],
+  "band": 2
+ },
+ "见到": {
+  "pinyin": "jiàn dào",
+  "gloss": "to see",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "健康": {
+  "pinyin": "jiàn kāng",
+  "gloss": "health",
+  "pos": [
+   "a",
+   "an",
+   "ad"
+  ],
+  "band": 2
+ },
+ "见过": {
+  "pinyin": "jiànguò",
+  "gloss": "seen",
+  "pos": [],
+  "band": 2
+ },
+ "教室": {
+  "pinyin": "jiào shì",
+  "gloss": "classroom",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "教师": {
+  "pinyin": "jiào shī",
+  "gloss": "teacher",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "教育": {
+  "pinyin": "jiào yù",
+  "gloss": "to educate",
+  "pos": [
+   "vn",
+   "v"
+  ],
+  "band": 2
+ },
+ "叫作": {
+  "pinyin": "jiào zuò",
+  "gloss": "to call",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "借": {
+  "pinyin": "jiè",
+  "gloss": "to lend",
+  "pos": [
+   "v",
+   "p"
+  ],
+  "band": 2
+ },
+ "节目": {
+  "pinyin": "jié mù",
+  "gloss": "program",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "节日": {
+  "pinyin": "jié rì",
+  "gloss": "holiday",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "就要": {
+  "pinyin": "jiù yào",
+  "gloss": "will",
+  "pos": [
+   "d"
+  ],
+  "band": 2
+ },
+ "家庭": {
+  "pinyin": "jiā tíng",
+  "gloss": "family",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "加油": {
+  "pinyin": "jiā yóu",
+  "gloss": "to add oil",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 2
+ },
+ "家长": {
+  "pinyin": "jiā zhǎng",
+  "gloss": "head of a household",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "交": {
+  "pinyin": "jiāo",
+  "gloss": "to hand over",
+  "pos": [
+   "v",
+   "g"
+  ],
+  "band": 2
+ },
+ "交给": {
+  "pinyin": "jiāo gěi",
+  "gloss": "to give; to deliver; to hand over",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "交朋友": {
+  "pinyin": "jiāo péng you",
+  "gloss": "to make friends",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "交通": {
+  "pinyin": "jiāo tōng",
+  "gloss": "to be connected",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "教学": {
+  "pinyin": "jiāo xué",
+  "gloss": "to teach (as a professor)",
+  "pos": [
+   "vn",
+   "n",
+   "v"
+  ],
+  "band": 2
+ },
+ "接": {
+  "pinyin": "jiē",
+  "gloss": "to receive",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "街": {
+  "pinyin": "jiē",
+  "gloss": "street",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "节": {
+  "pinyin": "jiē",
+  "gloss": "see 节骨眼",
+  "pos": [
+   "n",
+   "q",
+   "g",
+   "v"
+  ],
+  "band": 2
+ },
+ "接到": {
+  "pinyin": "jiē dào",
+  "gloss": "to receive (letter etc)",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "结果": {
+  "pinyin": "jiē guǒ",
+  "gloss": "to bear fruit",
+  "pos": [
+   "n",
+   "d"
+  ],
+  "band": 2
+ },
+ "接受": {
+  "pinyin": "jiē shòu",
+  "gloss": "to accept",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 2
+ },
+ "接下来": {
+  "pinyin": "jiē xià lái",
+  "gloss": "to accept",
+  "pos": [
+   "v",
+   "c"
+  ],
+  "band": 2
+ },
+ "接着": {
+  "pinyin": "jiē zhe",
+  "gloss": "to catch and hold on",
+  "pos": [
+   "c",
+   "v"
+  ],
+  "band": 2
+ },
+ "检查": {
+  "pinyin": "jiǎn chá",
+  "gloss": "inspection",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 2
+ },
+ "讲": {
+  "pinyin": "jiǎng",
+  "gloss": "to speak",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "讲话": {
+  "pinyin": "jiǎng huà",
+  "gloss": "a speech",
+  "pos": [
+   "n",
+   "v"
+  ],
+  "band": 2
+ },
+ "脚": {
+  "pinyin": "jiǎo",
+  "gloss": "foot",
+  "pos": [
+   "n",
+   "q"
+  ],
+  "band": 2
+ },
+ "角度": {
+  "pinyin": "jiǎo dù",
+  "gloss": "angle",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "饺子": {
+  "pinyin": "jiǎo zi",
+  "gloss": "dumpling",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "酒": {
+  "pinyin": "jiǔ",
+  "gloss": "wine (esp. rice wine)",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "酒店": {
+  "pinyin": "jiǔ diàn",
+  "gloss": "wine shop",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "骑": {
+  "pinyin": "jì",
+  "gloss": "(Tw) saddle horse",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "计划": {
+  "pinyin": "jì huà",
+  "gloss": "plan",
+  "pos": [
+   "n",
+   "v"
+  ],
+  "band": 2
+ },
+ "计算机": {
+  "pinyin": "jì suàn jī",
+  "gloss": "computer",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "近": {
+  "pinyin": "jìn",
+  "gloss": "near",
+  "pos": [
+   "a",
+   "v"
+  ],
+  "band": 2
+ },
+ "进入": {
+  "pinyin": "jìn rù",
+  "gloss": "to enter",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "进行": {
+  "pinyin": "jìn xíng",
+  "gloss": "to advance",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 2
+ },
+ "级": {
+  "pinyin": "jí",
+  "gloss": "level",
+  "pos": [
+   "q",
+   "n"
+  ],
+  "band": 2
+ },
+ "急": {
+  "pinyin": "jí",
+  "gloss": "urgent",
+  "pos": [
+   "v",
+   "ad",
+   "a"
+  ],
+  "band": 2
+ },
+ "句子": {
+  "pinyin": "jù zi",
+  "gloss": "sentence",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "鸡": {
+  "pinyin": "jī",
+  "gloss": "fowl",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "机会": {
+  "pinyin": "jī huì",
+  "gloss": "opportunity",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "斤": {
+  "pinyin": "jīn",
+  "gloss": "catty",
+  "pos": [
+   "q"
+  ],
+  "band": 2
+ },
+ "今后": {
+  "pinyin": "jīn hòu",
+  "gloss": "hereafter",
+  "pos": [
+   "t"
+  ],
+  "band": 2
+ },
+ "经常": {
+  "pinyin": "jīng cháng",
+  "gloss": "frequently; constantly; regularly; often",
+  "pos": [
+   "d",
+   "b"
+  ],
+  "band": 2
+ },
+ "经过": {
+  "pinyin": "jīng guò",
+  "gloss": "to pass",
+  "pos": [
+   "p",
+   "v",
+   "n"
+  ],
+  "band": 2
+ },
+ "经理": {
+  "pinyin": "jīng lǐ",
+  "gloss": "manager",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "举": {
+  "pinyin": "jǔ",
+  "gloss": "variant of 举",
+  "pos": [
+   "v",
+   "g"
+  ],
+  "band": 2
+ },
+ "举手": {
+  "pinyin": "jǔ shǒu",
+  "gloss": "to raise a hand",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 2
+ },
+ "举行": {
+  "pinyin": "jǔ xíng",
+  "gloss": "to hold (a meeting, ceremony etc)",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "快餐": {
+  "pinyin": "kuài cān",
+  "gloss": "fast food",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "快点儿": {
+  "pinyin": "kuài diǎn r",
+  "gloss": "erhua variant of 快点",
+  "pos": [],
+  "band": 2
+ },
+ "快乐": {
+  "pinyin": "kuài lè",
+  "gloss": "happy; joyful",
+  "pos": [
+   "a",
+   "an"
+  ],
+  "band": 2
+ },
+ "快要": {
+  "pinyin": "kuài yào",
+  "gloss": "nearly at the point of (doing sth); about to (do sth)",
+  "pos": [
+   "d"
+  ],
+  "band": 2
+ },
+ "筷子": {
+  "pinyin": "kuài zi",
+  "gloss": "chopsticks",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "看法": {
+  "pinyin": "kàn fǎ",
+  "gloss": "way of looking at a thing",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "靠": {
+  "pinyin": "kào",
+  "gloss": "to lean against or on",
+  "pos": [
+   "v",
+   "p"
+  ],
+  "band": 2
+ },
+ "刻": {
+  "pinyin": "kè",
+  "gloss": "quarter (hour)",
+  "pos": [
+   "v",
+   "qt"
+  ],
+  "band": 2
+ },
+ "客人": {
+  "pinyin": "kè rén",
+  "gloss": "visitor",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "课堂": {
+  "pinyin": "kè táng",
+  "gloss": "classroom",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "开机": {
+  "pinyin": "kāi jī",
+  "gloss": "to start an engine",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "开学": {
+  "pinyin": "kāi xué",
+  "gloss": "foundation of a University or College",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 2
+ },
+ "开心": {
+  "pinyin": "kāi xīn",
+  "gloss": "to feel happy",
+  "pos": [
+   "a",
+   "v",
+   "an"
+  ],
+  "band": 2
+ },
+ "科": {
+  "pinyin": "kē",
+  "gloss": "branch of study",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "科学": {
+  "pinyin": "kē xué",
+  "gloss": "science",
+  "pos": [
+   "n",
+   "a",
+   "ad"
+  ],
+  "band": 2
+ },
+ "科学家": {
+  "pinyin": "kē xué jiā",
+  "gloss": "scientist",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "可能": {
+  "pinyin": "kě néng",
+  "gloss": "might (happen)",
+  "pos": [
+   "v",
+   "n"
+  ],
+  "band": 2
+ },
+ "可怕": {
+  "pinyin": "kě pà",
+  "gloss": "awful",
+  "pos": [
+   "a"
+  ],
+  "band": 2
+ },
+ "可是": {
+  "pinyin": "kě shì",
+  "gloss": "but; however",
+  "pos": [
+   "c",
+   "d",
+   "v"
+  ],
+  "band": 2
+ },
+ "可以": {
+  "pinyin": "kě yǐ",
+  "gloss": "can",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "可爱": {
+  "pinyin": "kě ài",
+  "gloss": "adorable",
+  "pos": [
+   "a"
+  ],
+  "band": 2
+ },
+ "空气": {
+  "pinyin": "kōng qì",
+  "gloss": "air",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "哭": {
+  "pinyin": "kū",
+  "gloss": "to cry; to weep",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "卡": {
+  "pinyin": "kǎ",
+  "gloss": "to stop",
+  "pos": [
+   "n",
+   "v",
+   "g"
+  ],
+  "band": 2
+ },
+ "考生": {
+  "pinyin": "kǎo shēng",
+  "gloss": "exam candidate",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "练": {
+  "pinyin": "liàn",
+  "gloss": "to practice",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "练习": {
+  "pinyin": "liàn xí",
+  "gloss": "to practice",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 2
+ },
+ "亮": {
+  "pinyin": "liàng",
+  "gloss": "bright",
+  "pos": [
+   "v",
+   "a"
+  ],
+  "band": 2
+ },
+ "辆": {
+  "pinyin": "liàng",
+  "gloss": "classifier for vehicles",
+  "pos": [
+   "q"
+  ],
+  "band": 2
+ },
+ "凉快": {
+  "pinyin": "liáng kuai",
+  "gloss": "nice and cold",
+  "pos": [
+   "a"
+  ],
+  "band": 2
+ },
+ "流": {
+  "pinyin": "liú",
+  "gloss": "to flow",
+  "pos": [
+   "v",
+   "g"
+  ],
+  "band": 2
+ },
+ "留": {
+  "pinyin": "liú",
+  "gloss": "old variant of 留",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "流利": {
+  "pinyin": "liú lì",
+  "gloss": "fluent",
+  "pos": [
+   "a",
+   "ad"
+  ],
+  "band": 2
+ },
+ "留下": {
+  "pinyin": "liú xià",
+  "gloss": "to leave behind",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "留学生": {
+  "pinyin": "liú xué shēng",
+  "gloss": "student studying abroad",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "流行": {
+  "pinyin": "liú xíng",
+  "gloss": "(of a contagious disease etc) to spread",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 2
+ },
+ "脸": {
+  "pinyin": "liǎn",
+  "gloss": "face",
+  "pos": [
+   "n",
+   "q"
+  ],
+  "band": 2
+ },
+ "来自": {
+  "pinyin": "lái zì",
+  "gloss": "to come from (a place)",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "篮球": {
+  "pinyin": "lán qiú",
+  "gloss": "basketball",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "蓝色": {
+  "pinyin": "lán sè",
+  "gloss": "blue (color)",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "例如": {
+  "pinyin": "lì rú",
+  "gloss": "for example; for instance; such as",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "例子": {
+  "pinyin": "lì zi",
+  "gloss": "case",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "离开": {
+  "pinyin": "lí kāi",
+  "gloss": "to depart; to leave",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "零下": {
+  "pinyin": "líng xià",
+  "gloss": "below zero",
+  "pos": [
+   "s"
+  ],
+  "band": 2
+ },
+ "弄": {
+  "pinyin": "lòng",
+  "gloss": "lane",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "路边": {
+  "pinyin": "lù biān",
+  "gloss": "curb; roadside; wayside",
+  "pos": [
+   "s"
+  ],
+  "band": 2
+ },
+ "拉": {
+  "pinyin": "lā",
+  "gloss": "to pull",
+  "pos": [
+   "v",
+   "b"
+  ],
+  "band": 2
+ },
+ "老年": {
+  "pinyin": "lǎo nián",
+  "gloss": "elderly",
+  "pos": [
+   "t",
+   "n"
+  ],
+  "band": 2
+ },
+ "老朋友": {
+  "pinyin": "lǎo péng you",
+  "gloss": "old friend",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "老是": {
+  "pinyin": "lǎo shi",
+  "gloss": "always",
+  "pos": [
+   "d"
+  ],
+  "band": 2
+ },
+ "里头": {
+  "pinyin": "lǐ tou",
+  "gloss": "inside",
+  "pos": [
+   "f"
+  ],
+  "band": 2
+ },
+ "礼物": {
+  "pinyin": "lǐ wù",
+  "gloss": "gift; present",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "理想": {
+  "pinyin": "lǐ xiǎng",
+  "gloss": "an ideal",
+  "pos": [
+   "n",
+   "a"
+  ],
+  "band": 2
+ },
+ "旅客": {
+  "pinyin": "lǚ kè",
+  "gloss": "traveler; tourist",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "旅行": {
+  "pinyin": "lǚ xíng",
+  "gloss": "to travel",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 2
+ },
+ "旅游": {
+  "pinyin": "lǚ yóu",
+  "gloss": "trip",
+  "pos": [
+   "vn",
+   "v"
+  ],
+  "band": 2
+ },
+ "绿": {
+  "pinyin": "lǜ",
+  "gloss": "green",
+  "pos": [
+   "a",
+   "an"
+  ],
+  "band": 2
+ },
+ "绿色": {
+  "pinyin": "lǜ sè",
+  "gloss": "green",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "面": {
+  "pinyin": "miàn",
+  "gloss": "face",
+  "pos": [
+   "n",
+   "q",
+   "v",
+   "g"
+  ],
+  "band": 2
+ },
+ "面前": {
+  "pinyin": "miàn qián",
+  "gloss": "in front of",
+  "pos": [
+   "f"
+  ],
+  "band": 2
+ },
+ "卖": {
+  "pinyin": "mài",
+  "gloss": "to sell",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "名": {
+  "pinyin": "míng",
+  "gloss": "name",
+  "pos": [
+   "q",
+   "g"
+  ],
+  "band": 2
+ },
+ "名称": {
+  "pinyin": "míng chēng",
+  "gloss": "name (of a thing)",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "名单": {
+  "pinyin": "míng dān",
+  "gloss": "list of names",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "明星": {
+  "pinyin": "míng xīng",
+  "gloss": "star; celebrity",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "万": {
+  "pinyin": "mò",
+  "gloss": "used in 俟",
+  "pos": [
+   "m",
+   "t"
+  ],
+  "band": 2
+ },
+ "目的": {
+  "pinyin": "mù dì",
+  "gloss": "purpose; aim; goal; target; objective",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "猫": {
+  "pinyin": "māo",
+  "gloss": "cat",
+  "pos": [
+   "n",
+   "v"
+  ],
+  "band": 2
+ },
+ "满意": {
+  "pinyin": "mǎn yì",
+  "gloss": "satisfied",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 2
+ },
+ "年级": {
+  "pinyin": "nián jí",
+  "gloss": "grade",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "年轻": {
+  "pinyin": "nián qīng",
+  "gloss": "young",
+  "pos": [
+   "a"
+  ],
+  "band": 2
+ },
+ "那会儿": {
+  "pinyin": "nà huì r",
+  "gloss": "at that time (in the past or the future)",
+  "pos": [
+   "r"
+  ],
+  "band": 2
+ },
+ "那么": {
+  "pinyin": "nà me",
+  "gloss": "like that",
+  "pos": [
+   "r",
+   "c"
+  ],
+  "band": 2
+ },
+ "那时": {
+  "pinyin": "nà shí",
+  "gloss": "then",
+  "pos": [
+   "r"
+  ],
+  "band": 2
+ },
+ "那时候": {
+  "pinyin": "nà shí hou",
+  "gloss": "at that time",
+  "pos": [],
+  "band": 2
+ },
+ "那样": {
+  "pinyin": "nà yàng",
+  "gloss": "that kind",
+  "pos": [
+   "r"
+  ],
+  "band": 2
+ },
+ "拿出": {
+  "pinyin": "ná chū",
+  "gloss": "to take out",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "拿到": {
+  "pinyin": "ná dào",
+  "gloss": "to get",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "南方": {
+  "pinyin": "nán fāng",
+  "gloss": "south",
+  "pos": [
+   "s",
+   "f"
+  ],
+  "band": 2
+ },
+ "难过": {
+  "pinyin": "nán guò",
+  "gloss": "to feel sad",
+  "pos": [
+   "a"
+  ],
+  "band": 2
+ },
+ "难看": {
+  "pinyin": "nán kàn",
+  "gloss": "ugly",
+  "pos": [
+   "a"
+  ],
+  "band": 2
+ },
+ "难受": {
+  "pinyin": "nán shòu",
+  "gloss": "to feel unwell",
+  "pos": [
+   "a"
+  ],
+  "band": 2
+ },
+ "难题": {
+  "pinyin": "nán tí",
+  "gloss": "difficult problem",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "难听": {
+  "pinyin": "nán tīng",
+  "gloss": "unpleasant to hear",
+  "pos": [
+   "a",
+   "v"
+  ],
+  "band": 2
+ },
+ "能够": {
+  "pinyin": "néng gòu",
+  "gloss": "to be capable of",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "努力": {
+  "pinyin": "nǔ lì",
+  "gloss": "to make an effort; to try hard; to strive",
+  "pos": [
+   "ad",
+   "an",
+   "a"
+  ],
+  "band": 2
+ },
+ "漂亮": {
+  "pinyin": "piào liang",
+  "gloss": "pretty",
+  "pos": [
+   "a"
+  ],
+  "band": 2
+ },
+ "篇": {
+  "pinyin": "piān",
+  "gloss": "sheet",
+  "pos": [
+   "q",
+   "g"
+  ],
+  "band": 2
+ },
+ "片": {
+  "pinyin": "piān",
+  "gloss": "disk",
+  "pos": [
+   "q",
+   "g"
+  ],
+  "band": 2
+ },
+ "爬": {
+  "pinyin": "pá",
+  "gloss": "to crawl",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "爬山": {
+  "pinyin": "pá shān",
+  "gloss": "to climb a mountain",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 2
+ },
+ "排": {
+  "pinyin": "pái",
+  "gloss": "a row",
+  "pos": [
+   "v",
+   "q",
+   "n"
+  ],
+  "band": 2
+ },
+ "排队": {
+  "pinyin": "pái duì",
+  "gloss": "to line up",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 2
+ },
+ "排球": {
+  "pinyin": "pái qiú",
+  "gloss": "volleyball",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "碰": {
+  "pinyin": "pèng",
+  "gloss": "variant of 碰",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "碰到": {
+  "pinyin": "pèng dào",
+  "gloss": "to come across",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "碰见": {
+  "pinyin": "pèng jiàn",
+  "gloss": "to run into",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "瓶": {
+  "pinyin": "píng",
+  "gloss": "bottle",
+  "pos": [
+   "q",
+   "n"
+  ],
+  "band": 2
+ },
+ "平常": {
+  "pinyin": "píng cháng",
+  "gloss": "ordinary",
+  "pos": [
+   "a",
+   "d",
+   "t",
+   "n"
+  ],
+  "band": 2
+ },
+ "平等": {
+  "pinyin": "píng děng",
+  "gloss": "equal",
+  "pos": [
+   "a",
+   "ad",
+   "an"
+  ],
+  "band": 2
+ },
+ "平时": {
+  "pinyin": "píng shí",
+  "gloss": "ordinarily",
+  "pos": [
+   "t"
+  ],
+  "band": 2
+ },
+ "瓶子": {
+  "pinyin": "píng zi",
+  "gloss": "bottle",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "平安": {
+  "pinyin": "píng ān",
+  "gloss": "safe and sound",
+  "pos": [
+   "a",
+   "an",
+   "ad",
+   "n",
+   "nz"
+  ],
+  "band": 2
+ },
+ "普通": {
+  "pinyin": "pǔ tōng",
+  "gloss": "common",
+  "pos": [
+   "a"
+  ],
+  "band": 2
+ },
+ "普通话": {
+  "pinyin": "pǔ tōng huà",
+  "gloss": "Mandarin (common language)",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "前年": {
+  "pinyin": "qián nián",
+  "gloss": "the year before last",
+  "pos": [
+   "t"
+  ],
+  "band": 2
+ },
+ "墙": {
+  "pinyin": "qiáng",
+  "gloss": "variant of 墙, wall",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "求": {
+  "pinyin": "qiú",
+  "gloss": "to seek",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "球场": {
+  "pinyin": "qiú chǎng",
+  "gloss": "stadium",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "球队": {
+  "pinyin": "qiú duì",
+  "gloss": "sports team (basketball, soccer, football etc)",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "球鞋": {
+  "pinyin": "qiú xié",
+  "gloss": "athletic shoes",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "千": {
+  "pinyin": "qiān",
+  "gloss": "thousand",
+  "pos": [
+   "m",
+   "t"
+  ],
+  "band": 2
+ },
+ "千克": {
+  "pinyin": "qiān kè",
+  "gloss": "kilogram",
+  "pos": [
+   "q"
+  ],
+  "band": 2
+ },
+ "秋天": {
+  "pinyin": "qiū tiān",
+  "gloss": "autumn",
+  "pos": [
+   "t"
+  ],
+  "band": 2
+ },
+ "全部": {
+  "pinyin": "quán bù",
+  "gloss": "whole; all",
+  "pos": [
+   "m"
+  ],
+  "band": 2
+ },
+ "全国": {
+  "pinyin": "quán guó",
+  "gloss": "whole nation",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "全家": {
+  "pinyin": "quán jiā",
+  "gloss": "whole family",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "全年": {
+  "pinyin": "quán nián",
+  "gloss": "the whole year",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "全身": {
+  "pinyin": "quán shēn",
+  "gloss": "the whole body",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "全体": {
+  "pinyin": "quán tǐ",
+  "gloss": "all",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "气": {
+  "pinyin": "qì",
+  "gloss": "gas; air",
+  "pos": [
+   "n",
+   "v"
+  ],
+  "band": 2
+ },
+ "气温": {
+  "pinyin": "qì wēn",
+  "gloss": "air temperature",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "骑车": {
+  "pinyin": "qí chē",
+  "gloss": "to ride a bike (motorbike or bicycle)",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "其他": {
+  "pinyin": "qí tā",
+  "gloss": "other",
+  "pos": [
+   "r"
+  ],
+  "band": 2
+ },
+ "其中": {
+  "pinyin": "qí zhōng",
+  "gloss": "among",
+  "pos": [
+   "r"
+  ],
+  "band": 2
+ },
+ "晴": {
+  "pinyin": "qíng",
+  "gloss": "clear",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "晴天": {
+  "pinyin": "qíng tiān",
+  "gloss": "clear sky",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "轻": {
+  "pinyin": "qīng",
+  "gloss": "light",
+  "pos": [
+   "a",
+   "ad",
+   "v",
+   "g"
+  ],
+  "band": 2
+ },
+ "清楚": {
+  "pinyin": "qīng chu",
+  "gloss": "clear",
+  "pos": [
+   "a",
+   "v",
+   "ad"
+  ],
+  "band": 2
+ },
+ "青年": {
+  "pinyin": "qīng nián",
+  "gloss": "youth",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "青少年": {
+  "pinyin": "qīng shào nián",
+  "gloss": "adolescent",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "起飞": {
+  "pinyin": "qǐ fēi",
+  "gloss": "(of an aircraft) to take off",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 2
+ },
+ "请客": {
+  "pinyin": "qǐng kè",
+  "gloss": "to give a dinner party",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "请求": {
+  "pinyin": "qǐng qiú",
+  "gloss": "to request; to ask",
+  "pos": [
+   "v",
+   "n"
+  ],
+  "band": 2
+ },
+ "取": {
+  "pinyin": "qǔ",
+  "gloss": "to take",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "取得": {
+  "pinyin": "qǔ dé",
+  "gloss": "to acquire; to get; to obtain",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "让": {
+  "pinyin": "ràng",
+  "gloss": "to yield",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "然后": {
+  "pinyin": "rán hòu",
+  "gloss": "then; after that; afterwards",
+  "pos": [
+   "c"
+  ],
+  "band": 2
+ },
+ "热情": {
+  "pinyin": "rè qíng",
+  "gloss": "cordial",
+  "pos": [
+   "an",
+   "a",
+   "ad"
+  ],
+  "band": 2
+ },
+ "认为": {
+  "pinyin": "rèn wéi",
+  "gloss": "to believe; to think; to consider; to feel",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "人口": {
+  "pinyin": "rén kǒu",
+  "gloss": "population",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "人们": {
+  "pinyin": "rén men",
+  "gloss": "people",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "人数": {
+  "pinyin": "rén shù",
+  "gloss": "number of people",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "日报": {
+  "pinyin": "rì bào",
+  "gloss": "daily newspaper",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "日子": {
+  "pinyin": "rì zi",
+  "gloss": "day",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "入口": {
+  "pinyin": "rù kǒu",
+  "gloss": "entrance",
+  "pos": [
+   "n",
+   "v"
+  ],
+  "band": 2
+ },
+ "如果": {
+  "pinyin": "rú guǒ",
+  "gloss": "if",
+  "pos": [
+   "c",
+   "v"
+  ],
+  "band": 2
+ },
+ "说明": {
+  "pinyin": "shuō míng",
+  "gloss": "to explain",
+  "pos": [
+   "v",
+   "vn",
+   "n"
+  ],
+  "band": 2
+ },
+ "水平": {
+  "pinyin": "shuǐ píng",
+  "gloss": "level (of achievement etc)",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "上周": {
+  "pinyin": "shàng zhōu",
+  "gloss": "last week",
+  "pos": [
+   "t"
+  ],
+  "band": 2
+ },
+ "少年": {
+  "pinyin": "shào nián",
+  "gloss": "early youth",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "什么样": {
+  "pinyin": "shén me yàng",
+  "gloss": "what kind?; what sort?",
+  "pos": [
+   "r"
+  ],
+  "band": 2
+ },
+ "市": {
+  "pinyin": "shì",
+  "gloss": "market",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "事情": {
+  "pinyin": "shì qing",
+  "gloss": "affair; matter; thing; business",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "市长": {
+  "pinyin": "shì zhǎng",
+  "gloss": "mayor",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "十分": {
+  "pinyin": "shí fēn",
+  "gloss": "very",
+  "pos": [
+   "d"
+  ],
+  "band": 2
+ },
+ "实际": {
+  "pinyin": "shí jì",
+  "gloss": "reality",
+  "pos": [
+   "n",
+   "a",
+   "ad"
+  ],
+  "band": 2
+ },
+ "食物": {
+  "pinyin": "shí wù",
+  "gloss": "food",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "实现": {
+  "pinyin": "shí xiàn",
+  "gloss": "to achieve",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 2
+ },
+ "实习": {
+  "pinyin": "shí xí",
+  "gloss": "to practice",
+  "pos": [
+   "vn",
+   "v"
+  ],
+  "band": 2
+ },
+ "实在": {
+  "pinyin": "shí zài",
+  "gloss": "really",
+  "pos": [
+   "d",
+   "a"
+  ],
+  "band": 2
+ },
+ "受到": {
+  "pinyin": "shòu dào",
+  "gloss": "to receive (praise, an education, punishment etc)",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "数字": {
+  "pinyin": "shù zì",
+  "gloss": "numeral",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "顺利": {
+  "pinyin": "shùn lì",
+  "gloss": "smoothly; without a hitch",
+  "pos": [
+   "a",
+   "ad"
+  ],
+  "band": 2
+ },
+ "熟": {
+  "pinyin": "shú",
+  "gloss": "ripe; mature",
+  "pos": [
+   "a",
+   "ad"
+  ],
+  "band": 2
+ },
+ "商量": {
+  "pinyin": "shāng liang",
+  "gloss": "to consult",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "商人": {
+  "pinyin": "shāng rén",
+  "gloss": "merchant",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "身边": {
+  "pinyin": "shēn biān",
+  "gloss": "at one's side",
+  "pos": [
+   "s"
+  ],
+  "band": 2
+ },
+ "生": {
+  "pinyin": "shēng",
+  "gloss": "to be born",
+  "pos": [
+   "v",
+   "g",
+   "a"
+  ],
+  "band": 2
+ },
+ "生词": {
+  "pinyin": "shēng cí",
+  "gloss": "new word (in textbook)",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "生活": {
+  "pinyin": "shēng huó",
+  "gloss": "to live",
+  "pos": [
+   "vn",
+   "v"
+  ],
+  "band": 2
+ },
+ "声音": {
+  "pinyin": "shēng yīn",
+  "gloss": "voice",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "省": {
+  "pinyin": "shěng",
+  "gloss": "to save; to economize; to be frugal",
+  "pos": [
+   "n",
+   "v"
+  ],
+  "band": 2
+ },
+ "收": {
+  "pinyin": "shōu",
+  "gloss": "to receive",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "收到": {
+  "pinyin": "shōu dào",
+  "gloss": "to receive",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "收入": {
+  "pinyin": "shōu rù",
+  "gloss": "to take in",
+  "pos": [
+   "n",
+   "v"
+  ],
+  "band": 2
+ },
+ "舒服": {
+  "pinyin": "shū fu",
+  "gloss": "comfortable",
+  "pos": [
+   "a"
+  ],
+  "band": 2
+ },
+ "少数": {
+  "pinyin": "shǎo shù",
+  "gloss": "small number",
+  "pos": [
+   "m"
+  ],
+  "band": 2
+ },
+ "使用": {
+  "pinyin": "shǐ yòng",
+  "gloss": "to use",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 2
+ },
+ "手表": {
+  "pinyin": "shǒu biǎo",
+  "gloss": "wristwatch",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "数": {
+  "pinyin": "shǔ",
+  "gloss": "to count",
+  "pos": [
+   "m",
+   "n",
+   "v"
+  ],
+  "band": 2
+ },
+ "算": {
+  "pinyin": "suàn",
+  "gloss": "to regard as",
+  "pos": [
+   "v",
+   "d"
+  ],
+  "band": 2
+ },
+ "随便": {
+  "pinyin": "suí biàn",
+  "gloss": "as one wishes",
+  "pos": [
+   "ad",
+   "a",
+   "v"
+  ],
+  "band": 2
+ },
+ "随时": {
+  "pinyin": "suí shí",
+  "gloss": "at any time; at all times",
+  "pos": [
+   "d"
+  ],
+  "band": 2
+ },
+ "虽然": {
+  "pinyin": "suī rán",
+  "gloss": "although; even though (often used correlatively with 是 or 是 etc)",
+  "pos": [
+   "c"
+  ],
+  "band": 2
+ },
+ "所以": {
+  "pinyin": "suǒ yǐ",
+  "gloss": "therefore",
+  "pos": [
+   "c"
+  ],
+  "band": 2
+ },
+ "所有": {
+  "pinyin": "suǒ yǒu",
+  "gloss": "all",
+  "pos": [
+   "b",
+   "v"
+  ],
+  "band": 2
+ },
+ "送到": {
+  "pinyin": "sòng dào",
+  "gloss": "Deliver",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "送给": {
+  "pinyin": "sòng gěi",
+  "gloss": "to send",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "司机": {
+  "pinyin": "sī jī",
+  "gloss": "chauffeur; driver",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "条": {
+  "pinyin": "tiáo",
+  "gloss": "strip",
+  "pos": [
+   "q"
+  ],
+  "band": 2
+ },
+ "条件": {
+  "pinyin": "tiáo jiàn",
+  "gloss": "condition; circumstance; term; factor",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "天上": {
+  "pinyin": "tiān shàng",
+  "gloss": "celestial",
+  "pos": [
+   "s"
+  ],
+  "band": 2
+ },
+ "推": {
+  "pinyin": "tuī",
+  "gloss": "to push",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "腿": {
+  "pinyin": "tuǐ",
+  "gloss": "leg",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "态度": {
+  "pinyin": "tài du",
+  "gloss": "manner",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "太太": {
+  "pinyin": "tài tai",
+  "gloss": "married woman",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "太阳": {
+  "pinyin": "tài yang",
+  "gloss": "sun",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "套": {
+  "pinyin": "tào",
+  "gloss": "to cover",
+  "pos": [
+   "q",
+   "v",
+   "g"
+  ],
+  "band": 2
+ },
+ "特别": {
+  "pinyin": "tè bié",
+  "gloss": "unusual; special",
+  "pos": [
+   "d",
+   "a"
+  ],
+  "band": 2
+ },
+ "特点": {
+  "pinyin": "tè diǎn",
+  "gloss": "characteristic (feature)",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "疼": {
+  "pinyin": "téng",
+  "gloss": "(it) hurts; sore",
+  "pos": [
+   "v",
+   "a"
+  ],
+  "band": 2
+ },
+ "提出": {
+  "pinyin": "tí chū",
+  "gloss": "to raise (an issue)",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "提到": {
+  "pinyin": "tí dào",
+  "gloss": "to mention",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "提高": {
+  "pinyin": "tí gāo",
+  "gloss": "to raise",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 2
+ },
+ "停": {
+  "pinyin": "tíng",
+  "gloss": "to stop",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "停车": {
+  "pinyin": "tíng chē",
+  "gloss": "to pull up (stop one's vehicle)",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 2
+ },
+ "停车场": {
+  "pinyin": "tíng chē chǎng",
+  "gloss": "parking lot",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "同事": {
+  "pinyin": "tóng shì",
+  "gloss": "colleague; co-worker",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "同时": {
+  "pinyin": "tóng shí",
+  "gloss": "at the same time",
+  "pos": [
+   "c",
+   "n",
+   "d"
+  ],
+  "band": 2
+ },
+ "同样": {
+  "pinyin": "tóng yàng",
+  "gloss": "same",
+  "pos": [
+   "b",
+   "d"
+  ],
+  "band": 2
+ },
+ "头": {
+  "pinyin": "tóu",
+  "gloss": "head",
+  "pos": [
+   "n",
+   "q",
+   "m",
+   "k"
+  ],
+  "band": 2
+ },
+ "头发": {
+  "pinyin": "tóu fa",
+  "gloss": "hair (on the head)",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "图片": {
+  "pinyin": "tú piàn",
+  "gloss": "picture; photograph",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "它": {
+  "pinyin": "tā",
+  "gloss": "it",
+  "pos": [
+   "r"
+  ],
+  "band": 2
+ },
+ "它们": {
+  "pinyin": "tā men",
+  "gloss": "they (for inanimate objects)",
+  "pos": [
+   "r"
+  ],
+  "band": 2
+ },
+ "听讲": {
+  "pinyin": "tīng jiǎng",
+  "gloss": "to attend a lecture",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "听说": {
+  "pinyin": "tīng shuō",
+  "gloss": "to hear (sth said)",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "通": {
+  "pinyin": "tōng",
+  "gloss": "to go through",
+  "pos": [
+   "v",
+   "a",
+   "qv"
+  ],
+  "band": 2
+ },
+ "通过": {
+  "pinyin": "tōng guò",
+  "gloss": "to pass through; to get through",
+  "pos": [
+   "p",
+   "v",
+   "vn"
+  ],
+  "band": 2
+ },
+ "通知": {
+  "pinyin": "tōng zhī",
+  "gloss": "to notify",
+  "pos": [
+   "n",
+   "v"
+  ],
+  "band": 2
+ },
+ "讨论": {
+  "pinyin": "tǎo lùn",
+  "gloss": "to discuss; to talk over",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 2
+ },
+ "体育": {
+  "pinyin": "tǐ yù",
+  "gloss": "sports",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "体育场": {
+  "pinyin": "tǐ yù chǎng",
+  "gloss": "stadium",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "体育馆": {
+  "pinyin": "tǐ yù guǎn",
+  "gloss": "gym",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "挺": {
+  "pinyin": "tǐng",
+  "gloss": "straight",
+  "pos": [
+   "d",
+   "v",
+   "g",
+   "q"
+  ],
+  "band": 2
+ },
+ "挺好": {
+  "pinyin": "tǐng hǎo",
+  "gloss": "very good",
+  "pos": [],
+  "band": 2
+ },
+ "外地": {
+  "pinyin": "wài dì",
+  "gloss": "parts of the country other than where one is",
+  "pos": [
+   "s"
+  ],
+  "band": 2
+ },
+ "外卖": {
+  "pinyin": "wài mài",
+  "gloss": "(of a restaurant) to provide a takeout or home delivery meal",
+  "pos": [],
+  "band": 2
+ },
+ "完": {
+  "pinyin": "wán",
+  "gloss": "to finish",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "完成": {
+  "pinyin": "wán chéng",
+  "gloss": "to complete; to accomplish",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 2
+ },
+ "完全": {
+  "pinyin": "wán quán",
+  "gloss": "complete; whole",
+  "pos": [
+   "ad",
+   "a"
+  ],
+  "band": 2
+ },
+ "位": {
+  "pinyin": "wèi",
+  "gloss": "position",
+  "pos": [
+   "q",
+   "g"
+  ],
+  "band": 2
+ },
+ "味道": {
+  "pinyin": "wèi dao",
+  "gloss": "flavor; taste",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "为什么": {
+  "pinyin": "wèi shén me",
+  "gloss": "why?",
+  "pos": [
+   "r"
+  ],
+  "band": 2
+ },
+ "问路": {
+  "pinyin": "wèn lù",
+  "gloss": "to ask for directions",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "问题": {
+  "pinyin": "wèn tí",
+  "gloss": "question",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "为": {
+  "pinyin": "wéi",
+  "gloss": "as (in the capacity of)",
+  "pos": [
+   "p",
+   "v"
+  ],
+  "band": 2
+ },
+ "喂": {
+  "pinyin": "wéi",
+  "gloss": "hello (when answering the phone)",
+  "pos": [
+   "v",
+   "e"
+  ],
+  "band": 2
+ },
+ "温度": {
+  "pinyin": "wēn dù",
+  "gloss": "temperature",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "碗": {
+  "pinyin": "wǎn",
+  "gloss": "variant of 碗",
+  "pos": [
+   "n",
+   "q"
+  ],
+  "band": 2
+ },
+ "晚报": {
+  "pinyin": "wǎn bào",
+  "gloss": "evening newspaper",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "晚餐": {
+  "pinyin": "wǎn cān",
+  "gloss": "evening meal",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "晚会": {
+  "pinyin": "wǎn huì",
+  "gloss": "evening party",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "晚安": {
+  "pinyin": "wǎn ān",
+  "gloss": "Good night!",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "网": {
+  "pinyin": "wǎng",
+  "gloss": "net",
+  "pos": [
+   "n",
+   "v"
+  ],
+  "band": 2
+ },
+ "往": {
+  "pinyin": "wǎng",
+  "gloss": "to go (in a direction)",
+  "pos": [
+   "p",
+   "v"
+  ],
+  "band": 2
+ },
+ "网球": {
+  "pinyin": "wǎng qiú",
+  "gloss": "tennis",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "网站": {
+  "pinyin": "wǎng zhàn",
+  "gloss": "website",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "午餐": {
+  "pinyin": "wǔ cān",
+  "gloss": "lunch",
+  "pos": [
+   "n",
+   "v"
+  ],
+  "band": 2
+ },
+ "午睡": {
+  "pinyin": "wǔ shuì",
+  "gloss": "to take a nap",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "夏天": {
+  "pinyin": "xià tiān",
+  "gloss": "summer",
+  "pos": [
+   "t"
+  ],
+  "band": 2
+ },
+ "下雪": {
+  "pinyin": "xià xuě",
+  "gloss": "to snow",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "下周": {
+  "pinyin": "xià zhōu",
+  "gloss": "next week",
+  "pos": [],
+  "band": 2
+ },
+ "像": {
+  "pinyin": "xiàng",
+  "gloss": "to resemble",
+  "pos": [
+   "v",
+   "p",
+   "n",
+   "d"
+  ],
+  "band": 2
+ },
+ "相机": {
+  "pinyin": "xiàng jī",
+  "gloss": "camera (abbr. for 照相机)",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "笑话": {
+  "pinyin": "xiào hua",
+  "gloss": "joke; jest",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "校园": {
+  "pinyin": "xiào yuán",
+  "gloss": "campus",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "校长": {
+  "pinyin": "xiào zhǎng",
+  "gloss": "(college, university) president",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "笑话儿": {
+  "pinyin": "xiàohuar5",
+  "gloss": "Joke",
+  "pos": [],
+  "band": 2
+ },
+ "鞋": {
+  "pinyin": "xié",
+  "gloss": "shoe",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "相同": {
+  "pinyin": "xiāng tóng",
+  "gloss": "identical",
+  "pos": [
+   "a"
+  ],
+  "band": 2
+ },
+ "相信": {
+  "pinyin": "xiāng xìn",
+  "gloss": "to be convinced (that sth is true); to believe; to accept sth as true",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "休假": {
+  "pinyin": "xiū jià",
+  "gloss": "to go on vacation; to have a holiday; to take leave",
+  "pos": [
+   "v",
+   "vn",
+   "n"
+  ],
+  "band": 2
+ },
+ "响": {
+  "pinyin": "xiǎng",
+  "gloss": "echo",
+  "pos": [
+   "v",
+   "a",
+   "q"
+  ],
+  "band": 2
+ },
+ "想到": {
+  "pinyin": "xiǎng dào",
+  "gloss": "to think of",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "想法": {
+  "pinyin": "xiǎng fǎ",
+  "gloss": "way of thinking; opinion; notion",
+  "pos": [
+   "n",
+   "v"
+  ],
+  "band": 2
+ },
+ "想起": {
+  "pinyin": "xiǎng qǐ",
+  "gloss": "to recall",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "小说": {
+  "pinyin": "xiǎo shuō",
+  "gloss": "novel",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "小时候": {
+  "pinyin": "xiǎo shí hou",
+  "gloss": "in one's childhood",
+  "pos": [
+   "t",
+   "n"
+  ],
+  "band": 2
+ },
+ "小声": {
+  "pinyin": "xiǎo shēng",
+  "gloss": "in a low voice",
+  "pos": [
+   "v",
+   "d",
+   "ad"
+  ],
+  "band": 2
+ },
+ "小心": {
+  "pinyin": "xiǎo xīn",
+  "gloss": "to be careful",
+  "pos": [
+   "a",
+   "v",
+   "ad"
+  ],
+  "band": 2
+ },
+ "小组": {
+  "pinyin": "xiǎo zǔ",
+  "gloss": "group",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "学期": {
+  "pinyin": "xué qī",
+  "gloss": "term",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "选": {
+  "pinyin": "xuǎn",
+  "gloss": "to choose",
+  "pos": [
+   "v",
+   "g"
+  ],
+  "band": 2
+ },
+ "信": {
+  "pinyin": "xìn",
+  "gloss": "letter",
+  "pos": [
+   "n",
+   "v"
+  ],
+  "band": 2
+ },
+ "信号": {
+  "pinyin": "xìn hào",
+  "gloss": "signal",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "信息": {
+  "pinyin": "xìn xī",
+  "gloss": "information",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "信心": {
+  "pinyin": "xìn xīn",
+  "gloss": "confidence",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "信用卡": {
+  "pinyin": "xìn yòng kǎ",
+  "gloss": "credit card",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "姓": {
+  "pinyin": "xìng",
+  "gloss": "family name",
+  "pos": [
+   "v",
+   "n"
+  ],
+  "band": 2
+ },
+ "姓名": {
+  "pinyin": "xìng míng",
+  "gloss": "surname and given name",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "习惯": {
+  "pinyin": "xí guàn",
+  "gloss": "habit",
+  "pos": [
+   "n",
+   "v"
+  ],
+  "band": 2
+ },
+ "行动": {
+  "pinyin": "xíng dòng",
+  "gloss": "operation",
+  "pos": [
+   "vn",
+   "v"
+  ],
+  "band": 2
+ },
+ "行人": {
+  "pinyin": "xíng rén",
+  "gloss": "pedestrian",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "行为": {
+  "pinyin": "xíng wéi",
+  "gloss": "action",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "西餐": {
+  "pinyin": "xī cān",
+  "gloss": "Western-style food",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "西南": {
+  "pinyin": "xī nán",
+  "gloss": "southwest",
+  "pos": [
+   "s",
+   "f",
+   "ns"
+  ],
+  "band": 2
+ },
+ "西医": {
+  "pinyin": "xī yī",
+  "gloss": "Western medicine",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "心里": {
+  "pinyin": "xīn li",
+  "gloss": "chest",
+  "pos": [
+   "s"
+  ],
+  "band": 2
+ },
+ "心情": {
+  "pinyin": "xīn qíng",
+  "gloss": "mood; frame of mind",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "新闻": {
+  "pinyin": "xīn wén",
+  "gloss": "news",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "心中": {
+  "pinyin": "xīn zhōng",
+  "gloss": "central point",
+  "pos": [
+   "s"
+  ],
+  "band": 2
+ },
+ "星星": {
+  "pinyin": "xīng xing",
+  "gloss": "(coll.) a star; the stars in the sky",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "洗衣机": {
+  "pinyin": "xǐ yī jī",
+  "gloss": "washing machine; washer",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "洗澡": {
+  "pinyin": "xǐ zǎo",
+  "gloss": "to bathe",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 2
+ },
+ "许多": {
+  "pinyin": "xǔ duō",
+  "gloss": "many",
+  "pos": [
+   "m"
+  ],
+  "band": 2
+ },
+ "院": {
+  "pinyin": "yuàn",
+  "gloss": "courtyard",
+  "pos": [
+   "n",
+   "g"
+  ],
+  "band": 2
+ },
+ "愿意": {
+  "pinyin": "yuàn yì",
+  "gloss": "to wish",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "院长": {
+  "pinyin": "yuàn zhǎng",
+  "gloss": "the head of an institution whose name ends in 院",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "院子": {
+  "pinyin": "yuàn zi",
+  "gloss": "courtyard",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "原来": {
+  "pinyin": "yuán lái",
+  "gloss": "original",
+  "pos": [
+   "d",
+   "b"
+  ],
+  "band": 2
+ },
+ "原因": {
+  "pinyin": "yuán yīn",
+  "gloss": "cause",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "月份": {
+  "pinyin": "yuè fèn",
+  "gloss": "month",
+  "pos": [
+   "t",
+   "n"
+  ],
+  "band": 2
+ },
+ "月亮": {
+  "pinyin": "yuè liang",
+  "gloss": "the moon",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "越来越": {
+  "pinyin": "yuè lái yuè",
+  "gloss": "more and more",
+  "pos": [
+   "d"
+  ],
+  "band": 2
+ },
+ "样子": {
+  "pinyin": "yàng zi",
+  "gloss": "appearance",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "药": {
+  "pinyin": "yào",
+  "gloss": "leaf of the iris",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "药店": {
+  "pinyin": "yào diàn",
+  "gloss": "pharmacy",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "药片": {
+  "pinyin": "yào piàn",
+  "gloss": "a (medicine) pill or tablet",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "颜色": {
+  "pinyin": "yán sè",
+  "gloss": "color",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "夜": {
+  "pinyin": "yè",
+  "gloss": "variant of 夜",
+  "pos": [
+   "tg",
+   "qt"
+  ],
+  "band": 2
+ },
+ "夜里": {
+  "pinyin": "yè li",
+  "gloss": "during the night",
+  "pos": [
+   "t"
+  ],
+  "band": 2
+ },
+ "亿": {
+  "pinyin": "yì",
+  "gloss": "100 million",
+  "pos": [
+   "m"
+  ],
+  "band": 2
+ },
+ "意见": {
+  "pinyin": "yì jiàn",
+  "gloss": "idea",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "意思": {
+  "pinyin": "yì si",
+  "gloss": "idea",
+  "pos": [
+   "n",
+   "v"
+  ],
+  "band": 2
+ },
+ "银行": {
+  "pinyin": "yín háng",
+  "gloss": "bank",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "银行卡": {
+  "pinyin": "yín háng kǎ",
+  "gloss": "bank card",
+  "pos": [],
+  "band": 2
+ },
+ "又": {
+  "pinyin": "yòu",
+  "gloss": "(once) again",
+  "pos": [
+   "d",
+   "c"
+  ],
+  "band": 2
+ },
+ "油": {
+  "pinyin": "yóu",
+  "gloss": "oil",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "游客": {
+  "pinyin": "yóu kè",
+  "gloss": "traveler",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "运动": {
+  "pinyin": "yùn dòng",
+  "gloss": "to move",
+  "pos": [
+   "vn",
+   "n",
+   "v"
+  ],
+  "band": 2
+ },
+ "云": {
+  "pinyin": "yún",
+  "gloss": "(classical) to say",
+  "pos": [
+   "n",
+   "g",
+   "b"
+  ],
+  "band": 2
+ },
+ "要求": {
+  "pinyin": "yāo qiú",
+  "gloss": "to request",
+  "pos": [
+   "v",
+   "n"
+  ],
+  "band": 2
+ },
+ "也许": {
+  "pinyin": "yě xǔ",
+  "gloss": "perhaps",
+  "pos": [
+   "d"
+  ],
+  "band": 2
+ },
+ "一部分": {
+  "pinyin": "yī bù fen",
+  "gloss": "portion",
+  "pos": [
+   "m"
+  ],
+  "band": 2
+ },
+ "一般": {
+  "pinyin": "yī bān",
+  "gloss": "same",
+  "pos": [
+   "a",
+   "ad",
+   "u"
+  ],
+  "band": 2
+ },
+ "一点点": {
+  "pinyin": "yī diǎn diǎn",
+  "gloss": "a little bit",
+  "pos": [
+   "t",
+   "m"
+  ],
+  "band": 2
+ },
+ "一定": {
+  "pinyin": "yī dìng",
+  "gloss": "surely",
+  "pos": [
+   "d",
+   "b"
+  ],
+  "band": 2
+ },
+ "一共": {
+  "pinyin": "yī gòng",
+  "gloss": "altogether",
+  "pos": [
+   "d"
+  ],
+  "band": 2
+ },
+ "一路平安": {
+  "pinyin": "yī lù píng ān",
+  "gloss": "to have a pleasant journey",
+  "pos": [],
+  "band": 2
+ },
+ "一路顺风": {
+  "pinyin": "yī lù shùn fēng",
+  "gloss": "to have a pleasant journey (idiom)",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "一生": {
+  "pinyin": "yī shēng",
+  "gloss": "all one's life; throughout one's life",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "一直": {
+  "pinyin": "yī zhí",
+  "gloss": "straight (in a straight line)",
+  "pos": [
+   "d"
+  ],
+  "band": 2
+ },
+ "音节": {
+  "pinyin": "yīn jié",
+  "gloss": "syllable",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "阴天": {
+  "pinyin": "yīn tiān",
+  "gloss": "cloudy day; overcast sky",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "因为": {
+  "pinyin": "yīn wèi",
+  "gloss": "because",
+  "pos": [
+   "p",
+   "c"
+  ],
+  "band": 2
+ },
+ "音乐": {
+  "pinyin": "yīn yuè",
+  "gloss": "music",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "音乐会": {
+  "pinyin": "yīn yuè huì",
+  "gloss": "concert",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "应该": {
+  "pinyin": "yīng gāi",
+  "gloss": "ought to",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "眼": {
+  "pinyin": "yǎn",
+  "gloss": "eye",
+  "pos": [
+   "n",
+   "q"
+  ],
+  "band": 2
+ },
+ "眼睛": {
+  "pinyin": "yǎn jing",
+  "gloss": "eye",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "养": {
+  "pinyin": "yǎng",
+  "gloss": "to raise (animals)",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "以后": {
+  "pinyin": "yǐ hòu",
+  "gloss": "after",
+  "pos": [
+   "f"
+  ],
+  "band": 2
+ },
+ "已经": {
+  "pinyin": "yǐ jīng",
+  "gloss": "already",
+  "pos": [
+   "d"
+  ],
+  "band": 2
+ },
+ "以前": {
+  "pinyin": "yǐ qián",
+  "gloss": "before",
+  "pos": [
+   "f"
+  ],
+  "band": 2
+ },
+ "以上": {
+  "pinyin": "yǐ shàng",
+  "gloss": "that level or higher",
+  "pos": [
+   "f"
+  ],
+  "band": 2
+ },
+ "以外": {
+  "pinyin": "yǐ wài",
+  "gloss": "apart from",
+  "pos": [
+   "f"
+  ],
+  "band": 2
+ },
+ "以为": {
+  "pinyin": "yǐ wéi",
+  "gloss": "to think (i.e. to take it to be true that ...) (Usually there is an implication that the notion is mistaken – except when expressing one's own current opinion.)",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "以下": {
+  "pinyin": "yǐ xià",
+  "gloss": "that level or lower",
+  "pos": [
+   "f"
+  ],
+  "band": 2
+ },
+ "椅子": {
+  "pinyin": "yǐ zi",
+  "gloss": "chair",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "影片": {
+  "pinyin": "yǐng piàn",
+  "gloss": "a copy of a film",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "影响": {
+  "pinyin": "yǐng xiǎng",
+  "gloss": "influence",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 2
+ },
+ "永远": {
+  "pinyin": "yǒng yuǎn",
+  "gloss": "forever",
+  "pos": [
+   "d",
+   "b"
+  ],
+  "band": 2
+ },
+ "有点儿": {
+  "pinyin": "yǒu diǎn r",
+  "gloss": "slightly",
+  "pos": [],
+  "band": 2
+ },
+ "有人": {
+  "pinyin": "yǒu rén",
+  "gloss": "someone",
+  "pos": [
+   "r",
+   "nr"
+  ],
+  "band": 2
+ },
+ "有意思": {
+  "pinyin": "yǒu yì si",
+  "gloss": "interesting",
+  "pos": [
+   "l"
+  ],
+  "band": 2
+ },
+ "有一点儿": {
+  "pinyin": "yǒu yī diǎn r",
+  "gloss": "a bit",
+  "pos": [],
+  "band": 2
+ },
+ "有空儿": {
+  "pinyin": "yǒukòngr5",
+  "gloss": "available",
+  "pos": [],
+  "band": 2
+ },
+ "语言": {
+  "pinyin": "yǔ yán",
+  "gloss": "language",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "装": {
+  "pinyin": "zhuāng",
+  "gloss": "adornment",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "占": {
+  "pinyin": "zhàn",
+  "gloss": "variant of 占",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "站住": {
+  "pinyin": "zhàn zhù",
+  "gloss": "to stand",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "照顾": {
+  "pinyin": "zhào gu",
+  "gloss": "to take care of",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 2
+ },
+ "照片": {
+  "pinyin": "zhào piàn",
+  "gloss": "photograph",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "照相": {
+  "pinyin": "zhào xiàng",
+  "gloss": "to take a photograph",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 2
+ },
+ "这么": {
+  "pinyin": "zhè me",
+  "gloss": "so much",
+  "pos": [
+   "r"
+  ],
+  "band": 2
+ },
+ "这时": {
+  "pinyin": "zhè shí",
+  "gloss": "at this time",
+  "pos": [
+   "r"
+  ],
+  "band": 2
+ },
+ "这时候": {
+  "pinyin": "zhè shíhòu",
+  "gloss": "At this moment",
+  "pos": [
+   "r",
+   "t"
+  ],
+  "band": 2
+ },
+ "这样": {
+  "pinyin": "zhè yàng",
+  "gloss": "this kind of",
+  "pos": [
+   "r"
+  ],
+  "band": 2
+ },
+ "正常": {
+  "pinyin": "zhèng cháng",
+  "gloss": "regular",
+  "pos": [
+   "a",
+   "ad"
+  ],
+  "band": 2
+ },
+ "正好": {
+  "pinyin": "zhèng hǎo",
+  "gloss": "just (in time)",
+  "pos": [
+   "z"
+  ],
+  "band": 2
+ },
+ "正确": {
+  "pinyin": "zhèng què",
+  "gloss": "correct; sound; right; proper",
+  "pos": [
+   "a",
+   "ad"
+  ],
+  "band": 2
+ },
+ "正是": {
+  "pinyin": "zhèng shì",
+  "gloss": "is precisely",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "直接": {
+  "pinyin": "zhí jiē",
+  "gloss": "direct (opposite: indirect 间接)",
+  "pos": [
+   "ad",
+   "a"
+  ],
+  "band": 2
+ },
+ "重视": {
+  "pinyin": "zhòng shì",
+  "gloss": "to attach importance to sth; to value",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 2
+ },
+ "住房": {
+  "pinyin": "zhù fáng",
+  "gloss": "housing",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "住院": {
+  "pinyin": "zhù yuàn",
+  "gloss": "to be in hospital",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 2
+ },
+ "真正": {
+  "pinyin": "zhēn zhèng",
+  "gloss": "genuine; real; true",
+  "pos": [
+   "b",
+   "d"
+  ],
+  "band": 2
+ },
+ "中餐": {
+  "pinyin": "zhōng cān",
+  "gloss": "lunch",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "中级": {
+  "pinyin": "zhōng jí",
+  "gloss": "middle level (in a hierarchy)",
+  "pos": [
+   "b"
+  ],
+  "band": 2
+ },
+ "中年": {
+  "pinyin": "zhōng nián",
+  "gloss": "middle age",
+  "pos": [
+   "t"
+  ],
+  "band": 2
+ },
+ "中小学": {
+  "pinyin": "zhōng xiǎo xué",
+  "gloss": "middle and elementary school",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "中心": {
+  "pinyin": "zhōng xīn",
+  "gloss": "center",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "周末": {
+  "pinyin": "zhōu mò",
+  "gloss": "weekend",
+  "pos": [
+   "t"
+  ],
+  "band": 2
+ },
+ "周年": {
+  "pinyin": "zhōu nián",
+  "gloss": "anniversary",
+  "pos": [
+   "q"
+  ],
+  "band": 2
+ },
+ "长大": {
+  "pinyin": "zhǎng dà",
+  "gloss": "to grow up",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "找出": {
+  "pinyin": "zhǎo chū",
+  "gloss": "to find",
+  "pos": [],
+  "band": 2
+ },
+ "只": {
+  "pinyin": "zhǐ",
+  "gloss": "only",
+  "pos": [
+   "d",
+   "q"
+  ],
+  "band": 2
+ },
+ "纸": {
+  "pinyin": "zhǐ",
+  "gloss": "variant of 纸",
+  "pos": [
+   "n",
+   "q"
+  ],
+  "band": 2
+ },
+ "只能": {
+  "pinyin": "zhǐ néng",
+  "gloss": "can only",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "只要": {
+  "pinyin": "zhǐ yào",
+  "gloss": "if only",
+  "pos": [
+   "c"
+  ],
+  "band": 2
+ },
+ "主人": {
+  "pinyin": "zhǔ rén",
+  "gloss": "master",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "主要": {
+  "pinyin": "zhǔ yào",
+  "gloss": "main",
+  "pos": [
+   "b",
+   "d"
+  ],
+  "band": 2
+ },
+ "准确": {
+  "pinyin": "zhǔn què",
+  "gloss": "accurate; exact; precise",
+  "pos": [
+   "a",
+   "ad"
+  ],
+  "band": 2
+ },
+ "最近": {
+  "pinyin": "zuì jìn",
+  "gloss": "recently",
+  "pos": [
+   "t"
+  ],
+  "band": 2
+ },
+ "座": {
+  "pinyin": "zuò",
+  "gloss": "seat",
+  "pos": [
+   "q",
+   "g"
+  ],
+  "band": 2
+ },
+ "做到": {
+  "pinyin": "zuò dào",
+  "gloss": "to accomplish",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "做饭": {
+  "pinyin": "zuò fàn",
+  "gloss": "to prepare a meal",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "做法": {
+  "pinyin": "zuò fǎ",
+  "gloss": "way of handling sth",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "作家": {
+  "pinyin": "zuò jiā",
+  "gloss": "author",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "座位": {
+  "pinyin": "zuò wèi",
+  "gloss": "seat",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "作文": {
+  "pinyin": "zuò wén",
+  "gloss": "to write an essay",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "作业": {
+  "pinyin": "zuò yè",
+  "gloss": "school assignment",
+  "pos": [
+   "n",
+   "v",
+   "vn"
+  ],
+  "band": 2
+ },
+ "作用": {
+  "pinyin": "zuò yòng",
+  "gloss": "to act on",
+  "pos": [
+   "n",
+   "v"
+  ],
+  "band": 2
+ },
+ "嘴": {
+  "pinyin": "zuǐ",
+  "gloss": "mouth",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "脏": {
+  "pinyin": "zàng",
+  "gloss": "viscera",
+  "pos": [
+   "a",
+   "g"
+  ],
+  "band": 2
+ },
+ "咱": {
+  "pinyin": "zán",
+  "gloss": "variant of 咱",
+  "pos": [
+   "r"
+  ],
+  "band": 2
+ },
+ "咱们": {
+  "pinyin": "zán men",
+  "gloss": "we or us (including both the speaker and the person(s) spoken to)",
+  "pos": [
+   "r"
+  ],
+  "band": 2
+ },
+ "字典": {
+  "pinyin": "zì diǎn",
+  "gloss": "Chinese character dictionary (containing entries for single characters, contrasted with a 词典, which has entries for words of one or more characters)",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "自己": {
+  "pinyin": "zì jǐ",
+  "gloss": "oneself",
+  "pos": [
+   "r",
+   "v"
+  ],
+  "band": 2
+ },
+ "自行车": {
+  "pinyin": "zì xíng chē",
+  "gloss": "bicycle; bike",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "自由": {
+  "pinyin": "zì yóu",
+  "gloss": "freedom; liberty",
+  "pos": [
+   "a",
+   "an",
+   "ad"
+  ],
+  "band": 2
+ },
+ "怎么办": {
+  "pinyin": "zěn me bàn",
+  "gloss": "what's to be done",
+  "pos": [
+   "r",
+   "v"
+  ],
+  "band": 2
+ },
+ "怎么样": {
+  "pinyin": "zěn me yàng",
+  "gloss": "how?",
+  "pos": [
+   "r"
+  ],
+  "band": 2
+ },
+ "怎样": {
+  "pinyin": "zěn yàng",
+  "gloss": "how",
+  "pos": [
+   "r"
+  ],
+  "band": 2
+ },
+ "租": {
+  "pinyin": "zū",
+  "gloss": "to hire",
+  "pos": [
+   "v",
+   "g"
+  ],
+  "band": 2
+ },
+ "早晨": {
+  "pinyin": "zǎo chén",
+  "gloss": "early morning",
+  "pos": [
+   "t"
+  ],
+  "band": 2
+ },
+ "早餐": {
+  "pinyin": "zǎo cān",
+  "gloss": "breakfast",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "早就": {
+  "pinyin": "zǎo jiù",
+  "gloss": "already at an earlier time",
+  "pos": [
+   "d"
+  ],
+  "band": 2
+ },
+ "走过": {
+  "pinyin": "zǒu guò",
+  "gloss": "to walk past",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "走进": {
+  "pinyin": "zǒu jìn",
+  "gloss": "to enter",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "走开": {
+  "pinyin": "zǒu kāi",
+  "gloss": "to leave",
+  "pos": [
+   "v"
+  ],
+  "band": 2
+ },
+ "组成": {
+  "pinyin": "zǔ chéng",
+  "gloss": "to form",
+  "pos": [
+   "v",
+   "vn"
+  ],
+  "band": 2
+ },
+ "组长": {
+  "pinyin": "zǔ zhǎng",
+  "gloss": "group leader",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "爱情": {
+  "pinyin": "ài qíng",
+  "gloss": "romance; love (romantic)",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "爱人": {
+  "pinyin": "ài ren",
+  "gloss": "spouse (PRC)",
+  "pos": [
+   "n"
+  ],
+  "band": 2
+ },
+ "而且": {
+  "pinyin": "ér qiě",
+  "gloss": "(not only ...) but also",
+  "pos": [
+   "c"
+  ],
+  "band": 2
+ },
+ "啊": {
+  "pinyin": "ā",
+  "gloss": "interjection of surprise",
+  "pos": [
+   "y",
+   "e"
+  ],
+  "band": 2
+ },
+ "安静": {
+  "pinyin": "ān jìng",
+  "gloss": "quiet",
+  "pos": [
+   "a"
+  ],
+  "band": 2
+ },
+ "安全": {
+  "pinyin": "ān quán",
+  "gloss": "safe; secure",
+  "pos": [
+   "an",
+   "a",
+   "ad",
+   "n"
+  ],
+  "band": 2
+ }
+}
