@@ -97,10 +97,14 @@ kb/
 ```yaml
 id: family
 display_name: "Family (家人)"
-hsk_band: [1, 2]
 target_vocab: [家人, 妈妈, 爸爸, 哥哥, 姐姐, 几, 口]
 related: [greetings, self-intro]
 ```
+
+A topic does **not** declare an HSK band. The band ceiling ("what vocab is fair
+game") is a property of the *learner*, not the topic — it's universal
+(`config.HSK_BAND_CEILING`) and applies to every topic at once. A topic's own
+highest band is *derived* from its vocab (for ordering/gating), not authored.
 
 - **DB row** = `topic_id → kb_path` pointer + `content_hash` (to detect when the
   committed KB changed). Not the content.
@@ -373,8 +377,10 @@ The server persists durable learning state only — **no transcripts, no turns.*
 ```sql
 user(id, handle, created_at)
 
-topic(id, language, kb_path, content_hash, hsk_band_low, hsk_band_high)
-      -- pointer to kb/<language>/<id>/, NOT the content
+topic(id, language, kb_path, content_hash, max_band)
+      -- pointer to kb/<language>/<id>/, NOT the content.
+      -- max_band is DERIVED from the topic's vocab (highest HSK band used), for
+      -- ordering/gating; the fair-game ceiling itself is universal, not per-topic.
 
 covered_topic(user_id, language, topic_id, covered_at)   -- accumulating set
 
