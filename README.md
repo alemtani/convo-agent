@@ -50,6 +50,53 @@ uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
 
 The health check is available at `GET /health`.
 
+## Knowledge base & topic authoring
+
+Conversation topics live as version-controlled markdown under `kb/zh/`, **separate
+from the running service** — they're authored/edited at dev time, not by the app.
+
+```
+kb/zh/
+  index.md              # catalog of topics
+  _hsk/
+    hsk-3.0.json        # authoritative word→band membership list (band-drift guard)
+    ceiling.json        # the learner's universal HSK band ceiling (what vocab is fair game)
+    build.py            # regenerate hsk-3.0.json from the pinned upstream
+  _tools/
+    validate.py         # scope/membership guardrail for a topic
+    annotate_pinyin.py  # dialogue pinyin, derived from a topic's curated vocab
+  <topic>/
+    topic.md vocab.md grammar.md dialogues.md
+```
+
+**Two ways to manage topics:**
+
+- **Assisted (Claude Code):** invoke the `kb-topic` skill — type `/kb-topic` (e.g.
+  `/kb-topic add a family topic`) or just describe the task. It drafts/edits the
+  files, runs validation, and opens a PR. See `.claude/skills/kb-topic/SKILL.md`
+  for the workflow and the authoring rules it enforces.
+- **Manual (any editor):** edit the markdown, then run the tools yourself:
+
+  ```bash
+  pip install -r kb/zh/_tools/requirements.txt          # one-time (pypinyin)
+
+  # validate a topic (or --all) — fails on out-of-scope vocab
+  python kb/zh/_tools/validate.py kb/zh/greetings
+  python kb/zh/_tools/validate.py --all
+
+  # generate the pinyin line for a dialogue (matches the topic's curated vocab)
+  python kb/zh/_tools/annotate_pinyin.py kb/zh/greetings/vocab.md "你好吗？"
+
+  # raise the band ceiling, then re-validate every topic
+  #   edit band_ceiling in kb/zh/_hsk/ceiling.json
+  python kb/zh/_tools/validate.py --all
+
+  # regenerate the HSK wordlist (pinned upstream commit)
+  python kb/zh/_hsk/build.py
+  ```
+
+See `kb/zh/_hsk/README.md` for how the wordlist and band ceiling work.
+
 ## Current status
 
 The project is in early scaffold stage:
