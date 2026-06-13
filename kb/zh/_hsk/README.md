@@ -23,9 +23,14 @@ so it stays small and doubles as the offline fixture for validation tests.
 ## The ceiling is universal, not per-band-in-the-file
 
 The file holds every band so the data is never the bottleneck. *Which* bands are
-fair game is `config.HSK_BAND_CEILING` (the learner's current level), applied
+fair game is `ceiling.json` (`band_ceiling`, the learner's current level), applied
 uniformly across all topics — raise it once and every topic may use higher-band
 words. A topic's own highest band is *derived* from its vocab, not authored.
+
+The ceiling lives **here**, owned by the KB authoring workflow; the service merely
+consumes it (`backend.config.HSK_BAND_CEILING` reads this file). The dependency
+points tooling → service, never the reverse, so the authoring workflow stands
+alone. `_tools/validate.py` reads the same file.
 
 ## Re-runnable and pinned
 
