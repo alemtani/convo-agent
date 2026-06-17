@@ -26,5 +26,6 @@ def test_root_serves_static_page():
     resp = client.get("/")
     assert resp.status_code == 200
     assert "text/html" in resp.headers["content-type"]
-    # The page is the visible Phase 0 surface; it must reference the API it calls.
-    assert "/api/hello" in resp.text
+    # The page is the visible surface; it must reference the turn API it calls
+    # (Phase 1 deepened the page from the hello round-trip to push-to-talk).
+    assert "/api/turn" in resp.text

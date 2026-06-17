@@ -10,37 +10,260 @@
       font-family: -apple-system, system-ui, sans-serif;
       max-width: 32rem;
       margin: 0 auto;
-      padding: 2rem 1rem;
+      padding: 1.5rem 1rem 7rem;
       line-height: 1.5;
     }
     h1 { font-size: 1.25rem; }
-    #out {
-      padding: 1rem;
-      border: 1px solid currentColor;
-      border-radius: 0.5rem;
-      min-height: 1.5rem;
-    }
     .muted { opacity: 0.6; font-size: 0.85rem; }
+
+    #thread { display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1rem; }
+    .bubble {
+      padding: 0.6rem 0.85rem;
+      border-radius: 1rem;
+      max-width: 80%;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .bubble.user {
+      align-self: flex-end;
+      background: #0b7;
+      color: #fff;
+      border-bottom-right-radius: 0.25rem;
+    }
+    .bubble.partner {
+      align-self: flex-start;
+      background: rgba(127, 127, 127, 0.18);
+      border-bottom-left-radius: 0.25rem;
+    }
+    .bubble .zh { font-size: 1.15rem; }
+    .bubble .pinyin { opacity: 0.7; font-size: 0.85rem; }
+    .bubble.empty { font-style: italic; opacity: 0.6; }
+
+    #dock {
+      position: fixed;
+      left: 0; right: 0; bottom: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 1rem;
+      background: Canvas;
+      border-top: 1px solid rgba(127, 127, 127, 0.3);
+    }
+    #talk {
+      font-size: 1rem;
+      font-weight: 600;
+      padding: 0.9rem 2rem;
+      border-radius: 2rem;
+      border: 1px solid currentColor;
+      background: transparent;
+      color: inherit;
+      touch-action: none;
+      user-select: none;
+      cursor: pointer;
+    }
+    #talk.recording { background: #d33; color: #fff; border-color: #d33; }
+    #talk:disabled { opacity: 0.5; cursor: default; }
+    #status { font-size: 0.8rem; opacity: 0.7; min-height: 1rem; }
   </style>
 </head>
 <body>
   <h1>Convo Agent</h1>
-  <p class="muted">Phase 0 — confirms the page can reach the backend.</p>
-  <div id="out">…</div>
+  <p class="muted">Phase 1 — hold the button, speak Mandarin, see your words transcribed and a fixed 你好 reply.</p>
+
+  <div id="thread"></div>
+
+  <div id="dock">
+    <button id="talk">🎙️ Hold to talk</button>
+    <div id="status"></div>
+  </div>
 
   <script>
-    // Round-trips one string through the backend to prove connectivity.
-    async function ping() {
-      const out = document.getElementById("out");
-      try {
-        const resp = await fetch("/api/hello");
-        const data = await resp.json();
-        out.textContent = data.message;
-      } catch (err) {
-        out.textContent = "backend unreachable: " + err;
+    const talk = document.getElementById("talk");
+    const thread = document.getElementById("thread");
+    const status = document.getElementById("status");
+
+    const TARGET_RATE = 16000;
+    let audioCtx, stream, sourceNode, recorderNode, scriptNode;
+    let chunks = [];
+    let recording = false;
+
+    function setStatus(msg) { status.textContent = msg; }
+
+    function addBubble(role) {
+      const el = document.createElement("div");
+      el.className = "bubble " + role;
+      thread.appendChild(el);
+      el.scrollIntoView({ behavior: "smooth", block: "end" });
+      return el;
+    }
+
+    function renderUser(transcript) {
+      const el = addBubble("user");
+      if (transcript) {
+        el.textContent = transcript;
+      } else {
+        el.classList.add("empty");
+        el.textContent = "(nothing recognized)";
       }
     }
-    ping();
+
+    function renderPartner(reply) {
+      const el = addBubble("partner");
+      el.innerHTML =
+        '<div class="zh"></div><div class="pinyin"></div>';
+      el.querySelector(".zh").textContent = reply.zh;
+      el.querySelector(".pinyin").textContent = reply.pinyin;
+    }
+
+    async function startRecording() {
+      if (recording) return;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      } catch (err) {
+        setStatus("microphone blocked: " + err);
+        return;
+      }
+      recording = true;
+      chunks = [];
+      talk.classList.add("recording");
+      talk.textContent = "● Recording… release to send";
+      setStatus("");
+
+      // Ask for 16 kHz directly; we still downsample defensively from the
+      // context's actual rate in case the browser ignores the hint.
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)({
+        sampleRate: TARGET_RATE,
+      });
+      sourceNode = audioCtx.createMediaStreamSource(stream);
+
+      const pushFrame = (frame) => { if (recording) chunks.push(frame); };
+
+      let usedWorklet = false;
+      if (audioCtx.audioWorklet) {
+        try {
+          await audioCtx.audioWorklet.addModule("/recorder-worklet.js");
+          recorderNode = new AudioWorkletNode(audioCtx, "recorder-processor");
+          recorderNode.port.onmessage = (e) => pushFrame(e.data);
+          sourceNode.connect(recorderNode).connect(audioCtx.destination);
+          usedWorklet = true;
+        } catch (_) { usedWorklet = false; }
+      }
+      if (!usedWorklet) {
+        // Fallback: ScriptProcessorNode (deprecated but universally available).
+        scriptNode = audioCtx.createScriptProcessor(4096, 1, 1);
+        scriptNode.onaudioprocess = (e) =>
+          pushFrame(e.inputBuffer.getChannelData(0).slice(0));
+        sourceNode.connect(scriptNode).connect(audioCtx.destination);
+      }
+    }
+
+    async function stopRecording() {
+      if (!recording) return;
+      recording = false;
+      talk.classList.remove("recording");
+      talk.textContent = "🎙️ Hold to talk";
+
+      const inRate = audioCtx ? audioCtx.sampleRate : TARGET_RATE;
+      cleanupAudio();
+
+      const samples = downsample(flatten(chunks), inRate, TARGET_RATE);
+      chunks = [];
+      if (samples.length === 0) { setStatus("no audio captured"); return; }
+
+      const wav = encodeWav(samples, TARGET_RATE);
+      await sendTurn(wav);
+    }
+
+    function cleanupAudio() {
+      if (recorderNode) { recorderNode.port.onmessage = null; recorderNode.disconnect(); }
+      if (scriptNode) { scriptNode.onaudioprocess = null; scriptNode.disconnect(); }
+      if (sourceNode) sourceNode.disconnect();
+      if (stream) stream.getTracks().forEach((t) => t.stop());
+      if (audioCtx) audioCtx.close();
+      recorderNode = scriptNode = sourceNode = stream = audioCtx = null;
+    }
+
+    function flatten(frames) {
+      let len = 0;
+      for (const f of frames) len += f.length;
+      const out = new Float32Array(len);
+      let off = 0;
+      for (const f of frames) { out.set(f, off); off += f.length; }
+      return out;
+    }
+
+    // Linear-interpolation resample to 16 kHz (no-op when already at target).
+    function downsample(samples, inRate, outRate) {
+      if (inRate === outRate || samples.length === 0) return samples;
+      const ratio = inRate / outRate;
+      const outLen = Math.floor(samples.length / ratio);
+      const out = new Float32Array(outLen);
+      for (let i = 0; i < outLen; i++) {
+        const pos = i * ratio;
+        const lo = Math.floor(pos);
+        const hi = Math.min(lo + 1, samples.length - 1);
+        out[i] = samples[lo] + (samples[hi] - samples[lo]) * (pos - lo);
+      }
+      return out;
+    }
+
+    // Mono 16-bit PCM WAV (44-byte header + samples).
+    function encodeWav(samples, rate) {
+      const buf = new ArrayBuffer(44 + samples.length * 2);
+      const view = new DataView(buf);
+      const writeStr = (off, s) => {
+        for (let i = 0; i < s.length; i++) view.setUint8(off + i, s.charCodeAt(i));
+      };
+      writeStr(0, "RIFF");
+      view.setUint32(4, 36 + samples.length * 2, true);
+      writeStr(8, "WAVE");
+      writeStr(12, "fmt ");
+      view.setUint32(16, 16, true);        // PCM chunk size
+      view.setUint16(20, 1, true);         // audio format = PCM
+      view.setUint16(22, 1, true);         // channels = mono
+      view.setUint32(24, rate, true);      // sample rate
+      view.setUint32(28, rate * 2, true);  // byte rate (rate * blockAlign)
+      view.setUint16(32, 2, true);         // block align (channels * bytes)
+      view.setUint16(34, 16, true);        // bits per sample
+      writeStr(36, "data");
+      view.setUint32(40, samples.length * 2, true);
+      let off = 44;
+      for (let i = 0; i < samples.length; i++) {
+        const s = Math.max(-1, Math.min(1, samples[i]));
+        view.setInt16(off, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+        off += 2;
+      }
+      return new Blob([view], { type: "audio/wav" });
+    }
+
+    async function sendTurn(wavBlob) {
+      setStatus("transcribing…");
+      talk.disabled = true;
+      const form = new FormData();
+      form.append("audio", wavBlob, "turn.wav");
+      try {
+        const resp = await fetch("/api/turn", { method: "POST", body: form });
+        if (!resp.ok) {
+          const detail = await resp.text();
+          setStatus("error " + resp.status + ": " + detail);
+          return;
+        }
+        const data = await resp.json();
+        renderUser(data.transcript);
+        renderPartner(data.reply);
+        setStatus("");
+      } catch (err) {
+        setStatus("request failed: " + err);
+      } finally {
+        talk.disabled = false;
+      }
+    }
+
+    // Hold-to-talk: press to start, release (or leave the button) to send.
+    talk.addEventListener("pointerdown", (e) => { e.preventDefault(); startRecording(); });
+    talk.addEventListener("pointerup", (e) => { e.preventDefault(); stopRecording(); });
+    talk.addEventListener("pointercancel", () => stopRecording());
   </script>
 </body>
 </html>
