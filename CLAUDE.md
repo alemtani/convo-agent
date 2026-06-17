@@ -20,6 +20,8 @@ deferred, not in the hot path).
 - Azure Cognitive Services Speech SDK (STT + Pronunciation Assessment)
 - aiosqlite (async SQLite) — durable learning state only, not transcripts
 - Pydantic for data validation
+- pypinyin — server-side pinyin romanization of recognized speech (also an
+  authoring-tool dep; see `kb/zh/_tools/`)
 - python-dotenv for environment config
 - pytest + pytest-asyncio + httpx (test suite; `live` marker for real-API tests)
 - Frontend: mobile-first responsive web (PWA); transcript held in `localStorage`
