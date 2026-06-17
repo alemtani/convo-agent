@@ -50,6 +50,39 @@ uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
 
 The health check is available at `GET /health`.
 
+## Try it yourself (manual validation)
+
+The app is built in small, visible phases — each one adds something you can see
+and check by hand. To validate a phase, start the dev server (above) and follow
+its steps. **No API keys are needed for Phase 0.**
+
+### Phase 0 — hello world
+
+Proves the webpage can talk to the backend.
+
+1. Start the server:
+
+   ```bash
+   source .venv/bin/activate
+   uvicorn backend.main:app --reload --port 8000
+   ```
+
+2. Open **http://localhost:8000/** in your browser.
+3. ✅ **Expected:** the page shows the heading *Convo Agent* and a box that reads
+   **`hello world`** (the box fetches that text live from the backend — if the
+   backend were down it would say "backend unreachable").
+
+That's it. If you see `hello world` in the box, the page → backend round-trip works.
+
+<details>
+<summary>Prefer the command line?</summary>
+
+```bash
+curl http://localhost:8000/api/hello   # -> {"message":"hello world"}
+curl http://localhost:8000/health      # -> {"status":"ok"}
+```
+</details>
+
 ## Knowledge base & topic authoring
 
 Conversation topics live as version-controlled markdown under `kb/zh/`, **separate
@@ -99,9 +132,13 @@ See `kb/zh/_hsk/README.md` for how the wordlist and band ceiling work.
 
 ## Current status
 
-The project is in early scaffold stage:
+Built incrementally in user-visible phases (see **Try it yourself** above):
 
-- FastAPI server with CORS and health check endpoint
-- Configuration system loading API keys from `.env`
-- Dependencies installed for Claude, Azure Speech, and async SQLite
-- Conversation, speech processing, and pronunciation assessment endpoints are not yet implemented
+- ✅ **Phase 0 — hello world:** static page served by FastAPI round-trips a
+  string through `GET /api/hello`. Proves the page → backend path end-to-end.
+- ⏳ Phase 1 — push-to-talk audio → Azure speech-to-text → echo your words back.
+- ⏳ Phases 2+ — pronunciation scores, the Claude conversation partner, feedback,
+  bounded sessions, and durable progress. Not yet implemented.
+
+Also in place from the scaffold: CORS, `/health`, config loading API keys from
+`.env`, and the knowledge-base tooling under `kb/zh/`.
