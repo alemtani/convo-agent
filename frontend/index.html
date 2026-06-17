@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Convo Agent</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body {
+      font-family: -apple-system, system-ui, sans-serif;
+      max-width: 32rem;
+      margin: 0 auto;
+      padding: 2rem 1rem;
+      line-height: 1.5;
+    }
+    h1 { font-size: 1.25rem; }
+    #out {
+      padding: 1rem;
+      border: 1px solid currentColor;
+      border-radius: 0.5rem;
+      min-height: 1.5rem;
+    }
+    .muted { opacity: 0.6; font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+  <h1>Convo Agent</h1>
+  <p class="muted">Phase 0 — confirms the page can reach the backend.</p>
+  <div id="out">…</div>
+
+  <script>
+    // Round-trips one string through the backend to prove connectivity.
+    async function ping() {
+      const out = document.getElementById("out");
+      try {
+        const resp = await fetch("/api/hello");
+        const data = await resp.json();
+        out.textContent = data.message;
+      } catch (err) {
+        out.textContent = "backend unreachable: " + err;
+      }
+    }
+    ping();
+  </script>
+</body>
+</html>
