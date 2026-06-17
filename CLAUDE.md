@@ -28,8 +28,9 @@ deferred, not in the hot path).
 
 ## Key files and directories
 
-Target layout (per `docs/DESIGN.md`). The backend is currently a scaffold
-(health endpoint + config only); most modules below are planned.
+Target layout (per `docs/DESIGN.md`). The backend currently serves Phases 0–1
+(health, `/api/hello`, and `POST /api/turn` → Azure STT + pinyin); the remaining
+modules below are planned.
 
 ```
 backend/
@@ -44,6 +45,7 @@ backend/
     pronunciation.py   # Azure PA (two-pass)
   kb.py                # load topic markdown, parse frontmatter
   profile.py           # covered-set + proficiency CRUD + selection weighting
+  pinyin.py            # romanize recognized speech for display (pypinyin)
   models.py            # Pydantic models
   db.py                # aiosqlite setup
   config.py            # env vars (API keys, Azure region)
