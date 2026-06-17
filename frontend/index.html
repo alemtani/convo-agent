@@ -82,6 +82,24 @@
     #talk.recording { background: #d33; color: #fff; border-color: #d33; }
     #talk:disabled { opacity: 0.5; cursor: default; }
     #status { font-size: 0.8rem; opacity: 0.7; min-height: 1rem; }
+
+    /* Live mic-level meter — visible only while recording (see #meter.active). */
+    #meter {
+      width: 12rem;
+      height: 0.4rem;
+      border-radius: 0.4rem;
+      background: rgba(127, 127, 127, 0.25);
+      overflow: hidden;
+      visibility: hidden;
+    }
+    #meter.active { visibility: visible; }
+    #meter-fill {
+      height: 100%;
+      width: 0%;
+      background: #d33;
+      border-radius: inherit;
+      transform-origin: left;
+    }
   </style>
 </head>
 <body>
@@ -92,6 +110,7 @@
 
   <div id="dock">
     <button id="talk">🎙️ Hold to talk</button>
+    <div id="meter"><div id="meter-fill"></div></div>
     <div id="status"></div>
   </div>
 
@@ -99,9 +118,12 @@
     const talk = document.getElementById("talk");
     const thread = document.getElementById("thread");
     const status = document.getElementById("status");
+    const meter = document.getElementById("meter");
+    const meterFill = document.getElementById("meter-fill");
 
     const TARGET_RATE = 16000;
     let audioCtx, stream, sourceNode, recorderNode, scriptNode;
+    let analyserNode, meterRaf;
     let chunks = [];
     let recording = false;
 
@@ -183,6 +205,7 @@
         sampleRate: TARGET_RATE,
       });
       sourceNode = audioCtx.createMediaStreamSource(stream);
+      startMeter();
 
       const pushFrame = (frame) => { if (recording) chunks.push(frame); };
 
@@ -222,7 +245,38 @@
       await sendTurn(wav);
     }
 
+    // Live mic-level meter: tap an AnalyserNode off the source (a sink — never
+    // routed to destination) and animate the bar from the signal's RMS. For the
+    // recording window only; stopMeter resets it on release.
+    function startMeter() {
+      analyserNode = audioCtx.createAnalyser();
+      analyserNode.fftSize = 1024;
+      sourceNode.connect(analyserNode);
+      const buf = new Float32Array(analyserNode.fftSize);
+      meter.classList.add("active");
+      const tick = () => {
+        if (!recording || !analyserNode) return;
+        analyserNode.getFloatTimeDomainData(buf);
+        let sum = 0;
+        for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
+        const rms = Math.sqrt(sum / buf.length);
+        // Map RMS to a width; the *3 gain makes normal speech fill the bar.
+        meterFill.style.width = Math.min(100, rms * 300) + "%";
+        meterRaf = requestAnimationFrame(tick);
+      };
+      meterRaf = requestAnimationFrame(tick);
+    }
+
+    function stopMeter() {
+      if (meterRaf) cancelAnimationFrame(meterRaf);
+      if (analyserNode) analyserNode.disconnect();
+      meterRaf = analyserNode = null;
+      meter.classList.remove("active");
+      meterFill.style.width = "0%";
+    }
+
     function cleanupAudio() {
+      stopMeter();
       if (recorderNode) { recorderNode.port.onmessage = null; recorderNode.disconnect(); }
       if (scriptNode) { scriptNode.onaudioprocess = null; scriptNode.disconnect(); }
       if (sourceNode) sourceNode.disconnect();

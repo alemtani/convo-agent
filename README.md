@@ -84,8 +84,9 @@ transcript → rendered, color-coded transcript). **Needs an Azure Speech key**
 
 3. Open **http://localhost:8000/** in your browser (use `localhost`, not a LAN
    IP — the mic needs a secure context, and `localhost` counts as one).
-4. **Hold** the *🎙️ Hold to talk* button, say a Mandarin phrase (e.g. 你好老师),
-   and release.
+4. **Hold** the *🎙️ Hold to talk* button — a live mic-level meter fills as you
+   speak, so you can see the mic is capturing — say a Mandarin phrase (e.g.
+   你好老师), and release.
 5. ✅ **Expected:** a green bubble with your transcribed words, each syllable
    underlined by how well you pronounced it (green = good, amber = ok, red = off)
    and an overall **tone NN/100** badge; then a grey bubble reading
