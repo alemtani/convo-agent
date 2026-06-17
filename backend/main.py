@@ -4,14 +4,15 @@ from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from backend.models import PartnerReply, TurnResponse
+from backend.models import TurnResponse, Utterance
+from backend.pinyin import to_pinyin
 from backend.speech import stt
 
 app = FastAPI(title="Convo Agent", version="0.1.0")
 
 # Phase 1 hardcoded reply — every turn echoes this fixed greeting. Replaced by
 # the Claude conversation worker in Phase 3.
-PARTNER_REPLY = PartnerReply(zh="你好", pinyin="nǐ hǎo")
+PARTNER_REPLY = Utterance(zh="你好", pinyin="nǐ hǎo")
 
 app.add_middleware(
     CORSMiddleware,
@@ -43,9 +44,10 @@ async def turn(audio: UploadFile = File(...)) -> TurnResponse:
     """
     audio_bytes = await audio.read()
     try:
-        transcript = await stt.transcribe(audio_bytes)
+        recognized = await stt.transcribe(audio_bytes)
     except stt.SttError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
+    transcript = Utterance(zh=recognized, pinyin=to_pinyin(recognized))
     return TurnResponse(transcript=transcript, reply=PARTNER_REPLY)
 
 

@@ -1,16 +1,18 @@
 """Pydantic models for the turn contract.
 
-Phase 1 needs only the response shape: the user's transcribed speech plus the
-partner's reply. The reply is a nested `PartnerReply` (汉字 + pinyin) because that
-pair is the recurring unit across the design — DESIGN.md's `partner_response`
-structured output and every KB dialogue line — so Phase 3's conversation worker
-maps onto it without reshaping the HTTP response.
+Phase 1 needs only the response shape: the user's transcribed speech and the
+partner's reply, each rendered as a 汉字 + pinyin line. Both sides share one
+`Utterance` model — the pair is the recurring unit across the design (DESIGN.md's
+`partner_response` and every KB dialogue line), and a beginner reads pinyin for
+their own words as much as the partner's. In Phase 3 the partner reply is produced
+by the conversation worker and a separate `turn_annotation` is added alongside
+these fields (not nested inside the utterance).
 """
 from pydantic import BaseModel
 
 
-class PartnerReply(BaseModel):
-    """The partner's turn: Chinese characters and their pinyin reading."""
+class Utterance(BaseModel):
+    """One line of dialogue: Chinese characters and their pinyin reading."""
 
     zh: str
     pinyin: str
@@ -19,10 +21,10 @@ class PartnerReply(BaseModel):
 class TurnResponse(BaseModel):
     """Response body for `POST /api/turn`.
 
-    `transcript` is the user's turn (Azure STT output); `reply` is the partner's
-    turn. In Phase 1 `reply` is a hardcoded constant; Phase 3 replaces it with the
-    conversation worker's output and adds annotation fields here.
+    `transcript` is the user's turn (Azure STT output + derived pinyin); `reply`
+    is the partner's turn. In Phase 1 `reply` is a hardcoded constant; Phase 3
+    replaces it with the conversation worker's output.
     """
 
-    transcript: str
-    reply: PartnerReply
+    transcript: Utterance
+    reply: Utterance

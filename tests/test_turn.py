@@ -26,10 +26,22 @@ def test_turn_returns_transcript_and_fixed_reply(monkeypatch):
     resp = client.post("/api/turn", files=_upload())
 
     assert resp.status_code == 200
+    # The route attaches machine-derived pinyin to the recognized characters.
     assert resp.json() == {
-        "transcript": "你好老师",
+        "transcript": {"zh": "你好老师", "pinyin": "nǐ hǎo lǎo shī"},
         "reply": {"zh": "你好", "pinyin": "nǐ hǎo"},
     }
+
+
+def test_turn_empty_recognition_yields_empty_utterance(monkeypatch):
+    async def fake_transcribe(audio_wav, language="zh-CN"):
+        return ""
+
+    monkeypatch.setattr(stt, "transcribe", fake_transcribe)
+
+    resp = client.post("/api/turn", files=_upload())
+    assert resp.status_code == 200
+    assert resp.json()["transcript"] == {"zh": "", "pinyin": ""}
 
 
 def test_turn_requires_audio_field():

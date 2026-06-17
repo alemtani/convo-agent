@@ -6,6 +6,7 @@ azure-cognitiveservices-speech==1.42.0
 python-multipart==0.0.20
 pydantic==2.11.3
 aiosqlite==0.21.0
+pypinyin==0.55.0
 
 # Test suite
 pytest==8.2.0

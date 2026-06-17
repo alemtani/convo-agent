@@ -98,22 +98,17 @@
       return el;
     }
 
-    function renderUser(transcript) {
-      const el = addBubble("user");
-      if (transcript) {
-        el.textContent = transcript;
-      } else {
+    // Both sides render the same way: 汉字 on top, pinyin beneath.
+    function renderLine(role, utt, emptyText) {
+      const el = addBubble(role);
+      if (!utt.zh) {
         el.classList.add("empty");
-        el.textContent = "(nothing recognized)";
+        el.textContent = emptyText;
+        return;
       }
-    }
-
-    function renderPartner(reply) {
-      const el = addBubble("partner");
-      el.innerHTML =
-        '<div class="zh"></div><div class="pinyin"></div>';
-      el.querySelector(".zh").textContent = reply.zh;
-      el.querySelector(".pinyin").textContent = reply.pinyin;
+      el.innerHTML = '<div class="zh"></div><div class="pinyin"></div>';
+      el.querySelector(".zh").textContent = utt.zh;
+      el.querySelector(".pinyin").textContent = utt.pinyin;
     }
 
     async function startRecording() {
@@ -250,8 +245,8 @@
           return;
         }
         const data = await resp.json();
-        renderUser(data.transcript);
-        renderPartner(data.reply);
+        renderLine("user", data.transcript, "(nothing recognized)");
+        renderLine("partner", data.reply, "");
         setStatus("");
       } catch (err) {
         setStatus("request failed: " + err);

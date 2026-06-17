@@ -90,8 +90,9 @@ async def test_builds_config_from_settings_and_returns_text(patched):
 async def test_language_is_overridable(patched):
     recorder = patched(_result("RecognizedSpeech", text="hi"))
 
-    await stt.transcribe(b"FAKEWAV", language="en-US")
+    out = await stt.transcribe(b"FAKEWAV", language="en-US")
 
+    assert out == "hi"
     assert recorder["speech_config"].speech_recognition_language == "en-US"
 
 
