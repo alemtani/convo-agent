@@ -517,17 +517,34 @@ from completed feedback rounds is already 💾, so learning progress survives.
 - Multi-user accounts; second language.
 - Topic-generator skill (hand-author markdown until the cadence hurts).
 
-### Build Order
+### Build Order — walking skeleton
 
-1. KB loader + 2–3 seed topics (markdown) — de-risks the KB → prompt path.
-2. Conversation worker with cached prefix + structured output — prove cache hits
-   (`cache_read_input_tokens > 0`).
-3. Speech pipeline (STT + PA in parallel) wired into the orchestrator.
-4. Client transcript + turn redo (localStorage).
-5. Bounding + session lifecycle.
-6. Feedback worker + proficiency writeback + covered-set weighting.
-7. DM PWA + push-to-talk.
-8. Auth gate + deploy; open it on a phone.
+Built as a **walking skeleton**: a thin end-to-end slice (audio in → text out)
+runs first, then each integration is deepened *in place*. Parts not yet built are
+hardcoded so the app stays runnable and demoable every phase, and each phase adds
+one **user-visible** capability (the "supported" line). This refines — and
+supersedes — an earlier horizontal order (KB → worker → speech → …) that wasn't
+demoable until late. Per-phase how-to-validate steps live in the README's
+**Try it yourself** section (updated in place each phase, never appended).
+
+| Phase | Adds | Supported (visible) |
+| --- | --- | --- |
+| 0 | `GET /api/hello` + static page (FastAPI static mount) | Page round-trips a string through the backend. |
+| 1 | Push-to-talk upload → Azure STT; hardcoded 你好 reply | Speak → see your words transcribed + a fixed 汉字 reply. |
+| 2 | Azure PA in parallel with STT (two-pass) | …plus per-syllable tone scores. |
+| 3a | `kb.py` + conversation worker, **text-only**; cached prefix (opening line hardcoded) | Text in → real Claude greeting reply + annotation; **cache hits proven**. |
+| 3b | Wire speech (2) into the worker (3a) | Speak → real Mandarin partner reply + tone scores (greetings, 1 turn). |
+| 4 | Multi-turn (client-held transcript, ~3 turns) + feedback worker (in-session text, **no persistence**) | A short greetings exchange with coaching feedback. |
+| 5 | Full bounding (`active→wrapping→complete`, phase hints) + sketch worker (replaces hardcoded opening) | A complete, naturally-bounded session start→goodbye. |
+| 6 | Turn redo (client-side; server stays stateless) | Redo a turn / redo the conversation. |
+| 7 | `db.py` + `profile.py`: covered-set + proficiency writeback + weighting | Progress persists across sessions. |
+| 8 | Passcode auth gate + DM PWA + deploy | Real session, gated, on a phone. |
+
+Phase 3 is split (3a text-only worker + cache proof, then 3b speech wiring)
+because it bundles the KB loader, cached-prefix invariant, opening line, and
+structured output — too much to land or test at once. Durable state (DB,
+proficiency, covered-set) is deferred to Phase 7; "feedback" before then is
+in-session text only.
 
 ---
 

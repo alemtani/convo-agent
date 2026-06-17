@@ -52,13 +52,15 @@ The health check is available at `GET /health`.
 
 ## Try it yourself (manual validation)
 
-The app is built in small, visible phases — each one adds something you can see
-and check by hand. To validate a phase, start the dev server (above) and follow
-its steps. **No API keys are needed for Phase 0.**
+This section always shows **only what the app does right now** — one walkthrough,
+**updated in place** as each phase ships, never an append-only pile of old steps.
+Because phases are cumulative (each builds on the last), running the current
+walkthrough exercises everything underneath it. The full phase plan lives in
+[`docs/DESIGN.md`](docs/DESIGN.md#build-order--walking-skeleton).
 
-### Phase 0 — hello world
+### What works today: Phase 0 — hello world
 
-Proves the webpage can talk to the backend.
+Proves the webpage can talk to the backend. **No API keys needed.**
 
 1. Start the server:
 
@@ -68,11 +70,9 @@ Proves the webpage can talk to the backend.
    ```
 
 2. Open **http://localhost:8000/** in your browser.
-3. ✅ **Expected:** the page shows the heading *Convo Agent* and a box that reads
-   **`hello world`** (the box fetches that text live from the backend — if the
-   backend were down it would say "backend unreachable").
-
-That's it. If you see `hello world` in the box, the page → backend round-trip works.
+3. ✅ **Expected:** the heading *Convo Agent* and a box reading **`hello world`** —
+   fetched live from the backend, not baked into the page (a dead backend would
+   show "backend unreachable"). If you see `hello world`, the round-trip works.
 
 <details>
 <summary>Prefer the command line?</summary>
