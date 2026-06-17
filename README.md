@@ -58,27 +58,42 @@ Because phases are cumulative (each builds on the last), running the current
 walkthrough exercises everything underneath it. The full phase plan lives in
 [`docs/DESIGN.md`](docs/DESIGN.md#build-order--walking-skeleton).
 
-### What works today: Phase 0 — hello world
+### What works today: Phase 1 — push-to-talk → speech-to-text
 
-Proves the webpage can talk to the backend. **No API keys needed.**
+Hold a button, speak Mandarin, and see your words transcribed plus a fixed 你好
+reply. Proves the audio path (mic → upload → Azure speech-to-text → rendered
+transcript). **Needs an Azure Speech key** (Anthropic is not used until Phase 3).
 
-1. Start the server:
+1. Provision an Azure Speech resource and set credentials in `.env` (see
+   [`docs/phase-1-spec.md`](docs/phase-1-spec.md) for click-by-click steps):
+
+   ```bash
+   AZURE_SPEECH_KEY=<your key>
+   AZURE_SPEECH_REGION=eastus
+   ```
+
+2. Start the server:
 
    ```bash
    source .venv/bin/activate
    uvicorn backend.main:app --reload --port 8000
    ```
 
-2. Open **http://localhost:8000/** in your browser.
-3. ✅ **Expected:** the heading *Convo Agent* and a box reading **`hello world`** —
-   fetched live from the backend, not baked into the page (a dead backend would
-   show "backend unreachable"). If you see `hello world`, the round-trip works.
+3. Open **http://localhost:8000/** in your browser (use `localhost`, not a LAN
+   IP — the mic needs a secure context, and `localhost` counts as one).
+4. **Hold** the *🎙️ Hold to talk* button, say a Mandarin phrase (e.g. 你好老师),
+   and release.
+5. ✅ **Expected:** a green bubble with your transcribed words, then a grey bubble
+   reading **你好 / nǐ hǎo**. If the transcript matches what you said, Azure STT
+   and the upload path work. (No speech detected shows *(nothing recognized)*.)
 
 <details>
 <summary>Prefer the command line?</summary>
 
 ```bash
-curl http://localhost:8000/api/hello   # -> {"message":"hello world"}
+# Post any 16 kHz mono WAV; the reply is always the fixed 你好.
+curl -F "audio=@your-clip.wav" http://localhost:8000/api/turn
+# -> {"transcript":"…","reply":{"zh":"你好","pinyin":"nǐ hǎo"}}
 curl http://localhost:8000/health      # -> {"status":"ok"}
 ```
 </details>
@@ -136,9 +151,12 @@ Built incrementally in user-visible phases (see **Try it yourself** above):
 
 - ✅ **Phase 0 — hello world:** static page served by FastAPI round-trips a
   string through `GET /api/hello`. Proves the page → backend path end-to-end.
-- ⏳ Phase 1 — push-to-talk audio → Azure speech-to-text → echo your words back.
-- ⏳ Phases 2+ — pronunciation scores, the Claude conversation partner, feedback,
-  bounded sessions, and durable progress. Not yet implemented.
+- ✅ **Phase 1 — push-to-talk → speech-to-text:** the page records 16 kHz WAV in
+  the browser and uploads it to `POST /api/turn`; Azure STT transcribes it and the
+  backend returns a fixed 你好 reply. Proves the audio path before adding scores.
+- ⏳ Phase 2 — Azure pronunciation assessment (per-syllable tone scores) alongside STT.
+- ⏳ Phases 3+ — the Claude conversation partner, feedback, bounded sessions, and
+  durable progress. Not yet implemented.
 
 Also in place from the scaffold: CORS, `/health`, config loading API keys from
 `.env`, and the knowledge-base tooling under `kb/zh/`.
