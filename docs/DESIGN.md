@@ -546,6 +546,15 @@ structured output — too much to land or test at once. Durable state (DB,
 proficiency, covered-set) is deferred to Phase 7; "feedback" before then is
 in-session text only.
 
+**Deferred UX polish (Phase 2).** Add a live **mic-level meter** during
+push-to-talk recording — right now the only "is it capturing?" feedback is the
+button turning red. A natural fold-in when Phase 2 reshapes the recording UI for
+tone scores. Cheap and client-only: tap an `AnalyserNode` off the existing Web
+Audio source (or reuse the Float32 frames already collected in `index.html`),
+animate a bar on `requestAnimationFrame`, and reset it on release. The meter is
+for the *recording* window only; the post-release transcribe wait keeps the
+existing "transcribing…" status.
+
 ---
 
 ## Technical Risks & Mitigations

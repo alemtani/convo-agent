@@ -41,6 +41,12 @@ A Mandarin conversation practice agent powered by Claude and Azure Speech Servic
    AZURE_SPEECH_REGION=eastus
    ```
 
+   **Getting an Azure Speech key** (needed from Phase 1; Anthropic isn't used
+   until Phase 3): in the [Azure portal](https://portal.azure.com), create a
+   **Speech** resource (Free **F0** tier is plenty), region **East US** (matches
+   the `eastus` default in `backend/config.py`). Then under **Keys and Endpoint**,
+   copy **KEY 1** → `AZURE_SPEECH_KEY` and the **Region** → `AZURE_SPEECH_REGION`.
+
 ## Running the dev server
 
 ```bash
@@ -64,13 +70,8 @@ Hold a button, speak Mandarin, and see your words transcribed plus a fixed 你�
 reply. Proves the audio path (mic → upload → Azure speech-to-text → rendered
 transcript). **Needs an Azure Speech key** (Anthropic is not used until Phase 3).
 
-1. Provision an Azure Speech resource and set credentials in `.env` (see
-   [`docs/phase-1-spec.md`](docs/phase-1-spec.md) for click-by-click steps):
-
-   ```bash
-   AZURE_SPEECH_KEY=<your key>
-   AZURE_SPEECH_REGION=eastus
-   ```
+1. Set `AZURE_SPEECH_KEY` / `AZURE_SPEECH_REGION` in `.env` (see
+   [Setup](#setup) above for how to provision the Azure Speech resource).
 
 2. Start the server:
 

@@ -1,3 +1,5 @@
-# Authoring-time deps for the zh KB tools (NOT backend runtime deps).
-# build.py uses only stdlib; annotate_pinyin.py needs pypinyin.
+# Authoring-time deps for the zh KB tools: build.py is stdlib-only,
+# annotate_pinyin.py needs pypinyin. NOTE: pypinyin is ALSO a backend runtime
+# dependency (pinned in backend/requirements.txt) — the service romanizes
+# recognized speech with it. This file is just the authoring-tool pin.
 pypinyin>=0.55

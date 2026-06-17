@@ -20,14 +20,17 @@ deferred, not in the hot path).
 - Azure Cognitive Services Speech SDK (STT + Pronunciation Assessment)
 - aiosqlite (async SQLite) — durable learning state only, not transcripts
 - Pydantic for data validation
+- pypinyin — server-side pinyin romanization of recognized speech (also an
+  authoring-tool dep; see `kb/zh/_tools/`)
 - python-dotenv for environment config
 - pytest + pytest-asyncio + httpx (test suite; `live` marker for real-API tests)
 - Frontend: mobile-first responsive web (PWA); transcript held in `localStorage`
 
 ## Key files and directories
 
-Target layout (per `docs/DESIGN.md`). The backend is currently a scaffold
-(health endpoint + config only); most modules below are planned.
+Target layout (per `docs/DESIGN.md`). The backend currently serves Phases 0–1
+(health, `/api/hello`, and `POST /api/turn` → Azure STT + pinyin); the remaining
+modules below are planned.
 
 ```
 backend/
@@ -42,6 +45,7 @@ backend/
     pronunciation.py   # Azure PA (two-pass)
   kb.py                # load topic markdown, parse frontmatter
   profile.py           # covered-set + proficiency CRUD + selection weighting
+  pinyin.py            # romanize recognized speech for display (pypinyin)
   models.py            # Pydantic models
   db.py                # aiosqlite setup
   config.py            # env vars (API keys, Azure region)
