@@ -1,10 +1,8 @@
 """Azure Speech-to-Text boundary.
 
-The only module that imports the Azure Speech SDK. Takes a WAV byte blob
-(16 kHz mono PCM, encoded client-side) and returns the recognized transcript.
-
-Phase 1 scope: speech-to-text only. Pronunciation assessment (tone scores) is
-Phase 2 and will run in parallel with this call.
+Takes a WAV byte blob (16 kHz mono PCM, encoded client-side) and returns the
+recognized transcript. This is the first pass of the two-pass speech flow: the
+transcript it returns becomes the reference text for `pronunciation.assess`.
 """
 import asyncio
 import tempfile
