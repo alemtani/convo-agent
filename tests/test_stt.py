@@ -1,14 +1,15 @@
 """Azure STT boundary — contract tests with the SDK fully mocked.
 
-We assert the *request we build* (subscription/region from config, recognition
-language) and that we *parse* each SDK result reason correctly. We never hit
-Azure and never assert real recognition text (that's a manual/live check).
+We assert that we *parse* each SDK result reason correctly (text / NoMatch /
+Canceled). The shared recognizer construction is covered in `test_recognizer.py`;
+here we only check what `stt` adds on top. We never hit Azure and never assert
+real recognition text (that's a manual/live check).
 """
 import types
 
 import pytest
 
-from backend.speech import stt
+from backend.speech import _recognizer, stt
 
 
 def _make_fake_speechsdk(result, recorder):
@@ -59,32 +60,32 @@ def _result(reason, text="", error_details=""):
 
 @pytest.fixture
 def patched(monkeypatch):
-    """Install fake credentials; return a helper that wires a fake SDK + result."""
-    monkeypatch.setattr(stt.config, "AZURE_SPEECH_KEY", "test-key")
-    monkeypatch.setattr(stt.config, "AZURE_SPEECH_REGION", "test-region")
+    """Install fake credentials; return a helper that wires a fake SDK + result.
+
+    The same fake serves both `stt` (result dispatch) and `_recognizer` (the
+    shared construction `stt` now delegates to).
+    """
+    monkeypatch.setattr(_recognizer.config, "AZURE_SPEECH_KEY", "test-key")
+    monkeypatch.setattr(_recognizer.config, "AZURE_SPEECH_REGION", "test-region")
 
     def install(result):
         recorder = {}
-        monkeypatch.setattr(
-            stt, "speechsdk", _make_fake_speechsdk(result, recorder)
-        )
+        fake = _make_fake_speechsdk(result, recorder)
+        monkeypatch.setattr(stt, "speechsdk", fake)
+        monkeypatch.setattr(_recognizer, "speechsdk", fake)
         return recorder
 
     return install
 
 
-async def test_builds_config_from_settings_and_returns_text(patched):
+async def test_recognized_speech_returns_text(patched):
     recorder = patched(_result("RecognizedSpeech", text="你好老师"))
 
     out = await stt.transcribe(b"FAKEWAV")
 
     assert out == "你好老师"
-    cfg = recorder["speech_config"]
-    assert cfg.subscription == "test-key"
-    assert cfg.region == "test-region"
-    assert cfg.speech_recognition_language == "zh-CN"
-    # The WAV bytes are handed to the SDK via a temp .wav file.
-    assert recorder["audio_config"].filename.endswith(".wav")
+    # transcribe forwards its default language through to the recognizer.
+    assert recorder["speech_config"].speech_recognition_language == "zh-CN"
 
 
 async def test_language_is_overridable(patched):

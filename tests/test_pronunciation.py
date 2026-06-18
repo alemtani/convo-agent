@@ -15,6 +15,7 @@ import types
 import pytest
 
 from backend.models import PronunciationScore
+from backend.speech import _recognizer
 from backend.speech import pronunciation as pa
 
 
@@ -97,14 +98,16 @@ def _make_fake_speechsdk(result, recorder):
 
 @pytest.fixture
 def patched(monkeypatch):
-    monkeypatch.setattr(pa.config, "AZURE_SPEECH_KEY", "test-key")
-    monkeypatch.setattr(pa.config, "AZURE_SPEECH_REGION", "test-region")
+    """One fake SDK serves both `pronunciation` (PA config + result parsing) and
+    `_recognizer` (the shared construction PA delegates to)."""
+    monkeypatch.setattr(_recognizer.config, "AZURE_SPEECH_KEY", "test-key")
+    monkeypatch.setattr(_recognizer.config, "AZURE_SPEECH_REGION", "test-region")
 
     def install(result):
         recorder = {}
-        monkeypatch.setattr(
-            pa, "speechsdk", _make_fake_speechsdk(result, recorder)
-        )
+        fake = _make_fake_speechsdk(result, recorder)
+        monkeypatch.setattr(pa, "speechsdk", fake)
+        monkeypatch.setattr(_recognizer, "speechsdk", fake)
         return recorder
 
     return install
@@ -120,16 +123,12 @@ async def test_builds_pa_request_against_the_transcript(patched):
 
     await pa.assess(b"FAKEWAV", "老师")
 
+    # PA-specific request shape (shared construction is covered in test_recognizer).
     assert recorder["reference_text"] == "老师"
     assert recorder["grading_system"] == "HundredMark"
     assert recorder["granularity"] == "Phoneme"
     # The PA config must be applied to the recognizer that was built.
     assert recorder["applied_to"] is not None
-    cfg = recorder["speech_config"]
-    assert cfg.subscription == "test-key"
-    assert cfg.region == "test-region"
-    assert cfg.speech_recognition_language == "zh-CN"
-    assert recorder["audio_config"].filename.endswith(".wav")
 
 
 async def test_parses_syllables_with_derived_pinyin(patched):

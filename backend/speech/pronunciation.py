@@ -12,14 +12,13 @@ field empty and reports the scored hanzi in `grapheme`, so we key scores by
 hanzi and derive each chunk's pinyin locally via `pinyin.to_pinyin` for display.
 """
 import asyncio
-import tempfile
 from typing import Optional
 
 import azure.cognitiveservices.speech as speechsdk
 
-from backend import config
 from backend.models import PronunciationScore, SyllableScore
 from backend.pinyin import to_pinyin
+from backend.speech._recognizer import cancellation_message, recognizer_for
 
 
 class PaError(RuntimeError):
@@ -65,28 +64,16 @@ def _assess_sync(
 ) -> Optional[PronunciationScore]:
     """Blocking pronunciation assessment of ``audio_wav`` against a reference.
 
-    Same temp-file + ``AudioConfig(filename=...)`` approach as `stt._recognize_sync`
-    so the SDK parses the RIFF/WAV header itself.
+    Shares the recognizer construction with `stt` via `recognizer_for`; the only
+    PA-specific step is applying the assessment config before recognition.
     """
-    speech_config = speechsdk.SpeechConfig(
-        subscription=config.AZURE_SPEECH_KEY,
-        region=config.AZURE_SPEECH_REGION,
-    )
-    speech_config.speech_recognition_language = language
-
     pa_config = speechsdk.PronunciationAssessmentConfig(
         reference_text=reference_text,
         grading_system=speechsdk.PronunciationAssessmentGradingSystem.HundredMark,
         granularity=speechsdk.PronunciationAssessmentGranularity.Phoneme,
     )
 
-    with tempfile.NamedTemporaryFile(suffix=".wav") as tmp:
-        tmp.write(audio_wav)
-        tmp.flush()
-        audio_config = speechsdk.audio.AudioConfig(filename=tmp.name)
-        recognizer = speechsdk.SpeechRecognizer(
-            speech_config=speech_config, audio_config=audio_config
-        )
+    with recognizer_for(audio_wav, language) as recognizer:
         pa_config.apply_to(recognizer)
         result = recognizer.recognize_once()
 
@@ -97,10 +84,7 @@ def _assess_sync(
         # Audio processed but nothing scorable — degrade to no scores.
         return None
 
-    details = speechsdk.CancellationDetails.from_result(result)
-    raise PaError(
-        f"Azure PA canceled ({details.reason}): {details.error_details}"
-    )
+    raise PaError(f"Azure PA canceled {cancellation_message(result)}")
 
 
 async def assess(
