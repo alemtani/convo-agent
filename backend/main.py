@@ -60,10 +60,15 @@ async def turn(
 async def turn_text(req: TextTurnRequest) -> ConversationTurnResponse:
     """One text-only conversation turn: real Claude reply + turn annotation.
 
-    The speech-free path (Phase 3a) that proves the conversation worker and the
-    cached prefix. Stateless: the client sends its running `dialogue` plus the
-    latest `text`; the server injects the frozen prefix and returns the reply.
-    Phase 3b feeds the audio path's STT transcript through this same orchestrator.
+    Not on the production hot path as of Phase 3b — the PWA speaks, so the real
+    loop is `POST /api/turn`. This endpoint is retained as a **mic-free dev/test
+    harness**: it exercises the conversation worker and the cached prefix without
+    Azure (handy for prompt iteration and a fast `curl` smoke test), and its
+    coverage lives in `tests/test_turn_text.py`.
+
+    TODO(phase-4): reassess when multi-turn lands — either promote it to a
+    first-class text-input mode (dialogue is already wired) or remove it if the
+    audio path fully subsumes it. Tracked so it doesn't linger unowned.
     """
     try:
         return await orchestrator.run_text_turn(req)

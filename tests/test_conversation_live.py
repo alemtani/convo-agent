@@ -37,9 +37,15 @@ async def test_live_cache_read_on_second_turn():
         kb_block=kb_block, sketch=SKETCH_STUB, dialogue=[], user_text="你好",
         forgiveness_level=config.FORGIVENESS_LEVEL_DEFAULT, client=client,
     )
-    # The KB block must clear Sonnet 4.6's 2048-token minimum cacheable prefix,
-    # or nothing is ever written to cache. This catches a too-small topic early.
-    assert usage1.cache_creation_input_tokens > 0, "prefix did not cache — too small?"
+    # The KB block must clear Sonnet 4.6's 2048-token minimum cacheable prefix, or
+    # nothing ever caches. Turn 1 may *write* the cache (cold) or *read* an entry a
+    # prior run left within the 5-min TTL (warm) — either proves the prefix is
+    # cacheable; only a flat zero means it's too small. (Don't require creation: a
+    # warm cache legitimately reports cache_creation == 0.)
+    assert (
+        usage1.cache_creation_input_tokens > 0
+        or usage1.cache_read_input_tokens > 0
+    ), "prefix did not cache — too small?"
 
     _r2, _a2, usage2 = await conversation.respond(
         kb_block=kb_block, sketch=SKETCH_STUB,

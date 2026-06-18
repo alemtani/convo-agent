@@ -29,9 +29,10 @@ from backend.workers import conversation
 
 logger = logging.getLogger(__name__)
 
-# Gentle re-prompt when nothing is recognized — keeps the turn alive without
-# spending a worker call on empty input. In-band greetings vocab.
-RETRY_REPLY = Utterance(zh="你好？", pinyin=to_pinyin("你好"))
+# Shown when nothing is recognized — an explicit "please say it again" so the
+# learner knows to retry, not a bare greeting that reads like a fresh turn. Keeps
+# the turn alive without spending a worker call on empty input; in-band (≤ band 2).
+RETRY_REPLY = Utterance(zh="请再说一次。", pinyin=to_pinyin("请再说一次"))
 
 
 async def run_text_turn(
