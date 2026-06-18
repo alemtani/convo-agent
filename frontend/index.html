@@ -216,6 +216,17 @@
 
     async function startRecording() {
       if (recording) return;
+      // The mic API only exists in a secure context. Browsers count https:// and
+      // localhost/127.0.0.1 as secure, but NOT 0.0.0.0 or a LAN IP — opening the
+      // page there leaves navigator.mediaDevices undefined. Guard it with an
+      // actionable hint instead of a raw "undefined" TypeError.
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setStatus(
+          "microphone unavailable — open this page at http://localhost:8000 " +
+          "(not 0.0.0.0 or a LAN IP), or serve it over HTTPS."
+        );
+        return;
+      }
       try {
         stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       } catch (err) {
