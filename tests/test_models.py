@@ -8,8 +8,13 @@ import pytest
 from pydantic import ValidationError
 
 from backend.models import (
+    ConversationResult,
+    ConversationTurnResponse,
+    DialogueTurn,
     PronunciationScore,
     SyllableScore,
+    ToneError,
+    TurnAnnotation,
     TurnResponse,
     Utterance,
 )
@@ -69,3 +74,66 @@ def test_turn_response_parses_from_json_dict():
 def test_utterance_requires_both_fields():
     with pytest.raises(ValidationError):
         Utterance(zh="你好")  # missing pinyin
+
+
+# --- Phase 3a: the text-turn contract -------------------------------------
+
+
+def test_dialogue_turn_rejects_unknown_role():
+    DialogueTurn(role="user", zh="你好")
+    DialogueTurn(role="partner", zh="你好")
+    with pytest.raises(ValidationError):
+        DialogueTurn(role="assistant", zh="你好")  # only user/partner allowed
+
+
+def test_turn_annotation_defaults_are_empty():
+    ann = TurnAnnotation(coherence="on_track")
+    assert ann.grammar_notes == []
+    assert ann.tone_errors == []
+    assert ann.topic_tags == []
+    assert ann.should_give_feedback is False
+
+
+def test_turn_annotation_rejects_unknown_coherence():
+    with pytest.raises(ValidationError):
+        TurnAnnotation(coherence="vibes")
+
+
+def test_tone_error_shape():
+    err = ToneError(syllable="ma", expected=3, said=1)
+    assert err.model_dump() == {"syllable": "ma", "expected": 3, "said": 1}
+
+
+def test_conversation_result_nests_reply_and_annotation():
+    result = ConversationResult.model_validate(
+        {
+            "partner_response": {"zh": "你今天怎么样？", "pinyin": "nǐ jīntiān zěnmeyàng?"},
+            "turn_annotation": {
+                "coherence": "on_track",
+                "grammar_notes": [],
+                "tone_errors": [{"syllable": "ma", "expected": 3, "said": 1}],
+                "topic_tags": ["greetings"],
+                "should_give_feedback": False,
+            },
+        }
+    )
+    assert result.partner_response.zh == "你今天怎么样？"
+    assert result.turn_annotation.tone_errors[0].expected == 3
+    assert result.turn_annotation.topic_tags == ["greetings"]
+
+
+def test_conversation_turn_response_shape():
+    resp = ConversationTurnResponse(
+        reply=Utterance(zh="你好", pinyin="nǐ hǎo"),
+        annotation=TurnAnnotation(coherence="on_track", topic_tags=["greetings"]),
+    )
+    assert resp.model_dump() == {
+        "reply": {"zh": "你好", "pinyin": "nǐ hǎo"},
+        "annotation": {
+            "coherence": "on_track",
+            "grammar_notes": [],
+            "tone_errors": [],
+            "topic_tags": ["greetings"],
+            "should_give_feedback": False,
+        },
+    }

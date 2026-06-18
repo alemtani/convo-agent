@@ -283,6 +283,15 @@ the mistake. So the partner and the evaluator operate on different representatio
   two-pass approach: STT transcribes, PA assesses against that transcript). These
   are logged silently in the turn annotation and surfaced during feedback rounds.
 
+**Expected vs. actual tone (tracked for Phase 3b).** The PA evaluation path
+yields, per syllable, the tone the learner *should* have produced and the tone
+they actually produced. **Phase 3b** populates `turn_annotation.tone_errors`
+(`{syllable, expected, said}`) from those scores and **surfaces expected-vs-actual
+in the frontend** — so the learner sees what their pronunciation actually sounded
+like, next to the target, even though the conversation path "interpreted" the
+most likely word and may have hidden the slip. In Phase 3a (text-only) there is
+no audio, so `tone_errors` is wired through the contract but always empty.
+
 ---
 
 ## Conversation Bounding & Session Lifecycle
@@ -533,7 +542,7 @@ demoable until late. Per-phase how-to-validate steps live in the README's
 | 1 | Push-to-talk upload → Azure STT; hardcoded 你好 reply | Speak → see your words transcribed + a fixed 汉字 reply. |
 | 2 | Azure PA in parallel with STT (two-pass) | …plus per-syllable tone scores. |
 | 3a | `kb.py` + conversation worker, **text-only**; cached prefix (opening line hardcoded) | Text in → real Claude greeting reply + annotation; **cache hits proven**. |
-| 3b | Wire speech (2) into the worker (3a) | Speak → real Mandarin partner reply + tone scores (greetings, 1 turn). |
+| 3b | Wire speech (2) into the worker (3a); populate `turn_annotation.tone_errors` from PA (expected vs. actual per syllable) and surface expected-vs-actual in the frontend | Speak → real Mandarin partner reply + per-syllable tone scores showing **expected vs. actual** tone (greetings, 1 turn). |
 | 4 | Multi-turn (client-held transcript, ~3 turns) + feedback worker (in-session text, **no persistence**) | A short greetings exchange with coaching feedback. |
 | 5 | Full bounding (`active→wrapping→complete`, phase hints) + sketch worker (replaces hardcoded opening) | A complete, naturally-bounded session start→goodbye. |
 | 6 | Turn redo (client-side; server stays stateless) | Redo a turn / redo the conversation. |
