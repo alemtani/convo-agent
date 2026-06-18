@@ -5,9 +5,16 @@ from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from backend.models import TurnResponse, Utterance
+from backend import kb, orchestrator
+from backend.models import (
+    ConversationTurnResponse,
+    TextTurnRequest,
+    TurnResponse,
+    Utterance,
+)
 from backend.pinyin import to_pinyin
 from backend.speech import pronunciation, stt
+from backend.workers import conversation
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +75,23 @@ async def turn(audio: UploadFile = File(...)) -> TurnResponse:
         reply=PARTNER_REPLY,
         pronunciation=pronunciation_score,
     )
+
+
+@app.post("/api/turn/text", response_model=ConversationTurnResponse)
+async def turn_text(req: TextTurnRequest) -> ConversationTurnResponse:
+    """One text-only conversation turn: real Claude reply + turn annotation.
+
+    The speech-free path (Phase 3a) that proves the conversation worker and the
+    cached prefix. Stateless: the client sends its running `dialogue` plus the
+    latest `text`; the server injects the frozen prefix and returns the reply.
+    Phase 3b feeds the audio path's STT transcript through this same orchestrator.
+    """
+    try:
+        return await orchestrator.run_text_turn(req)
+    except kb.KbError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except conversation.ConversationError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
 # Static page is mounted last so explicit API routes above take precedence;
