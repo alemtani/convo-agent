@@ -157,6 +157,18 @@ def test_turn_surfaces_worker_failure_as_502(monkeypatch):
     assert "refused" in resp.json()["detail"]
 
 
+def test_turn_missing_azure_credentials_is_502(monkeypatch):
+    # Server started before .env had the key: empty creds must fail clean (502),
+    # not surface Azure's raw RuntimeError(5) as a 500.
+    from backend.speech import _recognizer
+
+    monkeypatch.setattr(_recognizer.config, "AZURE_SPEECH_KEY", "")
+
+    resp = client.post("/api/turn", files=_upload())
+    assert resp.status_code == 502
+    assert "not configured" in resp.json()["detail"]
+
+
 def test_turn_unknown_topic_is_404(monkeypatch):
     async def fake_transcribe(audio_wav, language="zh-CN"):
         return "你好"

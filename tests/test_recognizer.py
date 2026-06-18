@@ -75,3 +75,13 @@ def test_cancellation_message_formats_reason_and_details(patched):
     result = types.SimpleNamespace(error_details="bad key")
 
     assert _recognizer.cancellation_message(result) == "(Error): bad key"
+
+
+def test_missing_credentials_raise_clean_error(monkeypatch):
+    # Empty key would otherwise reach the SDK as a bare RuntimeError(5); guard it.
+    monkeypatch.setattr(_recognizer.config, "AZURE_SPEECH_KEY", "")
+    monkeypatch.setattr(_recognizer.config, "AZURE_SPEECH_REGION", "eastus")
+
+    with pytest.raises(_recognizer.SpeechConfigError, match="not configured"):
+        with _recognizer.recognizer_for(b"FAKEWAV", "zh-CN"):
+            pass

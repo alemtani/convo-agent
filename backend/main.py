@@ -8,6 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from backend import kb, orchestrator
 from backend.models import ConversationTurnResponse, TextTurnRequest, TurnResponse
 from backend.speech import stt
+from backend.speech._recognizer import SpeechConfigError
 from backend.workers import conversation
 
 logger = logging.getLogger(__name__)
@@ -52,7 +53,7 @@ async def turn(
         return await orchestrator.run_audio_turn(audio_bytes, topic_id=topic_id)
     except kb.KbError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except (stt.SttError, conversation.ConversationError) as exc:
+    except (stt.SttError, conversation.ConversationError, SpeechConfigError) as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
