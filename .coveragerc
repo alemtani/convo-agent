@@ -1,5 +1,5 @@
 # Coverage config for the backend service. The CI workflow runs the offline
-# suite (live tests excluded by default) with `--cov-fail-under=90` so coverage
+# suite (live tests excluded by default) with `--cov-fail-under=95` so coverage
 # can't silently regress as we ship. The threshold is set in the workflow, not
 # here, so it's visible in CI logs.
 [run]

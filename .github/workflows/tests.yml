@@ -22,6 +22,6 @@ jobs:
 
       # Live tests (real Claude/Azure APIs) are excluded by pytest.ini's default
       # `-m "not live"`, so CI needs no API keys and spends nothing. The coverage
-      # gate fails the build if backend coverage drops below 90%.
+      # gate fails the build if backend coverage drops below 95%.
       - name: Run tests with coverage
-        run: pytest --cov=backend --cov-report=term-missing --cov-fail-under=90
+        run: pytest --cov=backend --cov-report=term-missing --cov-fail-under=95
