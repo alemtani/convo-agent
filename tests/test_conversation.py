@@ -155,3 +155,21 @@ async def test_respond_raises_when_output_unparsed():
             kb_block=KB, sketch=SKETCH, dialogue=[], user_text="你好",
             forgiveness_level=0.8, client=client,
         )
+
+
+def test_get_client_is_a_singleton_built_from_config_key(monkeypatch):
+    built = []
+
+    def fake_ctor(*, api_key):
+        built.append(api_key)
+        return SimpleNamespace(api_key=api_key)
+
+    monkeypatch.setattr(conversation, "AsyncAnthropic", fake_ctor)
+    monkeypatch.setattr(conversation.config, "ANTHROPIC_API_KEY", "test-key")
+    monkeypatch.setattr(conversation, "_client", None)
+
+    first = conversation._get_client()
+    second = conversation._get_client()
+
+    assert first is second           # cached — built once, reused
+    assert built == ["test-key"]     # constructed from the configured key

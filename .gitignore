@@ -11,6 +11,12 @@ build/
 .venv/
 venv/
 
+# Test coverage (generated)
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
 # Node
 node_modules/
 .next/

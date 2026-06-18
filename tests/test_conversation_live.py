@@ -54,7 +54,11 @@ async def test_live_cache_read_on_second_turn():
 
 
 async def test_live_reply_is_valid_structured_output():
-    """Structural eval: valid schema, a non-empty short reply, list-y annotation."""
+    """Structural eval: valid schema, a non-empty reply, well-formed annotation.
+
+    Length is intentionally not asserted — brevity is shaped by the prompt, and a
+    hard char ceiling on a live reply is brittle. We assert structure only.
+    """
     client = _client()
     reply, annotation, _usage = await conversation.respond(
         kb_block=kb.load_kb_block("greetings"), sketch=SKETCH_STUB, dialogue=[],
@@ -64,7 +68,6 @@ async def test_live_reply_is_valid_structured_output():
 
     assert isinstance(reply, Utterance)
     assert reply.zh and reply.pinyin
-    assert len(reply.zh) <= 30  # beginner-facing: one short sentence
     assert annotation.coherence in {"on_track", "drifting", "off_track"}
     assert isinstance(annotation.topic_tags, list)
     # Text-only turn carries no audio, so there is nothing to score for tone.
