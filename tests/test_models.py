@@ -25,13 +25,31 @@ def test_turn_response_serializes_symmetric_shape():
         transcript=Utterance(zh="你好老师", pinyin="nǐ hǎo lǎo shī"),
         reply=Utterance(zh="你好", pinyin="nǐ hǎo"),
     )
-    # `pronunciation` defaults to None (Phase 2 tone scores are optional — a turn
-    # with no recognized speech, or a PA failure, omits them).
+    # `pronunciation` and `annotation` default to None (Phase 2 tone scores and
+    # the Phase 3b turn annotation are optional — a transcript-only turn omits them).
     assert resp.model_dump() == {
         "transcript": {"zh": "你好老师", "pinyin": "nǐ hǎo lǎo shī"},
         "reply": {"zh": "你好", "pinyin": "nǐ hǎo"},
         "pronunciation": None,
+        "annotation": None,
     }
+
+
+def test_turn_response_carries_annotation_with_tone_errors():
+    # Phase 3b: the audio turn surfaces the worker's annotation, with tone_errors
+    # populated deterministically from PA (not by the model).
+    resp = TurnResponse(
+        transcript=Utterance(zh="你好", pinyin="nǐ hǎo"),
+        reply=Utterance(zh="你好", pinyin="nǐ hǎo"),
+        annotation=TurnAnnotation(
+            coherence="on_track",
+            tone_errors=[ToneError(syllable="你", expected=3, said=0)],
+        ),
+    )
+    dumped = resp.model_dump()
+    assert dumped["annotation"]["tone_errors"] == [
+        {"syllable": "你", "expected": 3, "said": 0}
+    ]
 
 
 def test_turn_response_carries_pronunciation_scores():

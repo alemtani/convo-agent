@@ -18,6 +18,10 @@ CONVERSATION_MODEL = "claude-sonnet-4-6"
 # cached prefix stays byte-identical. Default 0.8 = patient (DESIGN.md).
 FORGIVENESS_LEVEL_DEFAULT = 0.8
 
+# Per-syllable PA accuracy below this is surfaced as a tone error (Phase 3b).
+# Aligned with the frontend's existing `tone-bad` cutoff in index.html.
+TONE_ERROR_THRESHOLD = 60.0
+
 
 def _load_band_ceiling(default: int = 2) -> int:
     """The learner's HSK ceiling is *owned by the KB authoring workflow*

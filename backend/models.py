@@ -50,15 +50,18 @@ class TurnResponse(BaseModel):
     """Response body for `POST /api/turn`.
 
     `transcript` is the user's turn (Azure STT output + derived pinyin); `reply`
-    is the partner's turn. In Phase 1 `reply` is a hardcoded constant; Phase 3
+    is the partner's turn. In Phase 1 `reply` is a hardcoded constant; Phase 3b
     replaces it with the conversation worker's output. `pronunciation` holds the
     Phase 2 tone scores; it is `None` when nothing was recognized or PA failed
-    (the turn degrades to transcript-only rather than failing).
+    (the turn degrades to transcript-only rather than failing). `annotation` is
+    the Phase 3b turn annotation — its `tone_errors` are filled deterministically
+    from `pronunciation`; `None` on a transcript-only / short-circuited turn.
     """
 
     transcript: Utterance
     reply: Utterance
     pronunciation: Optional[PronunciationScore] = None
+    annotation: Optional["TurnAnnotation"] = None
 
 
 # --- Phase 3a: the text-turn conversation contract ------------------------
