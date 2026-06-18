@@ -64,11 +64,13 @@ Because phases are cumulative (each builds on the last), running the current
 walkthrough exercises everything underneath it. The full phase plan lives in
 [`docs/DESIGN.md`](docs/DESIGN.md#build-order--walking-skeleton).
 
-### What works today: Phase 1 — push-to-talk → speech-to-text
+### What works today: Phase 2 — speech-to-text + per-syllable tone scores
 
-Hold a button, speak Mandarin, and see your words transcribed plus a fixed 你好
-reply. Proves the audio path (mic → upload → Azure speech-to-text → rendered
-transcript). **Needs an Azure Speech key** (Anthropic is not used until Phase 3).
+Hold a button, speak Mandarin, and see your words transcribed **with a tone
+score on each syllable**, plus a fixed 你好 reply. Proves the two-pass speech
+path (mic → upload → Azure STT → Azure pronunciation assessment against that
+transcript → rendered, color-coded transcript). **Needs an Azure Speech key**
+(Anthropic is not used until Phase 3).
 
 1. Set `AZURE_SPEECH_KEY` / `AZURE_SPEECH_REGION` in `.env` (see
    [Setup](#setup) above for how to provision the Azure Speech resource).
@@ -84,9 +86,12 @@ transcript). **Needs an Azure Speech key** (Anthropic is not used until Phase 3)
    IP — the mic needs a secure context, and `localhost` counts as one).
 4. **Hold** the *🎙️ Hold to talk* button, say a Mandarin phrase (e.g. 你好老师),
    and release.
-5. ✅ **Expected:** a green bubble with your transcribed words, then a grey bubble
-   reading **你好 / nǐ hǎo**. If the transcript matches what you said, Azure STT
-   and the upload path work. (No speech detected shows *(nothing recognized)*.)
+5. ✅ **Expected:** a green bubble with your transcribed words, each syllable
+   underlined by how well you pronounced it (green = good, amber = ok, red = off)
+   and an overall **tone NN/100** badge; then a grey bubble reading
+   **你好 / nǐ hǎo**. Hover a syllable for its pinyin + score. (No speech detected
+   shows *(nothing recognized)*; if scoring fails the turn still shows your
+   transcript, just without tone colors.)
 
 <details>
 <summary>Prefer the command line?</summary>
@@ -94,7 +99,8 @@ transcript). **Needs an Azure Speech key** (Anthropic is not used until Phase 3)
 ```bash
 # Post any 16 kHz mono WAV; the reply is always the fixed 你好.
 curl -F "audio=@your-clip.wav" http://localhost:8000/api/turn
-# -> {"transcript":"…","reply":{"zh":"你好","pinyin":"nǐ hǎo"}}
+# -> {"transcript":{…},"reply":{"zh":"你好","pinyin":"nǐ hǎo"},
+#     "pronunciation":{"overall":80.0,"syllables":[{"hanzi":"老","pinyin":"lǎo","accuracy":97.0}, …]}}
 curl http://localhost:8000/health      # -> {"status":"ok"}
 ```
 </details>
@@ -155,7 +161,10 @@ Built incrementally in user-visible phases (see **Try it yourself** above):
 - ✅ **Phase 1 — push-to-talk → speech-to-text:** the page records 16 kHz WAV in
   the browser and uploads it to `POST /api/turn`; Azure STT transcribes it and the
   backend returns a fixed 你好 reply. Proves the audio path before adding scores.
-- ⏳ Phase 2 — Azure pronunciation assessment (per-syllable tone scores) alongside STT.
+- ✅ **Phase 2 — pronunciation assessment (per-syllable tone scores):** a second
+  pass runs Azure PA against the STT transcript and returns a per-syllable
+  accuracy breakdown the page renders as color-coded underlines. PA failures
+  degrade to transcript-only rather than failing the turn.
 - ⏳ Phases 3+ — the Claude conversation partner, feedback, bounded sessions, and
   durable progress. Not yet implemented.
 

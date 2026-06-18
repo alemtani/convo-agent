@@ -39,6 +39,23 @@
     .bubble .pinyin { opacity: 0.7; font-size: 0.85rem; }
     .bubble.empty { font-style: italic; opacity: 0.6; }
 
+    /* Per-syllable tone scores: white text on the green user bubble, with a
+       colored underline encoding Azure's accuracy (green good / amber ok / red off). */
+    .bubble .zh.scored,
+    .bubble .pinyin.scored { display: flex; flex-wrap: wrap; gap: 0.3rem; opacity: 1; }
+    .bubble .syl { border-bottom: 3px solid transparent; line-height: 1.3; }
+    .bubble .syl.tone-good { border-color: #4ade80; }
+    .bubble .syl.tone-mid  { border-color: #fbbf24; }
+    .bubble .syl.tone-bad  { border-color: #f87171; }
+    .bubble .score-badge {
+      display: inline-block;
+      margin-top: 0.4rem;
+      font-size: 0.7rem;
+      padding: 0.05rem 0.45rem;
+      border-radius: 1rem;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
     #dock {
       position: fixed;
       left: 0; right: 0; bottom: 0;
@@ -69,7 +86,7 @@
 </head>
 <body>
   <h1>Convo Agent</h1>
-  <p class="muted">Phase 1 — hold the button, speak Mandarin, see your words transcribed and a fixed 你好 reply.</p>
+  <p class="muted">Phase 2 — hold the button, speak Mandarin, see your words transcribed with per-syllable tone scores and a fixed 你好 reply.</p>
 
   <div id="thread"></div>
 
@@ -98,17 +115,52 @@
       return el;
     }
 
-    // Both sides render the same way: 汉字 on top, pinyin beneath.
-    function renderLine(role, utt, emptyText) {
+    // Both sides render the same way: 汉字 on top, pinyin beneath. When tone
+    // scores are present (the user's turn), render per syllable instead.
+    function renderLine(role, utt, emptyText, pronunciation) {
       const el = addBubble(role);
       if (!utt.zh) {
         el.classList.add("empty");
         el.textContent = emptyText;
         return;
       }
+      if (pronunciation && pronunciation.syllables.length) {
+        renderScored(el, pronunciation);
+        return;
+      }
       el.innerHTML = '<div class="zh"></div><div class="pinyin"></div>';
       el.querySelector(".zh").textContent = utt.zh;
       el.querySelector(".pinyin").textContent = utt.pinyin;
+    }
+
+    function toneClass(accuracy) {
+      if (accuracy >= 80) return "tone-good";
+      if (accuracy >= 60) return "tone-mid";
+      return "tone-bad";
+    }
+
+    // 汉字 and pinyin rows split into per-syllable spans, each underlined by its
+    // accuracy; an overall-score badge sits beneath.
+    function renderScored(el, pron) {
+      const zhRow = document.createElement("div");
+      zhRow.className = "zh scored";
+      const pyRow = document.createElement("div");
+      pyRow.className = "pinyin scored";
+      for (const s of pron.syllables) {
+        const cls = "syl " + toneClass(s.accuracy);
+        const title = s.pinyin + " · " + Math.round(s.accuracy);
+        for (const [row, text] of [[zhRow, s.hanzi], [pyRow, s.pinyin]]) {
+          const span = document.createElement("span");
+          span.className = cls;
+          span.textContent = text;
+          span.title = title;
+          row.appendChild(span);
+        }
+      }
+      const badge = document.createElement("span");
+      badge.className = "score-badge";
+      badge.textContent = "tone " + Math.round(pron.overall) + "/100";
+      el.append(zhRow, pyRow, badge);
     }
 
     async function startRecording() {
@@ -245,7 +297,7 @@
           return;
         }
         const data = await resp.json();
-        renderLine("user", data.transcript, "(nothing recognized)");
+        renderLine("user", data.transcript, "(nothing recognized)", data.pronunciation);
         renderLine("partner", data.reply, "");
         setStatus("");
       } catch (err) {

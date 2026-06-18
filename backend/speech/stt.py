@@ -1,17 +1,14 @@
 """Azure Speech-to-Text boundary.
 
-The only module that imports the Azure Speech SDK. Takes a WAV byte blob
-(16 kHz mono PCM, encoded client-side) and returns the recognized transcript.
-
-Phase 1 scope: speech-to-text only. Pronunciation assessment (tone scores) is
-Phase 2 and will run in parallel with this call.
+Takes a WAV byte blob (16 kHz mono PCM, encoded client-side) and returns the
+recognized transcript. This is the first pass of the two-pass speech flow: the
+transcript it returns becomes the reference text for `pronunciation.assess`.
 """
 import asyncio
-import tempfile
 
 import azure.cognitiveservices.speech as speechsdk
 
-from backend import config
+from backend.speech._recognizer import cancellation_message, recognizer_for
 
 
 class SttError(RuntimeError):
@@ -19,24 +16,8 @@ class SttError(RuntimeError):
 
 
 def _recognize_sync(audio_wav: bytes, language: str) -> str:
-    """Blocking recognition: write the WAV to a temp file and run one pass.
-
-    Using a temp file + ``AudioConfig(filename=...)`` lets the SDK parse the
-    RIFF/WAV header itself — more robust than hand-feeding a raw PCM push stream.
-    """
-    speech_config = speechsdk.SpeechConfig(
-        subscription=config.AZURE_SPEECH_KEY,
-        region=config.AZURE_SPEECH_REGION,
-    )
-    speech_config.speech_recognition_language = language
-
-    with tempfile.NamedTemporaryFile(suffix=".wav") as tmp:
-        tmp.write(audio_wav)
-        tmp.flush()
-        audio_config = speechsdk.audio.AudioConfig(filename=tmp.name)
-        recognizer = speechsdk.SpeechRecognizer(
-            speech_config=speech_config, audio_config=audio_config
-        )
+    """Blocking recognition: run one pass over the WAV and return its text."""
+    with recognizer_for(audio_wav, language) as recognizer:
         result = recognizer.recognize_once()
 
     reason = result.reason
@@ -47,10 +28,7 @@ def _recognize_sync(audio_wav: bytes, language: str) -> str:
         return ""
 
     # Canceled (bad key/region, network, malformed audio) or anything else.
-    details = speechsdk.CancellationDetails.from_result(result)
-    raise SttError(
-        f"Azure STT canceled ({details.reason}): {details.error_details}"
-    )
+    raise SttError(f"Azure STT canceled {cancellation_message(result)}")
 
 
 async def transcribe(audio_wav: bytes, language: str = "zh-CN") -> str:
