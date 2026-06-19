@@ -2,7 +2,12 @@ import json
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
+# `.env` is the source of truth for local dev. override=True so a stray (often
+# empty) shell export — e.g. AZURE_SPEECH_KEY= left in the launching terminal —
+# can't silently shadow it; without this, load_dotenv leaves the empty value in
+# place and the SDK fails with a bare RuntimeError(5). In CI/prod (no .env on
+# disk) this is a no-op, so real environment variables still apply there.
+load_dotenv(override=True)
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 AZURE_SPEECH_KEY = os.getenv("AZURE_SPEECH_KEY", "")
