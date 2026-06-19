@@ -2,12 +2,13 @@ import json
 import os
 from dotenv import load_dotenv
 
-# `.env` is the source of truth for local dev. override=True so a stray (often
-# empty) shell export — e.g. AZURE_SPEECH_KEY= left in the launching terminal —
-# can't silently shadow it; without this, load_dotenv leaves the empty value in
-# place and the SDK fails with a bare RuntimeError(5). In CI/prod (no .env on
-# disk) this is a no-op, so real environment variables still apply there.
-load_dotenv(override=True)
+# Load the project-root .env explicitly (one level up from backend/). Pinning the
+# path — rather than letting find_dotenv search upward from this file — stops a
+# stray nearer file like backend/.env from shadowing the real one. override=True
+# so an empty/stale shell export can't win either. Absent in CI/prod, this is a
+# no-op and real environment variables apply.
+_ROOT_ENV = os.path.join(os.path.dirname(__file__), os.pardir, ".env")
+load_dotenv(_ROOT_ENV, override=True)
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 AZURE_SPEECH_KEY = os.getenv("AZURE_SPEECH_KEY", "")
