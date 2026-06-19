@@ -5,11 +5,20 @@ and the conversation worker so the route is exercised in isolation: upload →
 transcript + tone scores + real-shaped reply + annotation. Real recognition /
 scoring / generation is a manual/live check.
 """
+import json
+
 import pytest
 from fastapi.testclient import TestClient
 
+from backend import orchestrator
 from backend.main import app
-from backend.models import PronunciationScore, SyllableScore, TurnAnnotation, Utterance
+from backend.models import (
+    PronunciationScore,
+    SyllableScore,
+    TurnAnnotation,
+    TurnResponse,
+    Utterance,
+)
 from backend.speech import pronunciation, stt
 from backend.workers import conversation
 
@@ -167,6 +176,58 @@ def test_turn_missing_azure_credentials_is_502(monkeypatch):
     resp = client.post("/api/turn", files=_upload())
     assert resp.status_code == 502
     assert "not configured" in resp.json()["detail"]
+
+
+def test_turn_threads_dialogue_history_to_orchestrator(monkeypatch):
+    # The client resubmits prior turns as `dialogue`; the route parses them into
+    # DialogueTurn and hands them to the orchestrator so the partner has memory.
+    captured = {}
+
+    async def fake_run(audio_bytes, *, topic_id="greetings", dialogue=None, client=None):
+        captured["dialogue"] = dialogue
+        return TurnResponse(
+            transcript=Utterance(zh="我叫小明", pinyin="wǒ jiào xiǎomíng"),
+            reply=Utterance(zh="认识你很高兴", pinyin="rènshi nǐ hěn gāoxìng"),
+        )
+
+    monkeypatch.setattr(orchestrator, "run_audio_turn", fake_run)
+
+    history = json.dumps(
+        [
+            {"role": "user", "zh": "你好"},
+            {"role": "partner", "zh": "你好！你叫什么名字？"},
+        ]
+    )
+    resp = client.post("/api/turn", files=_upload(), data={"dialogue": history})
+
+    assert resp.status_code == 200
+    assert [d.model_dump() for d in captured["dialogue"]] == [
+        {"role": "user", "zh": "你好"},
+        {"role": "partner", "zh": "你好！你叫什么名字？"},
+    ]
+
+
+def test_turn_defaults_to_empty_dialogue(monkeypatch):
+    captured = {}
+
+    async def fake_run(audio_bytes, *, topic_id="greetings", dialogue=None, client=None):
+        captured["dialogue"] = dialogue
+        return TurnResponse(
+            transcript=Utterance(zh="你好", pinyin="nǐ hǎo"),
+            reply=Utterance(zh="你好", pinyin="nǐ hǎo"),
+        )
+
+    monkeypatch.setattr(orchestrator, "run_audio_turn", fake_run)
+
+    resp = client.post("/api/turn", files=_upload())
+    assert resp.status_code == 200
+    assert captured["dialogue"] == []
+
+
+def test_turn_rejects_malformed_dialogue():
+    resp = client.post("/api/turn", files=_upload(), data={"dialogue": "not json"})
+    assert resp.status_code == 422
+    assert "invalid dialogue" in resp.json()["detail"]
 
 
 def test_turn_unknown_topic_is_404(monkeypatch):

@@ -47,10 +47,8 @@
     .bubble .syl.tone-good { border-color: #4ade80; }
     .bubble .syl.tone-mid  { border-color: #fbbf24; }
     .bubble .syl.tone-bad  { border-color: #f87171; }
-    /* Target-tone hint under a missed syllable: the tone the learner was aiming
-       for (expected-vs-actual). Empty under syllables that scored fine. */
-    .bubble .tgt.scored { font-size: 0.8rem; min-height: 1rem; }
-    .bubble .tgt-mark { color: #fca5a5; font-weight: 600; }
+    /* Keep the last message clear of the fixed dock when scrolled into view. */
+    .bubble:last-child { scroll-margin-bottom: 6rem; }
     .bubble .score-badge {
       display: inline-block;
       margin-top: 0.4rem;
@@ -85,6 +83,16 @@
     }
     #talk.recording { background: #d33; color: #fff; border-color: #d33; }
     #talk:disabled { opacity: 0.5; cursor: default; }
+    #reset {
+      font-size: 0.75rem;
+      padding: 0.25rem 0.7rem;
+      border-radius: 1rem;
+      border: 1px solid rgba(127, 127, 127, 0.4);
+      background: transparent;
+      color: inherit;
+      opacity: 0.7;
+      cursor: pointer;
+    }
     #status { font-size: 0.8rem; opacity: 0.7; min-height: 1rem; }
 
     /* Live mic-level meter — visible only while recording (see #meter.active). */
@@ -108,18 +116,20 @@
 </head>
 <body>
   <h1>Convo Agent</h1>
-  <p class="muted">Phase 3b — hold the button, speak Mandarin (greetings), and a real partner replies. Your words come back with per-syllable tone scores; missed tones show the target tone you were aiming for.</p>
+  <p class="muted">Phase 3b — hold the button and speak Mandarin (greetings). A real partner replies and remembers the conversation; your words come back with per-syllable tone scores (green good / amber ok / red off).</p>
 
   <div id="thread"></div>
 
   <div id="dock">
     <button id="talk">🎙️ Hold to talk</button>
+    <button id="reset" title="Start a new conversation">↺ New</button>
     <div id="meter"><div id="meter-fill"></div></div>
     <div id="status"></div>
   </div>
 
   <script>
     const talk = document.getElementById("talk");
+    const reset = document.getElementById("reset");
     const thread = document.getElementById("thread");
     const status = document.getElementById("status");
     const meter = document.getElementById("meter");
@@ -130,6 +140,20 @@
     let analyserNode, meterRaf;
     let chunks = [];
     let recording = false;
+
+    // Stateless server: the client holds the running transcript and resubmits it
+    // each turn so the partner has memory. Each entry is {role, zh, pinyin}; we
+    // send only {role, zh} (the wire contract) and keep pinyin for re-rendering.
+    const STORE_KEY = "convo.dialogue.greetings";
+    let dialogue = loadDialogue();
+
+    function loadDialogue() {
+      try { return JSON.parse(localStorage.getItem(STORE_KEY)) || []; }
+      catch (_) { return []; }
+    }
+    function saveDialogue() {
+      localStorage.setItem(STORE_KEY, JSON.stringify(dialogue));
+    }
 
     function setStatus(msg) { status.textContent = msg; }
 
@@ -142,9 +166,8 @@
     }
 
     // Both sides render the same way: 汉字 on top, pinyin beneath. When tone
-    // scores are present (the user's turn), render per syllable instead, with
-    // target-tone hints from the annotation on any missed syllables.
-    function renderLine(role, utt, emptyText, pronunciation, annotation) {
+    // scores are present (the user's turn), render per syllable instead.
+    function renderLine(role, utt, emptyText, pronunciation) {
       const el = addBubble(role);
       if (!utt.zh) {
         el.classList.add("empty");
@@ -152,7 +175,7 @@
         return;
       }
       if (pronunciation && pronunciation.syllables.length) {
-        renderScored(el, pronunciation, annotation);
+        renderScored(el, pronunciation);
         return;
       }
       el.innerHTML = '<div class="zh"></div><div class="pinyin"></div>';
@@ -166,25 +189,13 @@
       return "tone-bad";
     }
 
-    // Tone-number → diacritic, for showing the *target* tone of a missed syllable.
-    const TONE_GLYPH = { 1: "ˉ", 2: "ˊ", 3: "ˇ", 4: "ˋ", 5: "·" };
-
     // 汉字 and pinyin rows split into per-syllable spans, each underlined by its
-    // accuracy; a target-tone row sits beneath (filled only on missed syllables),
-    // then an overall-score badge.
-    function renderScored(el, pron, annotation) {
-      // tone_errors are per-character; key the expected tone by hanzi so each
-      // displayed syllable can show what it was aiming for.
-      const targetByChar = {};
-      for (const e of (annotation && annotation.tone_errors) || []) {
-        targetByChar[e.syllable] = e.expected;
-      }
+    // accuracy (which folds in tone correctness), then an overall-score badge.
+    function renderScored(el, pron) {
       const zhRow = document.createElement("div");
       zhRow.className = "zh scored";
       const pyRow = document.createElement("div");
       pyRow.className = "pinyin scored";
-      const tgtRow = document.createElement("div");
-      tgtRow.className = "tgt scored";
       for (const s of pron.syllables) {
         const cls = "syl " + toneClass(s.accuracy);
         const title = s.pinyin + " · " + Math.round(s.accuracy);
@@ -195,23 +206,11 @@
           span.title = title;
           row.appendChild(span);
         }
-        // Target hint: the expected tone for any char of this syllable that was
-        // flagged. Empty span keeps the row aligned with the syllables above.
-        const tgt = document.createElement("span");
-        const tone = [...s.hanzi].map((c) => targetByChar[c]).find((t) => t != null);
-        if (tone != null) {
-          tgt.className = "syl tgt-mark";
-          tgt.textContent = "target " + TONE_GLYPH[tone] + tone;
-          tgt.title = "aim for tone " + tone;
-        } else {
-          tgt.className = "syl";
-        }
-        tgtRow.appendChild(tgt);
       }
       const badge = document.createElement("span");
       badge.className = "score-badge";
       badge.textContent = "tone " + Math.round(pron.overall) + "/100";
-      el.append(zhRow, pyRow, tgtRow, badge);
+      el.append(zhRow, pyRow, badge);
     }
 
     async function startRecording() {
@@ -384,6 +383,10 @@
       const form = new FormData();
       form.append("audio", wavBlob, "turn.wav");
       form.append("topic_id", "greetings");
+      // Send prior turns (role + zh only) so the partner has memory.
+      form.append("dialogue", JSON.stringify(
+        dialogue.map((t) => ({ role: t.role, zh: t.zh }))
+      ));
       try {
         const resp = await fetch("/api/turn", { method: "POST", body: form });
         if (!resp.ok) {
@@ -392,8 +395,15 @@
           return;
         }
         const data = await resp.json();
-        renderLine("user", data.transcript, "(nothing recognized)", data.pronunciation, data.annotation);
+        renderLine("user", data.transcript, "(nothing recognized)", data.pronunciation);
         renderLine("partner", data.reply, "");
+        // Only record a real exchange: an empty transcript means nothing was
+        // recognized (the reply was a re-prompt), so it isn't part of history.
+        if (data.transcript.zh) {
+          dialogue.push({ role: "user", zh: data.transcript.zh, pinyin: data.transcript.pinyin });
+          dialogue.push({ role: "partner", zh: data.reply.zh, pinyin: data.reply.pinyin });
+          saveDialogue();
+        }
         setStatus("");
       } catch (err) {
         setStatus("request failed: " + err);
@@ -401,6 +411,23 @@
         talk.disabled = false;
       }
     }
+
+    // Restore the running transcript on load (scores are per-turn, not persisted).
+    function restoreThread() {
+      for (const t of dialogue) {
+        renderLine(t.role, { zh: t.zh, pinyin: t.pinyin || "" }, "");
+      }
+    }
+
+    // New conversation: clear memory and the thread so the partner starts fresh.
+    reset.addEventListener("click", () => {
+      dialogue = [];
+      localStorage.removeItem(STORE_KEY);
+      thread.innerHTML = "";
+      setStatus("new conversation");
+    });
+
+    restoreThread();
 
     // Hold-to-talk: press to start, release (or leave the button) to send.
     talk.addEventListener("pointerdown", (e) => { e.preventDefault(); startRecording(); });

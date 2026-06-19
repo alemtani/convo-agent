@@ -1,12 +1,19 @@
+import json
 import logging
 import os
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from pydantic import ValidationError
 
 from backend import kb, orchestrator
-from backend.models import ConversationTurnResponse, TextTurnRequest, TurnResponse
+from backend.models import (
+    ConversationTurnResponse,
+    DialogueTurn,
+    TextTurnRequest,
+    TurnResponse,
+)
 from backend.speech import stt
 from backend.speech._recognizer import SpeechConfigError
 from backend.workers import conversation
@@ -40,17 +47,27 @@ async def hello():
 async def turn(
     audio: UploadFile = File(...),
     topic_id: str = Form("greetings"),
+    dialogue: str = Form("[]"),
 ) -> TurnResponse:
     """One spoken conversation turn: real Claude reply + transcript + tone scores.
 
     The Phase 3b loop, coordinated by `orchestrator.run_audio_turn`: STT
     transcribes, then PA (two-pass) and the conversation worker run concurrently,
-    and per-syllable tone errors are merged into the annotation. Scope is one
-    greeting turn, so the client holds no running dialogue yet.
+    and per-syllable tone errors are merged into the annotation. Stateless: the
+    client holds the running transcript and resubmits it as `dialogue` (a JSON
+    array of prior `{role, zh}` turns) so the partner has memory across turns;
+    the server appends this turn's STT text as the latest user turn.
     """
+    try:
+        history = [DialogueTurn.model_validate(t) for t in json.loads(dialogue)]
+    except (json.JSONDecodeError, ValidationError, TypeError) as exc:
+        raise HTTPException(status_code=422, detail=f"invalid dialogue: {exc}") from exc
+
     audio_bytes = await audio.read()
     try:
-        return await orchestrator.run_audio_turn(audio_bytes, topic_id=topic_id)
+        return await orchestrator.run_audio_turn(
+            audio_bytes, topic_id=topic_id, dialogue=history
+        )
     except kb.KbError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except (stt.SttError, conversation.ConversationError, SpeechConfigError) as exc:
