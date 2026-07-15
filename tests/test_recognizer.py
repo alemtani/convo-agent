@@ -29,16 +29,19 @@ def _make_fake_speechsdk(recorder):
             recorder["speech_config"] = speech_config
             recorder["audio_config"] = audio_config
 
-    cancellation = types.SimpleNamespace(
-        from_result=lambda r: types.SimpleNamespace(
-            reason="Error", error_details=getattr(r, "error_details", "")
-        )
-    )
+    # Real SDK (1.42.0) exposes CancellationDetails as a *constructor* taking the
+    # result — there is no `.from_result`. Mirror that here so the contract test
+    # matches the live SDK rather than a wished-for API.
+    class FakeCancellationDetails:
+        def __init__(self, result):
+            self.reason = "Error"
+            self.error_details = getattr(result, "error_details", "")
+
     return types.SimpleNamespace(
         SpeechConfig=FakeSpeechConfig,
         audio=types.SimpleNamespace(AudioConfig=FakeAudioConfig),
         SpeechRecognizer=FakeRecognizer,
-        CancellationDetails=cancellation,
+        CancellationDetails=FakeCancellationDetails,
     )
 
 

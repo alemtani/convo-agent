@@ -54,5 +54,5 @@ def recognizer_for(audio_wav: bytes, language: str):
 
 def cancellation_message(result) -> str:
     """Format a canceled result's reason + details for an error message."""
-    details = speechsdk.CancellationDetails.from_result(result)
+    details = speechsdk.CancellationDetails(result)
     return f"({details.reason}): {details.error_details}"
