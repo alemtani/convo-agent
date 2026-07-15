@@ -5,23 +5,34 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Convo Agent</title>
   <style>
-    /* --dock-h is the fixed dock's real height, kept in sync from JS by a
-       ResizeObserver (the dock grows/shrinks as the status line wraps and the
-       meter shows/hides). Body padding and the last bubble's scroll margin both
-       derive from it so the newest message always clears the dock — no guessed
-       constant to undershoot. The 8rem seed avoids a first-paint jump. */
-    :root { color-scheme: light dark; --dock-h: 8rem; }
+    :root { color-scheme: light dark; }
+    * { box-sizing: border-box; }
+    /* Full-height flex column: header + intro, the thread as the one scrolling
+       region, then the dock. The dock stays in normal flow, so it always sits at
+       the bottom and messages can never hide behind it — no fixed positioning,
+       no reserved-height math. */
     body {
       font-family: -apple-system, system-ui, sans-serif;
       max-width: 32rem;
       margin: 0 auto;
-      padding: 1.5rem 1rem calc(var(--dock-h) + 1rem);
+      padding: 1.5rem 1rem 0;
       line-height: 1.5;
+      height: 100vh;
+      height: 100dvh;   /* dvh tracks mobile browser chrome; vh is the fallback */
+      display: flex;
+      flex-direction: column;
     }
     h1 { font-size: 1.25rem; }
     .muted { opacity: 0.6; font-size: 0.85rem; }
 
-    #thread { display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1rem; }
+    #thread {
+      display: flex; flex-direction: column; gap: 0.75rem;
+      margin-top: 1rem;
+      flex: 1 1 auto;
+      min-height: 0;          /* let the thread shrink so it — not the page — scrolls */
+      overflow-y: auto;
+      padding-bottom: 0.25rem;
+    }
     .bubble {
       padding: 0.6rem 0.85rem;
       border-radius: 1rem;
@@ -52,10 +63,6 @@
     .bubble .syl.tone-good { border-color: #4ade80; }
     .bubble .syl.tone-mid  { border-color: #fbbf24; }
     .bubble .syl.tone-bad  { border-color: #f87171; }
-    /* Keep the last message clear of the fixed dock when scrolled into view —
-       tracks the dock's real height (+ breathing room) so block:end stops above
-       it rather than behind it. */
-    .bubble:last-child { scroll-margin-bottom: calc(var(--dock-h) + 1rem); }
     .bubble .score-badge {
       display: inline-block;
       margin-top: 0.4rem;
@@ -66,14 +73,14 @@
     }
 
     #dock {
-      position: fixed;
-      left: 0; right: 0; bottom: 0;
       display: flex;
       flex-direction: column;
       align-items: center;
       gap: 0.4rem;
-      /* Extra bottom padding for the iOS home-indicator safe area (the page sets
-         viewport-fit=cover), so the dock's controls aren't overlapped by it. */
+      /* Bleed to the column edges (cancel body's side padding) so the divider
+         spans full width, plus the iOS home-indicator safe area (the page sets
+         viewport-fit=cover). */
+      margin: 0 -1rem;
       padding: 1rem 1rem calc(1rem + env(safe-area-inset-bottom, 0px));
       background: Canvas;
       border-top: 1px solid rgba(127, 127, 127, 0.3);
@@ -143,16 +150,6 @@
     const status = document.getElementById("status");
     const meter = document.getElementById("meter");
     const meterFill = document.getElementById("meter-fill");
-    const dock = document.getElementById("dock");
-
-    // Reserve exactly the dock's height below the thread so the newest message
-    // clears it. The dock's height changes (status text wraps, meter toggles),
-    // so track it live rather than hard-coding a value that undershoots. Setting
-    // --dock-h only affects body padding, not the dock, so this can't loop.
-    const syncDockHeight = () =>
-      document.documentElement.style.setProperty("--dock-h", dock.offsetHeight + "px");
-    new ResizeObserver(syncDockHeight).observe(dock);
-    syncDockHeight();
 
     const TARGET_RATE = 16000;
     let audioCtx, stream, sourceNode, recorderNode, scriptNode;
