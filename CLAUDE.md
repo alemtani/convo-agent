@@ -28,9 +28,13 @@ deferred, not in the hot path).
 
 ## Key files and directories
 
-Target layout (per `docs/DESIGN.md`). The backend currently serves Phases 0–1
-(health, `/api/hello`, and `POST /api/turn` → Azure STT + pinyin); the remaining
-modules below are planned.
+Target layout (per `docs/DESIGN.md`). The backend serves through Phase 3b: the
+full spoken loop `POST /api/turn` → Azure STT → PA ∥ conversation worker (cached
+prefix) → merged `tone_errors`, plus the mic-free `POST /api/turn/text` harness.
+Live modules: `main.py`, `orchestrator.py`, `kb.py`, `pinyin.py`, `tones.py`,
+`models.py`, `config.py`, `prompts.py`, `workers/conversation.py`,
+`speech/{stt,pronunciation,_recognizer}.py`. Still planned: `workers/feedback.py`,
+`workers/sketch.py`, `db.py`, `profile.py` (Phases 4–8).
 
 ```
 backend/
