@@ -8,6 +8,8 @@ occasionally slip (好 hǎo/hào). Good enough for an input echo.
 
 pypinyin is run on the whole string so its 不/一 tone sandhi has context.
 """
+from typing import List
+
 from pypinyin import Style, pinyin as _pinyin
 
 
@@ -18,3 +20,19 @@ def to_pinyin(zh: str) -> str:
     syllables = (s[0] for s in _pinyin(zh, style=Style.TONE))
     # pypinyin emits punctuation as its own token — keep only romanized syllables.
     return " ".join(s for s in syllables if any(c.isalpha() for c in s))
+
+
+def tone_numbers(zh: str) -> List[int]:
+    """Per-syllable tone numbers for `zh` (1–4; neutral → 5); [] for empty input.
+
+    The source of the *expected* tone in tone-error detection. `Style.TONE3`
+    appends the tone digit (`hao3`); an unmarked syllable is the neutral tone,
+    which we normalize to 5. Punctuation tokens (no romanized letters) are
+    dropped so the result aligns one-to-one with the spoken syllables.
+    """
+    out: List[int] = []
+    for syllable in (s[0] for s in _pinyin(zh, style=Style.TONE3)):
+        if not any(c.isalpha() for c in syllable):
+            continue
+        out.append(int(syllable[-1]) if syllable[-1].isdigit() else 5)
+    return out

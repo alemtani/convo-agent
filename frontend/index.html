@@ -6,17 +6,33 @@
   <title>Convo Agent</title>
   <style>
     :root { color-scheme: light dark; }
+    * { box-sizing: border-box; }
+    /* Full-height flex column: header + intro, the thread as the one scrolling
+       region, then the dock. The dock stays in normal flow, so it always sits at
+       the bottom and messages can never hide behind it — no fixed positioning,
+       no reserved-height math. */
     body {
       font-family: -apple-system, system-ui, sans-serif;
       max-width: 32rem;
       margin: 0 auto;
-      padding: 1.5rem 1rem 7rem;
+      padding: 1.5rem 1rem 0;
       line-height: 1.5;
+      height: 100vh;
+      height: 100dvh;   /* dvh tracks mobile browser chrome; vh is the fallback */
+      display: flex;
+      flex-direction: column;
     }
     h1 { font-size: 1.25rem; }
     .muted { opacity: 0.6; font-size: 0.85rem; }
 
-    #thread { display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1rem; }
+    #thread {
+      display: flex; flex-direction: column; gap: 0.75rem;
+      margin-top: 1rem;
+      flex: 1 1 auto;
+      min-height: 0;          /* let the thread shrink so it — not the page — scrolls */
+      overflow-y: auto;
+      padding-bottom: 0.25rem;
+    }
     .bubble {
       padding: 0.6rem 0.85rem;
       border-radius: 1rem;
@@ -57,13 +73,15 @@
     }
 
     #dock {
-      position: fixed;
-      left: 0; right: 0; bottom: 0;
       display: flex;
       flex-direction: column;
       align-items: center;
       gap: 0.4rem;
-      padding: 1rem;
+      /* Bleed to the column edges (cancel body's side padding) so the divider
+         spans full width, plus the iOS home-indicator safe area (the page sets
+         viewport-fit=cover). */
+      margin: 0 -1rem;
+      padding: 1rem 1rem calc(1rem + env(safe-area-inset-bottom, 0px));
       background: Canvas;
       border-top: 1px solid rgba(127, 127, 127, 0.3);
     }
@@ -81,6 +99,16 @@
     }
     #talk.recording { background: #d33; color: #fff; border-color: #d33; }
     #talk:disabled { opacity: 0.5; cursor: default; }
+    #reset {
+      font-size: 0.75rem;
+      padding: 0.25rem 0.7rem;
+      border-radius: 1rem;
+      border: 1px solid rgba(127, 127, 127, 0.4);
+      background: transparent;
+      color: inherit;
+      opacity: 0.7;
+      cursor: pointer;
+    }
     #status { font-size: 0.8rem; opacity: 0.7; min-height: 1rem; }
 
     /* Live mic-level meter — visible only while recording (see #meter.active). */
@@ -104,18 +132,20 @@
 </head>
 <body>
   <h1>Convo Agent</h1>
-  <p class="muted">Phase 2 — hold the button, speak Mandarin, see your words transcribed with per-syllable tone scores and a fixed 你好 reply.</p>
+  <p class="muted">Phase 3b — hold the button and speak Mandarin (greetings). A real partner replies and remembers the conversation; your words come back with per-syllable tone scores (green good / amber ok / red off).</p>
 
   <div id="thread"></div>
 
   <div id="dock">
     <button id="talk">🎙️ Hold to talk</button>
+    <button id="reset" title="Start a new conversation">↺ New</button>
     <div id="meter"><div id="meter-fill"></div></div>
     <div id="status"></div>
   </div>
 
   <script>
     const talk = document.getElementById("talk");
+    const reset = document.getElementById("reset");
     const thread = document.getElementById("thread");
     const status = document.getElementById("status");
     const meter = document.getElementById("meter");
@@ -126,6 +156,20 @@
     let analyserNode, meterRaf;
     let chunks = [];
     let recording = false;
+
+    // Stateless server: the client holds the running transcript and resubmits it
+    // each turn so the partner has memory. Each entry is {role, zh, pinyin}; we
+    // send only {role, zh} (the wire contract) and keep pinyin for re-rendering.
+    const STORE_KEY = "convo.dialogue.greetings";
+    let dialogue = loadDialogue();
+
+    function loadDialogue() {
+      try { return JSON.parse(localStorage.getItem(STORE_KEY)) || []; }
+      catch (_) { return []; }
+    }
+    function saveDialogue() {
+      localStorage.setItem(STORE_KEY, JSON.stringify(dialogue));
+    }
 
     function setStatus(msg) { status.textContent = msg; }
 
@@ -162,7 +206,7 @@
     }
 
     // 汉字 and pinyin rows split into per-syllable spans, each underlined by its
-    // accuracy; an overall-score badge sits beneath.
+    // accuracy (which folds in tone correctness), then an overall-score badge.
     function renderScored(el, pron) {
       const zhRow = document.createElement("div");
       zhRow.className = "zh scored";
@@ -187,6 +231,17 @@
 
     async function startRecording() {
       if (recording) return;
+      // The mic API only exists in a secure context. Browsers count https:// and
+      // localhost/127.0.0.1 as secure, but NOT 0.0.0.0 or a LAN IP — opening the
+      // page there leaves navigator.mediaDevices undefined. Guard it with an
+      // actionable hint instead of a raw "undefined" TypeError.
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setStatus(
+          "microphone unavailable — open this page at http://localhost:8000 " +
+          "(not 0.0.0.0 or a LAN IP), or serve it over HTTPS."
+        );
+        return;
+      }
       try {
         stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       } catch (err) {
@@ -343,6 +398,11 @@
       talk.disabled = true;
       const form = new FormData();
       form.append("audio", wavBlob, "turn.wav");
+      form.append("topic_id", "greetings");
+      // Send prior turns (role + zh only) so the partner has memory.
+      form.append("dialogue", JSON.stringify(
+        dialogue.map((t) => ({ role: t.role, zh: t.zh }))
+      ));
       try {
         const resp = await fetch("/api/turn", { method: "POST", body: form });
         if (!resp.ok) {
@@ -353,6 +413,13 @@
         const data = await resp.json();
         renderLine("user", data.transcript, "(nothing recognized)", data.pronunciation);
         renderLine("partner", data.reply, "");
+        // Only record a real exchange: an empty transcript means nothing was
+        // recognized (the reply was a re-prompt), so it isn't part of history.
+        if (data.transcript.zh) {
+          dialogue.push({ role: "user", zh: data.transcript.zh, pinyin: data.transcript.pinyin });
+          dialogue.push({ role: "partner", zh: data.reply.zh, pinyin: data.reply.pinyin });
+          saveDialogue();
+        }
         setStatus("");
       } catch (err) {
         setStatus("request failed: " + err);
@@ -360,6 +427,23 @@
         talk.disabled = false;
       }
     }
+
+    // Restore the running transcript on load (scores are per-turn, not persisted).
+    function restoreThread() {
+      for (const t of dialogue) {
+        renderLine(t.role, { zh: t.zh, pinyin: t.pinyin || "" }, "");
+      }
+    }
+
+    // New conversation: clear memory and the thread so the partner starts fresh.
+    reset.addEventListener("click", () => {
+      dialogue = [];
+      localStorage.removeItem(STORE_KEY);
+      thread.innerHTML = "";
+      setStatus("new conversation");
+    });
+
+    restoreThread();
 
     // Hold-to-talk: press to start, release (or leave the button) to send.
     talk.addEventListener("pointerdown", (e) => { e.preventDefault(); startRecording(); });

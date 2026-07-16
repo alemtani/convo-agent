@@ -38,11 +38,11 @@ def _make_fake_speechsdk(result, recorder):
         NoMatch="NoMatch",
         Canceled="Canceled",
     )
-    cancellation = types.SimpleNamespace(
-        from_result=lambda r: types.SimpleNamespace(
+    def cancellation(r):  # SDK 1.42.0: constructor, not `.from_result`
+        return types.SimpleNamespace(
             reason="Error", error_details=getattr(r, "error_details", "")
         )
-    )
+
     return types.SimpleNamespace(
         SpeechConfig=FakeSpeechConfig,
         audio=types.SimpleNamespace(AudioConfig=FakeAudioConfig),

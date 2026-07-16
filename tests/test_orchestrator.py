@@ -11,11 +11,15 @@ import pytest
 from backend import config, kb, orchestrator
 from backend.models import (
     ConversationTurnResponse,
+    PronunciationScore,
+    SyllableScore,
     TextTurnRequest,
     TurnAnnotation,
+    TurnResponse,
     Utterance,
 )
 from backend.prompts import SKETCH_STUB
+from backend.speech import pronunciation, stt
 from backend.workers import conversation
 
 
@@ -61,3 +65,116 @@ async def test_run_text_turn_propagates_unknown_topic(monkeypatch):
 
     with pytest.raises(kb.KbError):
         await orchestrator.run_text_turn(TextTurnRequest(topic_id="nope", text="你好"))
+
+
+# --- Phase 3b: the audio turn (STT -> PA || worker -> merged tone errors) ----
+
+
+def _worker_reply(annotation=None):
+    async def fake_respond(*, kb_block, sketch, dialogue, user_text, forgiveness_level, client=None):
+        return (
+            Utterance(zh="你好！你叫什么名字？", pinyin="nǐ hǎo! nǐ jiào shénme míngzi?"),
+            annotation or TurnAnnotation(coherence="on_track", topic_tags=["greetings"]),
+            object(),
+        )
+    return fake_respond
+
+
+def _pa_score(*syllables):
+    return PronunciationScore(overall=70.0, syllables=list(syllables))
+
+
+async def test_run_audio_turn_two_pass_and_merges_tone_errors(monkeypatch):
+    captured = {}
+
+    async def fake_transcribe(audio_wav, language="zh-CN"):
+        captured["stt_audio"] = audio_wav
+        return "你好"
+
+    async def fake_assess(audio_wav, reference_text, language="zh-CN"):
+        captured["pa_audio"] = audio_wav
+        captured["pa_reference"] = reference_text
+        return _pa_score(
+            SyllableScore(hanzi="你", pinyin="nǐ", accuracy=40.0),  # below threshold
+            SyllableScore(hanzi="好", pinyin="hǎo", accuracy=95.0),
+        )
+
+    async def fake_respond(*, user_text, **kwargs):
+        captured["worker_user_text"] = user_text
+        return (
+            Utterance(zh="你好！你叫什么名字？", pinyin="nǐ hǎo! nǐ jiào shénme míngzi?"),
+            TurnAnnotation(coherence="on_track", topic_tags=["greetings"]),
+            object(),
+        )
+
+    monkeypatch.setattr(stt, "transcribe", fake_transcribe)
+    monkeypatch.setattr(pronunciation, "assess", fake_assess)
+    monkeypatch.setattr(conversation, "respond", fake_respond)
+
+    resp = await orchestrator.run_audio_turn(b"FAKEWAV", topic_id="greetings")
+
+    assert isinstance(resp, TurnResponse)
+    # Two-pass: PA is assessed against the STT transcript, on the same audio.
+    assert captured["pa_reference"] == "你好"
+    assert captured["pa_audio"] == b"FAKEWAV"
+    # The worker is driven by the STT transcript.
+    assert captured["worker_user_text"] == "你好"
+    # Transcript echoes STT + derived pinyin; reply is the worker's.
+    assert resp.transcript == Utterance(zh="你好", pinyin="nǐ hǎo")
+    assert resp.reply.zh == "你好！你叫什么名字？"
+    assert resp.pronunciation.overall == 70.0
+    # tone_errors are merged in deterministically from PA (only 你 was below 60).
+    assert [e.model_dump() for e in resp.annotation.tone_errors] == [
+        {"syllable": "你", "expected": 3, "said": 0}
+    ]
+
+
+async def test_run_audio_turn_degrades_when_pa_fails(monkeypatch):
+    async def fake_transcribe(audio_wav, language="zh-CN"):
+        return "你好"
+
+    async def fake_assess(audio_wav, reference_text, language="zh-CN"):
+        raise pronunciation.PaError("boom")
+
+    monkeypatch.setattr(stt, "transcribe", fake_transcribe)
+    monkeypatch.setattr(pronunciation, "assess", fake_assess)
+    monkeypatch.setattr(conversation, "respond", _worker_reply())
+
+    resp = await orchestrator.run_audio_turn(b"FAKEWAV", topic_id="greetings")
+
+    # PA failure degrades to scores-off; the reply still lands and no tone errors.
+    assert resp.pronunciation is None
+    assert resp.reply.zh == "你好！你叫什么名字？"
+    assert resp.annotation.tone_errors == []
+
+
+async def test_run_audio_turn_short_circuits_on_empty_recognition(monkeypatch):
+    async def fake_transcribe(audio_wav, language="zh-CN"):
+        return ""
+
+    async def fake_assess(*args, **kwargs):
+        raise AssertionError("PA should not run when nothing was recognized")
+
+    async def fake_respond(**kwargs):
+        raise AssertionError("worker should not run when nothing was recognized")
+
+    monkeypatch.setattr(stt, "transcribe", fake_transcribe)
+    monkeypatch.setattr(pronunciation, "assess", fake_assess)
+    monkeypatch.setattr(conversation, "respond", fake_respond)
+
+    resp = await orchestrator.run_audio_turn(b"FAKEWAV", topic_id="greetings")
+
+    assert resp.transcript.zh == ""
+    assert resp.pronunciation is None
+    assert resp.annotation is None
+    assert resp.reply.zh  # a gentle re-prompt, not empty
+
+
+async def test_run_audio_turn_propagates_unknown_topic(monkeypatch):
+    async def fake_transcribe(audio_wav, language="zh-CN"):
+        return "你好"
+
+    monkeypatch.setattr(stt, "transcribe", fake_transcribe)
+
+    with pytest.raises(kb.KbError):
+        await orchestrator.run_audio_turn(b"FAKEWAV", topic_id="nope")

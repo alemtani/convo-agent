@@ -1,28 +1,26 @@
+import json
 import logging
 import os
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from pydantic import ValidationError
 
 from backend import kb, orchestrator
 from backend.models import (
     ConversationTurnResponse,
+    DialogueTurn,
     TextTurnRequest,
     TurnResponse,
-    Utterance,
 )
-from backend.pinyin import to_pinyin
-from backend.speech import pronunciation, stt
+from backend.speech import stt
+from backend.speech._recognizer import SpeechConfigError
 from backend.workers import conversation
 
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Convo Agent", version="0.1.0")
-
-# Phase 1 hardcoded reply — every turn echoes this fixed greeting. Replaced by
-# the Claude conversation worker in Phase 3.
-PARTNER_REPLY = Utterance(zh="你好", pinyin="nǐ hǎo")
 
 app.add_middleware(
     CORSMiddleware,
@@ -46,45 +44,49 @@ async def hello():
 
 
 @app.post("/api/turn", response_model=TurnResponse)
-async def turn(audio: UploadFile = File(...)) -> TurnResponse:
-    """One conversation turn: transcribe speech, score it, return a fixed reply.
+async def turn(
+    audio: UploadFile = File(...),
+    topic_id: str = Form("greetings"),
+    dialogue: str = Form("[]"),
+) -> TurnResponse:
+    """One spoken conversation turn: real Claude reply + transcript + tone scores.
 
-    Two-pass speech: STT transcribes, then PA assesses the same audio against
-    that transcript for per-syllable tone scores. Phase 3 swaps the hardcoded
-    reply for the conversation worker's output.
+    The Phase 3b loop, coordinated by `orchestrator.run_audio_turn`: STT
+    transcribes, then PA (two-pass) and the conversation worker run concurrently,
+    and per-syllable tone errors are merged into the annotation. Stateless: the
+    client holds the running transcript and resubmits it as `dialogue` (a JSON
+    array of prior `{role, zh}` turns) so the partner has memory across turns;
+    the server appends this turn's STT text as the latest user turn.
     """
+    try:
+        history = [DialogueTurn.model_validate(t) for t in json.loads(dialogue)]
+    except (json.JSONDecodeError, ValidationError, TypeError) as exc:
+        raise HTTPException(status_code=422, detail=f"invalid dialogue: {exc}") from exc
+
     audio_bytes = await audio.read()
     try:
-        recognized = await stt.transcribe(audio_bytes)
-    except stt.SttError as exc:
+        return await orchestrator.run_audio_turn(
+            audio_bytes, topic_id=topic_id, dialogue=history
+        )
+    except kb.KbError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except (stt.SttError, conversation.ConversationError, SpeechConfigError) as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
-    transcript = Utterance(zh=recognized, pinyin=to_pinyin(recognized))
-
-    # Tone scores are an enhancement, not the turn's payload: with no recognized
-    # text there is nothing to assess, and a PA failure degrades to scores-off
-    # rather than costing the user their transcript.
-    pronunciation_score = None
-    if recognized:
-        try:
-            pronunciation_score = await pronunciation.assess(audio_bytes, recognized)
-        except pronunciation.PaError as exc:
-            logger.warning("pronunciation assessment failed: %s", exc)
-
-    return TurnResponse(
-        transcript=transcript,
-        reply=PARTNER_REPLY,
-        pronunciation=pronunciation_score,
-    )
 
 
 @app.post("/api/turn/text", response_model=ConversationTurnResponse)
 async def turn_text(req: TextTurnRequest) -> ConversationTurnResponse:
     """One text-only conversation turn: real Claude reply + turn annotation.
 
-    The speech-free path (Phase 3a) that proves the conversation worker and the
-    cached prefix. Stateless: the client sends its running `dialogue` plus the
-    latest `text`; the server injects the frozen prefix and returns the reply.
-    Phase 3b feeds the audio path's STT transcript through this same orchestrator.
+    Not on the production hot path as of Phase 3b — the PWA speaks, so the real
+    loop is `POST /api/turn`. This endpoint is retained as a **mic-free dev/test
+    harness**: it exercises the conversation worker and the cached prefix without
+    Azure (handy for prompt iteration and a fast `curl` smoke test), and its
+    coverage lives in `tests/test_turn_text.py`.
+
+    TODO(phase-4): reassess when multi-turn lands — either promote it to a
+    first-class text-input mode (dialogue is already wired) or remove it if the
+    audio path fully subsumes it. Tracked so it doesn't linger unowned.
     """
     try:
         return await orchestrator.run_text_turn(req)

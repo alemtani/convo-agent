@@ -14,6 +14,15 @@ import azure.cognitiveservices.speech as speechsdk
 from backend import config
 
 
+class SpeechConfigError(RuntimeError):
+    """Azure Speech credentials are missing/empty.
+
+    Constructing `SpeechConfig` with an empty key raises a bare `RuntimeError: 5`
+    (Azure's `SPXERR_INVALID_ARG`) deep in the SDK. We check first and raise this
+    instead so the boundary fails clean — typically when the server was started
+    before `.env` had the key (restart to reload it)."""
+
+
 @contextmanager
 def recognizer_for(audio_wav: bytes, language: str):
     """Yield a `SpeechRecognizer` over ``audio_wav``, valid for the `with` block.
@@ -23,6 +32,11 @@ def recognizer_for(audio_wav: bytes, language: str):
     raw PCM push stream). The temp file lives until the block exits, so callers
     must run ``recognize_once`` *inside* the `with`.
     """
+    if not config.AZURE_SPEECH_KEY or not config.AZURE_SPEECH_REGION:
+        raise SpeechConfigError(
+            "Azure Speech credentials not configured — set AZURE_SPEECH_KEY and "
+            "AZURE_SPEECH_REGION in .env and restart the server so it reloads them."
+        )
     speech_config = speechsdk.SpeechConfig(
         subscription=config.AZURE_SPEECH_KEY,
         region=config.AZURE_SPEECH_REGION,
@@ -40,5 +54,5 @@ def recognizer_for(audio_wav: bytes, language: str):
 
 def cancellation_message(result) -> str:
     """Format a canceled result's reason + details for an error message."""
-    details = speechsdk.CancellationDetails.from_result(result)
+    details = speechsdk.CancellationDetails(result)
     return f"({details.reason}): {details.error_details}"
