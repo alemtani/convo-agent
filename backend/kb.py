@@ -11,6 +11,7 @@ and never interpolate anything volatile.
 `kb/zh/greetings/topic.md`), so it is hand-parsed rather than pulling in a YAML
 dependency the service doesn't otherwise need.
 """
+import functools
 import os
 from dataclasses import dataclass
 from typing import List
@@ -107,11 +108,18 @@ def load_topic(topic_id: str, root: str = KB_ROOT) -> Topic:
     return parse_topic_frontmatter(_read(os.path.join(_topic_dir(topic_id, root), "topic.md")))
 
 
+@functools.lru_cache(maxsize=None)
 def load_kb_block(topic_id: str, root: str = KB_ROOT) -> str:
     """Concatenate vocab + grammar + dialogues into one deterministic block.
 
     This is the cached payload: byte-identical across calls for a given topic,
     with a fixed section order and headers and no interpolated/volatile content.
+
+    Memoized per `(topic_id, root)` for the life of the process — the KB is
+    git-versioned and authored dev-time only (no runtime writer), so this lifts
+    the three blocking file reads off the async hot path after the first turn.
+    `KbError` is not cached (a bad topic re-raises every call); edits to the
+    markdown on disk require a process restart or `load_kb_block.cache_clear()`.
     """
     topic_dir = _topic_dir(topic_id, root)
     parts = []

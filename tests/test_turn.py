@@ -56,7 +56,7 @@ def stub_worker_and_pa(monkeypatch):
 def test_turn_returns_transcript_reply_scores_and_annotation(monkeypatch):
     async def fake_transcribe(audio_wav, language="zh-CN"):
         assert audio_wav == b"FAKEWAV"
-        return "你好"
+        return "你好老师"
 
     captured = {}
 
@@ -65,6 +65,8 @@ def test_turn_returns_transcript_reply_scores_and_annotation(monkeypatch):
         return _fake_score(
             SyllableScore(hanzi="你", pinyin="nǐ", accuracy=40.0),  # below threshold
             SyllableScore(hanzi="好", pinyin="hǎo", accuracy=95.0),
+            SyllableScore(hanzi="老", pinyin="lǎo", accuracy=97.0),
+            SyllableScore(hanzi="师", pinyin="shī", accuracy=96.0),
         )
 
     monkeypatch.setattr(stt, "transcribe", fake_transcribe)
@@ -74,9 +76,9 @@ def test_turn_returns_transcript_reply_scores_and_annotation(monkeypatch):
 
     assert resp.status_code == 200
     # PA is assessed against the STT transcript (two-pass).
-    assert captured["reference_text"] == "你好"
+    assert captured["reference_text"] == "你好老师"
     body = resp.json()
-    assert body["transcript"] == {"zh": "你好", "pinyin": "nǐ hǎo"}
+    assert body["transcript"] == {"zh": "你好老师", "pinyin": "nǐ hǎo lǎo shī"}
     # The reply is the worker's output, not a hardcoded constant.
     assert body["reply"]["zh"] == "你好！你叫什么名字？"
     assert body["pronunciation"]["overall"] == 80.0
@@ -205,6 +207,10 @@ def test_turn_threads_dialogue_history_to_orchestrator(monkeypatch):
         {"role": "user", "zh": "你好"},
         {"role": "partner", "zh": "你好！你叫什么名字？"},
     ]
+    # The route surfaces the orchestrator's TurnResponse unchanged.
+    body = resp.json()
+    assert body["transcript"] == {"zh": "我叫小明", "pinyin": "wǒ jiào xiǎomíng"}
+    assert body["reply"] == {"zh": "认识你很高兴", "pinyin": "rènshi nǐ hěn gāoxìng"}
 
 
 def test_turn_defaults_to_empty_dialogue(monkeypatch):
