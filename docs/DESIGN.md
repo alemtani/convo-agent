@@ -558,6 +558,10 @@ structured output — too much to land or test at once. Durable state (DB,
 proficiency, covered-set) is deferred to Phase 7; "feedback" before then is
 in-session text only.
 
+Between 3b and 4 sit three concurrent fix workstreams (turn latency, chat UX,
+text-only mode) plus a deferred goal-oriented-sessions design note that folds
+into the Phase 4/5 workers — see `docs/WORKSTREAMS.md`.
+
 **Deferred UX polish (Phase 2).** Add a live **mic-level meter** during
 push-to-talk recording — right now the only "is it capturing?" feedback is the
 button turning red. A natural fold-in when Phase 2 reshapes the recording UI for
