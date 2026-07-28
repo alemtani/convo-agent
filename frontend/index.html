@@ -264,26 +264,35 @@
       // Mirrors backend/pinyin.py's HANZI; the u flag makes the ranges match by
       // code point so a supplementary-plane character isn't split into surrogates.
       const HANZI = /[一-鿿㐀-䶿豈-﫿\u{20000}-\u{2a6df}]/u;
-      const chars = [...utt.zh].filter((c) => HANZI.test(c));
-      const syllables = utt.pinyin.split(/\s+/).filter(Boolean);
-      if (chars.length !== syllables.length) return;  // can't align — mark nothing
-
+      // Only the 汉字 row is split. The worker writes pinyin in real orthography,
+      // grouping a multi-syllable *word* into one token (péngyou, gāoxìng,
+      // rènshi), so it has fewer tokens than the turn has characters — pairing
+      // them positionally misaligns, and demanding equal counts silently skips
+      // almost every turn containing a two-syllable word. The pinyin line stays
+      // whole and correctly grouped; the underline lands on the hanzi.
       const byIndex = new Map(errors.map((e) => [e.index, e]));
       const zhRow = document.createElement("div");
       zhRow.className = "zh scored";
-      const pyRow = document.createElement("div");
-      pyRow.className = "pinyin scored";
-      chars.forEach((char, i) => {
-        const err = byIndex.get(i);
-        const title = err ? "tone " + err.expected + ", you typed " + err.said : "";
-        for (const [row, text] of [[zhRow, char], [pyRow, syllables[i]]]) {
-          const span = document.createElement("span");
-          span.className = err ? "syl tone-bad" : "syl";
-          span.textContent = text;
-          if (title) span.title = title;
-          row.appendChild(span);
+      let hanziSeen = 0;
+      for (const char of utt.zh) {
+        const span = document.createElement("span");
+        span.className = "syl";
+        span.textContent = char;
+        // Punctuation rides along unmarked — only hanzi carry a syllable index,
+        // and it has to count the same way the backend's does (hanzi only).
+        if (HANZI.test(char)) {
+          const err = byIndex.get(hanziSeen++);
+          if (err) {
+            span.className = "syl tone-bad";
+            span.title = "tone " + err.expected + ", you typed " + err.said;
+          }
         }
-      });
+        zhRow.appendChild(span);
+      }
+
+      const pyRow = document.createElement("div");
+      pyRow.className = "pinyin";
+      pyRow.textContent = utt.pinyin;
       el.replaceChildren(zhRow, pyRow);
     }
 
