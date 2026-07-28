@@ -63,16 +63,6 @@
     .bubble .syl.tone-good { border-color: #4ade80; }
     .bubble .syl.tone-mid  { border-color: #fbbf24; }
     .bubble .syl.tone-bad  { border-color: #f87171; }
-    /* Typed-tone misconceptions. Stated outright rather than underlined: when the
-       learner writes the tone, we know exactly what they believed, so naming it
-       ("你 is tone 3 — you typed 2") teaches more than a colored mark. */
-    .bubble .tone-note {
-      margin-top: 0.4rem;
-      padding-top: 0.35rem;
-      border-top: 1px solid rgba(255, 255, 255, 0.3);
-      font-size: 0.75rem;
-      opacity: 0.95;
-    }
     .bubble .score-badge {
       display: inline-block;
       margin-top: 0.4rem;
@@ -264,19 +254,34 @@
       return el;
     }
 
-    const TONE_NAMES = { 1: "1 (flat)", 2: "2 (rising)", 3: "3 (dip)", 4: "4 (falling)", 5: "neutral" };
-
-    // Text mode only: the learner typed tone numbers, so `said` is what they
-    // actually believed — not the spoken path's "we couldn't tell" sentinel.
-    function addToneNote(el, errors) {
+    // Typed tone errors, marked the same way spoken ones are: a red underline on
+    // the syllable, detail in the tooltip. The learner already reads that
+    // vocabulary from the mic path, so text mode borrows it rather than inventing
+    // a second one. `index` locates the syllable — the character alone can't, in a
+    // turn that repeats one (谢谢).
+    function markToneErrors(el, utt, errors) {
       if (!el || !errors || !errors.length) return;
-      const note = document.createElement("div");
-      note.className = "tone-note";
-      note.textContent = errors
-        .map((e) => e.syllable + " is tone " + TONE_NAMES[e.expected] +
-                    " — you typed " + (TONE_NAMES[e.said] || e.said))
-        .join(" · ");
-      el.appendChild(note);
+      const chars = [...utt.zh].filter((c) => /[㐀-䶿一-鿿]/.test(c));
+      const syllables = utt.pinyin.split(/\s+/).filter(Boolean);
+      if (chars.length !== syllables.length) return;  // can't align — mark nothing
+
+      const byIndex = new Map(errors.map((e) => [e.index, e]));
+      const zhRow = document.createElement("div");
+      zhRow.className = "zh scored";
+      const pyRow = document.createElement("div");
+      pyRow.className = "pinyin scored";
+      chars.forEach((char, i) => {
+        const err = byIndex.get(i);
+        const title = err ? "tone " + err.expected + ", you typed " + err.said : "";
+        for (const [row, text] of [[zhRow, char], [pyRow, syllables[i]]]) {
+          const span = document.createElement("span");
+          span.className = err ? "syl tone-bad" : "syl";
+          span.textContent = text;
+          if (title) span.title = title;
+          row.appendChild(span);
+        }
+      });
+      el.replaceChildren(zhRow, pyRow);
     }
 
     function toneClass(accuracy) {
@@ -549,7 +554,8 @@
         // learner meant. No `pronunciation` on a typed turn (that needs audio),
         // but tone errors ride along when they typed tone numbers.
         const userBubble = renderLine("user", data.transcript, "");
-        addToneNote(userBubble, data.annotation && data.annotation.tone_errors);
+        markToneErrors(userBubble, data.transcript,
+                       data.annotation && data.annotation.tone_errors);
         renderLine("partner", data.reply, "");
         dialogue.push({ role: "user", zh: data.transcript.zh, pinyin: data.transcript.pinyin });
         dialogue.push({ role: "partner", zh: data.reply.zh, pinyin: data.reply.pinyin });

@@ -71,8 +71,33 @@ def test_tone_errors_names_the_misconception():
     # 你 is tone 3; the learner typed tone 2. Unlike the PA path, `said` is real.
     errors = typed_pinyin.tone_errors_from_typed("ni2hao3", "你好")
     assert [e.model_dump() for e in errors] == [
-        {"syllable": "你", "expected": 3, "said": 2}
+        {"syllable": "你", "expected": 3, "said": 2, "index": 0}
     ]
+
+
+def test_tone_errors_locate_a_repeated_character():
+    """谢谢 repeats a character, so the position is what makes it markable.
+
+    Both syllables read `xie`; the learner got the first right and the second
+    wrong. Keyed by character alone the UI would underline whichever it found
+    first — `index` is what lets it mark the one they actually missed.
+    """
+    errors = typed_pinyin.tone_errors_from_typed("xie4xie1", "谢谢")
+    assert [(e.syllable, e.index, e.expected, e.said) for e in errors] == [
+        ("谢", 1, 4, 1)
+    ]
+
+
+@pytest.mark.parametrize("typed", ["xie4xie5", "xie4xie4"])
+def test_neutral_tone_is_never_flagged(typed):
+    """Our `expected` and the KB's curated pinyin genuinely disagree here.
+
+    pypinyin reads 谢谢 as `xie4xie4`; the KB — and every textbook — teaches
+    `xièxie`, neutral on the second. Flagging either way would tell the learner
+    that what they were correctly taught is wrong, so neutral is left alone in
+    both directions.
+    """
+    assert typed_pinyin.tone_errors_from_typed(typed, "谢谢") == []
 
 
 def test_tone_errors_empty_when_every_tone_is_right():

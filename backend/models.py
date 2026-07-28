@@ -86,15 +86,21 @@ class DialogueTurn(BaseModel):
 
 
 class ToneError(BaseModel):
-    """A single mispronounced syllable, from the evaluation path (Azure PA).
+    """One syllable whose tone was wrong, from audio (PA) or from typed digits.
 
-    Text-only Phase 3a turns carry no audio, so this list is empty; it is wired
-    through now so Phase 3b can populate it from per-syllable tone scores.
+    `said` is the tone the learner actually produced where we can know it — the
+    typed path fills it from their tone digits, while Azure PA reports accuracy
+    rather than a detected tone and so ships `tones.SAID_UNKNOWN`.
+
+    `index` is the syllable's position among the utterance's hanzi. Display needs
+    it because `syllable` alone can't be located in a turn that repeats a
+    character (谢谢) — marking the wrong 谢 would be worse than marking none.
     """
 
     syllable: str
     expected: int
     said: int
+    index: Optional[int] = None
 
 
 class TurnAnnotation(BaseModel):

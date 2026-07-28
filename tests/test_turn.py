@@ -86,7 +86,7 @@ def test_turn_returns_transcript_reply_scores_and_annotation(monkeypatch):
     assert body["pronunciation"]["overall"] == 80.0
     # tone_errors are merged into the annotation from PA (only 你 was below 60).
     assert body["annotation"]["tone_errors"] == [
-        {"syllable": "你", "expected": 3, "said": 0}
+        {"syllable": "你", "expected": 3, "said": 0, "index": None}
     ]
 
 

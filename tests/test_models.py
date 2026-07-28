@@ -49,7 +49,7 @@ def test_turn_response_carries_annotation_with_tone_errors():
     )
     dumped = resp.model_dump()
     assert dumped["annotation"]["tone_errors"] == [
-        {"syllable": "你", "expected": 3, "said": 0}
+        {"syllable": "你", "expected": 3, "said": 0, "index": None}
     ]
 
 
@@ -120,7 +120,7 @@ def test_turn_annotation_rejects_unknown_coherence():
 
 def test_tone_error_shape():
     err = ToneError(syllable="ma", expected=3, said=1)
-    assert err.model_dump() == {"syllable": "ma", "expected": 3, "said": 1}
+    assert err.model_dump() == {"syllable": "ma", "expected": 3, "said": 1, "index": None}
 
 
 def test_conversation_result_nests_reply_and_annotation():

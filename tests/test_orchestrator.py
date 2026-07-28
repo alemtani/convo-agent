@@ -117,7 +117,7 @@ async def test_run_text_turn_derives_tone_errors_from_typed_digits(monkeypatch):
     )
 
     assert [e.model_dump() for e in resp.annotation.tone_errors] == [
-        {"syllable": "你", "expected": 3, "said": 2}
+        {"syllable": "你", "expected": 3, "said": 2, "index": 0}
     ]
 
 
@@ -207,7 +207,7 @@ async def test_run_audio_turn_two_pass_and_merges_tone_errors(monkeypatch):
     assert resp.pronunciation.overall == 70.0
     # tone_errors are merged in deterministically from PA (only 你 was below 60).
     assert [e.model_dump() for e in resp.annotation.tone_errors] == [
-        {"syllable": "你", "expected": 3, "said": 0}
+        {"syllable": "你", "expected": 3, "said": 0, "index": None}
     ]
 
 

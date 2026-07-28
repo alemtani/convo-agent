@@ -24,6 +24,14 @@ _SYLLABLE = re.compile(r"[a-z]+[0-9]?")
 
 _VALID_TONES = {1, 2, 3, 4, 5}
 
+#: The neutral tone. Never flagged in either direction — `expected` comes from
+#: pypinyin, which disagrees with the KB's curated readings exactly here: it calls
+#: 谢谢 `xie4xie4` where the KB (and every textbook) teaches `xièxie`, neutral on
+#: the second syllable. A learner typing what they were taught would be told they
+#: were wrong. Neutral-tone reduction is unstable enough across sources that
+#: silence is the only honest answer.
+_NEUTRAL = 5
+
 
 def split_typed_syllables(text: str) -> List[str]:
     """Split typed pinyin into syllables, using tone digits as terminators.
@@ -80,7 +88,9 @@ def tone_errors_from_typed(typed: str, reading_zh: str) -> List[ToneError]:
         return []
 
     return [
-        ToneError(syllable=char, expected=expected, said=said)
-        for char, expected, said in zip(chars, expected_tones, said_tones)
-        if expected != said
+        ToneError(syllable=char, expected=expected, said=said, index=i)
+        for i, (char, expected, said) in enumerate(
+            zip(chars, expected_tones, said_tones)
+        )
+        if expected != said and _NEUTRAL not in (expected, said)
     ]
