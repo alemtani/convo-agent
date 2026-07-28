@@ -83,16 +83,31 @@ def test_turn_text_requires_topic_and_text():
     assert client.post("/api/turn/text", json={"topic_id": "greetings"}).status_code == 422
 
 
-@pytest.mark.parametrize("text", ["nihao", "ni3hao3", "", "   "])
-def test_turn_text_rejects_input_without_hanzi(text, monkeypatch):
-    # Hanzi-only mode: romanization is refused at the boundary, before the worker.
+@pytest.mark.parametrize("text", ["", "   "])
+def test_turn_text_rejects_blank_input(text, monkeypatch):
     async def fake_run(req, client=None):
-        raise AssertionError("worker should not run for non-hanzi input")
+        raise AssertionError("worker should not run for an empty turn")
 
     monkeypatch.setattr(orchestrator, "run_text_turn", fake_run)
 
     resp = client.post("/api/turn/text", json={"topic_id": "greetings", "text": text})
     assert resp.status_code == 422
+
+
+@pytest.mark.parametrize("text", ["nihao", "ni3hao3", "wo jiao xiao ming"])
+def test_turn_text_accepts_typed_pinyin(text, monkeypatch):
+    """Pinyin reaches the worker untouched — the route never gatekeeps romanization."""
+    captured = {}
+
+    async def fake_run(req, client=None):
+        captured["text"] = req.text
+        return _reply()
+
+    monkeypatch.setattr(orchestrator, "run_text_turn", fake_run)
+
+    resp = client.post("/api/turn/text", json={"topic_id": "greetings", "text": text})
+    assert resp.status_code == 200
+    assert captured["text"] == text
 
 
 def test_turn_text_dialogue_defaults_to_empty(monkeypatch):

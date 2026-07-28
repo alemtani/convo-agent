@@ -8,8 +8,10 @@ final word: **verify them against the current code before building on them.**
 
 Decisions already made (don't relitigate):
 
-- **WS3 text input is hanzi-only.** No pinyin→hanzi converter will be built;
-  the learner types 汉字 via their keyboard's pinyin IME.
+- ~~**WS3 text input is hanzi-only.**~~ **Reversed 2026-07-27.** The learner is a
+  beginner who can't reliably type 汉字, so text mode takes **pinyin** and the
+  conversation worker reads it — see WS3 below. No pinyin→hanzi converter was
+  built: the worker already has the context needed to resolve it.
 - The three workstreams run **fully concurrent** on separate branches from
   `main`. See the merge-conflict note at the bottom.
 - **Goal-oriented ("targeted convo") sessions are deferred** — design note in
@@ -124,25 +126,34 @@ text-only mode: type instead of speak.
   `{zh, pinyin}`, so the endpoint should return display pinyin for the user's
   typed hanzi (reuse `to_pinyin` in `backend/pinyin.py`) so text turns render
   exactly like spoken ones.
-- **Input is hanzi-only** (decided). Nothing in the pipeline handles typed
-  pinyin (`ni3hao3`) and no converter exists or will be built; `pinyin.py` is
-  hanzi→pinyin only. The learner types 汉字 with their keyboard IME.
+- **Input is pinyin** (decision reversed 2026-07-27 — see above). `pinyin.py` is
+  hanzi→pinyin only and can't help: `to_pinyin("nihao")` returns `"nihao"`
+  unchanged. Rather than build a converter, the **conversation worker reads the
+  pinyin** and returns `user_reading` — the 汉字 it understood — alongside its
+  reply. It already holds the conversation and the topic KB, so it resolves
+  `ta` → 他/她 from context and handles words outside the topic vocab (names).
 - The frontend is currently mic-only — no text box, nothing calls
   `/api/turn/text`.
-- Inherent scope limit: text turns have no pronunciation/tone feedback (PA
-  needs audio); grammar/coherence annotations still work unchanged.
+- Scope limit, and the twist: text turns have no *pronunciation* feedback (PA
+  needs audio). But tone feedback gets **better**, not worse. Azure PA reports
+  accuracy, not a produced tone, so the spoken path's `ToneError.said` is the
+  sentinel `tones.SAID_UNKNOWN` — it knows a syllable was off but not how. A
+  learner who types `ni2hao3` has stated their belief outright, so `said` is
+  real and the misconception is nameable. Tone digits are optional; typing
+  `nihao` is a normal turn with no tone signal.
 
 **Charter.**
 
-1. Backend: promote `/api/turn/text` to first-class — align its response shape
-   with what the frontend renders (add the user-echo with pinyin), keep it on
-   the shared orchestrator seam, update tests (`tests/test_turn_text.py`).
+1. Backend: promote `/api/turn/text` to first-class — `ConversationResult` gains
+   `user_reading`, the response returns it as `transcript`, and `typed_pinyin`
+   derives tone errors from typed digits. Keep it on the shared orchestrator seam.
 2. Frontend: add a text-input mode — input box + send in the dock (toggle or
    alongside push-to-talk), posting to `/api/turn/text`, feeding the same
    transcript/localStorage/bubble flow as spoken turns.
 
 **Files:** `backend/main.py`, `backend/orchestrator.py`, `backend/models.py`,
-`frontend/index.html`, `tests/test_turn_text.py`.
+`backend/prompts.py`, `backend/typed_pinyin.py`, `backend/workers/conversation.py`,
+`frontend/index.html`, `tests/test_turn_text.py`, `tests/test_typed_pinyin.py`.
 
 ---
 

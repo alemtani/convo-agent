@@ -134,11 +134,14 @@ def test_conversation_result_nests_reply_and_annotation():
                 "topic_tags": ["greetings"],
                 "should_give_feedback": False,
             },
+            "user_reading": {"zh": "我很好", "pinyin": "wǒ hěn hǎo"},
         }
     )
     assert result.partner_response.zh == "你今天怎么样？"
     assert result.turn_annotation.tone_errors[0].expected == 3
     assert result.turn_annotation.topic_tags == ["greetings"]
+    # The learner's own turn, resolved from whatever they typed.
+    assert result.user_reading.zh == "我很好"
 
 
 def test_conversation_turn_response_shape():
@@ -160,16 +163,16 @@ def test_conversation_turn_response_shape():
     }
 
 
-# --- WS3: text mode is hanzi-only -----------------------------------------
+# --- WS3: text mode takes pinyin ------------------------------------------
 #
-# The learner types 汉字 via their keyboard's pinyin IME. No pinyin→hanzi
-# converter exists (or will), and `to_pinyin` passes Latin text straight through
-# ("nihao" → "nihao"), so romanization would echo as its own "pinyin" line and
-# reach the worker as-is. The validator is the guard.
+# The learner is a beginner who can't necessarily type 汉字, so they type pinyin
+# and the conversation worker reads it in context. Judging whether a romanized
+# string is "valid Chinese" is exactly that worker's job, so the model layer stays
+# permissive: it refuses an empty turn and nothing else.
 
 
 def test_text_turn_request_strips_surrounding_whitespace():
-    assert TextTurnRequest(topic_id="greetings", text="  我叫小明 \n").text == "我叫小明"
+    assert TextTurnRequest(topic_id="greetings", text="  ni3hao3 \n").text == "ni3hao3"
 
 
 @pytest.mark.parametrize("text", ["", "   ", "\n\t"])
@@ -178,15 +181,16 @@ def test_text_turn_request_rejects_blank_text(text):
         TextTurnRequest(topic_id="greetings", text=text)
 
 
-@pytest.mark.parametrize("text", ["nihao", "ni3hao3", "hello", "123", "?!"])
-def test_text_turn_request_rejects_text_without_hanzi(text):
-    with pytest.raises(ValidationError) as exc:
-        TextTurnRequest(topic_id="greetings", text=text)
-    # The message has to tell the learner what to do instead.
-    assert "汉字" in str(exc.value)
-
-
-@pytest.mark.parametrize("text", ["你好", "我叫Alex", "你好!", "我今天很忙。"])
-def test_text_turn_request_accepts_text_containing_hanzi(text):
-    # Mixed scripts and punctuation are fine — only *zero* hanzi is rejected.
+@pytest.mark.parametrize(
+    "text",
+    [
+        "nihao",              # toneless pinyin — the common beginner case
+        "ni3hao3",            # tone-numbered, so tones get checked
+        "ni hao",             # spaced
+        "wo jiao xiao ming",  # a name outside the topic vocab
+        "你好",                # 汉字 still work for anyone who can type them
+        "我叫Alex",
+    ],
+)
+def test_text_turn_request_accepts_pinyin_and_hanzi(text):
     assert TextTurnRequest(topic_id="greetings", text=text).text == text

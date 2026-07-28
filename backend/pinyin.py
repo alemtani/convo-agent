@@ -8,9 +8,14 @@ occasionally slip (好 hǎo/hào). Good enough for an input echo.
 
 pypinyin is run on the whole string so its 不/一 tone sandhi has context.
 """
+import re
 from typing import List
 
 from pypinyin import Style, pinyin as _pinyin
+
+#: Han characters — CJK Unified Ideographs plus Extension A. Used to tell 汉字
+#: from romanization, and to count syllables in a reading (one hanzi = one).
+HANZI = re.compile(r"[㐀-䶿一-鿿]")
 
 
 def to_pinyin(zh: str) -> str:

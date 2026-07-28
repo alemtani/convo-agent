@@ -63,6 +63,16 @@
     .bubble .syl.tone-good { border-color: #4ade80; }
     .bubble .syl.tone-mid  { border-color: #fbbf24; }
     .bubble .syl.tone-bad  { border-color: #f87171; }
+    /* Typed-tone misconceptions. Stated outright rather than underlined: when the
+       learner writes the tone, we know exactly what they believed, so naming it
+       ("你 is tone 3 — you typed 2") teaches more than a colored mark. */
+    .bubble .tone-note {
+      margin-top: 0.4rem;
+      padding-top: 0.35rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.3);
+      font-size: 0.75rem;
+      opacity: 0.95;
+    }
     .bubble .score-badge {
       display: inline-block;
       margin-top: 0.4rem;
@@ -173,15 +183,15 @@
 </head>
 <body>
   <h1>Convo Agent</h1>
-  <p class="muted">Speak or type Mandarin (greetings). A real partner replies and remembers the conversation; spoken words come back with per-syllable tone scores (green good / amber ok / red off). Tap ⌨️ to type instead — 汉字 only, via your keyboard's pinyin IME.</p>
+  <p class="muted">Speak or type Mandarin (greetings). A real partner replies and remembers the conversation; spoken words come back with per-syllable tone scores (green good / amber ok / red off). Tap ⌨️ to type in <strong>pinyin</strong> instead — your words come back as 汉字. Add tone numbers (<code>ni3hao3</code>) and your tones get checked too.</p>
 
   <div id="thread"></div>
 
   <div id="dock">
     <div id="composer">
-      <input id="text-input" type="text" lang="zh-CN" enterkeyhint="send"
+      <input id="text-input" type="text" enterkeyhint="send" spellcheck="false"
              autocomplete="off" autocapitalize="off" autocorrect="off"
-             placeholder="打字…（用汉字）" />
+             placeholder="type pinyin… e.g. ni hao" />
       <button id="send" title="Send">↑</button>
     </div>
     <button id="talk">🎙️ Hold to talk</button>
@@ -242,15 +252,31 @@
       if (!utt.zh) {
         el.classList.add("empty");
         el.textContent = emptyText;
-        return;
+        return el;
       }
       if (pronunciation && pronunciation.syllables.length) {
         renderScored(el, pronunciation);
-        return;
+        return el;
       }
       el.innerHTML = '<div class="zh"></div><div class="pinyin"></div>';
       el.querySelector(".zh").textContent = utt.zh;
       el.querySelector(".pinyin").textContent = utt.pinyin;
+      return el;
+    }
+
+    const TONE_NAMES = { 1: "1 (flat)", 2: "2 (rising)", 3: "3 (dip)", 4: "4 (falling)", 5: "neutral" };
+
+    // Text mode only: the learner typed tone numbers, so `said` is what they
+    // actually believed — not the spoken path's "we couldn't tell" sentinel.
+    function addToneNote(el, errors) {
+      if (!el || !errors || !errors.length) return;
+      const note = document.createElement("div");
+      note.className = "tone-note";
+      note.textContent = errors
+        .map((e) => e.syllable + " is tone " + TONE_NAMES[e.expected] +
+                    " — you typed " + (TONE_NAMES[e.said] || e.said))
+        .join(" · ");
+      el.appendChild(note);
     }
 
     function toneClass(accuracy) {
@@ -485,12 +511,13 @@
     // --- Text mode ---------------------------------------------------------
     //
     // Same stateless contract as the spoken turn, same bubble/localStorage flow;
-    // only the transport differs (JSON to /api/turn/text, no audio). Input is
-    // 汉字 only — the server rejects romanization with 422, so we pre-check to
-    // save the learner a round trip.
-
-    const HANZI = /[㐀-䶿一-鿿]/;
-    const HANZI_HINT = "type 汉字 — switch your keyboard to the pinyin IME";
+    // only the transport differs (JSON to /api/turn/text, no audio).
+    //
+    // The learner types *pinyin* — they're a beginner and can't necessarily type
+    // 汉字. The bubble that comes back is the worker's reading of that pinyin as
+    // characters, so there's nothing to validate here beyond "not empty": whether
+    // a romanized string means anything is the worker's judgment, in context.
+    // Tone numbers are optional (`ni3hao3` gets tones checked, `nihao` doesn't).
 
     function setComposerBusy(busy) {
       textInput.disabled = send.disabled = busy;
@@ -499,7 +526,6 @@
     async function sendText() {
       const text = textInput.value.trim();
       if (!text) return;
-      if (!HANZI.test(text)) { setStatus(HANZI_HINT); return; }
 
       setComposerBusy(true);
       setStatus("thinking…");
@@ -519,9 +545,11 @@
           return;   // leave the box filled so a failed turn doesn't eat the text
         }
         const data = await resp.json();
-        // No `pronunciation` on a typed turn — renderLine falls back to the plain
-        // 汉字 + pinyin bubble, identical to a restored one.
-        renderLine("user", data.transcript, "");
+        // `transcript` is the worker's reading of the typed pinyin — the 汉字 the
+        // learner meant. No `pronunciation` on a typed turn (that needs audio),
+        // but tone errors ride along when they typed tone numbers.
+        const userBubble = renderLine("user", data.transcript, "");
+        addToneNote(userBubble, data.annotation && data.annotation.tone_errors);
         renderLine("partner", data.reply, "");
         dialogue.push({ role: "user", zh: data.transcript.zh, pinyin: data.transcript.pinyin });
         dialogue.push({ role: "partner", zh: data.reply.zh, pinyin: data.reply.pinyin });

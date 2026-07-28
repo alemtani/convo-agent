@@ -46,6 +46,8 @@ def stub_worker_and_pa(monkeypatch):
         return (
             Utterance(zh="你好！你叫什么名字？", pinyin="nǐ hǎo! nǐ jiào shénme míngzi?"),
             TurnAnnotation(coherence="on_track", topic_tags=["greetings"]),
+            # The reading echoes the STT hanzi on the audio path; unused there.
+            Utterance(zh="你好", pinyin="nǐ hǎo"),
             object(),
         )
 

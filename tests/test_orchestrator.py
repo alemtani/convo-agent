@@ -34,6 +34,7 @@ async def test_run_text_turn_loads_kb_and_calls_worker(monkeypatch):
         return (
             Utterance(zh="你好！你叫什么名字？", pinyin="nǐ hǎo! nǐ jiào shénme míngzi?"),
             TurnAnnotation(coherence="on_track", topic_tags=["greetings"]),
+            Utterance(zh="我叫小明", pinyin="wǒ jiào xiǎo míng"),
             object(),
         )
 
@@ -57,19 +58,27 @@ async def test_run_text_turn_loads_kb_and_calls_worker(monkeypatch):
     assert captured["kb_block"] == kb.load_kb_block("greetings")
 
 
-async def test_run_text_turn_echoes_transcript_with_derived_pinyin(monkeypatch):
-    # WS3: text mode renders through the same bubble path as the spoken loop, so
-    # the response carries the learner's own turn with server-derived pinyin.
-    monkeypatch.setattr(conversation, "respond", _worker_reply())
+async def test_run_text_turn_transcript_is_the_workers_reading(monkeypatch):
+    """The learner types pinyin; the bubble shows the 汉字 the worker read.
+
+    This is the whole point of text mode for a beginner — local romanization can't
+    do it (`to_pinyin` only goes hanzi→pinyin), and only the worker has the context
+    to resolve `ta` into 他 vs 她.
+    """
+    monkeypatch.setattr(
+        conversation,
+        "respond",
+        _worker_reply(reading=Utterance(zh="我叫小明", pinyin="wǒ jiào xiǎo míng")),
+    )
 
     resp = await orchestrator.run_text_turn(
-        TextTurnRequest(topic_id="greetings", text="我叫小明")
+        TextTurnRequest(topic_id="greetings", text="wo jiao xiao ming")
     )
 
     assert resp.transcript == Utterance(zh="我叫小明", pinyin="wǒ jiào xiǎo míng")
 
 
-async def test_run_text_turn_echoes_the_stripped_text(monkeypatch):
+async def test_run_text_turn_passes_the_stripped_text_to_the_worker(monkeypatch):
     captured = {}
 
     async def fake_respond(*, user_text, **kwargs):
@@ -77,28 +86,52 @@ async def test_run_text_turn_echoes_the_stripped_text(monkeypatch):
         return (
             Utterance(zh="你好", pinyin="nǐ hǎo"),
             TurnAnnotation(coherence="on_track"),
+            Utterance(zh="你好", pinyin="nǐ hǎo"),
             object(),
         )
 
     monkeypatch.setattr(conversation, "respond", fake_respond)
 
-    resp = await orchestrator.run_text_turn(
-        TextTurnRequest(topic_id="greetings", text="  我叫小明  ")
+    await orchestrator.run_text_turn(
+        TextTurnRequest(topic_id="greetings", text="  ni3hao3  ")
     )
 
-    # One normalization, applied at the model boundary: the worker and the echo
-    # both see the stripped text, so the bubble matches what the partner replied to.
-    assert captured["user_text"] == "我叫小明"
-    assert resp.transcript.zh == "我叫小明"
+    assert captured["user_text"] == "ni3hao3"
 
 
-async def test_run_text_turn_carries_no_tone_errors(monkeypatch):
-    # Inherent scope limit: no audio means no PA, so a text turn never reports
-    # tone errors. Asserted so a future change has to be deliberate.
-    monkeypatch.setattr(conversation, "respond", _worker_reply())
+async def test_run_text_turn_derives_tone_errors_from_typed_digits(monkeypatch):
+    """Text mode's payoff: `said` is the tone the learner actually believed.
+
+    The PA path can only ship `tones.SAID_UNKNOWN` (Azure reports accuracy, not a
+    produced tone). Typing states the belief outright, so the misconception is
+    nameable — 你 is tone 3 and they wrote tone 2.
+    """
+    monkeypatch.setattr(
+        conversation,
+        "respond",
+        _worker_reply(reading=Utterance(zh="你好", pinyin="nǐ hǎo")),
+    )
 
     resp = await orchestrator.run_text_turn(
-        TextTurnRequest(topic_id="greetings", text="我叫小明")
+        TextTurnRequest(topic_id="greetings", text="ni2hao3")
+    )
+
+    assert [e.model_dump() for e in resp.annotation.tone_errors] == [
+        {"syllable": "你", "expected": 3, "said": 2}
+    ]
+
+
+async def test_run_text_turn_has_no_tone_errors_without_tone_digits(monkeypatch):
+    # Tone digits are optional; typing toneless pinyin is a normal turn, not an
+    # error-laden one. The orchestrator must not invent tone errors from nothing.
+    monkeypatch.setattr(
+        conversation,
+        "respond",
+        _worker_reply(reading=Utterance(zh="你好", pinyin="nǐ hǎo")),
+    )
+
+    resp = await orchestrator.run_text_turn(
+        TextTurnRequest(topic_id="greetings", text="nihao")
     )
 
     assert resp.annotation.tone_errors == []
@@ -117,11 +150,12 @@ async def test_run_text_turn_propagates_unknown_topic(monkeypatch):
 # --- Phase 3b: the audio turn (STT -> PA || worker -> merged tone errors) ----
 
 
-def _worker_reply(annotation=None):
+def _worker_reply(annotation=None, reading=None):
     async def fake_respond(*, kb_block, sketch, dialogue, user_text, forgiveness_level, client=None):
         return (
             Utterance(zh="你好！你叫什么名字？", pinyin="nǐ hǎo! nǐ jiào shénme míngzi?"),
             annotation or TurnAnnotation(coherence="on_track", topic_tags=["greetings"]),
+            reading or Utterance(zh="你好", pinyin="nǐ hǎo"),
             object(),
         )
     return fake_respond
@@ -151,6 +185,7 @@ async def test_run_audio_turn_two_pass_and_merges_tone_errors(monkeypatch):
         return (
             Utterance(zh="你好！你叫什么名字？", pinyin="nǐ hǎo! nǐ jiào shénme míngzi?"),
             TurnAnnotation(coherence="on_track", topic_tags=["greetings"]),
+            Utterance(zh="你好", pinyin="nǐ hǎo"),
             object(),
         )
 
