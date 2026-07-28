@@ -16,7 +16,7 @@ deferred, not in the hot path).
 
 - Python 3.9+
 - FastAPI + Uvicorn (stateless turn proxy)
-- Anthropic SDK (Claude API) — Sonnet 4.6 on the per-turn loop; prompt caching
+- Anthropic SDK (Claude API) — Sonnet 5 on the per-turn loop; prompt caching
 - Azure Cognitive Services Speech SDK (STT + Pronunciation Assessment)
 - aiosqlite (async SQLite) — durable learning state only, not transcripts
 - Pydantic for data validation

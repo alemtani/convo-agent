@@ -69,7 +69,20 @@ def test_forgiveness_literal_is_in_frozen_block_not_volatile():
 
 
 def test_model_is_held_fixed():
-    assert _build()["model"] == config.CONVERSATION_MODEL == "claude-sonnet-4-6"
+    assert _build()["model"] == config.CONVERSATION_MODEL == "claude-sonnet-5"
+
+
+def test_thinking_is_disabled_with_room_for_the_structured_output():
+    """Sonnet 5 thinks by default, and `max_tokens` caps thinking *plus* output.
+
+    Left implicit, adaptive thinking consumes the whole budget and the turn ends
+    `stop_reason: max_tokens` with `parsed_output is None` — a 502 on a perfectly
+    valid request. Asserted because the failure is silent at build time and only
+    shows up as a live-call failure.
+    """
+    req = _build()
+    assert req["thinking"] == {"type": "disabled"}
+    assert req["max_tokens"] >= 1024
 
 
 def test_dialogue_maps_roles_and_appends_latest_user_turn():
@@ -137,7 +150,7 @@ async def test_respond_sends_built_request_and_parses_recorded_response():
 
     # We sent the request we build: right model, breakpoint on last system block.
     kwargs = parse.call_args.kwargs
-    assert kwargs["model"] == "claude-sonnet-4-6"
+    assert kwargs["model"] == "claude-sonnet-5"
     assert kwargs["output_format"] is ConversationResult
     assert kwargs["system"][-1]["cache_control"] == {"type": "ephemeral"}
     # The learner's raw input goes to the worker as typed — pinyin included. It is

@@ -13,9 +13,21 @@ from typing import List
 
 from pypinyin import Style, pinyin as _pinyin
 
-#: Han characters — CJK Unified Ideographs plus Extension A. Used to tell 汉字
-#: from romanization, and to count syllables in a reading (one hanzi = one).
-HANZI = re.compile(r"[㐀-䶿一-鿿]")
+#: Han characters — used to tell 汉字 from romanization, and to count syllables in
+#: a reading (one hanzi = one). Covers the Basic Block and Extension A (where all
+#: of HSK lives), plus Extension B and the Compatibility Ideographs so a rare
+#: character in a worker reading isn't silently dropped. Python's `re` has no
+#: `\p{Han}`, so the ranges are explicit; anything outside them degrades safely —
+#: the syllable count stops matching and tone analysis reports nothing, rather
+#: than misaligning.
+HANZI = re.compile(
+    "["
+    "一-鿿"          # CJK Unified Ideographs (the Basic Block)
+    "㐀-䶿"          # Extension A
+    "豈-﫿"          # Compatibility Ideographs
+    "\U00020000-\U0002a6df"  # Extension B
+    "]"
+)
 
 
 def to_pinyin(zh: str) -> str:
@@ -25,6 +37,17 @@ def to_pinyin(zh: str) -> str:
     syllables = (s[0] for s in _pinyin(zh, style=Style.TONE))
     # pypinyin emits punctuation as its own token — keep only romanized syllables.
     return " ".join(s for s in syllables if any(c.isalpha() for c in s))
+
+
+def toneless_syllables(zh: str) -> List[str]:
+    """Per-character toneless pinyin for `zh` (`上海` → `["shang", "hai"]`).
+
+    The ASCII form a learner actually types — pypinyin's `NORMAL` style even uses
+    `v` for ü (`绿` → `lv`), matching the usual IME convention. Pairing this with
+    the hanzi the worker read is what lets typed input be aligned without a pinyin
+    dictionary: we always know the syllable sequence to expect.
+    """
+    return [s[0] for s in _pinyin(zh, style=Style.NORMAL)]
 
 
 def tone_numbers(zh: str) -> List[int]:

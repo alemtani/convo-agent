@@ -261,7 +261,10 @@
     // turn that repeats one (谢谢).
     function markToneErrors(el, utt, errors) {
       if (!el || !errors || !errors.length) return;
-      const chars = [...utt.zh].filter((c) => /[㐀-䶿一-鿿]/.test(c));
+      // Mirrors backend/pinyin.py's HANZI; the u flag makes the ranges match by
+      // code point so a supplementary-plane character isn't split into surrogates.
+      const HANZI = /[一-鿿㐀-䶿豈-﫿\u{20000}-\u{2a6df}]/u;
+      const chars = [...utt.zh].filter((c) => HANZI.test(c));
       const syllables = utt.pinyin.split(/\s+/).filter(Boolean);
       if (chars.length !== syllables.length) return;  // can't align — mark nothing
 

@@ -258,9 +258,9 @@ running Opus everywhere:
 
 | Role | Frequency | Recommended | Model ID | Why |
 |---|---|---|---|---|
-| Conversation worker | every turn | **Sonnet 4.6** ($3/$15) | `claude-sonnet-4-6` | Fast, cheap, plenty for HSK 1–2 partner dialogue |
-| Feedback worker | every N turns | **Sonnet 4.6**, or **Opus 4.8** for richer coaching | `claude-sonnet-4-6` / `claude-opus-4-8` | Infrequent; quality > cost |
-| Sketch generator | once per session | Sonnet 4.6 | `claude-sonnet-4-6` | One-off |
+| Conversation worker | every turn | **Sonnet 5** ($3/$15) | `claude-sonnet-5` | Fast, cheap, plenty for HSK 1–2 partner dialogue |
+| Feedback worker | every N turns | **Sonnet 5**, or **Opus 4.8** for richer coaching | `claude-sonnet-5` / `claude-opus-4-8` | Infrequent; quality > cost |
+| Sketch generator | once per session | Sonnet 5 | `claude-sonnet-5` | One-off |
 
 Opus 4.8 ($5/$25) everywhere is the safe-quality fallback and works with all the
 caching above; it just costs more per turn (and has a 4096-token min cache prefix).

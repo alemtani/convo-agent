@@ -67,7 +67,14 @@ def build_request(
 
     return {
         "model": config.CONVERSATION_MODEL,
-        "max_tokens": 512,
+        "max_tokens": 1024,
+        # Thinking off, deliberately. Sonnet 5 runs adaptive thinking whenever the
+        # field is omitted, and `max_tokens` caps thinking *plus* output — so a
+        # budget sized for the JSON alone gets eaten by reasoning and the turn dies
+        # with `stop_reason: max_tokens` and no parsed output. One short in-band
+        # reply plus an annotation doesn't need deliberation, and this is the
+        # per-turn hot path where latency is the thing we're trying to protect.
+        "thinking": {"type": "disabled"},
         "system": system,
         "messages": messages,
         "output_format": ConversationResult,

@@ -17,7 +17,7 @@ AZURE_SPEECH_REGION = os.getenv("AZURE_SPEECH_REGION", "eastus")
 # Conversation worker (per-turn hot path). Sonnet 4.6 is the deliberate choice
 # for the loop — cheap and deterministic enough for every-turn calls (DESIGN.md).
 # Hold the model fixed per session: switching it mid-session busts the cache.
-CONVERSATION_MODEL = "claude-sonnet-4-6"
+CONVERSATION_MODEL = "claude-sonnet-5"
 
 # How forgiving the partner is of learner errors (0=strict … 1=very patient).
 # Baked as a literal into the frozen system prompt — never per-turn — so the
