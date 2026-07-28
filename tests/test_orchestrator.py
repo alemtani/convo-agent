@@ -57,6 +57,53 @@ async def test_run_text_turn_loads_kb_and_calls_worker(monkeypatch):
     assert captured["kb_block"] == kb.load_kb_block("greetings")
 
 
+async def test_run_text_turn_echoes_transcript_with_derived_pinyin(monkeypatch):
+    # WS3: text mode renders through the same bubble path as the spoken loop, so
+    # the response carries the learner's own turn with server-derived pinyin.
+    monkeypatch.setattr(conversation, "respond", _worker_reply())
+
+    resp = await orchestrator.run_text_turn(
+        TextTurnRequest(topic_id="greetings", text="我叫小明")
+    )
+
+    assert resp.transcript == Utterance(zh="我叫小明", pinyin="wǒ jiào xiǎo míng")
+
+
+async def test_run_text_turn_echoes_the_stripped_text(monkeypatch):
+    captured = {}
+
+    async def fake_respond(*, user_text, **kwargs):
+        captured["user_text"] = user_text
+        return (
+            Utterance(zh="你好", pinyin="nǐ hǎo"),
+            TurnAnnotation(coherence="on_track"),
+            object(),
+        )
+
+    monkeypatch.setattr(conversation, "respond", fake_respond)
+
+    resp = await orchestrator.run_text_turn(
+        TextTurnRequest(topic_id="greetings", text="  我叫小明  ")
+    )
+
+    # One normalization, applied at the model boundary: the worker and the echo
+    # both see the stripped text, so the bubble matches what the partner replied to.
+    assert captured["user_text"] == "我叫小明"
+    assert resp.transcript.zh == "我叫小明"
+
+
+async def test_run_text_turn_carries_no_tone_errors(monkeypatch):
+    # Inherent scope limit: no audio means no PA, so a text turn never reports
+    # tone errors. Asserted so a future change has to be deliberate.
+    monkeypatch.setattr(conversation, "respond", _worker_reply())
+
+    resp = await orchestrator.run_text_turn(
+        TextTurnRequest(topic_id="greetings", text="我叫小明")
+    )
+
+    assert resp.annotation.tone_errors == []
+
+
 async def test_run_text_turn_propagates_unknown_topic(monkeypatch):
     async def fake_respond(**kwargs):
         raise AssertionError("worker should not be called for an unknown topic")

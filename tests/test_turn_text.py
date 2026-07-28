@@ -17,6 +17,7 @@ client = TestClient(app)
 
 def _reply():
     return ConversationTurnResponse(
+        transcript=Utterance(zh="我叫小明", pinyin="wǒ jiào xiǎo míng"),
         reply=Utterance(zh="你好！你叫什么名字？", pinyin="nǐ hǎo! nǐ jiào shénme míngzi?"),
         annotation=TurnAnnotation(coherence="on_track", topic_tags=["greetings"]),
     )
@@ -44,6 +45,9 @@ def test_turn_text_returns_reply_and_annotation(monkeypatch):
 
     assert resp.status_code == 200
     body = resp.json()
+    # The learner's own turn comes back with derived pinyin so the client renders
+    # a typed turn exactly like a spoken one.
+    assert body["transcript"] == {"zh": "我叫小明", "pinyin": "wǒ jiào xiǎo míng"}
     assert body["reply"] == {"zh": "你好！你叫什么名字？", "pinyin": "nǐ hǎo! nǐ jiào shénme míngzi?"}
     assert body["annotation"]["coherence"] == "on_track"
     assert body["annotation"]["topic_tags"] == ["greetings"]
@@ -77,6 +81,18 @@ def test_turn_text_worker_failure_is_502(monkeypatch):
 def test_turn_text_requires_topic_and_text():
     assert client.post("/api/turn/text", json={"text": "你好"}).status_code == 422
     assert client.post("/api/turn/text", json={"topic_id": "greetings"}).status_code == 422
+
+
+@pytest.mark.parametrize("text", ["nihao", "ni3hao3", "", "   "])
+def test_turn_text_rejects_input_without_hanzi(text, monkeypatch):
+    # Hanzi-only mode: romanization is refused at the boundary, before the worker.
+    async def fake_run(req, client=None):
+        raise AssertionError("worker should not run for non-hanzi input")
+
+    monkeypatch.setattr(orchestrator, "run_text_turn", fake_run)
+
+    resp = client.post("/api/turn/text", json={"topic_id": "greetings", "text": text})
+    assert resp.status_code == 422
 
 
 def test_turn_text_dialogue_defaults_to_empty(monkeypatch):

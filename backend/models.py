@@ -8,9 +8,10 @@ their own words as much as the partner's. In Phase 3 the partner reply is produc
 by the conversation worker and a separate `turn_annotation` is added alongside
 these fields (not nested inside the utterance).
 """
+import re
 from typing import List, Literal, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 
 class Utterance(BaseModel):
@@ -125,27 +126,53 @@ class ConversationResult(BaseModel):
     turn_annotation: TurnAnnotation
 
 
+#: Han characters — CJK Unified Ideographs plus Extension A. Text mode is
+#: hanzi-only, and this is how we tell 汉字 from romanization.
+_HANZI = re.compile(r"[㐀-䶿一-鿿]")
+
+
 class TextTurnRequest(BaseModel):
-    """Request body for `POST /api/turn/text` (Phase 3a, text-only).
+    """Request body for `POST /api/turn/text` (text mode).
 
     `topic_id` selects the KB whose vocab/grammar/dialogues seed the cached
     prefix; `dialogue` is the client-held transcript so far; `text` is the
-    learner's latest utterance. Phase 3b reuses the same orchestrator seam with
-    `text` sourced from Azure STT instead.
+    learner's latest utterance. The audio path reuses the same orchestrator seam
+    with `text` sourced from Azure STT instead.
     """
 
     topic_id: str
     text: str
     dialogue: List[DialogueTurn] = []
 
+    @field_validator("text")
+    @classmethod
+    def _must_be_hanzi(cls, v: str) -> str:
+        """Normalize whitespace and require at least one 汉字.
+
+        Text mode is hanzi-only by design — no pinyin→hanzi converter exists, and
+        `pinyin.to_pinyin` passes Latin through unchanged ("nihao" → "nihao"), so
+        romanization would echo as its own pinyin line *and* reach the worker as
+        typed. Rejecting it here keeps that out of the whole pipeline. Mixed input
+        ("我叫Alex") is fine; only *zero* hanzi is refused.
+        """
+        v = v.strip()
+        if not _HANZI.search(v):
+            raise ValueError(
+                "text must contain 汉字 — type Chinese characters using your "
+                "keyboard's pinyin IME; romanized pinyin is not supported"
+            )
+        return v
+
 
 class ConversationTurnResponse(BaseModel):
-    """Response body for `POST /api/turn/text`: the partner's reply + annotation.
+    """Response body for `POST /api/turn/text`: the learner's turn + the reply.
 
-    Unlike the audio path's `TurnResponse`, there is no `transcript`/`pronunciation`
-    — the client already has its own text, and tone scores belong to the speech
-    path (Phase 3b).
+    `transcript` echoes the learner's typed hanzi with server-derived pinyin — it
+    mirrors `TurnResponse.transcript` so the client renders a typed turn through
+    exactly the same path as a spoken one. There is no `pronunciation`: tone
+    scores need audio, so they belong to the speech path alone.
     """
 
+    transcript: Utterance
     reply: Utterance
     annotation: TurnAnnotation

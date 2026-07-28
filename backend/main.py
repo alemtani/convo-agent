@@ -76,17 +76,16 @@ async def turn(
 
 @app.post("/api/turn/text", response_model=ConversationTurnResponse)
 async def turn_text(req: TextTurnRequest) -> ConversationTurnResponse:
-    """One text-only conversation turn: real Claude reply + turn annotation.
+    """One typed conversation turn: real Claude reply + turn annotation.
 
-    Not on the production hot path as of Phase 3b — the PWA speaks, so the real
-    loop is `POST /api/turn`. This endpoint is retained as a **mic-free dev/test
-    harness**: it exercises the conversation worker and the cached prefix without
-    Azure (handy for prompt iteration and a fast `curl` smoke test), and its
-    coverage lives in `tests/test_turn_text.py`.
-
-    TODO(phase-4): reassess when multi-turn lands — either promote it to a
-    first-class text-input mode (dialogue is already wired) or remove it if the
-    audio path fully subsumes it. Tracked so it doesn't linger unowned.
+    Text mode — the first-class alternative to `POST /api/turn` for practising
+    where you can't speak. Same stateless contract as the spoken loop (the client
+    holds the transcript and resubmits it as `dialogue`) and the same orchestrator
+    seam, minus STT and PA. Input is **hanzi-only**: the learner types 汉字 with
+    their keyboard's pinyin IME, and `TextTurnRequest` rejects romanization with
+    422. The response echoes their turn with derived pinyin so the client renders
+    typed and spoken turns identically; it carries no tone scores, since those
+    need audio.
     """
     try:
         return await orchestrator.run_text_turn(req)

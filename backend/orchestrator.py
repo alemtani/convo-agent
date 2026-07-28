@@ -40,6 +40,11 @@ async def run_text_turn(
 ) -> ConversationTurnResponse:
     """Coordinate one text turn: load KB, run the worker, shape the response.
 
+    The mirror of `run_audio_turn` minus the speech stages: `req.text` is already
+    the learner's hanzi (validated and stripped by `TextTurnRequest`), so it goes
+    straight to the worker and comes back as the transcript echo with derived
+    pinyin. No PA means no tone errors — that asymmetry is inherent to text mode.
+
     Raises `kb.KbError` for an unknown topic and `conversation.ConversationError`
     on a refusal / unparseable reply — the route maps these to 404 / 502.
     """
@@ -54,7 +59,10 @@ async def run_text_turn(
         client=client,
     )
 
-    return ConversationTurnResponse(reply=reply, annotation=annotation)
+    transcript = Utterance(zh=req.text, pinyin=to_pinyin(req.text))
+    return ConversationTurnResponse(
+        transcript=transcript, reply=reply, annotation=annotation
+    )
 
 
 async def run_audio_turn(
