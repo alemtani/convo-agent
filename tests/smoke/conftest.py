@@ -135,40 +135,83 @@ TURN_TEXT = {
     "usage": USAGE,
 }
 
-TURN_AUDIO = {
-    "transcript": {"zh": "你好", "pinyin": "nǐ hǎo"},
-    "reply": {"zh": "你好！", "pinyin": "nǐ hǎo!"},
-    "pronunciation": {
-        "overall": 88.0,
-        "syllables": [
-            {"hanzi": "你", "pinyin": "nǐ", "accuracy": 92.0},
-            {"hanzi": "好", "pinyin": "hǎo", "accuracy": 84.0},
-        ],
+# The spoken turn answers in *stages* — one JSON object per line — so its canned
+# form is a list, not an object. A single-object stub would let the page's
+# `ndjson()` parse one event with `stage: undefined`, match no branch, and leave
+# both bubbles pending forever while every count-based assertion still passed.
+# That is exactly the failure this suite caught when the route started streaming.
+TURN_AUDIO = [
+    {
+        "stage": "transcript",
+        "transcript": {"zh": "你好", "pinyin": "nǐ hǎo"},
+        "timings": {**TIMINGS, "pa_ms": None, "claude_ms": None, "total_ms": None},
+        "elapsed_ms": 310.0,
     },
-    "annotation": {"tone_errors": []},
-    "timings": TIMINGS,
-    "usage": USAGE,
-}
+    {
+        "stage": "score",
+        "pronunciation": {
+            "overall": 88.0,
+            "syllables": [
+                {"hanzi": "你", "pinyin": "nǐ", "accuracy": 92.0},
+                {"hanzi": "好", "pinyin": "hǎo", "accuracy": 84.0},
+            ],
+        },
+        "tone_errors": [],
+        "timings": {**TIMINGS, "claude_ms": None, "total_ms": None},
+        "elapsed_ms": 560.0,
+    },
+    {
+        "stage": "reply",
+        "reply": {"zh": "你好！", "pinyin": "nǐ hǎo!"},
+        "annotation": {"tone_errors": []},
+        "timings": {**TIMINGS, "total_ms": None},
+        "elapsed_ms": 1240.0,
+    },
+    {"stage": "done", "timings": TIMINGS, "usage": USAGE, "elapsed_ms": 1250.0},
+]
 
 _STUB_JS = """
 (canned) => {
   const state = {
-    responses: canned,      // path -> JSON body
+    responses: canned,      // path -> JSON body, or array of NDJSON events
     status: {},             // path -> HTTP status override
-    manual: false,          // hold responses until release()
-    waiting: [],
+    manual: false,          // hold responses/lines until released
+    waiting: [],            // queued steps, in order
     requests: [],
   };
+  // `release()` flushes everything queued — the whole response, or a stream's
+  // remaining lines at once. `releaseNext()` advances exactly one step, which is
+  // what lets a test look at the thread *between* two stages of one turn.
   state.release = () => { state.waiting.splice(0).forEach((f) => f()); };
+  state.releaseNext = () => { const f = state.waiting.shift(); if (f) f(); };
   window.__stub = state;
 
   window.fetch = (input, init) => {
     const path = new URL(input, location.href).pathname;
     state.requests.push(path);
     const status = state.status[path] || 200;
-    const body = status === 200
-      ? JSON.stringify(state.responses[path] || {})
-      : "stubbed failure";
+    const canned = state.responses[path];
+
+    // A staged turn: one JSON object per line, delivered incrementally. `fetch`
+    // resolves on *headers* — as the real one does — and the body arrives after,
+    // so a page that awaits the whole body instead of reading the stream shows
+    // up here as a hang rather than passing quietly.
+    if (status === 200 && Array.isArray(canned)) {
+      let controller;
+      const encoder = new TextEncoder();
+      const stream = new ReadableStream({ start: (c) => { controller = c; } });
+      const emit = (line) => controller.enqueue(encoder.encode(JSON.stringify(line) + "\\n"));
+      const steps = canned.map((line) => () => emit(line));
+      steps.push(() => controller.close());
+      if (state.manual) state.waiting.push(...steps);
+      else steps.forEach((step) => step());
+      return Promise.resolve(new Response(stream, {
+        status,
+        headers: { "Content-Type": "application/x-ndjson" },
+      }));
+    }
+
+    const body = status === 200 ? JSON.stringify(canned || {}) : "stubbed failure";
     const make = () => new Response(body, {
       status,
       headers: { "Content-Type": status === 200 ? "application/json" : "text/plain" },

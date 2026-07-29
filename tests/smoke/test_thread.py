@@ -64,9 +64,9 @@ def test_press_captures_frames_from_frame_zero(page):
     assert page.evaluate("window.__convo.lastSampleCount") > 0
     expect(page.locator("#status")).to_have_text("")
 
-    # The spoken path has no optimistic echo — the transcript only exists once
-    # the server answers — so it paints the pending reply first and inserts the
-    # transcript *above* it. Order in the thread must still read user-then-partner.
+    # Both bubbles go up on release: the echo holds the learner's place while
+    # STT runs, so the thread never shows a lone loading bubble with nothing
+    # above it. Order must still read user-then-partner.
     expect(bubbles(page)).to_have_count(2)
     expect(bubbles(page).nth(0)).to_have_class(re.compile(r"\buser\b"))
     expect(bubbles(page).nth(0).locator(".syl")).to_have_count(4)   # 2 syllables × 2 rows
@@ -75,6 +75,92 @@ def test_press_captures_frames_from_frame_zero(page):
 
     # The timings line is appended, while the transcript is *inserted* above the
     # pending bubble — so it has to end up last, not stranded between the turns.
+    expect(page.locator("#thread > *").last).to_have_class(re.compile(r"\btimings\b"))
+
+
+def _speak(page):
+    """Press, capture a little audio, release — leaving the turn in flight."""
+    page.hover("#talk")
+    page.mouse.down()
+    page.wait_for_function("window.__convo.framesCaptured > 0")
+    page.wait_for_timeout(200)
+    page.mouse.up()
+    page.wait_for_function("window.__convo.lastSampleCount !== null")
+
+
+def test_transcript_renders_while_the_reply_is_still_pending(page):
+    """The whole point of staging, asserted where a user would see it.
+
+    The unit suite proves the *server* flushes the transcript early. This proves
+    the page paints it early — that it reads the body as a stream instead of
+    awaiting it whole. A page that awaited `resp.text()` would sit here with two
+    pending bubbles until the `done` line, and pass every count-based assertion
+    in this file.
+    """
+    seed(page)
+    page.evaluate("window.__stub.manual = true")
+    _speak(page)
+
+    # Nothing released yet: both bubbles are placeholders.
+    expect(bubbles(page, ".bubble.user.pending")).to_have_count(1)
+    expect(bubbles(page, ".bubble.partner.pending")).to_have_count(1)
+
+    page.evaluate("window.__stub.releaseNext()")   # transcript
+
+    # The learner's words are on screen while the reply is still being written.
+    user = bubbles(page, ".bubble.user")
+    expect(user).to_contain_text("你好")
+    expect(bubbles(page, ".bubble.user.pending")).to_have_count(0)
+    expect(bubbles(page, ".bubble.partner.pending")).to_have_count(1)
+    # Unscored so far — the underlines belong to the score event, not this one.
+    expect(user.locator(".syl")).to_have_count(0)
+
+
+def test_scores_repaint_the_transcript_bubble_instead_of_adding_one(page):
+    """Tone underlines land on the bubble already up, seconds before the reply.
+
+    The race worth pinning: `score` arrives while the transcript bubble exists,
+    so a renderer that appends instead of replacing leaves the learner with two
+    copies of their own sentence.
+    """
+    seed(page)
+    page.evaluate("window.__stub.manual = true")
+    _speak(page)
+
+    page.evaluate("window.__stub.releaseNext()")   # transcript
+    expect(bubbles(page, ".bubble.user")).to_have_count(1)
+    handle = bubbles(page, ".bubble.user").element_handle()
+
+    page.evaluate("window.__stub.releaseNext()")   # score
+
+    # Same bubble, now scored — one node, not a second one appended. The scores
+    # must be inside the node captured *before* they arrived; a renderer that
+    # replaced the bubble would leave this handle detached and empty.
+    expect(bubbles(page, ".bubble.user")).to_have_count(1)
+    assert len(handle.query_selector_all(".syl")) == 4, \
+        "a new node replaced the transcript bubble instead of repainting it"
+    # And the reply still hasn't arrived — the underlines did not wait on it.
+    expect(bubbles(page, ".bubble.partner.pending")).to_have_count(1)
+
+
+def test_timings_line_waits_for_the_done_event(page):
+    """`reply` is not terminal, so the timings line hangs off `done`.
+
+    Rendering it on `reply` would strand it mid-thread whenever `score` is the
+    slower branch and arrives after the reply.
+    """
+    seed(page)
+    page.evaluate("window.__stub.manual = true")
+    _speak(page)
+
+    for _ in range(3):   # transcript, score, reply
+        page.evaluate("window.__stub.releaseNext()")
+
+    expect(bubbles(page, ".bubble.partner")).to_contain_text("你好")
+    expect(page.locator("#thread .timings")).to_have_count(0)
+
+    page.evaluate("window.__stub.releaseNext()")   # done
+    expect(page.locator("#thread .timings")).to_have_count(1)
     expect(page.locator("#thread > *").last).to_have_class(re.compile(r"\btimings\b"))
 
 
