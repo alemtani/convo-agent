@@ -97,6 +97,19 @@
       background: rgba(0, 0, 0, 0.25);
     }
 
+    /* WS1 Stage 0: the turn's cost, in the thread where the wait was felt. A
+       latency number read off a log after the fact is a different thing from one
+       sitting next to the reply you just waited for. Deliberately quiet — it is
+       a dev instrument, and the learner should be able to ignore it. */
+    .timings {
+      align-self: flex-start;
+      font-size: 0.68rem;
+      opacity: 0.5;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      margin: -0.3rem 0 0.2rem;
+    }
+    .timings .slow { color: #f87171; opacity: 1; }
+
     #dock {
       display: flex;
       flex-direction: column;
@@ -447,6 +460,50 @@
       el.replaceChildren(zhRow, pyRow);
     }
 
+    // WS1 Stage 0. The server measures; the client only renders what it was told,
+    // so page and log quote the same numbers. `total` is bold because it is the
+    // number the <3s target is stated against, and the stages after it explain
+    // where it went — on the spoken path PA and Claude overlap, so their sum
+    // deliberately exceeds the total.
+    const SLOW_TOTAL_MS = 3000;
+
+    function renderTimings(timings, usage, roundTripMs) {
+      if (!timings) return;
+      const el = document.createElement("div");
+      el.className = "timings";
+      const secs = (ms) => (ms / 1000).toFixed(2) + "s";
+
+      // The wait the learner actually felt is the round trip, not the server
+      // total: on the spoken path a ~160 KB WAV has to upload first, and over a
+      // phone or a dev tunnel that gap is the finding. Server total sits beside
+      // it so the difference is readable rather than inferred.
+      const total = document.createElement("b");
+      total.textContent = secs(roundTripMs != null ? roundTripMs : timings.total_ms);
+      if ((roundTripMs != null ? roundTripMs : timings.total_ms) > SLOW_TOTAL_MS) {
+        total.className = "slow";
+      }
+      el.append(total);
+
+      const parts = [];
+      if (roundTripMs != null) parts.push("server " + secs(timings.total_ms));
+      for (const [key, label] of [["stt_ms", "stt"], ["pa_ms", "pa"],
+                                  ["claude_ms", "claude"]]) {
+        if (timings[key] != null) parts.push(label + " " + secs(timings[key]));
+      }
+      // cache_read = 0 on the first turn of a session (it writes the prefix) and
+      // should be large on every turn after. A run of zeroes means the cacheable
+      // prefix is not byte-identical across turns and we are paying full price.
+      if (usage && usage.cache_read_input_tokens != null) {
+        parts.push("cache " + usage.cache_read_input_tokens);
+      }
+      el.append(document.createTextNode("  ·  " + parts.join("  ·  ")));
+      thread.appendChild(el);
+      // Follows the same rule as a bubble: only chase the bottom if that's where
+      // the reader already is, and via the shared helper so this scroll can't
+      // race the one the reply just started.
+      if (stuck) scrollToBottom("smooth");
+    }
+
     function toneClass(accuracy) {
       if (accuracy >= 80) return "tone-good";
       if (accuracy >= 60) return "tone-mid";
@@ -708,6 +765,7 @@
       // pending bubble goes in first and the transcript is inserted *above* it
       // when it lands.
       const pending = createBubble("partner").pending();
+      const startedAt = performance.now();
       const form = new FormData();
       form.append("audio", wavBlob, "turn.wav");
       form.append("topic_id", "greetings");
@@ -730,6 +788,9 @@
           pronunciation: data.pronunciation,
         });
         pending.render(data.reply);
+        // After the reply, so the timings line stays last in the thread — the
+        // transcript is inserted above the pending bubble, not appended.
+        renderTimings(data.timings, data.usage, performance.now() - startedAt);
         // Only record a real exchange: an empty transcript means nothing was
         // recognized (the reply was a re-prompt), so it isn't part of history.
         if (data.transcript.zh) {
@@ -782,6 +843,9 @@
         textInput.value = text;
       };
 
+      // "thinking…" is gone: the pending bubble says it, in the thread, where
+      // the reply will actually appear.
+      const startedAt = performance.now();
       try {
         const resp = await fetch("/api/turn/text", {
           method: "POST",
@@ -806,6 +870,7 @@
           toneErrors: data.annotation && data.annotation.tone_errors,
         });
         pending.render(data.reply);
+        renderTimings(data.timings, data.usage, performance.now() - startedAt);
         dialogue.push({ role: "user", zh: data.transcript.zh, pinyin: data.transcript.pinyin });
         dialogue.push({ role: "partner", zh: data.reply.zh, pinyin: data.reply.pinyin });
         saveDialogue();

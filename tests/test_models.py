@@ -17,6 +17,8 @@ from backend.models import (
     ToneError,
     TurnAnnotation,
     TurnResponse,
+    TurnTimings,
+    TurnUsage,
     Utterance,
 )
 
@@ -33,6 +35,9 @@ def test_turn_response_serializes_symmetric_shape():
         "reply": {"zh": "你好", "pinyin": "nǐ hǎo"},
         "pronunciation": None,
         "annotation": None,
+        # WS1 Stage 0 diagnostics; absent unless the orchestrator attached them.
+        "timings": None,
+        "usage": None,
     }
 
 
@@ -160,6 +165,8 @@ def test_conversation_turn_response_shape():
             "topic_tags": ["greetings"],
             "should_give_feedback": False,
         },
+        "timings": None,
+        "usage": None,
     }
 
 
@@ -194,3 +201,60 @@ def test_text_turn_request_rejects_blank_text(text):
 )
 def test_text_turn_request_accepts_pinyin_and_hanzi(text):
     assert TextTurnRequest(topic_id="greetings", text=text).text == text
+
+
+# --- WS1 Stage 0: turn diagnostics ----------------------------------------
+#
+# Timings and token usage ride back on the turn response so the client (and the
+# replay harness) reads the same numbers the server logged, rather than each
+# side measuring its own thing.
+
+
+def test_turn_timings_defaults_every_stage_to_none():
+    """A stage that didn't run reports nothing, never zero — `total` is the only
+    number every turn necessarily has."""
+    timings = TurnTimings(total_ms=1200.0)
+    assert timings.model_dump() == {
+        "stt_ms": None, "pa_ms": None, "claude_ms": None, "total_ms": 1200.0
+    }
+
+
+def test_turn_timings_from_stage_dict_maps_names_to_fields():
+    timings = TurnTimings.from_stages({"stt": 900.0, "claude": 3100.0, "total": 4050.0})
+    assert timings.stt_ms == 900.0
+    assert timings.claude_ms == 3100.0
+    assert timings.pa_ms is None       # PA degraded off this turn
+    assert timings.total_ms == 4050.0
+
+
+def test_turn_usage_reads_the_anthropic_usage_block():
+    class FakeUsage:
+        input_tokens = 42
+        output_tokens = 108
+        cache_read_input_tokens = 3000
+        cache_creation_input_tokens = 0
+
+    usage = TurnUsage.from_sdk(FakeUsage())
+
+    assert usage.model_dump() == {
+        "input_tokens": 42,
+        "output_tokens": 108,
+        "cache_read_input_tokens": 3000,
+        "cache_creation_input_tokens": 0,
+    }
+
+
+def test_turn_usage_tolerates_a_usage_block_missing_cache_fields():
+    """The cache fields are absent on some responses (and on the stub objects the
+    orchestrator tests pass through). Reading usage must never break a turn."""
+    class Sparse:
+        input_tokens = 10
+        output_tokens = 5
+
+    usage = TurnUsage.from_sdk(Sparse())
+    assert usage.input_tokens == 10
+    assert usage.cache_read_input_tokens is None
+
+
+def test_turn_usage_from_nothing_is_none():
+    assert TurnUsage.from_sdk(None) is None

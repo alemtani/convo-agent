@@ -246,3 +246,22 @@ def test_turn_unknown_topic_is_404(monkeypatch):
 
     resp = client.post("/api/turn", files=_upload(), data={"topic_id": "nope"})
     assert resp.status_code == 404
+
+
+def test_turn_response_carries_stage_timings(monkeypatch):
+    """WS1 Stage 0: the route surfaces what it measured, so the client and the
+    replay harness read the same numbers the server logged."""
+
+    async def fake_transcribe(audio_wav, language="zh-CN"):
+        return "你好"
+
+    monkeypatch.setattr(stt, "transcribe", fake_transcribe)
+
+    body = client.post("/api/turn", files=_upload()).json()
+
+    assert body["timings"]["total_ms"] is not None
+    assert body["timings"]["stt_ms"] is not None
+    assert body["timings"]["claude_ms"] is not None
+    assert body["timings"]["pa_ms"] is not None
+    # `usage` is present in the contract even when the stub worker has none to give.
+    assert "usage" in body

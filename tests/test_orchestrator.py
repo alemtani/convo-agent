@@ -260,3 +260,163 @@ async def test_run_audio_turn_propagates_unknown_topic(monkeypatch):
 
     with pytest.raises(kb.KbError):
         await orchestrator.run_audio_turn(b"FAKEWAV", topic_id="nope")
+
+
+# --- WS1 Stage 0: per-stage timings + Anthropic usage ----------------------
+#
+# The critical path is `STT + max(PA, Claude)`, so every stage is timed
+# separately — including the two that overlap — and the token usage the worker
+# already returned is surfaced instead of discarded. Timings are wall-clock, so
+# the assertions are about *which* stages are reported and how they relate, never
+# about a specific millisecond count.
+
+
+class _FakeUsage:
+    input_tokens = 120
+    output_tokens = 90
+    cache_read_input_tokens = 4200
+    cache_creation_input_tokens = 0
+
+
+async def test_run_audio_turn_reports_a_timing_for_every_stage(monkeypatch):
+    import asyncio
+
+    async def fake_transcribe(audio_wav, language="zh-CN"):
+        await asyncio.sleep(0.02)
+        return "你好"
+
+    async def fake_assess(audio_wav, reference_text, language="zh-CN"):
+        await asyncio.sleep(0.01)
+        return _pa_score(SyllableScore(hanzi="你", pinyin="nǐ", accuracy=95.0))
+
+    async def fake_respond(**kwargs):
+        await asyncio.sleep(0.05)
+        return (
+            Utterance(zh="你好", pinyin="nǐ hǎo"),
+            TurnAnnotation(coherence="on_track"),
+            Utterance(zh="你好", pinyin="nǐ hǎo"),
+            _FakeUsage(),
+        )
+
+    monkeypatch.setattr(stt, "transcribe", fake_transcribe)
+    monkeypatch.setattr(pronunciation, "assess", fake_assess)
+    monkeypatch.setattr(conversation, "respond", fake_respond)
+
+    resp = await orchestrator.run_audio_turn(b"FAKEWAV", topic_id="greetings")
+
+    t = resp.timings
+    assert t is not None
+    assert t.stt_ms > 0 and t.pa_ms > 0 and t.claude_ms > 0
+    # PA and Claude are timed as separate branches of the same gather — the
+    # number Stage 2 turns on. The slow branch must not be charged to the fast one.
+    assert t.pa_ms < t.claude_ms
+    # Total spans the whole turn, so it is at least the serial critical path
+    # (STT then the slower of the two concurrent branches).
+    assert t.total_ms >= t.stt_ms + t.claude_ms
+    # ...but the concurrent branches are not summed into it.
+    assert t.total_ms < t.stt_ms + t.claude_ms + t.pa_ms + 1000
+
+
+async def test_run_audio_turn_surfaces_the_anthropic_usage_block(monkeypatch):
+    """`cache_read_input_tokens > 0` is the whole prompt-caching claim; before
+    this the orchestrator dropped it on the floor."""
+
+    async def fake_transcribe(audio_wav, language="zh-CN"):
+        return "你好"
+
+    async def fake_assess(audio_wav, reference_text, language="zh-CN"):
+        return None
+
+    async def fake_respond(**kwargs):
+        return (
+            Utterance(zh="你好", pinyin="nǐ hǎo"),
+            TurnAnnotation(coherence="on_track"),
+            Utterance(zh="你好", pinyin="nǐ hǎo"),
+            _FakeUsage(),
+        )
+
+    monkeypatch.setattr(stt, "transcribe", fake_transcribe)
+    monkeypatch.setattr(pronunciation, "assess", fake_assess)
+    monkeypatch.setattr(conversation, "respond", fake_respond)
+
+    resp = await orchestrator.run_audio_turn(b"FAKEWAV", topic_id="greetings")
+
+    assert resp.usage.cache_read_input_tokens == 4200
+    assert resp.usage.input_tokens == 120
+    assert resp.usage.output_tokens == 90
+
+
+async def test_run_audio_turn_times_pa_even_when_it_fails(monkeypatch):
+    """A PA call that burned two seconds and then failed is the most interesting
+    timing there is; degrading to scores-off must not also lose the number."""
+    import asyncio
+
+    async def fake_transcribe(audio_wav, language="zh-CN"):
+        return "你好"
+
+    async def fake_assess(audio_wav, reference_text, language="zh-CN"):
+        await asyncio.sleep(0.01)
+        raise pronunciation.PaError("boom")
+
+    monkeypatch.setattr(stt, "transcribe", fake_transcribe)
+    monkeypatch.setattr(pronunciation, "assess", fake_assess)
+    monkeypatch.setattr(conversation, "respond", _worker_reply())
+
+    resp = await orchestrator.run_audio_turn(b"FAKEWAV", topic_id="greetings")
+
+    assert resp.pronunciation is None
+    assert resp.timings.pa_ms > 0
+
+
+async def test_run_audio_turn_times_the_short_circuited_turn(monkeypatch):
+    """Nothing recognized still cost an STT round trip — and a turn that returns
+    early must not silently drop out of the measurements."""
+
+    async def fake_transcribe(audio_wav, language="zh-CN"):
+        return ""
+
+    monkeypatch.setattr(stt, "transcribe", fake_transcribe)
+
+    resp = await orchestrator.run_audio_turn(b"FAKEWAV", topic_id="greetings")
+
+    assert resp.timings.stt_ms is not None
+    assert resp.timings.total_ms is not None
+    assert resp.timings.claude_ms is None   # the worker never ran
+    assert resp.timings.pa_ms is None
+
+
+async def test_run_text_turn_reports_claude_and_total_only(monkeypatch):
+    """Text mode has no STT and no PA, so the difference between `claude_ms` and
+    `total_ms` is the server's own overhead — the comparison that says whether a
+    slow spoken turn is Claude or the speech stages."""
+
+    async def fake_respond(**kwargs):
+        return (
+            Utterance(zh="你好", pinyin="nǐ hǎo"),
+            TurnAnnotation(coherence="on_track"),
+            Utterance(zh="你好", pinyin="nǐ hǎo"),
+            _FakeUsage(),
+        )
+
+    monkeypatch.setattr(conversation, "respond", fake_respond)
+
+    resp = await orchestrator.run_text_turn(
+        TextTurnRequest(topic_id="greetings", text="你好")
+    )
+
+    assert resp.timings.claude_ms is not None
+    assert resp.timings.total_ms >= resp.timings.claude_ms
+    assert resp.timings.stt_ms is None and resp.timings.pa_ms is None
+    assert resp.usage.cache_read_input_tokens == 4200
+
+
+async def test_turn_usage_is_none_when_the_worker_returns_no_usage(monkeypatch):
+    # The stub workers elsewhere in this suite hand back a bare `object()`; a
+    # response with no readable usage must still be a valid turn.
+    monkeypatch.setattr(conversation, "respond", _worker_reply())
+
+    resp = await orchestrator.run_text_turn(
+        TextTurnRequest(topic_id="greetings", text="你好")
+    )
+
+    assert resp.usage.input_tokens is None

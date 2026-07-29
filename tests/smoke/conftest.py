@@ -121,10 +121,18 @@ def browser_context_args(browser_context_args, frontend_server):
 
 # Canned turns. `transcript` is 汉字 + tone-marked pinyin (the worker's reading
 # of typed pinyin, or Azure's transcription); `reply` is the partner's answer.
+# `timings`/`usage` are carried so the per-turn timings line actually renders —
+# without them `renderTimings` returns early and the tests would silently stop
+# covering where that line lands relative to the bubbles.
+TIMINGS = {"stt_ms": 300.0, "pa_ms": 250.0, "claude_ms": 900.0, "total_ms": 1250.0}
+USAGE = {"input_tokens": 4200, "output_tokens": 60, "cache_read_input_tokens": 4096}
+
 TURN_TEXT = {
     "transcript": {"zh": "你好", "pinyin": "nǐ hǎo"},
     "reply": {"zh": "你好！很高兴认识你。", "pinyin": "nǐ hǎo! hěn gāoxìng rènshi nǐ."},
     "annotation": {"tone_errors": []},
+    "timings": {**TIMINGS, "stt_ms": None, "pa_ms": None},   # no speech on a typed turn
+    "usage": USAGE,
 }
 
 TURN_AUDIO = {
@@ -138,6 +146,8 @@ TURN_AUDIO = {
         ],
     },
     "annotation": {"tone_errors": []},
+    "timings": TIMINGS,
+    "usage": USAGE,
 }
 
 _STUB_JS = """

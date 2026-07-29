@@ -73,6 +73,10 @@ def test_press_captures_frames_from_frame_zero(page):
     expect(bubbles(page).nth(1)).to_have_class(re.compile(r"\bpartner\b"))
     expect(bubbles(page).nth(1)).to_contain_text("你好")
 
+    # The timings line is appended, while the transcript is *inserted* above the
+    # pending bubble — so it has to end up last, not stranded between the turns.
+    expect(page.locator("#thread > *").last).to_have_class(re.compile(r"\btimings\b"))
+
 
 def test_graph_stays_warm_between_presses(page):
     """Release parks the mic graph instead of tearing it down.
