@@ -95,6 +95,26 @@ async def turn_text(req: TextTurnRequest) -> ConversationTurnResponse:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
+class NoCacheStaticFiles(StaticFiles):
+    """Serve the frontend with caching off.
+
+    The whole client — markup, styles, and every line of JavaScript — is one
+    `index.html`, so a cached copy runs stale logic against a current server and
+    gives no sign of it: the page loads, it just behaves like an older build.
+    Debugging that costs far more than re-fetching a few KB, and on a phone (or
+    through a dev tunnel) there is no convenient hard-reload. Correctness over
+    bandwidth for a single-user practice tool.
+    """
+
+    def is_not_modified(self, response_headers, request_headers) -> bool:
+        return False   # ignore ETag/Last-Modified revalidation; always resend
+
+    async def get_response(self, path: str, scope):
+        response = await super().get_response(path, scope)
+        response.headers["Cache-Control"] = "no-store"
+        return response
+
+
 # Static page is mounted last so explicit API routes above take precedence;
 # html=True serves frontend/index.html at "/".
-app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
+app.mount("/", NoCacheStaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
