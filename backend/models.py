@@ -117,6 +117,67 @@ class TurnResponse(BaseModel):
     usage: Optional[TurnUsage] = None
 
 
+# --- The spoken turn, delivered in stages ---------------------------------
+#
+# `POST /api/turn` streams NDJSON rather than answering once at the end. The
+# reason is the shape of the turn, not raw speed: STT resolves in a fraction of
+# the time the conversation worker takes, so holding the transcript back until
+# the reply is ready means the learner watches a loading bubble with no message
+# of their own above it — the thread reads as if they never spoke. Each event is
+# one line of JSON; `stage` discriminates.
+#
+# Everything that maps to an HTTP status (unknown topic, STT failure) is settled
+# *before* the first byte, so a stream that starts is a stream that carries a
+# transcript. Failures after that point can only be reported in-band, as an
+# `error` event.
+#
+# Every event carries `timings` measured when it was *emitted*, not when its
+# stage finished. Staged delivery makes arrival the number that matters: two
+# turns with identical stage durations feel completely different depending on
+# when each line flushed, and only the arrival time distinguishes them.
+
+
+class TranscriptEvent(BaseModel):
+    """First event: what the learner said, as soon as STT resolves.
+
+    `transcript.zh` is empty when nothing was recognized; the `final` event then
+    carries a re-prompt.
+    """
+
+    stage: Literal["transcript"] = "transcript"
+    transcript: Utterance
+    timings: Optional[TurnTimings] = None
+
+
+class FinalEvent(BaseModel):
+    """Last event: the partner's reply, plus the scores for the learner's turn.
+
+    `pronunciation` arrives here rather than with the transcript because PA runs
+    concurrently with the worker — the transcript is rendered unscored and gains
+    its tone underlines when this lands.
+    """
+
+    stage: Literal["final"] = "final"
+    reply: Utterance
+    pronunciation: Optional[PronunciationScore] = None
+    annotation: Optional["TurnAnnotation"] = None
+    timings: Optional[TurnTimings] = None
+    usage: Optional[TurnUsage] = None
+
+
+class TurnErrorEvent(BaseModel):
+    """A failure after the response committed to 200 — reported in-band.
+
+    The worker refusing mid-stream can't become a 502: the status line is long
+    gone. The client turns this into a failed reply bubble, keeping the
+    transcript it already rendered.
+    """
+
+    stage: Literal["error"] = "error"
+    detail: str
+    timings: Optional[TurnTimings] = None
+
+
 # --- Phase 3a: the text-turn conversation contract ------------------------
 #
 # The server is a stateless proxy: the client holds the running transcript and
