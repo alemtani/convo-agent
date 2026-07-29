@@ -24,6 +24,8 @@ deferred, not in the hot path).
   authoring-tool dep; see `kb/zh/_tools/`)
 - python-dotenv for environment config
 - pytest + pytest-asyncio + httpx (test suite; `live` marker for real-API tests)
+- Playwright (`tests/smoke/`) — frontend smoke suite, `smoke` marker; browser-only
+  dep, installed from `tests/smoke/requirements.txt`, never by the backend
 - Frontend: mobile-first responsive web (PWA); transcript held in `localStorage`
 
 ## Key files and directories
@@ -60,8 +62,9 @@ kb/zh/                 # knowledge base (git-versioned markdown)
   <topic>/{topic,vocab,grammar,dialogues}.md
 frontend/              # mobile-first PWA (DM thread, push-to-talk, localStorage)
 tests/                 # pytest; mirrors backend/ modules; fixtures/ holds recorded responses
+  smoke/               # Playwright frontend suite (fake mic + stubbed fetch); own requirements.txt
 schema.sql
-pytest.ini             # asyncio_mode=auto; default run excludes the `live` marker
+pytest.ini             # asyncio_mode=auto; default run excludes `live` and `smoke`
 .env.example
 .gitignore
 ```
@@ -96,9 +99,21 @@ it pass. Verification is tiered by how deterministic the code is:
   that we *parse a recorded response* correctly. Never assert exact model text.
 - **LLM / Azure behavior — evals, not asserts.** Structural invariants (valid
   JSON, feedback cites only KB vocab, reply stays in HSK band) and the live
-  `cache_read_input_tokens > 0` smoke test are marked `@pytest.mark.live` —
-  they need keys and cost money, so they are **excluded from the default run**.
-  Invoke explicitly with `pytest -m live`.
+  `cache_read_input_tokens > 0` check are marked `@pytest.mark.live` — they need
+  keys and cost money, so they are **excluded from the default run**. Invoke
+  explicitly with `pytest -m live`.
+- **Frontend behavior — a browser, deterministically.** `tests/smoke/` drives
+  `frontend/index.html` in Chromium (`@pytest.mark.smoke`) to pin the races that
+  clicking around is worst at catching: mic frames lost before the button turns
+  red, a bubble duplicated instead of upgraded in place, a scroll that lands in
+  the wrong spot. It is deterministic — the mic is a generated WAV
+  (`--use-file-for-fake-audio-capture`), `/api/turn*` is a `fetch` stub whose
+  responses the test releases by hand, and nothing waits on a clock — so **it
+  runs in CI**, in its own job. It sits out the default run only because it
+  needs a Chromium install, not because it's unreliable; that's the line —
+  non-determinism stays out of CI, browser weight just gets its own job. Run it
+  with `pytest -m smoke tests/smoke` after
+  `pip install -r tests/smoke/requirements.txt && playwright install chromium`.
 
 ## Development conventions
 

@@ -1,0 +1,6 @@
+# Frontend smoke suite only (tests/smoke/). Kept out of backend/requirements.txt
+# so neither a backend dev nor the main CI job pays for a browser toolchain they
+# never use. Install with:
+#
+#   pip install -r tests/smoke/requirements.txt && playwright install --with-deps chromium
+pytest-playwright==0.7.1

@@ -1,0 +1,176 @@
+"""Fixtures for the Playwright frontend smoke suite.
+
+The suite is deterministic by construction and therefore runs in CI, unlike the
+`live` marker: no API keys, no model output, no wall-clock waits. Three pieces
+make that true.
+
+* **The page is served, not opened from disk.** `getUserMedia` and
+  `audioWorklet.addModule()` both need a secure context and a real origin, and
+  `file://` is neither — so a threaded `http.server` serves `frontend/` on
+  127.0.0.1, which browsers count as secure.
+* **The microphone is a file.** Chrome's
+  `--use-file-for-fake-audio-capture` makes `getUserMedia` replay a WAV we
+  generate here, so "did frames flow?" has a fixed answer instead of depending
+  on whatever hardware the runner has.
+* **The server is a `fetch` stub, not the backend.** `/api/turn*` answers from
+  canned JSON installed by an init script. In *manual* mode a response is held
+  until the test releases it, which is what lets the pending-bubble and
+  optimistic-echo assertions look at the in-flight state without racing a timer.
+
+The stub replaces `window.fetch` rather than using Playwright routing on
+purpose: route handlers run on the same thread as the sync test, so a handler
+that blocks to hold a response open would deadlock the test that wants to
+inspect the page meanwhile.
+"""
+
+import functools
+import http.server
+import importlib.util
+import json
+import math
+import struct
+import threading
+import wave
+from pathlib import Path
+
+import pytest
+
+# Collected only when Playwright is installed. The default `pytest -q` run
+# deselects this suite by marker, but deselection happens after collection —
+# and collection imports the module — so a dev environment without the smoke
+# extras would fail at import time instead of quietly skipping.
+collect_ignore = [] if importlib.util.find_spec("playwright") else ["test_thread.py"]
+
+FRONTEND_DIR = Path(__file__).resolve().parents[2] / "frontend"
+
+
+class _QuietHandler(http.server.SimpleHTTPRequestHandler):
+    """SimpleHTTPRequestHandler without the per-request stderr logging."""
+
+    def log_message(self, *args):
+        pass
+
+
+@pytest.fixture(scope="session")
+def frontend_server():
+    """Serve `frontend/` on 127.0.0.1 for the session; yields the base URL."""
+    server = http.server.ThreadingHTTPServer(
+        ("127.0.0.1", 0),
+        functools.partial(_QuietHandler, directory=str(FRONTEND_DIR)),
+    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        yield f"http://127.0.0.1:{server.server_address[1]}"
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
+@pytest.fixture(scope="session")
+def fake_audio_wav(tmp_path_factory):
+    """A 2 s 440 Hz mono tone for Chrome's fake capture device.
+
+    Chrome wants 16-bit PCM. Content barely matters — the assertions are about
+    frames arriving at all — but a fixed file keeps sample counts stable.
+    """
+    path = tmp_path_factory.mktemp("audio") / "mic.wav"
+    rate, seconds = 48000, 2
+    with wave.open(str(path), "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(rate)
+        w.writeframes(
+            b"".join(
+                struct.pack("<h", int(0.4 * 32767 * math.sin(2 * math.pi * 440 * i / rate)))
+                for i in range(rate * seconds)
+            )
+        )
+    return path
+
+
+@pytest.fixture(scope="session")
+def browser_type_launch_args(browser_type_launch_args, fake_audio_wav):
+    """Give Chromium a deterministic microphone instead of real hardware."""
+    return {
+        **browser_type_launch_args,
+        "args": [
+            *browser_type_launch_args.get("args", []),
+            "--use-fake-ui-for-media-stream",
+            "--use-fake-device-for-media-stream",
+            f"--use-file-for-fake-audio-capture={fake_audio_wav}",
+            "--autoplay-policy=no-user-gesture-required",
+        ],
+    }
+
+
+@pytest.fixture(scope="session")
+def browser_context_args(browser_context_args, frontend_server):
+    return {
+        **browser_context_args,
+        "base_url": frontend_server,
+        "permissions": ["microphone"],
+    }
+
+
+# Canned turns. `transcript` is 汉字 + tone-marked pinyin (the worker's reading
+# of typed pinyin, or Azure's transcription); `reply` is the partner's answer.
+TURN_TEXT = {
+    "transcript": {"zh": "你好", "pinyin": "nǐ hǎo"},
+    "reply": {"zh": "你好！很高兴认识你。", "pinyin": "nǐ hǎo! hěn gāoxìng rènshi nǐ."},
+    "annotation": {"tone_errors": []},
+}
+
+TURN_AUDIO = {
+    "transcript": {"zh": "你好", "pinyin": "nǐ hǎo"},
+    "reply": {"zh": "你好！", "pinyin": "nǐ hǎo!"},
+    "pronunciation": {
+        "overall": 88.0,
+        "syllables": [
+            {"hanzi": "你", "pinyin": "nǐ", "accuracy": 92.0},
+            {"hanzi": "好", "pinyin": "hǎo", "accuracy": 84.0},
+        ],
+    },
+    "annotation": {"tone_errors": []},
+}
+
+_STUB_JS = """
+(canned) => {
+  const state = {
+    responses: canned,      // path -> JSON body
+    status: {},             // path -> HTTP status override
+    manual: false,          // hold responses until release()
+    waiting: [],
+    requests: [],
+  };
+  state.release = () => { state.waiting.splice(0).forEach((f) => f()); };
+  window.__stub = state;
+
+  window.fetch = (input, init) => {
+    const path = new URL(input, location.href).pathname;
+    state.requests.push(path);
+    const status = state.status[path] || 200;
+    const body = status === 200
+      ? JSON.stringify(state.responses[path] || {})
+      : "stubbed failure";
+    const make = () => new Response(body, {
+      status,
+      headers: { "Content-Type": status === 200 ? "application/json" : "text/plain" },
+    });
+    if (!state.manual) return Promise.resolve(make());
+    return new Promise((resolve) => state.waiting.push(() => resolve(make())));
+  };
+}
+"""
+
+
+@pytest.fixture
+def page(page):
+    """A page whose `/api/turn*` calls answer from canned JSON."""
+    page.add_init_script(
+        f"({_STUB_JS})({json.dumps({'/api/turn': TURN_AUDIO, '/api/turn/text': TURN_TEXT})})"
+    )
+    errors = []
+    page.on("pageerror", lambda e: errors.append(str(e)))
+    yield page
+    assert not errors, f"uncaught page errors: {errors}"

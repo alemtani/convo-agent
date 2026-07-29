@@ -55,6 +55,31 @@
     .bubble .pinyin { opacity: 0.7; font-size: 0.85rem; }
     .bubble.empty { font-style: italic; opacity: 0.6; }
 
+    /* A turn in flight, shown as a bubble rather than a status line: the partner
+       gets a dot-pulse placeholder, and your own echo is dimmed until the server
+       confirms it. Both are upgraded in place — never removed and re-added. */
+    .bubble.pending { display: flex; gap: 0.3rem; align-items: center; padding: 0.85rem; }
+    .bubble.pending .dot {
+      width: 0.45rem; height: 0.45rem;
+      border-radius: 50%;
+      background: currentColor;
+      animation: dot-pulse 1.2s infinite ease-in-out;
+    }
+    .bubble.pending .dot:nth-child(2) { animation-delay: 0.15s; }
+    .bubble.pending .dot:nth-child(3) { animation-delay: 0.3s; }
+    @keyframes dot-pulse {
+      0%, 60%, 100% { opacity: 0.25; transform: translateY(0); }
+      30%           { opacity: 0.75; transform: translateY(-0.15rem); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .bubble.pending .dot { animation: none; opacity: 0.4; }
+    }
+    /* The echo carries only the pinyin you typed, so that row reads as the
+       message body until 汉字 arrive; the dimming is what marks it unconfirmed. */
+    .bubble.optimistic { opacity: 0.65; }
+    .bubble.optimistic .pinyin { font-size: 1rem; opacity: 1; }
+    .bubble.failed { color: #f87171; font-size: 0.85rem; }
+
     /* Per-syllable tone scores: white text on the green user bubble, with a
        colored underline encoding Azure's accuracy (green good / amber ok / red off). */
     .bubble .zh.scored,
@@ -101,8 +126,8 @@
     #talk:disabled { opacity: 0.5; cursor: default; }
 
     /* Text mode: the dock swaps its primary control between hold-to-talk and the
-       composer. One `data-mode` on #dock drives both — the mic graph is never
-       torn down, just hidden, so toggling back is instant. */
+       composer. One `data-mode` on #dock drives both; the mic graph is released
+       on the way out and pre-warmed on the way back in (see applyMode). */
     #composer { display: none; width: 100%; gap: 0.5rem; }
     #dock[data-mode="text"] #composer { display: flex; }
     #dock[data-mode="text"] #talk,
@@ -206,10 +231,25 @@
     const send = document.getElementById("send");
 
     const TARGET_RATE = 16000;
-    let audioCtx, stream, sourceNode, recorderNode, scriptNode;
-    let analyserNode, meterRaf;
+    // The mic graph is built once and parked between presses (see ensureGraph);
+    // `graph` holds the warm nodes, `graphPromise` the build in flight.
+    let graph = null, graphPromise = null;
+    let meterRaf = null;
     let chunks = [];
-    let recording = false;
+    // `capturing` gates frame collection and flips on press — before frames flow,
+    // so nothing is dropped. `flowing` tracks whether frames have actually
+    // arrived, and is what drives the red button.
+    let capturing = false, flowing = false;
+
+    // Minimal diagnostics for the Playwright smoke suite (tests/smoke/). The
+    // races it guards — frames lost before the UI flips, a bubble duplicated
+    // instead of upgraded — aren't observable from the DOM alone.
+    const debug = window.__convo = {
+      framesCaptured: 0,     // frames pushed during the current/last press
+      framesAtFlip: null,    // how many had arrived when the button went red
+      lastSampleCount: null, // samples handed to the encoder on release
+      warm: () => !!graph,
+    };
 
     // Stateless server: the client holds the running transcript and resubmits it
     // each turn so the partner has memory. Each entry is {role, zh, pinyin}; we
@@ -227,31 +267,108 @@
 
     function setStatus(msg) { status.textContent = msg; }
 
-    function addBubble(role) {
+    // --- Scrolling ---------------------------------------------------------
+    //
+    // A thread sticks to the newest message only while you're already there. We
+    // track that with one flag updated on scroll rather than measuring at append
+    // time, so appending content can't itself change the answer.
+
+    const STICK_SLACK = 80;   // px from the bottom that still counts as "at the bottom"
+    let stuck = true;
+
+    function atBottom() {
+      return thread.scrollHeight - thread.scrollTop - thread.clientHeight <= STICK_SLACK;
+    }
+    function scrollToBottom(behavior) {
+      thread.scrollTo({ top: thread.scrollHeight, behavior: behavior || "auto" });
+    }
+    thread.addEventListener("scroll", () => { stuck = atBottom(); });
+
+    // The 100dvh column changes height when the mobile keyboard opens or the URL
+    // bar collapses. If we were pinned to the newest message, stay pinned —
+    // instantly, since this isn't new content arriving.
+    const reanchor = () => { if (stuck) scrollToBottom("auto"); };
+    window.addEventListener("resize", reanchor);
+    if (window.visualViewport) window.visualViewport.addEventListener("resize", reanchor);
+
+    // --- Bubbles -----------------------------------------------------------
+    //
+    // Every bubble is created empty and painted afterwards, so any bubble can be
+    // repainted in place: that's what lets a pending placeholder become the
+    // reply, and an optimistic pinyin echo become 汉字 + tone marks, without a
+    // second element appearing in the thread. `opts.before` inserts ahead of an
+    // existing bubble (the spoken path paints the pending reply first, then puts
+    // the transcript above it); `opts.scroll: false` suppresses the follow for
+    // bulk restores.
+    function createBubble(role, opts) {
+      opts = opts || {};
       const el = document.createElement("div");
       el.className = "bubble " + role;
-      thread.appendChild(el);
-      el.scrollIntoView({ behavior: "smooth", block: "end" });
-      return el;
+      thread.insertBefore(el, opts.before || null);
+      if (opts.scroll !== false && stuck) scrollToBottom("smooth");
+
+      const handle = {
+        el,
+        render(utt, o) {
+          o = o || {};
+          paint(el, role, utt, o);
+          if (o.scroll !== false && stuck) scrollToBottom("smooth");
+          return handle;
+        },
+        pending() {
+          el.className = "bubble " + role + " pending";
+          el.replaceChildren(...["dot", "dot", "dot"].map((c) => {
+            const d = document.createElement("span");
+            d.className = c;
+            return d;
+          }));
+          return handle;
+        },
+        fail(msg) {
+          el.className = "bubble " + role + " failed";
+          el.textContent = msg;
+          if (stuck) scrollToBottom("smooth");
+          return handle;
+        },
+        remove() { el.remove(); },
+      };
+      return handle;
     }
 
     // Both sides render the same way: 汉字 on top, pinyin beneath. When tone
     // scores are present (the user's turn), render per syllable instead.
-    function renderLine(role, utt, emptyText, pronunciation) {
-      const el = addBubble(role);
-      if (!utt.zh) {
+    function paint(el, role, utt, opts) {
+      el.className = "bubble " + role + (opts.optimistic ? " optimistic" : "");
+      if (!utt.zh && !utt.pinyin) {
         el.classList.add("empty");
-        el.textContent = emptyText;
-        return el;
+        el.textContent = opts.emptyText || "";
+        return;
       }
-      if (pronunciation && pronunciation.syllables.length) {
-        renderScored(el, pronunciation);
-        return el;
+      if (opts.pronunciation && opts.pronunciation.syllables.length) {
+        el.replaceChildren();
+        renderScored(el, opts.pronunciation);
+        return;
       }
-      el.innerHTML = '<div class="zh"></div><div class="pinyin"></div>';
-      el.querySelector(".zh").textContent = utt.zh;
-      el.querySelector(".pinyin").textContent = utt.pinyin;
-      return el;
+      const rows = [];
+      // The optimistic echo has pinyin and no 汉字 yet; skip the row rather than
+      // reserving blank space that would make the bubble jump on upgrade.
+      if (utt.zh) {
+        const zhRow = document.createElement("div");
+        zhRow.className = "zh";
+        zhRow.textContent = utt.zh;
+        rows.push(zhRow);
+      }
+      const pyRow = document.createElement("div");
+      pyRow.className = "pinyin";
+      pyRow.textContent = utt.pinyin;
+      rows.push(pyRow);
+      el.replaceChildren(...rows);
+      if (opts.toneErrors && opts.toneErrors.length) markToneErrors(el, utt, opts.toneErrors);
+    }
+
+    // Create + paint in one step, for turns that arrive already complete.
+    function renderLine(role, utt, opts) {
+      return createBubble(role, opts).render(utt, opts);
     }
 
     // Typed tone errors, marked the same way spoken ones are: a red underline on
@@ -326,89 +443,161 @@
       el.append(zhRow, pyRow, badge);
     }
 
-    async function startRecording() {
-      if (recording) return;
+    // --- Mic graph ---------------------------------------------------------
+    //
+    // Built once, then parked (suspended) between presses instead of torn down.
+    // getUserMedia, the AudioContext and `audioWorklet.addModule()` are each
+    // async and each cost a visible fraction of a second — paying that on every
+    // press is what made hold-to-talk feel laggy. The tradeoff is that the mic
+    // stays acquired for the session (the browser's recording indicator stays
+    // lit), so the graph is released on pagehide and when you switch to text.
+
+    const MIC_INSECURE =
+      "microphone unavailable — open this page at http://localhost:8000 " +
+      "(not 0.0.0.0 or a LAN IP), or serve it over HTTPS.";
+
+    function onFrame(frame) {
+      if (!capturing) return;
+      chunks.push(frame);
+      debug.framesCaptured++;
+      // The button goes red on the first *real* frame, not on press: until the
+      // graph is actually delivering audio, showing "recording" would be a lie.
+      if (!flowing) {
+        flowing = true;
+        debug.framesAtFlip = debug.framesCaptured;
+        talk.classList.add("recording");
+        talk.textContent = "● Recording… release to send";
+      }
+    }
+
+    async function buildGraph() {
       // The mic API only exists in a secure context. Browsers count https:// and
       // localhost/127.0.0.1 as secure, but NOT 0.0.0.0 or a LAN IP — opening the
       // page there leaves navigator.mediaDevices undefined. Guard it with an
       // actionable hint instead of a raw "undefined" TypeError.
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        setStatus(
-          "microphone unavailable — open this page at http://localhost:8000 " +
-          "(not 0.0.0.0 or a LAN IP), or serve it over HTTPS."
-        );
-        return;
+        throw new Error(MIC_INSECURE);
       }
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      } catch (err) {
-        setStatus("microphone blocked: " + err);
-        return;
-      }
-      recording = true;
-      chunks = [];
-      talk.classList.add("recording");
-      talk.textContent = "● Recording… release to send";
-      setStatus("");
-
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       // Ask for 16 kHz directly; we still downsample defensively from the
       // context's actual rate in case the browser ignores the hint.
-      audioCtx = new (window.AudioContext || window.webkitAudioContext)({
+      const ctx = new (window.AudioContext || window.webkitAudioContext)({
         sampleRate: TARGET_RATE,
       });
-      sourceNode = audioCtx.createMediaStreamSource(stream);
-      startMeter();
+      const source = ctx.createMediaStreamSource(stream);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 1024;
+      source.connect(analyser);   // a sink, never routed to destination
 
-      const pushFrame = (frame) => { if (recording) chunks.push(frame); };
-
-      let usedWorklet = false;
-      if (audioCtx.audioWorklet) {
+      let node = null;
+      if (ctx.audioWorklet) {
         try {
-          await audioCtx.audioWorklet.addModule("/recorder-worklet.js");
-          recorderNode = new AudioWorkletNode(audioCtx, "recorder-processor");
-          recorderNode.port.onmessage = (e) => pushFrame(e.data);
-          sourceNode.connect(recorderNode).connect(audioCtx.destination);
-          usedWorklet = true;
-        } catch (_) { usedWorklet = false; }
+          await ctx.audioWorklet.addModule("/recorder-worklet.js");
+          node = new AudioWorkletNode(ctx, "recorder-processor");
+          node.port.onmessage = (e) => onFrame(e.data);
+        } catch (_) { node = null; }
       }
-      if (!usedWorklet) {
+      if (!node) {
         // Fallback: ScriptProcessorNode (deprecated but universally available).
-        scriptNode = audioCtx.createScriptProcessor(4096, 1, 1);
-        scriptNode.onaudioprocess = (e) =>
-          pushFrame(e.inputBuffer.getChannelData(0).slice(0));
-        sourceNode.connect(scriptNode).connect(audioCtx.destination);
+        node = ctx.createScriptProcessor(4096, 1, 1);
+        node.onaudioprocess = (e) => onFrame(e.inputBuffer.getChannelData(0).slice(0));
       }
+      source.connect(node).connect(ctx.destination);
+      await ctx.suspend();   // wired but idle: no frames until a press resumes it
+      return { ctx, stream, source, node, analyser };
+    }
+
+    function ensureGraph() {
+      if (graph) return Promise.resolve(graph);
+      if (!graphPromise) {
+        graphPromise = buildGraph().then(
+          (g) => { graph = g; return g; },
+          (err) => { graphPromise = null; throw err; },
+        );
+      }
+      return graphPromise;
+    }
+
+    // Warm the graph ahead of the first press when the browser already remembers
+    // a mic grant — there's no prompt to show, so there's no reason to make the
+    // learner wait for the build. A fresh grant still costs one slow press.
+    async function prewarm() {
+      if (mode !== "speak" || graph || graphPromise) return;
+      try {
+        const perm = await navigator.permissions.query({ name: "microphone" });
+        if (perm.state === "granted") ensureGraph().catch(() => {});
+      } catch (_) { /* Safari/Firefox don't expose the microphone permission */ }
+    }
+
+    function releaseGraph() {
+      if (!graph) return;
+      const g = graph;
+      graph = graphPromise = null;
+      if (g.node.port) g.node.port.onmessage = null;
+      g.node.onaudioprocess = null;
+      g.node.disconnect();
+      g.analyser.disconnect();
+      g.source.disconnect();
+      g.stream.getTracks().forEach((t) => t.stop());
+      g.ctx.close();
+    }
+
+    window.addEventListener("pagehide", releaseGraph);
+
+    async function startRecording() {
+      if (capturing) return;
+      // Arm *before* awaiting the graph so that once frames start they are
+      // buffered from frame zero; the UI flip waits for onFrame.
+      capturing = true;
+      flowing = false;
+      chunks = [];
+      debug.framesCaptured = 0;
+      debug.framesAtFlip = null;
+      setStatus("");
+
+      let g;
+      try {
+        g = await ensureGraph();
+      } catch (err) {
+        capturing = false;
+        setStatus(err && err.message === MIC_INSECURE ? MIC_INSECURE : "microphone blocked: " + err);
+        return;
+      }
+      if (!capturing) return;   // released again during the (first-press) build
+      await g.ctx.resume();
+      startMeter(g);
     }
 
     async function stopRecording() {
-      if (!recording) return;
-      recording = false;
+      if (!capturing) return;
+      capturing = false;
+      flowing = false;
       talk.classList.remove("recording");
       talk.textContent = "🎙️ Hold to talk";
+      stopMeter();
 
-      const inRate = audioCtx ? audioCtx.sampleRate : TARGET_RATE;
-      cleanupAudio();
+      const inRate = graph ? graph.ctx.sampleRate : TARGET_RATE;
+      if (graph) graph.ctx.suspend();   // park the warm graph; no teardown
 
       const samples = downsample(flatten(chunks), inRate, TARGET_RATE);
       chunks = [];
+      debug.lastSampleCount = samples.length;
       if (samples.length === 0) { setStatus("no audio captured"); return; }
 
       const wav = encodeWav(samples, TARGET_RATE);
       await sendTurn(wav);
     }
 
-    // Live mic-level meter: tap an AnalyserNode off the source (a sink — never
-    // routed to destination) and animate the bar from the signal's RMS. For the
-    // recording window only; stopMeter resets it on release.
-    function startMeter() {
-      analyserNode = audioCtx.createAnalyser();
-      analyserNode.fftSize = 1024;
-      sourceNode.connect(analyserNode);
-      const buf = new Float32Array(analyserNode.fftSize);
+    // Live mic-level meter: read the warm graph's AnalyserNode and animate the
+    // bar from the signal's RMS. For the recording window only; stopMeter resets
+    // it on release.
+    function startMeter(g) {
+      const analyser = g.analyser;
+      const buf = new Float32Array(analyser.fftSize);
       meter.classList.add("active");
       const tick = () => {
-        if (!recording || !analyserNode) return;
-        analyserNode.getFloatTimeDomainData(buf);
+        if (!capturing) return;
+        analyser.getFloatTimeDomainData(buf);
         let sum = 0;
         for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
         const rms = Math.sqrt(sum / buf.length);
@@ -421,20 +610,9 @@
 
     function stopMeter() {
       if (meterRaf) cancelAnimationFrame(meterRaf);
-      if (analyserNode) analyserNode.disconnect();
-      meterRaf = analyserNode = null;
+      meterRaf = null;
       meter.classList.remove("active");
       meterFill.style.width = "0%";
-    }
-
-    function cleanupAudio() {
-      stopMeter();
-      if (recorderNode) { recorderNode.port.onmessage = null; recorderNode.disconnect(); }
-      if (scriptNode) { scriptNode.onaudioprocess = null; scriptNode.disconnect(); }
-      if (sourceNode) sourceNode.disconnect();
-      if (stream) stream.getTracks().forEach((t) => t.stop());
-      if (audioCtx) audioCtx.close();
-      recorderNode = scriptNode = sourceNode = stream = audioCtx = null;
     }
 
     function flatten(frames) {
@@ -491,8 +669,11 @@
     }
 
     async function sendTurn(wavBlob) {
-      setStatus("transcribing…");
       talk.disabled = true;
+      // Nothing is known about a spoken turn until the server answers, so the
+      // pending bubble goes in first and the transcript is inserted *above* it
+      // when it lands.
+      const pending = createBubble("partner").pending();
       const form = new FormData();
       form.append("audio", wavBlob, "turn.wav");
       form.append("topic_id", "greetings");
@@ -504,12 +685,17 @@
         const resp = await fetch("/api/turn", { method: "POST", body: form });
         if (!resp.ok) {
           const detail = await resp.text();
-          setStatus("error " + resp.status + ": " + detail);
+          pending.fail("error " + resp.status + ": " + detail);
+          setStatus("");
           return;
         }
         const data = await resp.json();
-        renderLine("user", data.transcript, "(nothing recognized)", data.pronunciation);
-        renderLine("partner", data.reply, "");
+        renderLine("user", data.transcript, {
+          before: pending.el,
+          emptyText: "(nothing recognized)",
+          pronunciation: data.pronunciation,
+        });
+        pending.render(data.reply);
         // Only record a real exchange: an empty transcript means nothing was
         // recognized (the reply was a re-prompt), so it isn't part of history.
         if (data.transcript.zh) {
@@ -519,7 +705,7 @@
         }
         setStatus("");
       } catch (err) {
-        setStatus("request failed: " + err);
+        pending.fail("request failed: " + err);
       } finally {
         talk.disabled = false;
       }
@@ -545,7 +731,23 @@
       if (!text) return;
 
       setComposerBusy(true);
-      setStatus("thinking…");
+      setStatus("");
+      // Optimistic echo: your own words belong on screen the moment you send
+      // them, not a round trip later. All we have locally is the pinyin you
+      // typed, so paint that (dimmed) and upgrade the same bubble to the
+      // worker's 汉字 reading — with tone marks — when the response lands.
+      const echo = createBubble("user").render({ zh: "", pinyin: text }, { optimistic: true });
+      const pending = createBubble("partner").pending();
+      textInput.value = "";   // the bubble holds the text now
+
+      // A failed turn withdraws the echo and hands the text back to the box, so
+      // it isn't eaten and retrying can't leave two copies in the thread.
+      const restore = (msg) => {
+        echo.remove();
+        pending.fail(msg);
+        textInput.value = text;
+      };
+
       try {
         const resp = await fetch("/api/turn/text", {
           method: "POST",
@@ -558,24 +760,24 @@
         });
         if (!resp.ok) {
           const detail = await resp.text();
-          setStatus("error " + resp.status + ": " + detail);
-          return;   // leave the box filled so a failed turn doesn't eat the text
+          restore("error " + resp.status + ": " + detail);
+          return;
         }
         const data = await resp.json();
         // `transcript` is the worker's reading of the typed pinyin — the 汉字 the
-        // learner meant. No `pronunciation` on a typed turn (that needs audio),
-        // but tone errors ride along when they typed tone numbers.
-        const userBubble = renderLine("user", data.transcript, "");
-        markToneErrors(userBubble, data.transcript,
-                       data.annotation && data.annotation.tone_errors);
-        renderLine("partner", data.reply, "");
+        // learner meant. Upgrade the echo in place. No `pronunciation` on a typed
+        // turn (that needs audio), but tone errors ride along when they typed
+        // tone numbers.
+        echo.render(data.transcript, {
+          toneErrors: data.annotation && data.annotation.tone_errors,
+        });
+        pending.render(data.reply);
         dialogue.push({ role: "user", zh: data.transcript.zh, pinyin: data.transcript.pinyin });
         dialogue.push({ role: "partner", zh: data.reply.zh, pinyin: data.reply.pinyin });
         saveDialogue();
-        textInput.value = "";
         setStatus("");
       } catch (err) {
-        setStatus("request failed: " + err);
+        restore("request failed: " + err);
       } finally {
         setComposerBusy(false);
         if (mode === "text") textInput.focus();
@@ -590,6 +792,9 @@
       modeBtn.textContent = mode === "text" ? "🎙️" : "⌨️";
       modeBtn.title = mode === "text" ? "Switch to speaking" : "Switch to typing";
       setStatus("");
+      // Holding the mic open while someone types would leave the browser's
+      // recording indicator lit for no reason; warm it back up on the way in.
+      if (mode === "text") releaseGraph(); else prewarm();
     }
 
     modeBtn.addEventListener("click", () => {
@@ -612,17 +817,23 @@
     });
 
     // Restore the running transcript on load (scores are per-turn, not persisted).
+    // Bulk restore suppresses the per-bubble follow — N smooth scrolls racing
+    // each other is what used to leave the thread parked mid-history — and lands
+    // at the newest message in one instant jump, like reopening a chat app.
     function restoreThread() {
       for (const t of dialogue) {
-        renderLine(t.role, { zh: t.zh, pinyin: t.pinyin || "" }, "");
+        renderLine(t.role, { zh: t.zh, pinyin: t.pinyin || "" }, { scroll: false });
       }
+      stuck = true;
+      scrollToBottom("auto");
     }
 
     // New conversation: clear memory and the thread so the partner starts fresh.
     reset.addEventListener("click", () => {
       dialogue = [];
       localStorage.removeItem(STORE_KEY);
-      thread.innerHTML = "";
+      thread.replaceChildren();
+      stuck = true;
       setStatus("new conversation");
     });
 
