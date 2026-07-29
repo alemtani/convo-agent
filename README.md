@@ -106,6 +106,34 @@ curl http://localhost:8000/health      # -> {"status":"ok"}
 ```
 </details>
 
+## Measuring turn latency
+
+Every turn reports what it cost. The server logs one line per turn and returns
+the same numbers on the response, so the page, the log, and the replay harness
+never disagree about how long something took:
+
+```
+turn timings mode=audio stt=1103ms pa=884ms claude=2612ms total=3721ms cache_read=5120 …
+```
+
+The thread shows a quiet line under each exchange — round trip, server total,
+each stage, and `cache_read` tokens. On the spoken path PA and Claude run
+concurrently, so `stt + max(pa, claude)` is the critical path and the stages
+deliberately sum to more than the total.
+
+To get distributions rather than anecdotes, replay recorded turns at a running
+server (**this spends real Azure/Anthropic quota**):
+
+```bash
+.venv/bin/python scripts/replay.py --runs 10                    # audio
+.venv/bin/python scripts/replay.py --mode both --runs 10        # audio + text
+.venv/bin/python scripts/replay.py --wav "recordings/*.wav"     # your own clips
+```
+
+It prints p50/p95 per stage with the run count each percentile rests on. Text
+mode is the useful control: it is the same worker call without STT or PA, so the
+gap between the two modes is the speech stack's share of the wait.
+
 ## Knowledge base & topic authoring
 
 Conversation topics live as version-controlled markdown under `kb/zh/`, **separate

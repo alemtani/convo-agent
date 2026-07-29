@@ -46,6 +46,57 @@ class PronunciationScore(BaseModel):
     syllables: List[SyllableScore]
 
 
+class TurnTimings(BaseModel):
+    """Per-stage wall-clock cost of one turn, in milliseconds (WS1 Stage 0).
+
+    Every stage is optional because a stage that didn't run must report nothing
+    rather than zero: PA drops off a degraded turn, and STT/Claude are absent
+    from a text turn. `total_ms` is measured across the whole orchestrator call,
+    so it is *not* the sum of the parts — the gap is the un-instrumented work.
+
+    Reported back to the client (and to the replay harness) rather than only
+    logged, so both sides quote the same numbers.
+    """
+
+    stt_ms: Optional[float] = None
+    pa_ms: Optional[float] = None
+    claude_ms: Optional[float] = None
+    total_ms: Optional[float] = None
+
+    @classmethod
+    def from_stages(cls, stages: dict) -> "TurnTimings":
+        """Build from `timing.Timer.as_dict()` — stage names to `*_ms` fields."""
+        return cls(**{f"{name}_ms": value for name, value in stages.items()})
+
+
+class TurnUsage(BaseModel):
+    """The Anthropic `usage` block for the turn's conversation call.
+
+    The worker has always returned this and the orchestrator threw it away, so
+    `cache_read_input_tokens` — the one number that says whether the frozen
+    prefix is actually being reused — was invisible outside the live test. Every
+    field is optional: the SDK omits the cache counters on some responses, and
+    reading usage must never be able to fail a turn.
+    """
+
+    input_tokens: Optional[int] = None
+    output_tokens: Optional[int] = None
+    cache_read_input_tokens: Optional[int] = None
+    cache_creation_input_tokens: Optional[int] = None
+
+    @classmethod
+    def from_sdk(cls, usage) -> "Optional[TurnUsage]":
+        """Read an SDK usage object defensively; `None` in, `None` out."""
+        if usage is None:
+            return None
+        return cls(
+            **{
+                field: getattr(usage, field, None)
+                for field in cls.model_fields
+            }
+        )
+
+
 class TurnResponse(BaseModel):
     """Response body for `POST /api/turn`.
 
@@ -62,6 +113,8 @@ class TurnResponse(BaseModel):
     reply: Utterance
     pronunciation: Optional[PronunciationScore] = None
     annotation: Optional["TurnAnnotation"] = None
+    timings: Optional[TurnTimings] = None
+    usage: Optional[TurnUsage] = None
 
 
 # --- Phase 3a: the text-turn conversation contract ------------------------
@@ -184,3 +237,5 @@ class ConversationTurnResponse(BaseModel):
     transcript: Utterance
     reply: Utterance
     annotation: TurnAnnotation
+    timings: Optional[TurnTimings] = None
+    usage: Optional[TurnUsage] = None
