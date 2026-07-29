@@ -62,11 +62,21 @@ TONE_ERROR_THRESHOLD = 60.0
 #           failure of the three, so the tightest budget costs the least.
 #   STT     kills the whole turn with a 502. Scales with utterance length, which
 #           push-to-talk keeps short; revisit if recordings get longer.
-#   Claude  is the reply. Cutting it at 10s loses a turn that might have landed
-#           at 11s, and the tokens are spent either way.
+#   Claude  is the reply. Cutting it loses a turn that might have landed a
+#           second later, and the tokens are spent either way.
+#
+# Claude's is now 15s, revisited against the replay p95 the way #22 asked for
+# rather than defended on intuition. Two things moved it up from 10s. The
+# measured p95 is 4.8–5.2s, so 10s was ~2x p95 — closer to the body of the
+# distribution than a safety net should sit. And with the SDK retry removed
+# below, 10s became a *real* cut for the first time: turns that used to be
+# rescued by an invisible second attempt now simply die. Two in ~50 did.
+#
+# 15s is ~3x p95 and still well inside the "clear failure beats a bubble that
+# never resolves" bound the original number was reaching for.
 STT_TIMEOUT_S = float(os.getenv("STT_TIMEOUT_S", "5"))
 PA_TIMEOUT_S = float(os.getenv("PA_TIMEOUT_S", "5"))
-CLAUDE_TIMEOUT_S = float(os.getenv("CLAUDE_TIMEOUT_S", "10"))
+CLAUDE_TIMEOUT_S = float(os.getenv("CLAUDE_TIMEOUT_S", "15"))
 
 # ...and the deadline has to be the *whole* budget, which means no retries under
 # it. The SDK retries twice by default and a timeout is a retryable error, so
