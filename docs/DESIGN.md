@@ -558,9 +558,27 @@ structured output — too much to land or test at once. Durable state (DB,
 proficiency, covered-set) is deferred to Phase 7; "feedback" before then is
 in-session text only.
 
-Between 3b and 4 sit three concurrent fix workstreams (turn latency, chat UX,
-text-only mode) plus a deferred goal-oriented-sessions design note that folds
-into the Phase 4/5 workers — see `docs/WORKSTREAMS.md`.
+Between 3b and 4 sit fix workstreams for the problems the Phase-3b loop surfaced
+— text-only mode landed in Phase 3b's wake; turn latency and chat UX are tracked
+as GitHub issues rather than here, since they're work items, not design.
+
+**Deferred: goal-oriented ("targeted convo") sessions (Phase 4/5).** A session
+should present a clear objective up front — e.g. "introduce yourself and learn
+your partner's name" — and the learner uses their Chinese to navigate the
+situation and accomplish it. Today's sessions are open-ended interlocutor chat
+with a loose arc; nothing tells the learner what success looks like, and nothing
+grades it.
+
+The raw material is already authored: `kb/zh/greetings/topic.md` has an explicit
+**"Conversation goal"** section, and `dialogues.md` carries beats + a close
+condition for the sketch generator. But the design above grades **coherence +
+tone accuracy only** — goal completion is a genuinely new success axis. Layer it
+onto the two planned workers rather than inventing new machinery: the **Phase-5
+sketch worker** encodes the topic's stated goal as the arc's target and surfaces
+it at session start; the **Phase-4 feedback worker** grades goal completion when
+the session hits `complete`, alongside the existing coaching feedback. The
+carrying seams already exist — the sketch spec, `TurnAnnotation`,
+`should_give_feedback`, and `session_summary.aggregate_scores_json`.
 
 **Deferred UX polish (Phase 2).** Add a live **mic-level meter** during
 push-to-talk recording — right now the only "is it capturing?" feedback is the
