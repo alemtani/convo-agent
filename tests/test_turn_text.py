@@ -118,3 +118,31 @@ def test_turn_text_dialogue_defaults_to_empty(monkeypatch):
     monkeypatch.setattr(orchestrator, "run_text_turn", fake_run)
     resp = client.post("/api/turn/text", json={"topic_id": "greetings", "text": "你好"})
     assert resp.status_code == 200
+
+
+def test_text_turn_response_carries_stage_timings(monkeypatch):
+    """Text mode is measured too — it is the control for the spoken path: the
+    same worker call without STT or PA.
+
+    Unlike the tests above, this one runs the *real* orchestrator (that is where
+    timing lives) and stubs only the worker underneath it.
+    """
+
+    async def fake_respond(**kwargs):
+        return (
+            Utterance(zh="你好", pinyin="nǐ hǎo"),
+            TurnAnnotation(coherence="on_track"),
+            Utterance(zh="你好", pinyin="nǐ hǎo"),
+            None,
+        )
+
+    monkeypatch.setattr(conversation, "respond", fake_respond)
+
+    body = client.post(
+        "/api/turn/text", json={"topic_id": "greetings", "text": "你好"}
+    ).json()
+
+    assert body["timings"]["claude_ms"] is not None
+    assert body["timings"]["total_ms"] is not None
+    assert body["timings"]["stt_ms"] is None
+    assert body["timings"]["pa_ms"] is None

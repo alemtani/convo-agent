@@ -14,12 +14,14 @@ from typing import List, Optional
 
 from anthropic import AsyncAnthropic
 
-from backend import config, kb, tones, typed_pinyin
+from backend import config, kb, timing, tones, typed_pinyin
 from backend.models import (
     ConversationTurnResponse,
     DialogueTurn,
     TextTurnRequest,
     TurnResponse,
+    TurnTimings,
+    TurnUsage,
     Utterance,
 )
 from backend.pinyin import to_pinyin
@@ -53,22 +55,28 @@ async def run_text_turn(
     Raises `kb.KbError` for an unknown topic and `conversation.ConversationError`
     on a refusal / unparseable reply — the route maps these to 404 / 502.
     """
+    timer = timing.Timer()
     kb_block = kb.load_kb_block(req.topic_id)
 
-    reply, annotation, reading, _usage = await conversation.respond(
-        kb_block=kb_block,
-        sketch=SKETCH_STUB,
-        dialogue=req.dialogue,
-        user_text=req.text,
-        forgiveness_level=config.FORGIVENESS_LEVEL_DEFAULT,
-        client=client,
-    )
+    with timer.stage("claude"):
+        reply, annotation, reading, usage = await conversation.respond(
+            kb_block=kb_block,
+            sketch=SKETCH_STUB,
+            dialogue=req.dialogue,
+            user_text=req.text,
+            forgiveness_level=config.FORGIVENESS_LEVEL_DEFAULT,
+            client=client,
+        )
 
     tone_errors = typed_pinyin.tone_errors_from_typed(req.text, reading.zh)
     annotation = annotation.model_copy(update={"tone_errors": tone_errors})
 
     return ConversationTurnResponse(
-        transcript=reading, reply=reply, annotation=annotation
+        transcript=reading,
+        reply=reply,
+        annotation=annotation,
+        timings=_report(timer, usage, mode="text"),
+        usage=TurnUsage.from_sdk(usage),
     )
 
 
@@ -92,24 +100,43 @@ async def run_audio_turn(
     route maps these to HTTP. Phase 3b is one greeting turn, so `dialogue` is
     normally empty.
     """
-    recognized = await stt.transcribe(audio_bytes)
+    timer = timing.Timer()
+
+    with timer.stage("stt"):
+        recognized = await stt.transcribe(audio_bytes)
     transcript = Utterance(zh=recognized, pinyin=to_pinyin(recognized))
     if not recognized:
-        return TurnResponse(transcript=transcript, reply=RETRY_REPLY)
+        # Still a measured turn: it cost an STT round trip, and dropping the
+        # short-circuit from the numbers would bias the p50 downward.
+        return TurnResponse(
+            transcript=transcript,
+            reply=RETRY_REPLY,
+            timings=_report(timer, None, mode="audio"),
+        )
 
     # Load KB up front so an unknown topic fails before any API work.
     kb_block = kb.load_kb_block(topic_id)
 
-    score, (reply, annotation, _reading, _usage) = await asyncio.gather(
-        _assess_or_degrade(audio_bytes, recognized),
-        conversation.respond(
-            kb_block=kb_block,
-            sketch=SKETCH_STUB,
-            dialogue=dialogue or [],
-            user_text=recognized,
-            forgiveness_level=config.FORGIVENESS_LEVEL_DEFAULT,
-            client=client,
-        ),
+    async def assess_branch():
+        with timer.stage("pa"):
+            return await _assess_or_degrade(audio_bytes, recognized)
+
+    async def respond_branch():
+        with timer.stage("claude"):
+            return await conversation.respond(
+                kb_block=kb_block,
+                sketch=SKETCH_STUB,
+                dialogue=dialogue or [],
+                user_text=recognized,
+                forgiveness_level=config.FORGIVENESS_LEVEL_DEFAULT,
+                client=client,
+            )
+
+    # Each branch times itself rather than the gather timing the pair: the whole
+    # question WS1 Stage 2 hangs on is which of PA and Claude is the slower one,
+    # and a single number for both cannot answer it.
+    score, (reply, annotation, _reading, usage) = await asyncio.gather(
+        assess_branch(), respond_branch()
     )
 
     tone_errors = (
@@ -124,6 +151,8 @@ async def run_audio_turn(
         reply=reply,
         pronunciation=score,
         annotation=annotation,
+        timings=_report(timer, usage, mode="audio"),
+        usage=TurnUsage.from_sdk(usage),
     )
 
 
@@ -134,3 +163,26 @@ async def _assess_or_degrade(audio_bytes, reference_text):
     except pronunciation.PaError as exc:
         logger.warning("pronunciation assessment failed: %s", exc)
         return None
+
+
+def _report(timer: timing.Timer, usage, *, mode: str) -> TurnTimings:
+    """Log the turn's cost and return it as the wire model (WS1 Stage 0).
+
+    One line per turn, at INFO so it shows up under a plain `uvicorn` run without
+    a flag. The critical path is `stt + max(pa, claude)`, so the stages are
+    printed side by side — the gap between their sum and `total` is the server's
+    own overhead, and `cache_read` says whether the frozen prefix is being
+    reused at all.
+    """
+    stages = timer.as_dict()
+    logger.info(
+        "turn timings mode=%s %s cache_read=%s cache_write=%s in=%s out=%s",
+        mode,
+        " ".join(f"{name}={stages[name]:.0f}ms"
+                 for name in timing.STAGE_ORDER if name in stages),
+        getattr(usage, "cache_read_input_tokens", None),
+        getattr(usage, "cache_creation_input_tokens", None),
+        getattr(usage, "input_tokens", None),
+        getattr(usage, "output_tokens", None),
+    )
+    return TurnTimings.from_stages(stages)
