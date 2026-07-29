@@ -759,12 +759,47 @@
       return new Blob([view], { type: "audio/wav" });
     }
 
+    // `POST /api/turn` answers in stages, one JSON object per line. Yield each
+    // as it arrives rather than awaiting the whole body — the entire point is
+    // that the transcript lands long before the reply.
+    async function* ndjson(resp) {
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        let nl;
+        // A chunk can carry part of a line, several lines, or both.
+        while ((nl = buf.indexOf("\n")) >= 0) {
+          const line = buf.slice(0, nl).trim();
+          buf = buf.slice(nl + 1);
+          if (line) yield JSON.parse(line);
+        }
+      }
+      if (buf.trim()) yield JSON.parse(buf.trim());
+    }
+
     async function sendTurn(wavBlob) {
       talk.disabled = true;
-      // Nothing is known about a spoken turn until the server answers, so the
-      // pending bubble goes in first and the transcript is inserted *above* it
-      // when it lands.
-      const pending = createBubble("partner").pending();
+      // One bubble on release, not two. The echo goes up immediately and holds
+      // the learner's place while STT runs — its pending dots *are* the
+      // "transcribing…" indicator, in the thread rather than in a status line
+      // (same reasoning as the text path, where "thinking…" became a bubble).
+      //
+      // The partner's pending bubble is deliberately withheld until the
+      // transcript lands. Showing the partner "thinking" about a message that
+      // doesn't exist on screen yet inverts the conversation: you'd watch a
+      // reply being written before your own words appear. Waiting means the
+      // thread always reads in order — your message, then the partner
+      // considering it — which is also what a real chat app does.
+      const echo = createBubble("user").pending();
+      let pending = null;
+      // Created on demand so an error before the transcript still has somewhere
+      // to land; after `transcript` this always returns the existing bubble.
+      const replyBubble = () =>
+        (pending = pending || createBubble("partner").pending());
       const startedAt = performance.now();
       const form = new FormData();
       form.append("audio", wavBlob, "turn.wav");
@@ -773,34 +808,67 @@
       form.append("dialogue", JSON.stringify(
         dialogue.map((t) => ({ role: t.role, zh: t.zh }))
       ));
+      let transcript = null;
       try {
         const resp = await fetch("/api/turn", { method: "POST", body: form });
+        // Everything that maps to a status — unknown topic, STT failure — is
+        // settled before the first byte, so this still catches those cleanly.
         if (!resp.ok) {
+          // Nothing was transcribed, so the echo is the only bubble up and it
+          // carries the failure — no partner bubble is created for a turn the
+          // partner never saw.
           const detail = await resp.text();
-          pending.fail("error " + resp.status + ": " + detail);
+          echo.fail("error " + resp.status + ": " + detail);
           setStatus("");
           return;
         }
-        const data = await resp.json();
-        renderLine("user", data.transcript, {
-          before: pending.el,
-          emptyText: "(nothing recognized)",
-          pronunciation: data.pronunciation,
-        });
-        pending.render(data.reply);
-        // After the reply, so the timings line stays last in the thread — the
-        // transcript is inserted above the pending bubble, not appended.
-        renderTimings(data.timings, data.usage, performance.now() - startedAt);
-        // Only record a real exchange: an empty transcript means nothing was
-        // recognized (the reply was a re-prompt), so it isn't part of history.
-        if (data.transcript.zh) {
-          dialogue.push({ role: "user", zh: data.transcript.zh, pinyin: data.transcript.pinyin });
-          dialogue.push({ role: "partner", zh: data.reply.zh, pinyin: data.reply.pinyin });
-          saveDialogue();
+
+        // Dispatch on `stage`, never on position: only `transcript` has a fixed
+        // place. `score` and `reply` are concurrent branches emitted in whichever
+        // order they resolve, and a slow Azure call legitimately puts the reply
+        // first.
+        for await (const event of ndjson(resp)) {
+          if (event.stage === "transcript") {
+            transcript = event.transcript;
+            echo.render(transcript, { emptyText: "(nothing recognized)" });
+            // Only now does the partner have something to be thinking about.
+            replyBubble();
+          } else if (event.stage === "score") {
+            // Scoring resolves seconds before the reply does, so the underlines
+            // land early — repaint the bubble that's already up rather than
+            // adding a second one. `pronunciation: null` means PA failed; the
+            // words stay on screen unscored, which is the honest rendering.
+            if (event.pronunciation) {
+              echo.render(transcript, { pronunciation: event.pronunciation });
+            }
+          } else if (event.stage === "reply") {
+            replyBubble().render(event.reply);
+            // Only record a real exchange: an empty transcript means nothing was
+            // recognized (the reply was a re-prompt), so it isn't part of history.
+            if (transcript && transcript.zh) {
+              dialogue.push({ role: "user", zh: transcript.zh, pinyin: transcript.pinyin });
+              dialogue.push({ role: "partner", zh: event.reply.zh, pinyin: event.reply.pinyin });
+              saveDialogue();
+            }
+          } else if (event.stage === "done") {
+            // The terminal event, so the timings line is appended last in the
+            // thread no matter which of score/reply arrived second. Its
+            // `total_ms` is the server's whole-turn number; the wall-clock is
+            // measured from mic release, so the gap between them is transport —
+            // the one thing the server can't see.
+            renderTimings(event.timings, event.usage, performance.now() - startedAt);
+          } else if (event.stage === "error") {
+            // Failed after the transcript was sent, so keep it — the learner can
+            // see what they said, and only the reply is missing.
+            replyBubble().fail("error: " + event.detail);
+          }
         }
         setStatus("");
       } catch (err) {
-        pending.fail("request failed: " + err);
+        // A transcript already on screen is real; don't withdraw it. If the
+        // stream died before it arrived there is no partner bubble yet, so the
+        // echo carries the failure instead.
+        (pending || echo).fail("request failed: " + err);
       } finally {
         talk.disabled = false;
       }

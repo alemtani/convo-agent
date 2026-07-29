@@ -4,6 +4,7 @@ import os
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import ValidationError
 
@@ -12,7 +13,6 @@ from backend.models import (
     ConversationTurnResponse,
     DialogueTurn,
     TextTurnRequest,
-    TurnResponse,
 )
 from backend.speech import stt
 from backend.speech._recognizer import SpeechConfigError
@@ -43,20 +43,31 @@ async def hello():
     return {"message": "hello world"}
 
 
-@app.post("/api/turn", response_model=TurnResponse)
+@app.post("/api/turn")
 async def turn(
     audio: UploadFile = File(...),
     topic_id: str = Form("greetings"),
     dialogue: str = Form("[]"),
-) -> TurnResponse:
-    """One spoken conversation turn: real Claude reply + transcript + tone scores.
+) -> StreamingResponse:
+    """One spoken conversation turn, streamed as NDJSON.
 
-    The Phase 3b loop, coordinated by `orchestrator.run_audio_turn`: STT
+    The Phase 3b loop, coordinated by `orchestrator.stream_audio_turn`: STT
     transcribes, then PA (two-pass) and the conversation worker run concurrently,
-    and per-syllable tone errors are merged into the annotation. Stateless: the
-    client holds the running transcript and resubmits it as `dialogue` (a JSON
-    array of prior `{role, zh}` turns) so the partner has memory across turns;
-    the server appends this turn's STT text as the latest user turn.
+    and per-syllable tone errors are merged into the annotation.
+
+    The body is one JSON object per line — a `transcript` event as soon as STT
+    resolves, then `final` (or `error`). Staged because STT finishes in a
+    fraction of the worker's time: answering once at the end means the learner
+    stares at a loading bubble with none of their own words above it, which reads
+    as if their turn never happened. See `models.TranscriptEvent`.
+
+    Unknown topic (404) and STT/Azure-config failure (502) are settled before the
+    first byte; a worker failure after that can only be an `error` event.
+
+    Stateless: the client holds the running transcript and resubmits it as
+    `dialogue` (a JSON array of prior `{role, zh}` turns) so the partner has
+    memory across turns; the server appends this turn's STT text as the latest
+    user turn.
     """
     try:
         history = [DialogueTurn.model_validate(t) for t in json.loads(dialogue)]
@@ -65,13 +76,36 @@ async def turn(
 
     audio_bytes = await audio.read()
     try:
-        return await orchestrator.run_audio_turn(
-            audio_bytes, topic_id=topic_id, dialogue=history
+        transcript, kb_block, timer = await orchestrator.prepare_audio_turn(
+            audio_bytes, topic_id=topic_id
         )
     except kb.KbError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except (stt.SttError, conversation.ConversationError, SpeechConfigError) as exc:
+    except (stt.SttError, SpeechConfigError) as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    async def body():
+        async for event in orchestrator.stream_audio_turn(
+            audio_bytes,
+            transcript=transcript,
+            kb_block=kb_block,
+            timer=timer,
+            dialogue=history,
+        ):
+            yield event.model_dump_json() + "\n"
+
+    return StreamingResponse(
+        body(),
+        media_type="application/x-ndjson",
+        # Staged delivery is defeated *silently* by a buffering intermediary:
+        # the events still arrive, just all at once at the end, and nothing in
+        # the suite catches it (`TestClient` collects the whole body by
+        # construction). `text/event-stream` is widely special-cased as
+        # do-not-buffer; `application/x-ndjson` is not, so say it explicitly.
+        # A mitigation, not a proof — see the follow-up on an end-to-end flush
+        # test against a real uvicorn.
+        headers={"X-Accel-Buffering": "no", "Cache-Control": "no-cache"},
+    )
 
 
 @app.post("/api/turn/text", response_model=ConversationTurnResponse)

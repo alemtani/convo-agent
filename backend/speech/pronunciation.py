@@ -16,6 +16,7 @@ from typing import Optional
 
 import azure.cognitiveservices.speech as speechsdk
 
+from backend import config
 from backend.models import PronunciationScore, SyllableScore
 from backend.pinyin import to_pinyin
 from backend.speech._recognizer import cancellation_message, recognizer_for
@@ -94,7 +95,22 @@ async def assess(
 
     Blocking ``recognize_once`` runs in a worker thread to stay async-correct,
     mirroring `stt.transcribe`.
+
+    Bounded by `PA_TIMEOUT_S`. A wedged PA call is the one most likely to go
+    unnoticed: it is the *faster* branch, so nothing else is waiting on it, and
+    without a deadline it would hold the streamed response open past a reply the
+    learner already has on screen. The timeout raises `PaError`, which
+    `_assess_or_degrade` already turns into `pronunciation: null` — the turn
+    completes and says "not scored" rather than stalling.
+
+    Same caveat as `stt.transcribe`: this cancels the await, not the thread.
     """
-    return await asyncio.to_thread(
-        _assess_sync, audio_wav, reference_text, language
-    )
+    try:
+        return await asyncio.wait_for(
+            asyncio.to_thread(_assess_sync, audio_wav, reference_text, language),
+            timeout=config.PA_TIMEOUT_S,
+        )
+    except asyncio.TimeoutError as exc:
+        raise PaError(
+            f"Azure PA timed out after {config.PA_TIMEOUT_S:g}s"
+        ) from exc

@@ -219,3 +219,24 @@ async def test_live_assess_returns_structural_scores():
     for syl in score.syllables:
         assert syl.hanzi
         assert 0.0 <= syl.accuracy <= 100.0
+
+
+async def test_a_stalled_assessment_times_out_as_a_pa_error(monkeypatch):
+    """A wedged PA call is the one most likely to go unnoticed.
+
+    PA is the *faster* branch, so nothing else waits on it — without a deadline
+    it would hold the streamed response open past a reply the learner already
+    has on screen. `PaError` is what `_assess_or_degrade` already knows how to
+    turn into `pronunciation: null`, so the turn completes rather than stalling.
+    """
+    import time
+
+    def never_returns(audio_wav, reference_text, language):
+        time.sleep(30)
+        raise AssertionError("the timeout should have fired long before this")
+
+    monkeypatch.setattr(pa, "_assess_sync", never_returns)
+    monkeypatch.setattr(pa.config, "PA_TIMEOUT_S", 0.05)
+
+    with pytest.raises(pa.PaError, match="timed out"):
+        await pa.assess(b"FAKEWAV", "你好")

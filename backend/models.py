@@ -49,10 +49,16 @@ class PronunciationScore(BaseModel):
 class TurnTimings(BaseModel):
     """Per-stage wall-clock cost of one turn, in milliseconds (WS1 Stage 0).
 
-    Every stage is optional because a stage that didn't run must report nothing
-    rather than zero: PA drops off a degraded turn, and STT/Claude are absent
-    from a text turn. `total_ms` is measured across the whole orchestrator call,
-    so it is *not* the sum of the parts — the gap is the un-instrumented work.
+    Every stage is optional because a stage that didn't run — or hasn't finished
+    yet — must report nothing rather than zero: PA drops off a degraded turn,
+    STT/Claude are absent from a text turn, and on a staged turn the table is
+    still filling in when the early events flush.
+
+    `total_ms` is measured across the whole orchestrator call, so it is *not* the
+    sum of the parts — the gap is the un-instrumented work. It is only ever set
+    on a turn that has finished (the `done` event, or a collected text turn);
+    mid-turn events leave it `None` rather than reporting a total of a turn still
+    in progress. Their arrival time is `TurnEvent.elapsed_ms`.
 
     Reported back to the client (and to the replay harness) rather than only
     logged, so both sides quote the same numbers.
@@ -97,24 +103,130 @@ class TurnUsage(BaseModel):
         )
 
 
-class TurnResponse(BaseModel):
-    """Response body for `POST /api/turn`.
+# --- The spoken turn, delivered in stages ---------------------------------
+#
+# `POST /api/turn` streams NDJSON rather than answering once at the end. The
+# reason is the shape of the turn, not raw speed: STT resolves in a fraction of
+# the time the conversation worker takes, so holding the transcript back until
+# the reply is ready means the learner watches a loading bubble with no message
+# of their own above it — the thread reads as if they never spoke. Each event is
+# one line of JSON; `stage` discriminates.
+#
+# Everything that maps to an HTTP status (unknown topic, STT failure) is settled
+# *before* the first byte, so a stream that starts is a stream that carries a
+# transcript. Failures after that point can only be reported in-band, as an
+# `error` event.
+#
+# Only `transcript` has a fixed position. `score` and `reply` are two concurrent
+# branches raced against each other and are emitted in whichever order they
+# resolve — usually score-then-reply (PA is the faster branch), but a slow Azure
+# call legitimately inverts it. Clients must dispatch on `stage`, never on
+# position. `done` is the one event that is always last, and `error` replaces it
+# on a turn that failed after the status line was spent.
 
-    `transcript` is the user's turn (Azure STT output + derived pinyin); `reply`
-    is the partner's turn. In Phase 1 `reply` is a hardcoded constant; Phase 3b
-    replaces it with the conversation worker's output. `pronunciation` holds the
-    Phase 2 tone scores; it is `None` when nothing was recognized or PA failed
-    (the turn degrades to transcript-only rather than failing). `annotation` is
-    the Phase 3b turn annotation — its `tone_errors` are filled deterministically
-    from `pronunciation`; `None` on a transcript-only / short-circuited turn.
+
+class TurnEvent(BaseModel):
+    """Fields every staged event carries.
+
+    `elapsed_ms` is the turn's age when this line was *flushed* — the arrival
+    time, which is the number staged delivery is actually about. Two turns with
+    identical stage durations feel completely different depending on when each
+    line went out, and only this distinguishes them. It is the field the replay
+    harness reads per event.
+
+    `timings` is the stage table *as known at emit*, so it fills in as the turn
+    progresses: `transcript` has `stt_ms` only, `score` adds `pa_ms`, `reply`
+    adds `claude_ms`. A stage still running is absent rather than zero. Only
+    `done` carries `total_ms` — on any earlier event a "total" would be a total
+    of nothing, which is exactly the trap of reading a cumulative snapshot as a
+    per-event cost.
     """
 
-    transcript: Utterance
-    reply: Utterance
-    pronunciation: Optional[PronunciationScore] = None
-    annotation: Optional["TurnAnnotation"] = None
+    elapsed_ms: Optional[float] = None
     timings: Optional[TurnTimings] = None
+
+
+class TranscriptEvent(TurnEvent):
+    """First event: what the learner said, as soon as STT resolves.
+
+    `transcript.zh` is empty when nothing was recognized; the `reply` event then
+    carries a re-prompt.
+    """
+
+    stage: Literal["transcript"] = "transcript"
+    transcript: Utterance
+
+
+class ScoreEvent(TurnEvent):
+    """How the learner's turn was pronounced, as soon as Azure PA resolves.
+
+    Its own event rather than a field on `reply` because PA and the conversation
+    worker run concurrently and PA is much the faster of the two (Stage 0: 1.20s
+    against 3.56s). The transcript is rendered unscored and gains its tone
+    underlines when this lands — usually seconds before the reply does.
+
+    `pronunciation` is `None` when PA failed. That is deliberately distinct from
+    *no event at all*: a degraded turn says "not scored" explicitly instead of
+    looking identical to a turn still being scored.
+
+    `tone_errors` live here rather than on the annotation because both they and
+    `pronunciation` are derived from the same PA result — the model never judges
+    tone. Putting them on the annotation would re-gate the tone underlines on
+    the conversation worker, which is the coupling this split exists to remove.
+    """
+
+    stage: Literal["score"] = "score"
+    pronunciation: Optional[PronunciationScore] = None
+    tone_errors: List["ToneError"] = []
+
+
+class ReplyEvent(TurnEvent):
+    """The partner's reply and the worker's annotation.
+
+    Not necessarily the last event, which is why it is `reply` and not `final`:
+    it races `score`, and whenever PA is the slower branch the scores land
+    *after* it. `done` is the terminal event.
+
+    Carries no scores — those went out on `score`. Deriving anything here from
+    the PA result would make the reply wait on scoring.
+    """
+
+    stage: Literal["reply"] = "reply"
+    reply: Utterance
+    annotation: Optional["TurnAnnotation"] = None
+
+
+class DoneEvent(TurnEvent):
+    """Terminal event: the turn is over, with its complete accounting.
+
+    Exists because no other event can play that role. `reply` and `score` arrive
+    in either order, so "the turn is finished" would otherwise have to be
+    inferred from the stream closing — indistinguishable from a dropped
+    connection, a truncated proxy response, or a crashed worker. An explicit
+    terminator makes the difference observable to the client.
+
+    It is also the only honest place for `total_ms` and `usage`: both are
+    whole-turn numbers, and quoting them on `reply` would have meant quoting
+    them while a branch was still running.
+    """
+
+    stage: Literal["done"] = "done"
     usage: Optional[TurnUsage] = None
+
+
+class TurnErrorEvent(TurnEvent):
+    """A failure after the response committed to 200 — reported in-band.
+
+    The worker refusing mid-stream can't become a 502: the status line is long
+    gone. The client turns this into a failed reply bubble, keeping the
+    transcript it already rendered.
+
+    Terminal, in place of `done`: a turn ends in exactly one of the two, so a
+    client that has seen neither knows the stream was cut rather than finished.
+    """
+
+    stage: Literal["error"] = "error"
+    detail: str
 
 
 # --- Phase 3a: the text-turn conversation contract ------------------------
