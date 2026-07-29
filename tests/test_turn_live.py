@@ -13,9 +13,9 @@ import pytest
 
 from anthropic import AsyncAnthropic
 
-from backend import config, orchestrator
-from backend.models import TurnResponse
+from backend import config
 from backend.pinyin import tone_numbers
+from tests.helpers import collect_audio_turn
 
 pytestmark = pytest.mark.live
 
@@ -43,18 +43,21 @@ async def test_live_audio_turn_transcribes_replies_and_scores_tones():
     with open(_FIXTURE, "rb") as f:
         audio = f.read()
 
-    resp = await orchestrator.run_audio_turn(
-        audio, topic_id="greetings", client=client
-    )
+    seen = await collect_audio_turn(audio, topic_id="greetings", client=client)
 
-    assert isinstance(resp, TurnResponse)
+    # The turn ran to completion rather than failing in-band.
+    assert "error" not in seen, seen.get("error")
+    assert set(seen) >= {"transcript", "score", "reply", "done"}
+
     # Real STT produced something, and the worker produced a real partner reply.
-    assert resp.transcript.zh, "STT recognized nothing from the greeting WAV"
-    assert resp.reply.zh and resp.reply.pinyin
+    assert seen["transcript"].transcript.zh, "STT recognized nothing from the WAV"
+    assert seen["reply"].reply.zh and seen["reply"].reply.pinyin
 
     # PA may or may not flag tones, but every expected tone we surface must be the
     # genuine target for that hanzi (derived locally, not invented by the model).
-    if resp.pronunciation is not None and resp.annotation is not None:
-        for err in resp.annotation.tone_errors:
-            assert err.expected in tone_numbers(err.syllable)
-            assert 1 <= err.expected <= 5
+    for err in seen["score"].tone_errors:
+        assert err.expected in tone_numbers(err.syllable)
+        assert 1 <= err.expected <= 5
+
+    # The live check the whole caching design rests on.
+    assert seen["done"].timings.total_ms > 0

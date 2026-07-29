@@ -1,8 +1,9 @@
-"""Phase 1 model tests: the turn response contract.
+"""Model tests: the turn contracts, as they go on the wire.
 
-Pure Pydantic validation — no Azure, no Claude. Asserts the symmetric shape
-(`TurnResponse{transcript: Utterance, reply: Utterance}`, each a 汉字 + pinyin
-line) that the route returns and that Phase 3's worker will later map onto.
+Pure Pydantic validation — no Azure, no Claude. The spoken turn is delivered as
+staged events (`transcript` → `score`/`reply` → `done`, or `error`), each a line
+of NDJSON discriminated by `stage`; the text turn is still a single
+`ConversationTurnResponse`. Both are built from 汉字 + pinyin `Utterance` pairs.
 """
 import pytest
 from pydantic import ValidationError
@@ -11,57 +12,57 @@ from backend.models import (
     ConversationResult,
     ConversationTurnResponse,
     DialogueTurn,
+    DoneEvent,
     PronunciationScore,
+    ReplyEvent,
+    ScoreEvent,
     SyllableScore,
     TextTurnRequest,
     ToneError,
+    TranscriptEvent,
     TurnAnnotation,
-    TurnResponse,
+    TurnErrorEvent,
     TurnTimings,
     TurnUsage,
     Utterance,
 )
 
 
-def test_turn_response_serializes_symmetric_shape():
-    resp = TurnResponse(
-        transcript=Utterance(zh="你好老师", pinyin="nǐ hǎo lǎo shī"),
-        reply=Utterance(zh="你好", pinyin="nǐ hǎo"),
-    )
-    # `pronunciation` and `annotation` default to None (Phase 2 tone scores and
-    # the Phase 3b turn annotation are optional — a transcript-only turn omits them).
-    assert resp.model_dump() == {
+def test_transcript_event_serializes_with_its_stage_tag():
+    """`stage` is what a client dispatches on, so it must survive the dump.
+
+    Only `transcript` has a fixed position in the stream; everything after it
+    arrives in whichever order the branches resolve, which makes the tag the
+    only reliable discriminator.
+    """
+    event = TranscriptEvent(transcript=Utterance(zh="你好老师", pinyin="nǐ hǎo lǎo shī"))
+    assert event.model_dump() == {
+        "stage": "transcript",
         "transcript": {"zh": "你好老师", "pinyin": "nǐ hǎo lǎo shī"},
-        "reply": {"zh": "你好", "pinyin": "nǐ hǎo"},
-        "pronunciation": None,
-        "annotation": None,
-        # WS1 Stage 0 diagnostics; absent unless the orchestrator attached them.
+        # Arrival + the stage table so far; absent unless the orchestrator
+        # attached them.
+        "elapsed_ms": None,
         "timings": None,
-        "usage": None,
     }
 
 
-def test_turn_response_carries_annotation_with_tone_errors():
-    # Phase 3b: the audio turn surfaces the worker's annotation, with tone_errors
-    # populated deterministically from PA (not by the model).
-    resp = TurnResponse(
-        transcript=Utterance(zh="你好", pinyin="nǐ hǎo"),
+def test_reply_event_carries_the_annotation():
+    event = ReplyEvent(
         reply=Utterance(zh="你好", pinyin="nǐ hǎo"),
         annotation=TurnAnnotation(
             coherence="on_track",
             tone_errors=[ToneError(syllable="你", expected=3, said=0)],
         ),
     )
-    dumped = resp.model_dump()
+    dumped = event.model_dump()
+    assert dumped["stage"] == "reply"
     assert dumped["annotation"]["tone_errors"] == [
         {"syllable": "你", "expected": 3, "said": 0, "index": None}
     ]
 
 
-def test_turn_response_carries_pronunciation_scores():
-    resp = TurnResponse(
-        transcript=Utterance(zh="老师", pinyin="lǎo shī"),
-        reply=Utterance(zh="你好", pinyin="nǐ hǎo"),
+def test_score_event_carries_pronunciation_scores():
+    event = ScoreEvent(
         pronunciation=PronunciationScore(
             overall=80.0,
             syllables=[
@@ -69,14 +70,51 @@ def test_turn_response_carries_pronunciation_scores():
                 SyllableScore(hanzi="师", pinyin="shī", accuracy=67.0),
             ],
         ),
+        tone_errors=[ToneError(syllable="师", expected=1, said=0)],
     )
-    dumped = resp.model_dump()
+    dumped = event.model_dump()
+    assert dumped["stage"] == "score"
     assert dumped["pronunciation"]["overall"] == 80.0
     assert dumped["pronunciation"]["syllables"][1] == {
         "hanzi": "师",
         "pinyin": "shī",
         "accuracy": 67.0,
     }
+    # Tone errors ride here, never on the reply: both they and `pronunciation`
+    # come from the same PA result.
+    assert dumped["tone_errors"][0]["syllable"] == "师"
+
+
+def test_score_event_distinguishes_unscored_from_still_scoring():
+    """`pronunciation: null` is a statement, not an omission.
+
+    A degraded turn still emits the event, because silence is indistinguishable
+    from a turn whose PA hasn't come back yet.
+    """
+    dumped = ScoreEvent().model_dump()
+    assert dumped["stage"] == "score"
+    assert dumped["pronunciation"] is None
+    assert dumped["tone_errors"] == []
+
+
+def test_only_the_done_event_reports_a_total():
+    """Mid-turn events carry the stage table so far; `total_ms` needs the end.
+
+    A total quoted while a branch is still running is a total of an unfinished
+    turn — the trap of reading a cumulative snapshot as a per-event cost.
+    """
+    mid = ScoreEvent(elapsed_ms=560.0, timings=TurnTimings(stt_ms=310.0, pa_ms=250.0))
+    assert mid.timings.total_ms is None
+    assert mid.elapsed_ms == 560.0
+
+    done = DoneEvent(
+        elapsed_ms=1250.0,
+        timings=TurnTimings(stt_ms=310.0, pa_ms=250.0, claude_ms=900.0, total_ms=1250.0),
+        usage=TurnUsage(cache_read_input_tokens=4096),
+    )
+    assert done.stage == "done"
+    assert done.timings.total_ms == 1250.0
+    assert done.usage.cache_read_input_tokens == 4096
 
 
 def test_syllable_score_requires_all_fields():
@@ -84,15 +122,18 @@ def test_syllable_score_requires_all_fields():
         SyllableScore(hanzi="老", accuracy=97.0)  # missing pinyin
 
 
-def test_turn_response_parses_from_json_dict():
-    resp = TurnResponse.model_validate(
-        {
-            "transcript": {"zh": "", "pinyin": ""},
-            "reply": {"zh": "你好", "pinyin": "nǐ hǎo"},
-        }
+def test_events_parse_from_json_dicts():
+    """The client and the replay harness both read these back off the wire."""
+    transcript = TranscriptEvent.model_validate(
+        {"stage": "transcript", "transcript": {"zh": "", "pinyin": ""}}
     )
-    assert resp.transcript.zh == ""
-    assert resp.reply.zh == "你好"
+    assert transcript.transcript.zh == ""
+
+    error = TurnErrorEvent.model_validate(
+        {"stage": "error", "detail": "worker refused the turn", "elapsed_ms": 900.0}
+    )
+    assert error.stage == "error"
+    assert "refused" in error.detail
 
 
 def test_utterance_requires_both_fields():

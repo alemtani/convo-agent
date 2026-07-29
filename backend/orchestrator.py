@@ -5,8 +5,10 @@ the conversation worker the session sketch + forgiveness default, and wraps the
 worker's reply + annotation into the response. It owns *which* sketch / model /
 forgiveness apply; the worker stays a pure request builder.
 
-Phase 3a drives this from text (`POST /api/turn/text`). Phase 3b adds
-`run_audio_turn`: the real speech loop (STT → PA ∥ worker → merged tone errors).
+Phase 3a drives this from text (`POST /api/turn/text`). Phase 3b adds the real
+speech loop, in two halves: `prepare_audio_turn` runs everything that can still
+fail with an HTTP status (KB load, STT), and `stream_audio_turn` races PA against
+the conversation worker, emitting each stage as it resolves.
 """
 import asyncio
 import logging
@@ -18,12 +20,12 @@ from backend import config, kb, timing, tones, typed_pinyin
 from backend.models import (
     ConversationTurnResponse,
     DialogueTurn,
-    FinalEvent,
+    DoneEvent,
+    ReplyEvent,
     ScoreEvent,
     TextTurnRequest,
     TranscriptEvent,
     TurnErrorEvent,
-    TurnResponse,
     TurnTimings,
     TurnUsage,
     Utterance,
@@ -36,7 +38,9 @@ from backend.workers import conversation
 logger = logging.getLogger(__name__)
 
 # One line of the NDJSON body `POST /api/turn` streams, discriminated by `stage`.
-TurnEvent = Union[TranscriptEvent, ScoreEvent, FinalEvent, TurnErrorEvent]
+StagedEvent = Union[
+    TranscriptEvent, ScoreEvent, ReplyEvent, DoneEvent, TurnErrorEvent
+]
 
 # Shown when nothing is recognized — an explicit "please say it again" so the
 # learner knows to retry, not a bare greeting that reads like a fresh turn. Keeps
@@ -49,7 +53,9 @@ async def run_text_turn(
 ) -> ConversationTurnResponse:
     """Coordinate one text turn: load KB, run the worker, shape the response.
 
-    The mirror of `run_audio_turn` minus the speech stages. `req.text` is usually
+    The mirror of the spoken turn minus the speech stages, and still collected
+    rather than staged: with only one worker call there is nothing to stage —
+    the reply *is* the turn. `req.text` is usually
     *pinyin* — a beginner can't necessarily type 汉字 — so the transcript comes
     from the worker's reading of that input rather than from local romanization:
     it is the one component that can resolve `ta` into 他 or 她 from context.
@@ -120,7 +126,7 @@ async def stream_audio_turn(
     timer: Optional[timing.Timer] = None,
     dialogue: Optional[List[DialogueTurn]] = None,
     client: Optional[AsyncAnthropic] = None,
-) -> AsyncIterator[TurnEvent]:
+) -> AsyncIterator[StagedEvent]:
     """Coordinate one spoken turn, emitting each stage as it resolves.
 
     Two-pass speech (DESIGN.md Risk 1): `prepare_audio_turn` has already run STT;
@@ -134,10 +140,14 @@ async def stream_audio_turn(
     answers leaves them watching a loading bubble with nothing of theirs above
     it.
 
-    Every event carries `timings` measured at the moment it is emitted, so the
+    Every event carries `elapsed_ms` measured at the moment it is emitted, so the
     replay harness can report when each stage *arrived*, not just how long it
     ran. Two turns with identical stage durations feel completely different
     depending on when each event flushed, and only the arrival time says which.
+
+    The turn always ends in exactly one terminal event — `done` or `error`. The
+    stream closing is not a completion signal: it looks the same as a dropped
+    connection.
 
     A PA failure degrades to scores-off; empty recognition short-circuits to a
     re-prompt without spending a worker call; a worker failure becomes a
@@ -146,16 +156,16 @@ async def stream_audio_turn(
     """
     timer = timer or timing.Timer()
 
-    yield TranscriptEvent(
-        transcript=transcript, timings=TurnTimings.from_stages(timer.as_dict())
-    )
+    yield TranscriptEvent(transcript=transcript, **_at_emit(timer))
 
     if not transcript.zh:
+        # Nothing to assess and nothing to answer, so neither branch is started:
+        # silence must not cost an Azure PA call or a Claude turn.
+        yield ReplyEvent(reply=RETRY_REPLY, **_at_emit(timer))
         # Still a measured turn: it cost an STT round trip, and dropping the
         # short-circuit from the numbers would bias the p50 downward.
-        yield FinalEvent(
-            reply=RETRY_REPLY, timings=_report(timer, None, mode="audio")
-        )
+        yield DoneEvent(timings=_report(timer, None, mode="audio"),
+                        elapsed_ms=timer.total_ms)
         return
 
     async def assess_branch():
@@ -215,22 +225,25 @@ async def stream_audio_turn(
                             if score is not None
                             else []
                         ),
-                        timings=TurnTimings.from_stages(timer.as_dict()),
+                        **_at_emit(timer),
                     )
                 else:
                     reply, annotation, _reading, usage = task.result()
 
-                    yield FinalEvent(
-                        reply=reply,
-                        annotation=annotation,
-                        timings=TurnTimings.from_stages(timer.as_dict()),
-                        usage=TurnUsage.from_sdk(usage),
+                    yield ReplyEvent(
+                        reply=reply, annotation=annotation, **_at_emit(timer)
                     )
+
+        # Both branches have settled, so this is the first point at which the
+        # stage table and the token usage are complete.
+        yield DoneEvent(
+            timings=TurnTimings.from_stages(timer.as_dict()),
+            usage=TurnUsage.from_sdk(usage),
+            elapsed_ms=timer.total_ms,
+        )
     except conversation.ConversationError as exc:
         logger.warning("conversation worker failed mid-turn: %s", exc)
-        yield TurnErrorEvent(
-            detail=str(exc), timings=TurnTimings.from_stages(timer.as_dict())
-        )
+        yield TurnErrorEvent(detail=str(exc), **_at_emit(timer))
     finally:
         # A failure in either branch leaves the other still running; without this
         # the losing branch outlives the request as an orphaned task.
@@ -243,62 +256,18 @@ async def stream_audio_turn(
         _report(timer, usage, mode="audio")
 
 
-async def run_audio_turn(
-    audio_bytes: bytes,
-    *,
-    topic_id: str = "greetings",
-    dialogue: Optional[List[DialogueTurn]] = None,
-    client: Optional[AsyncAnthropic] = None,
-) -> TurnResponse:
-    """Collect a spoken turn into one `TurnResponse`.
+def _at_emit(timer: timing.Timer) -> dict:
+    """The two arrival fields every mid-turn event carries.
 
-    The stream is the contract the route serves; this is the same turn without
-    the staging, for callers that want the merged result rather than the delivery
-    (the live smoke test, orchestrator tests). It's built *on* the stream rather
-    than beside it so the two can't drift.
-
-    Raises `stt.SttError`, `kb.KbError`, `conversation.ConversationError` — the
-    in-band error event is re-raised so this keeps the exception contract callers
-    already have.
+    `timer.stages` rather than `as_dict()` on purpose: `as_dict()` injects
+    `total`, and a total on an event emitted while a branch is still running is
+    a total of an unfinished turn. Mid-turn, the honest whole-turn number is
+    `elapsed_ms` — how old the turn was when this line flushed.
     """
-    transcript, kb_block, timer = await prepare_audio_turn(
-        audio_bytes, topic_id=topic_id
-    )
-
-    final: Optional[FinalEvent] = None
-    score: Optional[ScoreEvent] = None
-    async for event in stream_audio_turn(
-        audio_bytes,
-        transcript=transcript,
-        kb_block=kb_block,
-        timer=timer,
-        dialogue=dialogue,
-        client=client,
-    ):
-        if isinstance(event, TurnErrorEvent):
-            raise conversation.ConversationError(event.detail)
-        if isinstance(event, ScoreEvent):
-            score = event
-        elif isinstance(event, FinalEvent):
-            final = event
-
-    assert final is not None, "the stream always ends in a final or error event"
-
-    # The staged contract splits scores off the annotation; the collected one
-    # never did, and moving it would make the split breaking for every caller
-    # that wants the merged result. Rejoin here, once.
-    annotation = final.annotation
-    if annotation is not None and score is not None:
-        annotation = annotation.model_copy(update={"tone_errors": score.tone_errors})
-
-    return TurnResponse(
-        transcript=transcript,
-        reply=final.reply,
-        pronunciation=score.pronunciation if score else None,
-        annotation=annotation,
-        timings=TurnTimings.from_stages(timer.as_dict()),
-        usage=final.usage,
-    )
+    return {
+        "timings": TurnTimings.from_stages(timer.stages),
+        "elapsed_ms": timer.total_ms,
+    }
 
 
 async def _assess_or_degrade(audio_bytes, reference_text):

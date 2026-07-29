@@ -811,6 +811,10 @@
           return;
         }
 
+        // Dispatch on `stage`, never on position: only `transcript` has a fixed
+        // place. `score` and `reply` are concurrent branches emitted in whichever
+        // order they resolve, and a slow Azure call legitimately puts the reply
+        // first.
         for await (const event of ndjson(resp)) {
           if (event.stage === "transcript") {
             transcript = event.transcript;
@@ -823,13 +827,8 @@
             if (event.pronunciation) {
               echo.render(transcript, { pronunciation: event.pronunciation });
             }
-          } else if (event.stage === "final") {
+          } else if (event.stage === "reply") {
             pending.render(event.reply);
-            // After the reply, so the timings line stays last in the thread.
-            // `event.timings` is measured server-side at the moment this line
-            // flushed; the wall-clock is measured from mic release, so the gap
-            // between them is transport — the one thing the server can't see.
-            renderTimings(event.timings, event.usage, performance.now() - startedAt);
             // Only record a real exchange: an empty transcript means nothing was
             // recognized (the reply was a re-prompt), so it isn't part of history.
             if (transcript && transcript.zh) {
@@ -837,6 +836,13 @@
               dialogue.push({ role: "partner", zh: event.reply.zh, pinyin: event.reply.pinyin });
               saveDialogue();
             }
+          } else if (event.stage === "done") {
+            // The terminal event, so the timings line is appended last in the
+            // thread no matter which of score/reply arrived second. Its
+            // `total_ms` is the server's whole-turn number; the wall-clock is
+            // measured from mic release, so the gap between them is transport —
+            // the one thing the server can't see.
+            renderTimings(event.timings, event.usage, performance.now() - startedAt);
           } else if (event.stage === "error") {
             // Failed after the transcript was sent, so keep it — the learner can
             // see what they said, and only the reply is missing.
