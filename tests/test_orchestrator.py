@@ -26,7 +26,8 @@ from backend.workers import conversation
 async def test_run_text_turn_loads_kb_and_calls_worker(monkeypatch):
     captured = {}
 
-    async def fake_respond(*, kb_block, sketch, dialogue, user_text, forgiveness_level, client=None):
+    async def fake_respond(*, kb_block, sketch, dialogue, user_text, forgiveness_level,
+                           want_reading=True, client=None):
         captured.update(
             kb_block=kb_block, sketch=sketch, dialogue=dialogue,
             user_text=user_text, forgiveness_level=forgiveness_level,
@@ -165,7 +166,8 @@ class _FakeUsage:
 
 
 def _worker_reply(annotation=None, reading=None):
-    async def fake_respond(*, kb_block, sketch, dialogue, user_text, forgiveness_level, client=None):
+    async def fake_respond(*, kb_block, sketch, dialogue, user_text, forgiveness_level,
+                           want_reading=True, client=None):
         return (
             Utterance(zh="你好！你叫什么名字？", pinyin="nǐ hǎo! nǐ jiào shénme míngzi?"),
             annotation or TurnAnnotation(coherence="on_track", topic_tags=["greetings"]),

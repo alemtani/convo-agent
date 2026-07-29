@@ -14,10 +14,20 @@ ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 AZURE_SPEECH_KEY = os.getenv("AZURE_SPEECH_KEY", "")
 AZURE_SPEECH_REGION = os.getenv("AZURE_SPEECH_REGION", "eastus")
 
-# Conversation worker (per-turn hot path). Sonnet 4.6 is the deliberate choice
-# for the loop — cheap and deterministic enough for every-turn calls (DESIGN.md).
+# Conversation worker (per-turn hot path). Sonnet 5 is the deliberate choice for
+# the loop — cheap and deterministic enough for every-turn calls (DESIGN.md).
 # Hold the model fixed per session: switching it mid-session busts the cache.
-CONVERSATION_MODEL = "claude-sonnet-5"
+#
+# Env-overridable so the replay harness can A/B a candidate (Haiku 4.5) against
+# the incumbent without a code edit — the comparison is the whole point, and one
+# measured on a patched working tree isn't reproducible.
+CONVERSATION_MODEL = os.getenv("CONVERSATION_MODEL", "claude-sonnet-5")
+
+# Effort for the per-turn loop. Unset means `high`, the API default, which buys
+# deliberation a one-sentence in-band reply has no use for. Env-overridable for
+# the same reason as the model: it is a dial whose right setting is a measured
+# question, not a settled one.
+CONVERSATION_EFFORT = os.getenv("CONVERSATION_EFFORT", "low")
 
 # How forgiving the partner is of learner errors (0=strict … 1=very patient).
 # Baked as a literal into the frozen system prompt — never per-turn — so the
@@ -52,11 +62,35 @@ TONE_ERROR_THRESHOLD = 60.0
 #           failure of the three, so the tightest budget costs the least.
 #   STT     kills the whole turn with a 502. Scales with utterance length, which
 #           push-to-talk keeps short; revisit if recordings get longer.
-#   Claude  is the reply. Cutting it at 10s loses a turn that might have landed
-#           at 11s, and the tokens are spent either way.
+#   Claude  is the reply. Cutting it loses a turn that might have landed a
+#           second later, and the tokens are spent either way.
+#
+# Claude's is now 15s, revisited against the replay p95 the way #22 asked for
+# rather than defended on intuition. Two things moved it up from 10s. The
+# measured p95 is 4.8–5.2s, so 10s was ~2x p95 — closer to the body of the
+# distribution than a safety net should sit. And with the SDK retry removed
+# below, 10s became a *real* cut for the first time: turns that used to be
+# rescued by an invisible second attempt now simply die. Two in ~50 did.
+#
+# 15s is ~3x p95 and still well inside the "clear failure beats a bubble that
+# never resolves" bound the original number was reaching for.
 STT_TIMEOUT_S = float(os.getenv("STT_TIMEOUT_S", "5"))
 PA_TIMEOUT_S = float(os.getenv("PA_TIMEOUT_S", "5"))
-CLAUDE_TIMEOUT_S = float(os.getenv("CLAUDE_TIMEOUT_S", "10"))
+CLAUDE_TIMEOUT_S = float(os.getenv("CLAUDE_TIMEOUT_S", "15"))
+
+# ...and the deadline has to be the *whole* budget, which means no retries under
+# it. The SDK retries twice by default and a timeout is a retryable error, so
+# `CLAUDE_TIMEOUT_S` was really "10s, three times" — a wedged call could hold the
+# turn ~30s plus backoff, past every number the deadline was sized against.
+# Replay caught one at 13.9s: a 10s timeout, then a 3.9s retry that succeeded.
+#
+# Zero, not one, because of who is waiting. A retry restarts the whole budget
+# while the learner watches a pending bubble, and it re-spends the tokens of the
+# attempt we just abandoned. At this timescale the retry that costs least is the
+# learner saying it again — the failure is visible and immediate, and they were
+# going to repeat themselves anyway. Env-overridable in case a flaky network
+# makes one attempt the wrong trade.
+CLAUDE_MAX_RETRIES = int(os.getenv("CLAUDE_MAX_RETRIES", "0"))
 
 
 def _load_band_ceiling(default: int = 2) -> int:

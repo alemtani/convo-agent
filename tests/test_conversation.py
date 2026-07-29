@@ -15,20 +15,26 @@ from unittest.mock import AsyncMock
 import pytest
 
 from backend import config
-from backend.models import ConversationResult, TurnAnnotation, Utterance
+from backend.models import (
+    ConversationResult,
+    SpokenConversationResult,
+    Utterance,
+    WorkerAnnotation,
+)
 from backend.workers import conversation
 
 KB = "VOCAB block bytes"
 SKETCH = "SKETCH bytes"
 
 
-def _build(dialogue=None, user_text="你好", forgiveness=0.8):
+def _build(dialogue=None, user_text="你好", forgiveness=0.8, want_reading=True):
     return conversation.build_request(
         kb_block=KB,
         sketch=SKETCH,
         dialogue=dialogue or [],
         user_text=user_text,
         forgiveness_level=forgiveness,
+        want_reading=want_reading,
     )
 
 
@@ -105,13 +111,75 @@ def test_request_constrains_output_to_conversation_result():
     assert _build()["output_format"] is ConversationResult
 
 
+def test_the_spoken_shape_asks_for_the_schema_without_the_reading():
+    assert _build(want_reading=False)["output_format"] is SpokenConversationResult
+
+
+def test_the_two_output_shapes_share_a_byte_identical_cached_prefix():
+    """The prompt-cache invariant across the split, asserted rather than assumed.
+
+    Two schemas is the whole cost of the output cut, and the way it could go
+    wrong is silent: a prefix that differs between the paths turns every switch
+    into a cache write nobody notices until the bill. The schema itself does ride
+    in the cached span — measured, `cache_creation_input_tokens` differs by shape
+    for byte-identical system blocks — so each path keeps its own entry. What
+    must not *also* differ is anything we control here.
+    """
+    full = _build(want_reading=True)
+    spoken = _build(want_reading=False)
+
+    assert full["system"] == spoken["system"]
+    # The breakpoint stays on the last stable block in both shapes — a moved
+    # breakpoint would shorten the cached prefix without changing a byte of it.
+    assert "cache_control" not in spoken["system"][0]
+    assert "cache_control" not in spoken["system"][1]
+    assert spoken["system"][2]["cache_control"] == {"type": "ephemeral"}
+    # Everything before the schema is the same request, too.
+    assert full["messages"] == spoken["messages"]
+    assert full["model"] == spoken["model"]
+    assert full["output_config"] == spoken["output_config"]
+    assert full["thinking"] == spoken["thinking"]
+
+
+def test_effort_is_pinned_low_on_the_hot_path():
+    """Unset means `high` — the API default — on every turn of the loop.
+
+    Effort governs total token spend, not only thinking depth, so it still bites
+    with thinking disabled: `high` buys deliberation this turn has no use for.
+    One short in-band reply plus an annotation off a frozen prompt is the
+    canonical low-effort task, and this is the per-turn hot path.
+
+    Asserted because the cost of getting it wrong is invisible: an unset field
+    is a valid request that quietly runs at the expensive default.
+    """
+    assert _build()["output_config"] == {"effort": "low"}
+
+
+def test_effort_rides_output_config_not_the_top_level():
+    """`effort` is nested inside `output_config`; passed top-level it is not a
+    parameter the API knows, and the SDK merges `output_format` into the same
+    `output_config` object — so the two must not clobber each other."""
+    req = _build()
+    assert "effort" not in req
+    assert req["output_format"] is ConversationResult
+    assert "format" not in req["output_config"]
+
+
+def test_effort_is_omitted_rather_than_defaulted_when_unset(monkeypatch):
+    """Not every model takes the parameter — Haiku 4.5 rejects it — so an empty
+    setting has to send *nothing*, not a guessed default. Without this the model
+    dial can't be turned far enough to run the comparison it exists for."""
+    monkeypatch.setattr(config, "CONVERSATION_EFFORT", "")
+    assert "output_config" not in _build()
+
+
 # --- Claude boundary (contract test, mocked SDK) --------------------------
 
 
 def _recorded_result():
     return ConversationResult(
         partner_response=Utterance(zh="你好！你叫什么名字？", pinyin="nǐ hǎo! nǐ jiào shénme míngzi?"),
-        turn_annotation=TurnAnnotation(coherence="on_track", topic_tags=["greetings"]),
+        turn_annotation=WorkerAnnotation(coherence="on_track", topic_tags=["greetings"]),
         # Text mode: the learner typed pinyin, the worker reports what it read.
         user_reading=Utterance(zh="我叫小明", pinyin="wǒ jiào xiǎo míng"),
     )
@@ -180,7 +248,7 @@ async def test_respond_raises_when_output_unparsed():
 def test_get_client_is_a_singleton_built_from_config_key(monkeypatch):
     built = []
 
-    def fake_ctor(*, api_key):
+    def fake_ctor(*, api_key, max_retries=None):
         built.append(api_key)
         return SimpleNamespace(api_key=api_key)
 
@@ -193,6 +261,30 @@ def test_get_client_is_a_singleton_built_from_config_key(monkeypatch):
 
     assert first is second           # cached — built once, reused
     assert built == ["test-key"]     # constructed from the configured key
+
+
+def test_client_is_built_with_retries_off_so_the_deadline_bounds_the_turn(monkeypatch):
+    """The SDK retries twice by default, and a timeout is a retryable error —
+    which quietly makes `CLAUDE_TIMEOUT_S` mean "10s, three times". Replay caught
+    a 13.9s turn under a 10s deadline for exactly this reason.
+
+    Asserted rather than trusted: the retry is invisible from our side (one
+    `await`, one exception class) and only shows up as a turn that outlives the
+    budget it was supposedly held to.
+    """
+    kwargs = {}
+
+    def fake_ctor(**kw):
+        kwargs.update(kw)
+        return SimpleNamespace()
+
+    monkeypatch.setattr(conversation, "AsyncAnthropic", fake_ctor)
+    monkeypatch.setattr(conversation.config, "CLAUDE_MAX_RETRIES", 0)
+    monkeypatch.setattr(conversation, "_client", None)
+
+    conversation._get_client()
+
+    assert kwargs["max_retries"] == 0
 
 
 async def test_respond_passes_the_configured_deadline_to_the_sdk():

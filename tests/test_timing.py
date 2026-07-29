@@ -197,3 +197,66 @@ def test_format_summary_flags_a_stage_that_did_not_run_every_time():
 
 def test_format_summary_of_nothing_says_so():
     assert "no samples" in timing.format_summary({}).lower()
+
+
+def test_format_summary_orders_events_when_given_the_event_order():
+    """Arrival is aggregated by the same code as duration, but its rows are
+    events, not stages. Without an explicit order they'd fall through to the
+    alphabetical tail — `done, reply, score, transcript` — which reads as the
+    reverse of the turn."""
+    report = timing.format_summary(
+        {
+            "done": {"n": 3, "p50": 4300.0, "p95": 4600.0},
+            "reply": {"n": 3, "p50": 4200.0, "p95": 4500.0},
+            "transcript": {"n": 3, "p50": 1300.0, "p95": 1400.0},
+            "score": {"n": 3, "p50": 2500.0, "p95": 2700.0},
+        },
+        order=timing.EVENT_ORDER,
+    )
+    events = [line.split()[0] for line in report.splitlines()[1:]]
+    assert events == ["transcript", "score", "reply", "done"]
+
+
+# --- samples: the two things a replayed turn contributes -------------------
+
+
+def test_stage_sample_reads_the_wire_field_names():
+    """`TurnTimings` is `{stage}_ms` on the wire; `summarize` keys on the stage
+    name. The harness reads the wire, so the translation happens here."""
+    assert timing.stage_sample(
+        {"stt_ms": 1320.0, "pa_ms": 1200.0, "claude_ms": 3560.0, "total_ms": 4900.0}
+    ) == {"stt": 1320.0, "pa": 1200.0, "claude": 3560.0, "total": 4900.0}
+
+
+def test_stage_sample_drops_stages_the_turn_never_recorded():
+    """A degraded PA reports nothing rather than zero, all the way through: a
+    `null` here must not become a 0.0 in the p50 of the stage the latency work
+    turns on."""
+    sample = timing.stage_sample({"stt_ms": 1320.0, "pa_ms": None, "total_ms": 4000.0})
+    assert "pa" not in sample
+    assert sample == {"stt": 1320.0, "total": 4000.0}
+
+
+def test_arrival_sample_keys_events_by_stage():
+    """What staging actually buys is *when* each line flushed. Two turns with
+    identical stage durations feel completely different depending on arrival, and
+    no combination of the durations reconstructs it."""
+    events = [
+        {"stage": "transcript", "elapsed_ms": 1330.0},
+        {"stage": "score", "elapsed_ms": 2550.0},
+        {"stage": "reply", "elapsed_ms": 4910.0},
+        {"stage": "done", "elapsed_ms": 4915.0},
+    ]
+    assert timing.arrival_sample(events) == {
+        "transcript": 1330.0, "score": 2550.0, "reply": 4910.0, "done": 4915.0,
+    }
+
+
+def test_arrival_sample_ignores_an_event_with_no_arrival_time():
+    """Never impute an arrival. An event whose `elapsed_ms` is missing is a bug
+    to notice via `n`, not a zero to average in."""
+    events = [
+        {"stage": "transcript", "elapsed_ms": 1330.0},
+        {"stage": "reply"},
+    ]
+    assert timing.arrival_sample(events) == {"transcript": 1330.0}

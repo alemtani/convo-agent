@@ -3,8 +3,10 @@
 Builds one `messages.parse` request whose cacheable prefix (frozen system prompt
 + topic KB + session sketch) sits before a `cache_control` breakpoint, with the
 volatile per-turn data (client dialogue + the latest utterance) after it. The
-model is constrained to `ConversationResult` via structured output, so we never
-parse free text.
+model is constrained via structured output, so we never parse free text —
+to `ConversationResult` in text mode, and to the shorter
+`SpokenConversationResult` on the audio path, which already has the learner's
+汉字 from STT and would only throw the worker's reading away.
 
 `respond` takes an optional `client` so contract tests can inject a fake; in
 production it lazily builds a shared `AsyncAnthropic`.
@@ -15,7 +17,13 @@ import anthropic
 from anthropic import AsyncAnthropic
 
 from backend import config
-from backend.models import ConversationResult, DialogueTurn, TurnAnnotation, Utterance
+from backend.models import (
+    ConversationResult,
+    DialogueTurn,
+    SpokenConversationResult,
+    Utterance,
+    WorkerAnnotation,
+)
 from backend.prompts import render_system_prompt
 
 _ROLE_MAP = {"user": "user", "partner": "assistant"}
@@ -28,10 +36,19 @@ class ConversationError(Exception):
 
 
 def _get_client() -> AsyncAnthropic:
-    """Lazily build a shared async client (key from env via config)."""
+    """Lazily build a shared async client (key from env via config).
+
+    `max_retries` is pinned rather than left at the SDK's default of 2: a
+    timeout is a retryable error, so the default turns `CLAUDE_TIMEOUT_S` into
+    three of itself and the deadline stops bounding the turn. See
+    `config.CLAUDE_MAX_RETRIES` for why zero is the right number here.
+    """
     global _client
     if _client is None:
-        _client = AsyncAnthropic(api_key=config.ANTHROPIC_API_KEY)
+        _client = AsyncAnthropic(
+            api_key=config.ANTHROPIC_API_KEY,
+            max_retries=config.CLAUDE_MAX_RETRIES,
+        )
     return _client
 
 
@@ -47,6 +64,7 @@ def build_request(
     dialogue: List,
     user_text: str,
     forgiveness_level: float,
+    want_reading: bool = True,
 ) -> Dict:
     """Assemble the exact `messages.parse` kwargs for one turn.
 
@@ -54,6 +72,12 @@ def build_request(
     `cache_control` breakpoint, so the frozen system prompt + KB + sketch cache
     together. Everything that varies per turn lives in `messages`, after the
     breakpoint — keeping the prefix byte-identical across a session.
+
+    `want_reading` picks the output schema. The spoken path already has the
+    learner's 汉字 from STT and throws the worker's reading away, so it asks for
+    the shorter shape; text mode needs the reading and asks for the full one.
+    The system prefix is byte-identical either way — the two schemas are the
+    only difference between the requests.
     """
     system = [
         {"type": "text", "text": render_system_prompt(forgiveness_level)},
@@ -66,6 +90,15 @@ def build_request(
     ]
     messages.append({"role": "user", "content": user_text})
 
+    # Omitted entirely when unset, not sent as a default: `effort` is a
+    # parameter only some models take (Haiku 4.5 rejects it outright), and the
+    # comparison this dial exists for is worth being able to run.
+    effort = (
+        {"output_config": {"effort": config.CONVERSATION_EFFORT}}
+        if config.CONVERSATION_EFFORT
+        else {}
+    )
+
     return {
         "model": config.CONVERSATION_MODEL,
         "max_tokens": 1024,
@@ -76,9 +109,17 @@ def build_request(
         # reply plus an annotation doesn't need deliberation, and this is the
         # per-turn hot path where latency is the thing we're trying to protect.
         "thinking": {"type": "disabled"},
+        # Effort governs overall token spend, not just thinking depth, so it
+        # still bites with thinking off — and left unset every turn runs at the
+        # `high` default. One short in-band reply plus an annotation, off a
+        # frozen prompt, is exactly the task `low` is for. Nested inside
+        # `output_config`, which `messages.parse` merges the schema into.
+        **effort,
         "system": system,
         "messages": messages,
-        "output_format": ConversationResult,
+        "output_format": (
+            ConversationResult if want_reading else SpokenConversationResult
+        ),
     }
 
 
@@ -89,15 +130,17 @@ async def respond(
     dialogue: List,
     user_text: str,
     forgiveness_level: float,
+    want_reading: bool = True,
     client: Optional[AsyncAnthropic] = None,
-) -> Tuple[Utterance, TurnAnnotation, Utterance, object]:
+) -> Tuple[Utterance, WorkerAnnotation, Optional[Utterance], object]:
     """Run one conversation turn; return (reply, annotation, reading, usage).
 
     `reading` is the worker's rendering of the learner's own turn as 汉字 + pinyin
-    — the seam that lets a beginner type pinyin. `usage` is passed through so
-    callers (and the live cache test) can assert `cache_read_input_tokens`. Raises
-    `ConversationError` on a refusal or any response we can't parse into
-    `ConversationResult`.
+    — the seam that lets a beginner type pinyin — and is `None` when the caller
+    said it doesn't need it (`want_reading=False`), because then it was never
+    asked for. `usage` is passed through so callers (and the live cache test) can
+    assert `cache_read_input_tokens`. Raises `ConversationError` on a refusal or
+    any response we can't parse into the requested schema.
     """
     client = client or _get_client()
     request = build_request(
@@ -106,6 +149,7 @@ async def respond(
         dialogue=dialogue,
         user_text=user_text,
         forgiveness_level=forgiveness_level,
+        want_reading=want_reading,
     )
 
     # The SDK's own deadline rather than `asyncio.wait_for`: this is a real async
@@ -126,13 +170,13 @@ async def respond(
 
     if getattr(response, "stop_reason", None) == "refusal":
         raise ConversationError("conversation worker refused the turn")
-    result: Optional[ConversationResult] = response.parsed_output
+    result = response.parsed_output
     if result is None:
         raise ConversationError("conversation worker returned unparseable output")
 
     return (
         result.partner_response,
         result.turn_annotation,
-        result.user_reading,
+        getattr(result, "user_reading", None),
         response.usage,
     )

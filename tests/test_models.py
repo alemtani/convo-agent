@@ -20,11 +20,13 @@ from backend.models import (
     TextTurnRequest,
     ToneError,
     TranscriptEvent,
+    SpokenConversationResult,
     TurnAnnotation,
     TurnErrorEvent,
     TurnTimings,
     TurnUsage,
     Utterance,
+    WorkerAnnotation,
 )
 
 
@@ -176,7 +178,6 @@ def test_conversation_result_nests_reply_and_annotation():
             "turn_annotation": {
                 "coherence": "on_track",
                 "grammar_notes": [],
-                "tone_errors": [{"syllable": "ma", "expected": 3, "said": 1}],
                 "topic_tags": ["greetings"],
                 "should_give_feedback": False,
             },
@@ -184,10 +185,48 @@ def test_conversation_result_nests_reply_and_annotation():
         }
     )
     assert result.partner_response.zh == "你今天怎么样？"
-    assert result.turn_annotation.tone_errors[0].expected == 3
     assert result.turn_annotation.topic_tags == ["greetings"]
     # The learner's own turn, resolved from whatever they typed.
     assert result.user_reading.zh == "我很好"
+
+
+def test_the_model_is_never_asked_for_tone_errors():
+    """Tone is the server's judgment, from PA accuracy or typed digits. The
+    field used to be in the schema with the prompt insisting it stay empty —
+    output tokens spent every turn to render `[]` and have it overwritten."""
+    assert "tone_errors" not in ConversationResult.model_json_schema()["$defs"][
+        "WorkerAnnotation"
+    ]["properties"]
+
+
+def test_the_spoken_schema_drops_the_reading_the_audio_path_throws_away():
+    """STT already produced the learner's 汉字, so the worker's reading of them
+    is an echo. It is the reply branch the learner waits behind, so the tokens
+    come off the one stage that gates the turn."""
+    assert "user_reading" in ConversationResult.model_fields
+    assert "user_reading" not in SpokenConversationResult.model_fields
+    # Same reply and same annotation either way — only the echo is gone.
+    assert "partner_response" in SpokenConversationResult.model_fields
+    assert "turn_annotation" in SpokenConversationResult.model_fields
+
+
+def test_wire_annotation_takes_tone_errors_from_the_server_not_the_model():
+    annotation = TurnAnnotation.from_worker(
+        WorkerAnnotation(coherence="on_track", topic_tags=["greetings"]),
+        [ToneError(syllable="ma", expected=3, said=1)],
+    )
+    assert annotation.coherence == "on_track"
+    assert annotation.topic_tags == ["greetings"]
+    assert annotation.tone_errors[0].expected == 3
+
+
+def test_wire_annotation_replaces_tone_errors_rather_than_colliding():
+    """Handed an annotation that already carries scores, the server's are the
+    ones that survive — the field is not the model's to fill."""
+    stale = TurnAnnotation(
+        coherence="on_track", tone_errors=[ToneError(syllable="你", expected=3, said=1)]
+    )
+    assert TurnAnnotation.from_worker(stale, []).tone_errors == []
 
 
 def test_conversation_turn_response_shape():
