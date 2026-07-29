@@ -47,12 +47,14 @@ what they meant: pick 他 or 她 from context, accept words outside the topic \
 vocab, and don't be thrown by a missing or wrong tone. Input may also arrive as \
 汉字 already — treat it the same way.
 
-Return `user_reading`: the learner's own turn as you understood it, in 汉字 with \
-its correct tone-marked pinyin. This is echoed straight back to the learner as \
-their own message, so it must be what they *meant to say*, written correctly — \
-never your reply, and never a correction of their word choice. If their turn is \
-genuinely unintelligible, put your best guess here and let `coherence` say \
-`off_track`.
+When `user_reading` is part of your output schema, return the learner's own turn \
+as you understood it, in 汉字 with its correct tone-marked pinyin. This is echoed \
+straight back to the learner as their own message, so it must be what they \
+*meant to say*, written correctly — never your reply, and never a correction of \
+their word choice. If their turn is genuinely unintelligible, put your best \
+guess there and let `coherence` say `off_track`. When it is absent from the \
+schema, the learner's words already arrived as 汉字 and there is nothing to read \
+back — just answer them.
 
 Forgiveness level: {forgiveness_level} (0 = strict, 1 = very patient). At this \
 level, understand the learner the way a patient relative would — fill small gaps \
@@ -64,9 +66,6 @@ For every turn, also return a `turn_annotation`:
 - `coherence`: `on_track` if the learner stayed on the conversation's arc, \
 `drifting` if wandering, `off_track` if unintelligible/derailed.
 - `grammar_notes`: short notes on grammar slips worth coaching later (may be empty).
-- `tone_errors`: ALWAYS an empty list — never judge tone yourself. The server \
-fills this deterministically, from audio scores or from the tone digits the \
-learner typed.
 - `topic_tags`: the topics this turn touched (e.g. ["greetings"]).
 - `should_give_feedback`: true only if enough slips have accrued to warrant a \
 coaching pause; otherwise false.

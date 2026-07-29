@@ -25,6 +25,7 @@ from backend.models import (
     ScoreEvent,
     TextTurnRequest,
     TranscriptEvent,
+    TurnAnnotation,
     TurnErrorEvent,
     TurnTimings,
     TurnUsage,
@@ -82,7 +83,7 @@ async def run_text_turn(
         )
 
     tone_errors = typed_pinyin.tone_errors_from_typed(req.text, reading.zh)
-    annotation = annotation.model_copy(update={"tone_errors": tone_errors})
+    annotation = TurnAnnotation.from_worker(annotation, tone_errors)
 
     return ConversationTurnResponse(
         transcript=reading,
@@ -180,6 +181,10 @@ async def stream_audio_turn(
                 dialogue=dialogue or [],
                 user_text=transcript.zh,
                 forgiveness_level=config.FORGIVENESS_LEVEL_DEFAULT,
+                # STT already gave us the learner's 汉字, so the worker's reading
+                # of them would be an echo we drop — and the reply is the branch
+                # the learner waits behind. Don't buy tokens we throw away.
+                want_reading=False,
                 client=client,
             )
 
@@ -231,7 +236,12 @@ async def stream_audio_turn(
                     reply, annotation, _reading, usage = task.result()
 
                     yield ReplyEvent(
-                        reply=reply, annotation=annotation, **_at_emit(timer)
+                        reply=reply,
+                        # Tone errors ride `score`, so the wire annotation is
+                        # completed here with none: the two are derived from the
+                        # PA result and must not re-gate the reply on scoring.
+                        annotation=TurnAnnotation.from_worker(annotation, []),
+                        **_at_emit(timer),
                     )
 
         # Both branches have settled, so this is the first point at which the

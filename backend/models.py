@@ -268,24 +268,60 @@ class ToneError(BaseModel):
     index: Optional[int] = None
 
 
-class TurnAnnotation(BaseModel):
+class WorkerAnnotation(BaseModel):
+    """The annotation *as the model produces it* — no `tone_errors`.
+
+    Tone is never the model's judgment: the server fills it deterministically,
+    from Azure PA accuracy on the spoken path or from the tone digits the learner
+    typed. The field used to be in the schema with the prompt insisting it stay
+    empty, so every turn spent output tokens rendering `"tone_errors":[]` and
+    then had it overwritten. Leaving it out is the same contract enforced by
+    construction instead of by instruction.
+
+    `TurnAnnotation` is still what goes on the wire — see `from_worker`.
+    """
+
+    coherence: Literal["on_track", "drifting", "off_track"]
+    grammar_notes: List[str] = []
+    topic_tags: List[str] = []
+    should_give_feedback: bool = False
+
+
+class TurnAnnotation(WorkerAnnotation):
     """The worker's read on one learner turn — logged silently, surfaced later.
 
     `coherence` is whether the turn stayed on the conversation's arc;
     `grammar_notes`/`tone_errors`/`topic_tags` accumulate the per-turn signal the
     (Phase 4) feedback worker consumes. `should_give_feedback` is the worker's
     hint that enough has accrued to interrupt for a coaching round.
+
+    Extends the model-facing shape with the one field the server owns.
     """
 
-    coherence: Literal["on_track", "drifting", "off_track"]
-    grammar_notes: List[str] = []
     tone_errors: List[ToneError] = []
-    topic_tags: List[str] = []
-    should_give_feedback: bool = False
+
+    @classmethod
+    def from_worker(
+        cls, annotation: WorkerAnnotation, tone_errors: List[ToneError]
+    ) -> "TurnAnnotation":
+        """Wire annotation = what the model said + what the server measured.
+
+        Reads only the model-facing fields, so handing this an annotation that
+        already carries `tone_errors` replaces them rather than colliding. That
+        is the rule this type exists to enforce: the server owns the field, and
+        whatever was there before is not evidence.
+        """
+        return cls(
+            **{
+                name: getattr(annotation, name)
+                for name in WorkerAnnotation.model_fields
+            },
+            tone_errors=tone_errors,
+        )
 
 
 class ConversationResult(BaseModel):
-    """Structured output the conversation worker constrains Claude to.
+    """Structured output the conversation worker constrains Claude to (text).
 
     Mirrors `DESIGN.md`'s per-turn JSON: the partner's reply plus the turn
     annotation. The model is forced to this shape via `messages.parse`, so the
@@ -294,14 +330,32 @@ class ConversationResult(BaseModel):
     `user_reading` is what the worker understood the learner to have *said* — the
     turn rendered as 汉字 + correct pinyin. It carries text mode: a beginner types
     `wo jiao xiao ming` and the worker resolves it in context (including 他/她 and
-    words outside the topic vocab). On the audio path the input is already hanzi
-    from STT, so it echoes that back and the orchestrator ignores it — one schema
-    keeps a single cacheable request shape for both paths.
+    words outside the topic vocab), and it is the only component that can.
     """
 
     partner_response: Utterance
-    turn_annotation: TurnAnnotation
+    turn_annotation: WorkerAnnotation
     user_reading: Utterance
+
+
+class SpokenConversationResult(BaseModel):
+    """The same turn without `user_reading` — the spoken path's schema.
+
+    On the audio path the learner's words already arrived as 汉字 from STT, so
+    the worker's reading of them is an echo the orchestrator drops on the floor.
+    Asking for it anyway cost ~40 output tokens on the one branch the reply waits
+    behind — measured at ~0.8s of the turn, which is why this is a second schema
+    rather than one shared shape.
+
+    The cost of the split is one extra prompt-cache entry per session: the
+    output schema is rendered *into* the cached prefix (a variant changes
+    `cache_creation_input_tokens` for byte-identical system blocks), so the two
+    paths cache separately. That is one extra write per session, not per turn,
+    and each path still reads its own prefix on every turn after the first.
+    """
+
+    partner_response: Utterance
+    turn_annotation: WorkerAnnotation
 
 
 class TextTurnRequest(BaseModel):

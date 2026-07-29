@@ -54,7 +54,8 @@ def stub_worker_and_pa(monkeypatch):
             syllables=[SyllableScore(hanzi="你", pinyin="nǐ", accuracy=40.0)],
         )
 
-    async def fake_respond(*, kb_block, sketch, dialogue, user_text, forgiveness_level, client=None):
+    async def fake_respond(*, kb_block, sketch, dialogue, user_text, forgiveness_level,
+                           want_reading=True, client=None):
         return (
             Utterance(zh="你好！你叫什么名字？", pinyin="nǐ hǎo! nǐ jiào shénme míngzi?"),
             TurnAnnotation(coherence="on_track", topic_tags=["greetings"]),
@@ -307,7 +308,8 @@ def test_missing_azure_credentials_is_a_502(monkeypatch):
 def test_dialogue_defaults_to_empty(monkeypatch):
     captured = {}
 
-    async def fake_respond(*, kb_block, sketch, dialogue, user_text, forgiveness_level, client=None):
+    async def fake_respond(*, kb_block, sketch, dialogue, user_text, forgiveness_level,
+                           want_reading=True, client=None):
         captured["dialogue"] = dialogue
         return (
             Utterance(zh="你好", pinyin="nǐ hǎo"),
@@ -347,7 +349,8 @@ def test_pa_is_assessed_against_the_stt_transcript(monkeypatch):
 def test_route_threads_dialogue_history_into_the_stream(monkeypatch):
     captured = {}
 
-    async def fake_respond(*, kb_block, sketch, dialogue, user_text, forgiveness_level, client=None):
+    async def fake_respond(*, kb_block, sketch, dialogue, user_text, forgiveness_level,
+                           want_reading=True, client=None):
         captured["dialogue"] = dialogue
         return (
             Utterance(zh="认识你很高兴", pinyin="rènshi nǐ hěn gāoxìng"),
@@ -682,6 +685,32 @@ async def test_the_reply_annotation_never_carries_tone_errors(monkeypatch):
     seen = await collect_audio_turn()
     assert seen["reply"].annotation.tone_errors == []
     assert [t.syllable for t in seen["score"].tone_errors] == ["你"]
+
+
+async def test_the_spoken_turn_does_not_buy_a_reading_it_throws_away(monkeypatch):
+    """STT has already produced the learner's 汉字 on this path, so the worker's
+    reading of them is an echo the orchestrator drops.
+
+    Asserted on the *call*, not the output: asking for the field and discarding
+    the answer looks identical from the outside, and the whole point is the
+    output tokens — ~40 of them, on the one branch the reply waits behind.
+    """
+    asked = {}
+
+    async def fake_respond(*, want_reading=True, **kwargs):
+        asked["want_reading"] = want_reading
+        return (
+            Utterance(zh="你好", pinyin="nǐ hǎo"),
+            TurnAnnotation(coherence="on_track"),
+            None,
+            None,
+        )
+
+    monkeypatch.setattr(conversation, "respond", fake_respond)
+
+    await collect_audio_turn()
+
+    assert asked["want_reading"] is False
 
 
 async def test_worker_failure_cancels_the_still_running_pa(monkeypatch):
