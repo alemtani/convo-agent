@@ -25,3 +25,30 @@ jobs:
       # gate fails the build if backend coverage drops below 95%.
       - name: Run tests with coverage
         run: pytest --cov=backend --cov-report=term-missing --cov-fail-under=95
+
+  # The frontend smoke suite gets its own job because it needs a browser, not
+  # because it's flaky: the mic is a WAV file, the API is a `fetch` stub, and no
+  # assertion waits on a clock — so unlike the `live` marker it belongs in CI.
+  # It's excluded from the default `pytest` run only to keep a plain checkout
+  # (and the Stop hook) from needing a Chromium install.
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: tests/smoke/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r tests/smoke/requirements.txt
+
+      - name: Install Chromium
+        run: playwright install --with-deps chromium
+
+      # Path-scoped: this job installs no backend dependencies, and collection
+      # imports every module under `testpaths` before the marker deselects any.
+      - name: Run frontend smoke tests
+        run: pytest -m smoke tests/smoke
