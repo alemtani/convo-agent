@@ -69,7 +69,20 @@ def test_forgiveness_literal_is_in_frozen_block_not_volatile():
 
 
 def test_model_is_held_fixed():
-    assert _build()["model"] == config.CONVERSATION_MODEL == "claude-sonnet-4-6"
+    assert _build()["model"] == config.CONVERSATION_MODEL == "claude-sonnet-5"
+
+
+def test_thinking_is_disabled_with_room_for_the_structured_output():
+    """Sonnet 5 thinks by default, and `max_tokens` caps thinking *plus* output.
+
+    Left implicit, adaptive thinking consumes the whole budget and the turn ends
+    `stop_reason: max_tokens` with `parsed_output is None` — a 502 on a perfectly
+    valid request. Asserted because the failure is silent at build time and only
+    shows up as a live-call failure.
+    """
+    req = _build()
+    assert req["thinking"] == {"type": "disabled"}
+    assert req["max_tokens"] >= 1024
 
 
 def test_dialogue_maps_roles_and_appends_latest_user_turn():
@@ -98,6 +111,8 @@ def _recorded_result():
     return ConversationResult(
         partner_response=Utterance(zh="你好！你叫什么名字？", pinyin="nǐ hǎo! nǐ jiào shénme míngzi?"),
         turn_annotation=TurnAnnotation(coherence="on_track", topic_tags=["greetings"]),
+        # Text mode: the learner typed pinyin, the worker reports what it read.
+        user_reading=Utterance(zh="我叫小明", pinyin="wǒ jiào xiǎo míng"),
     )
 
 
@@ -116,11 +131,11 @@ def _fake_client(parsed_output, *, stop_reason="end_turn"):
 async def test_respond_sends_built_request_and_parses_recorded_response():
     client, parse = _fake_client(_recorded_result())
 
-    reply, annotation, usage = await conversation.respond(
+    reply, annotation, reading, usage = await conversation.respond(
         kb_block=KB,
         sketch=SKETCH,
         dialogue=[{"role": "user", "zh": "你好"}],
-        user_text="我叫小明",
+        user_text="wo jiao xiao ming",
         forgiveness_level=0.8,
         client=client,
     )
@@ -129,14 +144,18 @@ async def test_respond_sends_built_request_and_parses_recorded_response():
     assert reply == Utterance(zh="你好！你叫什么名字？", pinyin="nǐ hǎo! nǐ jiào shénme míngzi?")
     assert annotation.coherence == "on_track"
     assert annotation.topic_tags == ["greetings"]
+    # The reading is surfaced separately from the reply — it's the learner's turn.
+    assert reading == Utterance(zh="我叫小明", pinyin="wǒ jiào xiǎo míng")
     assert usage.cache_creation_input_tokens == 123
 
     # We sent the request we build: right model, breakpoint on last system block.
     kwargs = parse.call_args.kwargs
-    assert kwargs["model"] == "claude-sonnet-4-6"
+    assert kwargs["model"] == "claude-sonnet-5"
     assert kwargs["output_format"] is ConversationResult
     assert kwargs["system"][-1]["cache_control"] == {"type": "ephemeral"}
-    assert kwargs["messages"][-1] == {"role": "user", "content": "我叫小明"}
+    # The learner's raw input goes to the worker as typed — pinyin included. It is
+    # the worker that resolves it, so nothing romanizes or rewrites it on the way.
+    assert kwargs["messages"][-1] == {"role": "user", "content": "wo jiao xiao ming"}
 
 
 async def test_respond_raises_on_refusal():

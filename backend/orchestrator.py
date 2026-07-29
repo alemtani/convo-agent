@@ -14,7 +14,7 @@ from typing import List, Optional
 
 from anthropic import AsyncAnthropic
 
-from backend import config, kb, tones
+from backend import config, kb, tones, typed_pinyin
 from backend.models import (
     ConversationTurnResponse,
     DialogueTurn,
@@ -40,12 +40,22 @@ async def run_text_turn(
 ) -> ConversationTurnResponse:
     """Coordinate one text turn: load KB, run the worker, shape the response.
 
+    The mirror of `run_audio_turn` minus the speech stages. `req.text` is usually
+    *pinyin* — a beginner can't necessarily type 汉字 — so the transcript comes
+    from the worker's reading of that input rather than from local romanization:
+    it is the one component that can resolve `ta` into 他 or 她 from context.
+
+    Tone errors are still computed here, never by the model. Where the audio path
+    derives them from PA accuracy, text mode derives them from the tone digits the
+    learner typed, which yields a real `said` instead of a sentinel (see
+    `typed_pinyin`). Typing without tone digits simply produces none.
+
     Raises `kb.KbError` for an unknown topic and `conversation.ConversationError`
     on a refusal / unparseable reply — the route maps these to 404 / 502.
     """
     kb_block = kb.load_kb_block(req.topic_id)
 
-    reply, annotation, _usage = await conversation.respond(
+    reply, annotation, reading, _usage = await conversation.respond(
         kb_block=kb_block,
         sketch=SKETCH_STUB,
         dialogue=req.dialogue,
@@ -54,7 +64,12 @@ async def run_text_turn(
         client=client,
     )
 
-    return ConversationTurnResponse(reply=reply, annotation=annotation)
+    tone_errors = typed_pinyin.tone_errors_from_typed(req.text, reading.zh)
+    annotation = annotation.model_copy(update={"tone_errors": tone_errors})
+
+    return ConversationTurnResponse(
+        transcript=reading, reply=reply, annotation=annotation
+    )
 
 
 async def run_audio_turn(
@@ -85,7 +100,7 @@ async def run_audio_turn(
     # Load KB up front so an unknown topic fails before any API work.
     kb_block = kb.load_kb_block(topic_id)
 
-    score, (reply, annotation, _usage) = await asyncio.gather(
+    score, (reply, annotation, _reading, _usage) = await asyncio.gather(
         _assess_or_degrade(audio_bytes, recognized),
         conversation.respond(
             kb_block=kb_block,

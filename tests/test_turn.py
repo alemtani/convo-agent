@@ -46,6 +46,8 @@ def stub_worker_and_pa(monkeypatch):
         return (
             Utterance(zh="你好！你叫什么名字？", pinyin="nǐ hǎo! nǐ jiào shénme míngzi?"),
             TurnAnnotation(coherence="on_track", topic_tags=["greetings"]),
+            # The reading echoes the STT hanzi on the audio path; unused there.
+            Utterance(zh="你好", pinyin="nǐ hǎo"),
             object(),
         )
 
@@ -84,7 +86,7 @@ def test_turn_returns_transcript_reply_scores_and_annotation(monkeypatch):
     assert body["pronunciation"]["overall"] == 80.0
     # tone_errors are merged into the annotation from PA (only 你 was below 60).
     assert body["annotation"]["tone_errors"] == [
-        {"syllable": "你", "expected": 3, "said": 0}
+        {"syllable": "你", "expected": 3, "said": 0, "index": None}
     ]
 
 

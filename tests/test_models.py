@@ -13,6 +13,7 @@ from backend.models import (
     DialogueTurn,
     PronunciationScore,
     SyllableScore,
+    TextTurnRequest,
     ToneError,
     TurnAnnotation,
     TurnResponse,
@@ -48,7 +49,7 @@ def test_turn_response_carries_annotation_with_tone_errors():
     )
     dumped = resp.model_dump()
     assert dumped["annotation"]["tone_errors"] == [
-        {"syllable": "你", "expected": 3, "said": 0}
+        {"syllable": "你", "expected": 3, "said": 0, "index": None}
     ]
 
 
@@ -119,7 +120,7 @@ def test_turn_annotation_rejects_unknown_coherence():
 
 def test_tone_error_shape():
     err = ToneError(syllable="ma", expected=3, said=1)
-    assert err.model_dump() == {"syllable": "ma", "expected": 3, "said": 1}
+    assert err.model_dump() == {"syllable": "ma", "expected": 3, "said": 1, "index": None}
 
 
 def test_conversation_result_nests_reply_and_annotation():
@@ -133,19 +134,24 @@ def test_conversation_result_nests_reply_and_annotation():
                 "topic_tags": ["greetings"],
                 "should_give_feedback": False,
             },
+            "user_reading": {"zh": "我很好", "pinyin": "wǒ hěn hǎo"},
         }
     )
     assert result.partner_response.zh == "你今天怎么样？"
     assert result.turn_annotation.tone_errors[0].expected == 3
     assert result.turn_annotation.topic_tags == ["greetings"]
+    # The learner's own turn, resolved from whatever they typed.
+    assert result.user_reading.zh == "我很好"
 
 
 def test_conversation_turn_response_shape():
     resp = ConversationTurnResponse(
+        transcript=Utterance(zh="我叫小明", pinyin="wǒ jiào xiǎo míng"),
         reply=Utterance(zh="你好", pinyin="nǐ hǎo"),
         annotation=TurnAnnotation(coherence="on_track", topic_tags=["greetings"]),
     )
     assert resp.model_dump() == {
+        "transcript": {"zh": "我叫小明", "pinyin": "wǒ jiào xiǎo míng"},
         "reply": {"zh": "你好", "pinyin": "nǐ hǎo"},
         "annotation": {
             "coherence": "on_track",
@@ -155,3 +161,36 @@ def test_conversation_turn_response_shape():
             "should_give_feedback": False,
         },
     }
+
+
+# --- WS3: text mode takes pinyin ------------------------------------------
+#
+# The learner is a beginner who can't necessarily type 汉字, so they type pinyin
+# and the conversation worker reads it in context. Judging whether a romanized
+# string is "valid Chinese" is exactly that worker's job, so the model layer stays
+# permissive: it refuses an empty turn and nothing else.
+
+
+def test_text_turn_request_strips_surrounding_whitespace():
+    assert TextTurnRequest(topic_id="greetings", text="  ni3hao3 \n").text == "ni3hao3"
+
+
+@pytest.mark.parametrize("text", ["", "   ", "\n\t"])
+def test_text_turn_request_rejects_blank_text(text):
+    with pytest.raises(ValidationError):
+        TextTurnRequest(topic_id="greetings", text=text)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "nihao",              # toneless pinyin — the common beginner case
+        "ni3hao3",            # tone-numbered, so tones get checked
+        "ni hao",             # spaced
+        "wo jiao xiao ming",  # a name outside the topic vocab
+        "你好",                # 汉字 still work for anyone who can type them
+        "我叫Alex",
+    ],
+)
+def test_text_turn_request_accepts_pinyin_and_hanzi(text):
+    assert TextTurnRequest(topic_id="greetings", text=text).text == text

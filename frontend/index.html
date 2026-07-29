@@ -99,6 +99,47 @@
     }
     #talk.recording { background: #d33; color: #fff; border-color: #d33; }
     #talk:disabled { opacity: 0.5; cursor: default; }
+
+    /* Text mode: the dock swaps its primary control between hold-to-talk and the
+       composer. One `data-mode` on #dock drives both — the mic graph is never
+       torn down, just hidden, so toggling back is instant. */
+    #composer { display: none; width: 100%; gap: 0.5rem; }
+    #dock[data-mode="text"] #composer { display: flex; }
+    #dock[data-mode="text"] #talk,
+    #dock[data-mode="text"] #meter { display: none; }
+    #text-input {
+      flex: 1 1 auto;
+      min-width: 0;             /* let the input shrink inside the flex row */
+      font-size: 1.05rem;
+      padding: 0.7rem 0.9rem;
+      border-radius: 1.5rem;
+      border: 1px solid rgba(127, 127, 127, 0.4);
+      background: transparent;
+      color: inherit;
+    }
+    #send {
+      flex: 0 0 auto;
+      width: 2.75rem; height: 2.75rem;
+      font-size: 1.1rem;
+      border-radius: 50%;
+      border: none;
+      background: #0b7;
+      color: #fff;
+      cursor: pointer;
+    }
+    #text-input:disabled, #send:disabled { opacity: 0.5; cursor: default; }
+
+    #controls { display: flex; gap: 0.5rem; align-items: center; }
+    #mode {
+      font-size: 0.85rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 1rem;
+      border: 1px solid rgba(127, 127, 127, 0.4);
+      background: transparent;
+      color: inherit;
+      opacity: 0.7;
+      cursor: pointer;
+    }
     #reset {
       font-size: 0.75rem;
       padding: 0.25rem 0.7rem;
@@ -132,13 +173,22 @@
 </head>
 <body>
   <h1>Convo Agent</h1>
-  <p class="muted">Phase 3b — hold the button and speak Mandarin (greetings). A real partner replies and remembers the conversation; your words come back with per-syllable tone scores (green good / amber ok / red off).</p>
+  <p class="muted">Speak or type Mandarin (greetings). A real partner replies and remembers the conversation; spoken words come back with per-syllable tone scores (green good / amber ok / red off). Tap ⌨️ to type in <strong>pinyin</strong> instead — your words come back as 汉字. Add tone numbers (<code>ni3hao3</code>) and your tones get checked too.</p>
 
   <div id="thread"></div>
 
   <div id="dock">
+    <div id="composer">
+      <input id="text-input" type="text" enterkeyhint="send" spellcheck="false"
+             autocomplete="off" autocapitalize="off" autocorrect="off"
+             placeholder="type pinyin… e.g. ni hao" />
+      <button id="send" title="Send">↑</button>
+    </div>
     <button id="talk">🎙️ Hold to talk</button>
-    <button id="reset" title="Start a new conversation">↺ New</button>
+    <div id="controls">
+      <button id="mode" title="Switch to typing">⌨️</button>
+      <button id="reset" title="Start a new conversation">↺ New</button>
+    </div>
     <div id="meter"><div id="meter-fill"></div></div>
     <div id="status"></div>
   </div>
@@ -150,6 +200,10 @@
     const status = document.getElementById("status");
     const meter = document.getElementById("meter");
     const meterFill = document.getElementById("meter-fill");
+    const dock = document.getElementById("dock");
+    const modeBtn = document.getElementById("mode");
+    const textInput = document.getElementById("text-input");
+    const send = document.getElementById("send");
 
     const TARGET_RATE = 16000;
     let audioCtx, stream, sourceNode, recorderNode, scriptNode;
@@ -188,15 +242,58 @@
       if (!utt.zh) {
         el.classList.add("empty");
         el.textContent = emptyText;
-        return;
+        return el;
       }
       if (pronunciation && pronunciation.syllables.length) {
         renderScored(el, pronunciation);
-        return;
+        return el;
       }
       el.innerHTML = '<div class="zh"></div><div class="pinyin"></div>';
       el.querySelector(".zh").textContent = utt.zh;
       el.querySelector(".pinyin").textContent = utt.pinyin;
+      return el;
+    }
+
+    // Typed tone errors, marked the same way spoken ones are: a red underline on
+    // the syllable, detail in the tooltip. The learner already reads that
+    // vocabulary from the mic path, so text mode borrows it rather than inventing
+    // a second one. `index` locates the syllable — the character alone can't, in a
+    // turn that repeats one (谢谢).
+    function markToneErrors(el, utt, errors) {
+      if (!el || !errors || !errors.length) return;
+      // Mirrors backend/pinyin.py's HANZI; the u flag makes the ranges match by
+      // code point so a supplementary-plane character isn't split into surrogates.
+      const HANZI = /[一-鿿㐀-䶿豈-﫿\u{20000}-\u{2a6df}]/u;
+      // Only the 汉字 row is split. The worker writes pinyin in real orthography,
+      // grouping a multi-syllable *word* into one token (péngyou, gāoxìng,
+      // rènshi), so it has fewer tokens than the turn has characters — pairing
+      // them positionally misaligns, and demanding equal counts silently skips
+      // almost every turn containing a two-syllable word. The pinyin line stays
+      // whole and correctly grouped; the underline lands on the hanzi.
+      const byIndex = new Map(errors.map((e) => [e.index, e]));
+      const zhRow = document.createElement("div");
+      zhRow.className = "zh scored";
+      let hanziSeen = 0;
+      for (const char of utt.zh) {
+        const span = document.createElement("span");
+        span.className = "syl";
+        span.textContent = char;
+        // Punctuation rides along unmarked — only hanzi carry a syllable index,
+        // and it has to count the same way the backend's does (hanzi only).
+        if (HANZI.test(char)) {
+          const err = byIndex.get(hanziSeen++);
+          if (err) {
+            span.className = "syl tone-bad";
+            span.title = "tone " + err.expected + ", you typed " + err.said;
+          }
+        }
+        zhRow.appendChild(span);
+      }
+
+      const pyRow = document.createElement("div");
+      pyRow.className = "pinyin";
+      pyRow.textContent = utt.pinyin;
+      el.replaceChildren(zhRow, pyRow);
     }
 
     function toneClass(accuracy) {
@@ -428,6 +525,92 @@
       }
     }
 
+    // --- Text mode ---------------------------------------------------------
+    //
+    // Same stateless contract as the spoken turn, same bubble/localStorage flow;
+    // only the transport differs (JSON to /api/turn/text, no audio).
+    //
+    // The learner types *pinyin* — they're a beginner and can't necessarily type
+    // 汉字. The bubble that comes back is the worker's reading of that pinyin as
+    // characters, so there's nothing to validate here beyond "not empty": whether
+    // a romanized string means anything is the worker's judgment, in context.
+    // Tone numbers are optional (`ni3hao3` gets tones checked, `nihao` doesn't).
+
+    function setComposerBusy(busy) {
+      textInput.disabled = send.disabled = busy;
+    }
+
+    async function sendText() {
+      const text = textInput.value.trim();
+      if (!text) return;
+
+      setComposerBusy(true);
+      setStatus("thinking…");
+      try {
+        const resp = await fetch("/api/turn/text", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            topic_id: "greetings",
+            text: text,
+            dialogue: dialogue.map((t) => ({ role: t.role, zh: t.zh })),
+          }),
+        });
+        if (!resp.ok) {
+          const detail = await resp.text();
+          setStatus("error " + resp.status + ": " + detail);
+          return;   // leave the box filled so a failed turn doesn't eat the text
+        }
+        const data = await resp.json();
+        // `transcript` is the worker's reading of the typed pinyin — the 汉字 the
+        // learner meant. No `pronunciation` on a typed turn (that needs audio),
+        // but tone errors ride along when they typed tone numbers.
+        const userBubble = renderLine("user", data.transcript, "");
+        markToneErrors(userBubble, data.transcript,
+                       data.annotation && data.annotation.tone_errors);
+        renderLine("partner", data.reply, "");
+        dialogue.push({ role: "user", zh: data.transcript.zh, pinyin: data.transcript.pinyin });
+        dialogue.push({ role: "partner", zh: data.reply.zh, pinyin: data.reply.pinyin });
+        saveDialogue();
+        textInput.value = "";
+        setStatus("");
+      } catch (err) {
+        setStatus("request failed: " + err);
+      } finally {
+        setComposerBusy(false);
+        if (mode === "text") textInput.focus();
+      }
+    }
+
+    const MODE_KEY = "convo.mode";
+    let mode = localStorage.getItem(MODE_KEY) === "text" ? "text" : "speak";
+
+    function applyMode() {
+      dock.dataset.mode = mode;
+      modeBtn.textContent = mode === "text" ? "🎙️" : "⌨️";
+      modeBtn.title = mode === "text" ? "Switch to speaking" : "Switch to typing";
+      setStatus("");
+    }
+
+    modeBtn.addEventListener("click", () => {
+      mode = mode === "text" ? "speak" : "text";
+      localStorage.setItem(MODE_KEY, mode);
+      applyMode();
+      if (mode === "text") textInput.focus();
+    });
+
+    send.addEventListener("click", sendText);
+    textInput.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter") return;
+      // The pinyin IME uses Enter to commit the highlighted candidate. Sending on
+      // that keystroke would fire mid-word, so ignore Enter while a composition
+      // is active (`keyCode === 229` is the legacy signal for browsers that
+      // don't set isComposing).
+      if (e.isComposing || e.keyCode === 229) return;
+      e.preventDefault();
+      sendText();
+    });
+
     // Restore the running transcript on load (scores are per-turn, not persisted).
     function restoreThread() {
       for (const t of dialogue) {
@@ -444,6 +627,7 @@
     });
 
     restoreThread();
+    applyMode();
 
     // Hold-to-talk: press to start, release (or leave the button) to send.
     talk.addEventListener("pointerdown", (e) => { e.preventDefault(); startRecording(); });

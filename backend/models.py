@@ -10,7 +10,7 @@ these fields (not nested inside the utterance).
 """
 from typing import List, Literal, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 
 class Utterance(BaseModel):
@@ -86,15 +86,21 @@ class DialogueTurn(BaseModel):
 
 
 class ToneError(BaseModel):
-    """A single mispronounced syllable, from the evaluation path (Azure PA).
+    """One syllable whose tone was wrong, from audio (PA) or from typed digits.
 
-    Text-only Phase 3a turns carry no audio, so this list is empty; it is wired
-    through now so Phase 3b can populate it from per-syllable tone scores.
+    `said` is the tone the learner actually produced where we can know it — the
+    typed path fills it from their tone digits, while Azure PA reports accuracy
+    rather than a detected tone and so ships `tones.SAID_UNKNOWN`.
+
+    `index` is the syllable's position among the utterance's hanzi. Display needs
+    it because `syllable` alone can't be located in a turn that repeats a
+    character (谢谢) — marking the wrong 谢 would be worse than marking none.
     """
 
     syllable: str
     expected: int
     said: int
+    index: Optional[int] = None
 
 
 class TurnAnnotation(BaseModel):
@@ -119,33 +125,62 @@ class ConversationResult(BaseModel):
     Mirrors `DESIGN.md`'s per-turn JSON: the partner's reply plus the turn
     annotation. The model is forced to this shape via `messages.parse`, so the
     worker never parses free text.
+
+    `user_reading` is what the worker understood the learner to have *said* — the
+    turn rendered as 汉字 + correct pinyin. It carries text mode: a beginner types
+    `wo jiao xiao ming` and the worker resolves it in context (including 他/她 and
+    words outside the topic vocab). On the audio path the input is already hanzi
+    from STT, so it echoes that back and the orchestrator ignores it — one schema
+    keeps a single cacheable request shape for both paths.
     """
 
     partner_response: Utterance
     turn_annotation: TurnAnnotation
+    user_reading: Utterance
 
 
 class TextTurnRequest(BaseModel):
-    """Request body for `POST /api/turn/text` (Phase 3a, text-only).
+    """Request body for `POST /api/turn/text` (text mode).
 
     `topic_id` selects the KB whose vocab/grammar/dialogues seed the cached
     prefix; `dialogue` is the client-held transcript so far; `text` is the
-    learner's latest utterance. Phase 3b reuses the same orchestrator seam with
-    `text` sourced from Azure STT instead.
+    learner's latest utterance — **pinyin** (`ni hao`, or `ni3hao3` when they want
+    tones checked), or 汉字 if they'd rather type those. The worker reads either
+    and reports back which characters it understood. The audio path reuses the
+    same orchestrator seam with `text` sourced from Azure STT instead.
     """
 
     topic_id: str
     text: str
     dialogue: List[DialogueTurn] = []
 
+    @field_validator("text")
+    @classmethod
+    def _not_blank(cls, v: str) -> str:
+        """Strip surrounding whitespace and reject an empty turn.
+
+        Deliberately permissive about *what* is typed: a beginner types pinyin,
+        and deciding whether a romanized string is "valid" is exactly the judgment
+        the conversation worker makes in context. The only thing we refuse here is
+        nothing at all.
+        """
+        v = v.strip()
+        if not v:
+            raise ValueError("text must not be empty")
+        return v
+
 
 class ConversationTurnResponse(BaseModel):
-    """Response body for `POST /api/turn/text`: the partner's reply + annotation.
+    """Response body for `POST /api/turn/text`: the learner's turn + the reply.
 
-    Unlike the audio path's `TurnResponse`, there is no `transcript`/`pronunciation`
-    — the client already has its own text, and tone scores belong to the speech
-    path (Phase 3b).
+    `transcript` is the worker's *reading* of the learner's input — the 汉字 it
+    understood, with correct tone-marked pinyin. For a pinyin typist that is the
+    payoff: they write `wo jiao xiao ming` and get 我叫小明 back, rendered through
+    exactly the same bubble path as a spoken turn. There is no `pronunciation`
+    (that needs audio), but `annotation.tone_errors` *can* be populated here when
+    the learner typed tone digits — see `typed_pinyin`.
     """
 
+    transcript: Utterance
     reply: Utterance
     annotation: TurnAnnotation

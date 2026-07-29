@@ -67,7 +67,14 @@ def build_request(
 
     return {
         "model": config.CONVERSATION_MODEL,
-        "max_tokens": 512,
+        "max_tokens": 1024,
+        # Thinking off, deliberately. Sonnet 5 runs adaptive thinking whenever the
+        # field is omitted, and `max_tokens` caps thinking *plus* output — so a
+        # budget sized for the JSON alone gets eaten by reasoning and the turn dies
+        # with `stop_reason: max_tokens` and no parsed output. One short in-band
+        # reply plus an annotation doesn't need deliberation, and this is the
+        # per-turn hot path where latency is the thing we're trying to protect.
+        "thinking": {"type": "disabled"},
         "system": system,
         "messages": messages,
         "output_format": ConversationResult,
@@ -82,12 +89,14 @@ async def respond(
     user_text: str,
     forgiveness_level: float,
     client: Optional[AsyncAnthropic] = None,
-) -> Tuple[Utterance, TurnAnnotation, object]:
-    """Run one conversation turn; return (reply, annotation, usage).
+) -> Tuple[Utterance, TurnAnnotation, Utterance, object]:
+    """Run one conversation turn; return (reply, annotation, reading, usage).
 
-    `usage` is passed through so callers (and the live cache test) can assert
-    `cache_read_input_tokens`. Raises `ConversationError` on a refusal or any
-    response we can't parse into `ConversationResult`.
+    `reading` is the worker's rendering of the learner's own turn as 汉字 + pinyin
+    — the seam that lets a beginner type pinyin. `usage` is passed through so
+    callers (and the live cache test) can assert `cache_read_input_tokens`. Raises
+    `ConversationError` on a refusal or any response we can't parse into
+    `ConversationResult`.
     """
     client = client or _get_client()
     request = build_request(
@@ -106,4 +115,9 @@ async def respond(
     if result is None:
         raise ConversationError("conversation worker returned unparseable output")
 
-    return result.partner_response, result.turn_annotation, response.usage
+    return (
+        result.partner_response,
+        result.turn_annotation,
+        result.user_reading,
+        response.usage,
+    )
