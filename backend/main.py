@@ -94,7 +94,18 @@ async def turn(
         ):
             yield event.model_dump_json() + "\n"
 
-    return StreamingResponse(body(), media_type="application/x-ndjson")
+    return StreamingResponse(
+        body(),
+        media_type="application/x-ndjson",
+        # Staged delivery is defeated *silently* by a buffering intermediary:
+        # the events still arrive, just all at once at the end, and nothing in
+        # the suite catches it (`TestClient` collects the whole body by
+        # construction). `text/event-stream` is widely special-cased as
+        # do-not-buffer; `application/x-ndjson` is not, so say it explicitly.
+        # A mitigation, not a proof — see the follow-up on an end-to-end flush
+        # test against a real uvicorn.
+        headers={"X-Accel-Buffering": "no", "Cache-Control": "no-cache"},
+    )
 
 
 @app.post("/api/turn/text", response_model=ConversationTurnResponse)

@@ -569,3 +569,16 @@ def test_collector_reraises_the_in_band_error():
         mp.setattr(conversation, "respond", boom)
         with pytest.raises(conversation.ConversationError, match="refused"):
             asyncio.run(orchestrator.run_audio_turn(b"FAKEWAV"))
+
+
+def test_stream_asks_intermediaries_not_to_buffer():
+    """Staged delivery fails silently behind a buffering proxy.
+
+    The events still arrive, just all at once at the end — and no test in this
+    file would notice, because `TestClient` collects the whole body regardless.
+    `text/event-stream` is widely special-cased as do-not-buffer;
+    `application/x-ndjson` is not, so the intent is stated in headers instead.
+    """
+    resp = client.post("/api/turn", files=_upload())
+    assert resp.headers["x-accel-buffering"] == "no"
+    assert resp.headers["cache-control"] == "no-cache"
