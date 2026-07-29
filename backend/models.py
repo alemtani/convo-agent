@@ -149,17 +149,41 @@ class TranscriptEvent(BaseModel):
     timings: Optional[TurnTimings] = None
 
 
-class FinalEvent(BaseModel):
-    """Last event: the partner's reply, plus the scores for the learner's turn.
+class ScoreEvent(BaseModel):
+    """How the learner's turn was pronounced, as soon as Azure PA resolves.
 
-    `pronunciation` arrives here rather than with the transcript because PA runs
-    concurrently with the worker — the transcript is rendered unscored and gains
-    its tone underlines when this lands.
+    Its own event rather than a field on `final` because PA and the conversation
+    worker run concurrently and PA is much the faster of the two (Stage 0: 1.20s
+    against 3.56s). The transcript is rendered unscored and gains its tone
+    underlines when this lands — seconds before the reply does.
+
+    `pronunciation` is `None` when PA failed. That is deliberately distinct from
+    *no event at all*: a degraded turn says "not scored" explicitly instead of
+    looking identical to a turn still being scored.
+
+    `tone_errors` live here rather than on the annotation because both they and
+    `pronunciation` are derived from the same PA result — the model never judges
+    tone. `run_audio_turn` merges them back into the annotation for callers that
+    want the collected shape.
+    """
+
+    stage: Literal["score"] = "score"
+    pronunciation: Optional[PronunciationScore] = None
+    tone_errors: List["ToneError"] = []
+    timings: Optional[TurnTimings] = None
+
+
+class FinalEvent(BaseModel):
+    """Last event: the partner's reply and the worker's annotation.
+
+    Carries no scores — those went out on `score`, typically seconds earlier.
+    Deriving anything here from the PA result would make the reply wait on
+    scoring whenever PA is the slower branch, which is the coupling the split
+    exists to remove.
     """
 
     stage: Literal["final"] = "final"
     reply: Utterance
-    pronunciation: Optional[PronunciationScore] = None
     annotation: Optional["TurnAnnotation"] = None
     timings: Optional[TurnTimings] = None
     usage: Optional[TurnUsage] = None

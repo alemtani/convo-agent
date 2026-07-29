@@ -61,15 +61,19 @@ def test_stream_emits_transcript_then_final():
 
     assert resp.status_code == 200
     assert resp.headers["content-type"].startswith("application/x-ndjson")
-    first, last = events(resp)
+    staged = events(resp)
     # `timings` rides every event (see the WS1 Stage 0 section below); the
-    # identity that matters here is the stage and its payload.
-    assert first["stage"] == "transcript"
+    # identity that matters here is the stage sequence and each payload.
+    assert [e["stage"] for e in staged] == ["transcript", "score", "final"]
+    first, last = staged[0], staged[-1]
     assert first["transcript"] == {"zh": "你好", "pinyin": "nǐ hǎo"}
     assert last["stage"] == "final"
     assert last["reply"]["zh"] == "你好！你叫什么名字？"
-    assert last["pronunciation"]["overall"] == 80.0
-    assert last["annotation"]["tone_errors"] == [
+    # Scores ride the `score` event, not `final` — see the section on C below.
+    assert staged[1]["pronunciation"]["overall"] == 80.0
+    # Tone errors ride `score` too: both they and `pronunciation` come from the
+    # same PA result, and gating them on the worker would defeat the split.
+    assert staged[1]["tone_errors"] == [
         {"syllable": "你", "expected": 3, "said": 0, "index": None}
     ]
 
@@ -102,15 +106,15 @@ async def test_transcript_is_yielded_before_the_worker_finishes(monkeypatch):
         b"FAKEWAV", transcript=transcript, kb_block=kb_block, timer=timer
     )
 
-    first = await stream.__anext__()
+    first = await _next(stream)
     assert first.stage == "transcript"
     assert first.transcript.zh == "你好"
     assert not worker_may_finish.is_set(), "the worker was awaited before yielding"
 
     worker_may_finish.set()
     rest = [event async for event in stream]
-    assert [e.stage for e in rest] == ["final"]
-    assert rest[0].reply.zh == "你好！"
+    assert [e.stage for e in rest] == ["score", "final"]
+    assert rest[-1].reply.zh == "你好！"
 
 
 def test_empty_recognition_streams_transcript_and_a_reprompt(monkeypatch):
@@ -125,11 +129,15 @@ def test_empty_recognition_streams_transcript_and_a_reprompt(monkeypatch):
 
     resp = client.post("/api/turn", files=_upload())
     assert resp.status_code == 200
-    first, last = events(resp)
+    staged = events(resp)
+    first, last = staged[0], staged[-1]
     assert first["transcript"] == {"zh": "", "pinyin": ""}
     assert last["stage"] == "final"
     assert last["reply"]["zh"]          # a gentle re-prompt
-    assert last["pronunciation"] is None
+    # Nothing was recognized, so PA never ran: no `score` event at all, and the
+    # reply carries no scores to omit.
+    assert [e["stage"] for e in staged] == ["transcript", "final"]
+    assert "pronunciation" not in last
     assert last["annotation"] is None
 
 
@@ -139,12 +147,14 @@ def test_pa_failure_still_streams_transcript_and_reply(monkeypatch):
 
     monkeypatch.setattr(pronunciation, "assess", boom)
 
-    resp = client.post("/api/turn", files=_upload())
-    first, last = events(resp)
+    staged = events(resp := client.post("/api/turn", files=_upload()))
+    first, score, last = staged
     assert first["transcript"]["zh"] == "你好"
     assert last["reply"]["zh"] == "你好！你叫什么名字？"
-    assert last["pronunciation"] is None
-    assert last["annotation"]["tone_errors"] == []
+    # The turn is still fully delivered; only the scores are missing, and the
+    # `score` event says so rather than going silent.
+    assert score["pronunciation"] is None
+    assert score["tone_errors"] == []
 
 
 def test_worker_failure_is_an_error_event_not_a_502(monkeypatch):
@@ -161,10 +171,14 @@ def test_worker_failure_is_an_error_event_not_a_502(monkeypatch):
 
     resp = client.post("/api/turn", files=_upload())
     assert resp.status_code == 200
-    first, last = events(resp)
+    staged = events(resp)
+    first, last = staged[0], staged[-1]
     assert first["stage"] == "transcript"
     assert last["stage"] == "error"
     assert "refused" in last["detail"]
+    # The scores are independent of the worker, so a refused turn still gets
+    # them — the learner's pronunciation was assessed either way.
+    assert [e["stage"] for e in staged] == ["transcript", "score", "error"]
 
 
 # --- Settled before the first byte ----------------------------------------
@@ -364,3 +378,194 @@ def test_collector_preserves_timings_and_usage():
     assert result.timings.stt_ms is not None
     assert result.timings.claude_ms is not None
     assert result.timings.total_ms is not None
+
+
+# A stream that re-couples its branches doesn't fail an ordering assertion — it
+# blocks forever on the branch the test is deliberately holding open. Every
+# staged read goes through this so that regression surfaces as a failure with a
+# name attached, not a hung CI job.
+async def _next(stream, *, timeout=2.0):
+    return await asyncio.wait_for(stream.__anext__(), timeout=timeout)
+
+
+# --- C: the score event is not gated on the worker ------------------------
+#
+# Stage 0 measured PA at 1.20s against Claude's 3.56s, so the scores exist ~2.4s
+# before the reply does. Emitting them together throws that away — it is the
+# same "hold it until everything's done" mistake the transcript event exists to
+# fix, one layer down.
+
+
+@pytest.mark.asyncio
+async def test_score_is_yielded_before_the_worker_finishes(monkeypatch):
+    """PA resolving must flush `score` while Claude is still pending.
+
+    This is the test that stops a future refactor from quietly re-`gather`ing the
+    two branches: with a single gather the scores cannot reach the wire until the
+    slower branch returns, and every assertion here would still pass on ordering
+    alone. The blocked worker is what makes the timing observable.
+    """
+    worker_may_finish = asyncio.Event()
+
+    async def slow_respond(**kwargs):
+        await worker_may_finish.wait()
+        return (
+            Utterance(zh="你好！", pinyin="nǐ hǎo!"),
+            TurnAnnotation(coherence="on_track"),
+            Utterance(zh="你好", pinyin="nǐ hǎo"),
+            object(),
+        )
+
+    monkeypatch.setattr(conversation, "respond", slow_respond)
+
+    transcript, kb_block, timer = await orchestrator.prepare_audio_turn(b"FAKEWAV")
+    stream = orchestrator.stream_audio_turn(
+        b"FAKEWAV", transcript=transcript, kb_block=kb_block, timer=timer
+    ).__aiter__()
+
+    assert (await _next(stream)).stage == "transcript"
+
+    score = await _next(stream)
+    assert score.stage == "score", "scores waited on the worker"
+    assert score.pronunciation.overall == 80.0
+    assert not worker_may_finish.is_set()
+
+    worker_may_finish.set()
+    assert (await _next(stream)).stage == "final"
+
+
+def test_score_event_carries_the_tone_errors():
+    """Tone errors ride `score`, not `final` — both are derived from PA.
+
+    Keeping them on `final` would re-gate the underlines on the worker even
+    though the data that produces them landed seconds earlier.
+    """
+    staged = events(client.post("/api/turn", files=_upload()))
+    score = next(e for e in staged if e["stage"] == "score")
+
+    assert score["pronunciation"]["overall"] == 80.0
+    # The stub syllable scores 40.0, under the 60.0 threshold.
+    assert [t["syllable"] for t in score["tone_errors"]] == ["你"]
+
+
+def test_pa_failure_still_emits_a_score_event(monkeypatch):
+    """A degraded turn says so explicitly instead of silently omitting scores.
+
+    `_assess_or_degrade` swallowing a PA failure is invisible when the absence of
+    scores and the absence of an *event* look identical to the client. A `score`
+    event with `pronunciation: null` is the difference between "not scored" and
+    "still scoring".
+    """
+
+    async def boom(audio_wav, reference_text, language="zh-CN"):
+        raise pronunciation.PaError("azure said no")
+
+    monkeypatch.setattr(pronunciation, "assess", boom)
+    staged = events(client.post("/api/turn", files=_upload()))
+
+    score = next(e for e in staged if e["stage"] == "score")
+    assert score["pronunciation"] is None
+    assert score["tone_errors"] == []
+    # The turn still completes — a scoring failure is not a turn failure.
+    assert staged[-1]["stage"] == "final"
+
+
+async def test_final_is_not_delayed_by_a_slow_pa(monkeypatch):
+    """The reply must not wait on scoring, even when PA is the slower branch.
+
+    The inverse of the gating bug: deriving `final`'s annotation from the PA
+    result would make the reply wait on scores whenever PA runs long, which is
+    precisely the coupling this split removes.
+    """
+    pa_may_finish = asyncio.Event()
+
+    async def slow_assess(audio_wav, reference_text, language="zh-CN"):
+        await pa_may_finish.wait()
+        return PronunciationScore(overall=90.0, syllables=[])
+
+    monkeypatch.setattr(pronunciation, "assess", slow_assess)
+
+    transcript, kb_block, timer = await orchestrator.prepare_audio_turn(b"FAKEWAV")
+    stream = orchestrator.stream_audio_turn(
+        b"FAKEWAV", transcript=transcript, kb_block=kb_block, timer=timer
+    ).__aiter__()
+
+    assert (await _next(stream)).stage == "transcript"
+
+    final = await _next(stream)
+    assert final.stage == "final", "the reply waited on pronunciation scoring"
+    assert not pa_may_finish.is_set()
+
+    pa_may_finish.set()
+    assert (await _next(stream)).stage == "score"
+
+
+def test_collector_still_merges_tone_errors_into_the_annotation():
+    """`TurnResponse` is unchanged by the split — the collector does the merge.
+
+    The wire contract gained an event; the collected shape callers already have
+    must not move, or the split becomes a breaking change for the live smoke
+    test and every orchestrator test.
+    """
+    result = asyncio.run(orchestrator.run_audio_turn(b"FAKEWAV"))
+    assert result.pronunciation.overall == 80.0
+    assert [t.syllable for t in result.annotation.tone_errors] == ["你"]
+
+
+async def test_worker_failure_cancels_the_still_running_pa(monkeypatch):
+    """The losing branch must not outlive the request.
+
+    PA and the worker are separate tasks now, so a failure in one leaves the
+    other running. Without an explicit cancel it keeps a live Azure call (and
+    the request's audio buffer) alive after the response has finished — an
+    orphaned task per failed turn, which is a leak under any real traffic.
+    """
+    pa_started = asyncio.Event()
+    pa_cancelled = asyncio.Event()
+
+    async def never_finishing_assess(audio_wav, reference_text, language="zh-CN"):
+        pa_started.set()
+        try:
+            await asyncio.Event().wait()   # never resolves
+        except asyncio.CancelledError:
+            pa_cancelled.set()
+            raise
+
+    async def boom(**kwargs):
+        # Let PA get as far as its await before the worker fails, so there is a
+        # genuinely in-flight task to clean up.
+        await pa_started.wait()
+        raise conversation.ConversationError("worker refused the turn")
+
+    monkeypatch.setattr(pronunciation, "assess", never_finishing_assess)
+    monkeypatch.setattr(conversation, "respond", boom)
+
+    transcript, kb_block, timer = await orchestrator.prepare_audio_turn(b"FAKEWAV")
+    staged = [
+        event
+        async for event in orchestrator.stream_audio_turn(
+            b"FAKEWAV", transcript=transcript, kb_block=kb_block, timer=timer
+        )
+    ]
+
+    assert [e.stage for e in staged] == ["transcript", "error"]
+    # Let the cancellation the generator requested actually be delivered.
+    await asyncio.sleep(0)
+    assert pa_cancelled.is_set(), "PA was left running after the turn failed"
+
+
+def test_collector_reraises_the_in_band_error():
+    """`run_audio_turn` keeps the exception contract its callers already have.
+
+    The stream reports a mid-turn worker failure in-band because its status line
+    is spent; the collected path has no such constraint, so it re-raises and the
+    route maps it to a 502 exactly as before the split.
+    """
+
+    async def boom(**kwargs):
+        raise conversation.ConversationError("worker refused the turn")
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(conversation, "respond", boom)
+        with pytest.raises(conversation.ConversationError, match="refused"):
+            asyncio.run(orchestrator.run_audio_turn(b"FAKEWAV"))

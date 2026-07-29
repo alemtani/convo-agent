@@ -815,12 +815,15 @@
           if (event.stage === "transcript") {
             transcript = event.transcript;
             echo.render(transcript, { emptyText: "(nothing recognized)" });
-          } else if (event.stage === "final") {
-            // Tone scores arrive with the reply because PA runs alongside the
-            // worker; repaint the same bubble rather than adding a second one.
+          } else if (event.stage === "score") {
+            // Scoring resolves seconds before the reply does, so the underlines
+            // land early — repaint the bubble that's already up rather than
+            // adding a second one. `pronunciation: null` means PA failed; the
+            // words stay on screen unscored, which is the honest rendering.
             if (event.pronunciation) {
               echo.render(transcript, { pronunciation: event.pronunciation });
             }
+          } else if (event.stage === "final") {
             pending.render(event.reply);
             // After the reply, so the timings line stays last in the thread.
             // `event.timings` is measured server-side at the moment this line

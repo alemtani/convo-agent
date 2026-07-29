@@ -19,6 +19,7 @@ from backend.models import (
     ConversationTurnResponse,
     DialogueTurn,
     FinalEvent,
+    ScoreEvent,
     TextTurnRequest,
     TranscriptEvent,
     TurnErrorEvent,
@@ -35,7 +36,7 @@ from backend.workers import conversation
 logger = logging.getLogger(__name__)
 
 # One line of the NDJSON body `POST /api/turn` streams, discriminated by `stage`.
-TurnEvent = Union[TranscriptEvent, FinalEvent, TurnErrorEvent]
+TurnEvent = Union[TranscriptEvent, ScoreEvent, FinalEvent, TurnErrorEvent]
 
 # Shown when nothing is recognized — an explicit "please say it again" so the
 # learner knows to retry, not a bare greeting that reads like a fresh turn. Keeps
@@ -175,31 +176,71 @@ async def stream_audio_turn(
     # Each branch times itself rather than the gather timing the pair: the whole
     # question WS1 Stage 2 hangs on is which of PA and Claude is the slower one,
     # and a single number for both cannot answer it.
+    #
+    # They are also *emitted* separately, as each resolves, rather than gathered
+    # into one event. Stage 0 measured PA at 1.20s against Claude's 3.56s, so the
+    # scores exist ~2.4s before the reply does; publishing them together throws
+    # that away — the same "hold it until everything's done" mistake the
+    # transcript event exists to fix. Whichever branch lands first goes out
+    # first, so neither stage can gate the other in either direction.
+    pa_task = asyncio.ensure_future(assess_branch())
+    worker_task = asyncio.ensure_future(respond_branch())
+    pending = {pa_task, worker_task}
+    usage = None
+
     try:
-        score, (reply, annotation, _reading, usage) = await asyncio.gather(
-            assess_branch(), respond_branch()
-        )
+        while pending:
+            done, pending = await asyncio.wait(
+                pending, return_when=asyncio.FIRST_COMPLETED
+            )
+            # `done` is a set, so when both branches land in the same round its
+            # iteration order is arbitrary — drain in pipeline order instead, or
+            # the event sequence is nondeterministic exactly when the two stages
+            # are closest together.
+            for task in (pa_task, worker_task):
+                if task not in done:
+                    continue
+                if task is pa_task:
+                    score = task.result()
+                    yield ScoreEvent(
+                        pronunciation=score,
+                        # Derived here, never by the model. They ride `score`
+                        # rather than `final` because they come from the same
+                        # PA result — putting them on the annotation would
+                        # re-gate the tone underlines on the worker.
+                        tone_errors=(
+                            tones.tone_errors_from_score(
+                                score, threshold=config.TONE_ERROR_THRESHOLD
+                            )
+                            if score is not None
+                            else []
+                        ),
+                        timings=TurnTimings.from_stages(timer.as_dict()),
+                    )
+                else:
+                    reply, annotation, _reading, usage = task.result()
+
+                    yield FinalEvent(
+                        reply=reply,
+                        annotation=annotation,
+                        timings=TurnTimings.from_stages(timer.as_dict()),
+                        usage=TurnUsage.from_sdk(usage),
+                    )
     except conversation.ConversationError as exc:
         logger.warning("conversation worker failed mid-turn: %s", exc)
         yield TurnErrorEvent(
             detail=str(exc), timings=TurnTimings.from_stages(timer.as_dict())
         )
-        return
-
-    tone_errors = (
-        tones.tone_errors_from_score(score, threshold=config.TONE_ERROR_THRESHOLD)
-        if score is not None
-        else []
-    )
-    annotation = annotation.model_copy(update={"tone_errors": tone_errors})
-
-    yield FinalEvent(
-        reply=reply,
-        pronunciation=score,
-        annotation=annotation,
-        timings=_report(timer, usage, mode="audio"),
-        usage=TurnUsage.from_sdk(usage),
-    )
+    finally:
+        # A failure in either branch leaves the other still running; without this
+        # the losing branch outlives the request as an orphaned task.
+        for task in (pa_task, worker_task):
+            if not task.done():
+                task.cancel()
+        # One log line per turn, after both branches have settled — so it carries
+        # the full picture (including `cache_read`) even though the events that
+        # went out earlier could only report the stages finished at their moment.
+        _report(timer, usage, mode="audio")
 
 
 async def run_audio_turn(
@@ -225,6 +266,7 @@ async def run_audio_turn(
     )
 
     final: Optional[FinalEvent] = None
+    score: Optional[ScoreEvent] = None
     async for event in stream_audio_turn(
         audio_bytes,
         transcript=transcript,
@@ -235,16 +277,26 @@ async def run_audio_turn(
     ):
         if isinstance(event, TurnErrorEvent):
             raise conversation.ConversationError(event.detail)
-        if isinstance(event, FinalEvent):
+        if isinstance(event, ScoreEvent):
+            score = event
+        elif isinstance(event, FinalEvent):
             final = event
 
     assert final is not None, "the stream always ends in a final or error event"
+
+    # The staged contract splits scores off the annotation; the collected one
+    # never did, and moving it would make the split breaking for every caller
+    # that wants the merged result. Rejoin here, once.
+    annotation = final.annotation
+    if annotation is not None and score is not None:
+        annotation = annotation.model_copy(update={"tone_errors": score.tone_errors})
+
     return TurnResponse(
         transcript=transcript,
         reply=final.reply,
-        pronunciation=final.pronunciation,
-        annotation=final.annotation,
-        timings=final.timings,
+        pronunciation=score.pronunciation if score else None,
+        annotation=annotation,
+        timings=TurnTimings.from_stages(timer.as_dict()),
         usage=final.usage,
     )
 
