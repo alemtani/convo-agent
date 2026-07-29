@@ -110,6 +110,12 @@ def browser_context_args(browser_context_args, frontend_server):
         **browser_context_args,
         "base_url": frontend_server,
         "permissions": ["microphone"],
+        # Pinned, not inherited. The viewport decides whether the thread scrolls
+        # at all, and `reduced_motion` decides whether a smooth scroll animates —
+        # a developer machine with "reduce motion" enabled turns every follow
+        # scroll instant and hides the very races these tests exist to catch.
+        "viewport": {"width": 420, "height": 760},
+        "reduced_motion": "no-preference",
     }
 
 

@@ -181,10 +181,19 @@ def test_new_message_follows_when_already_at_the_bottom(page):
     page.click("#send")
     expect(bubbles(page)).to_have_count(len(HISTORY) + 2)
 
-    page.wait_for_function(
-        """() => { const t = document.getElementById('thread');
-                   return t.scrollHeight - t.scrollTop - t.clientHeight <= 2; }"""
-    )
+    # Polled rather than `wait_for_function` so a failure reports the gap it got
+    # stuck at — a bare timeout says nothing about whether the follow scroll
+    # never started or just landed short.
+    gap = None
+    for _ in range(20):
+        gap = page.evaluate(
+            """() => { const t = document.getElementById('thread');
+                       return t.scrollHeight - t.scrollTop - t.clientHeight; }"""
+        )
+        if gap <= 2:
+            break
+        page.wait_for_timeout(100)
+    assert gap is not None and gap <= 2, f"follow scroll landed {gap}px short of the bottom"
 
 
 # --- Optimistic echo ------------------------------------------------------

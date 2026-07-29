@@ -274,15 +274,49 @@
     // time, so appending content can't itself change the answer.
 
     const STICK_SLACK = 80;   // px from the bottom that still counts as "at the bottom"
+    const FOLLOW_MAX_MS = 700;
     let stuck = true;
+    let following = false;    // a smooth follow-scroll is mid-flight
+    let followTimer = null;
 
     function atBottom() {
       return thread.scrollHeight - thread.scrollTop - thread.clientHeight <= STICK_SLACK;
     }
+
     function scrollToBottom(behavior) {
+      if (behavior === "smooth") {
+        // A smooth scroll emits scroll events all the way down, and while it's
+        // in flight the thread genuinely *is* far from the bottom — so reading
+        // those events would unstick us mid-animation and strand the thread
+        // short of the newest message. Ignore our own scrolling until it
+        // settles. `scrollend` ends the window; the timer covers browsers that
+        // don't fire it, and the case where we were already at the bottom and
+        // no scroll happens at all.
+        following = true;
+        clearTimeout(followTimer);
+        followTimer = setTimeout(settleFollow, FOLLOW_MAX_MS);
+      }
+      // Re-targeted on every append, so a turn that adds two bubbles in one tick
+      // lands at the real bottom rather than the bottom as of the first one.
       thread.scrollTo({ top: thread.scrollHeight, behavior: behavior || "auto" });
     }
-    thread.addEventListener("scroll", () => { stuck = atBottom(); });
+
+    // A smooth scroll animates toward the bottom *as it was when it started*.
+    // Bubbles that arrived or grew meanwhile (the pending reply, an upgraded
+    // echo, a line that wrapped) leave it short, so close the gap once the
+    // animation is over — instantly, since the motion the eye was following has
+    // already finished.
+    function settleFollow() {
+      clearTimeout(followTimer);
+      following = false;
+      if (!atBottom()) thread.scrollTo({ top: thread.scrollHeight });
+    }
+
+    thread.addEventListener("scroll", () => { if (!following) stuck = atBottom(); });
+    thread.addEventListener("scrollend", () => {
+      if (following) settleFollow();
+      else stuck = atBottom();
+    });
 
     // The 100dvh column changes height when the mobile keyboard opens or the URL
     // bar collapses. If we were pinned to the newest message, stay pinned —
