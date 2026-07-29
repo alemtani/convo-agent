@@ -35,13 +35,28 @@ TONE_ERROR_THRESHOLD = 60.0
 # bubble that will never resolve. A deadline turns each of those into a failure
 # the turn already knows how to report.
 #
-# Sized off the Stage 0 measurements (STT 1.32s, PA 1.20s, Claude 3.56s) with
-# roughly an order of magnitude of headroom: the job here is to bound the worst
-# case, not to police a slow-but-working call. Env-overridable so a flaky network
-# doesn't need a code change.
-STT_TIMEOUT_S = float(os.getenv("STT_TIMEOUT_S", "15"))
-PA_TIMEOUT_S = float(os.getenv("PA_TIMEOUT_S", "15"))
-CLAUDE_TIMEOUT_S = float(os.getenv("CLAUDE_TIMEOUT_S", "45"))
+# Sized for the learner, not for the worst case the network can produce. Against
+# Stage 0 (STT 1.32s, PA 1.20s, Claude 3.56s) these leave ~4x, ~4x and ~3x
+# headroom — enough that a normal turn never trips one, tight enough that a
+# wedged call fails while the learner is still willing to retry. Staring at a
+# pending bubble for 45s is a worse outcome than a clear failure at 10s.
+#
+# The trade this makes: these are no longer only a safety net. A deadline this
+# close to the measured p50 can cut a call that *would* have succeeded, so each
+# one is a real tunable — hence env-overridable. We have no p95 for any of the
+# three yet; the replay harness (next PR) produces it, and these numbers should
+# be revisited against it rather than defended on intuition.
+#
+# They are not equally risky, which is why they differ:
+#   PA      degrades to `pronunciation: null` and the turn completes — cheapest
+#           failure of the three, so the tightest budget costs the least.
+#   STT     kills the whole turn with a 502. Scales with utterance length, which
+#           push-to-talk keeps short; revisit if recordings get longer.
+#   Claude  is the reply. Cutting it at 10s loses a turn that might have landed
+#           at 11s, and the tokens are spent either way.
+STT_TIMEOUT_S = float(os.getenv("STT_TIMEOUT_S", "5"))
+PA_TIMEOUT_S = float(os.getenv("PA_TIMEOUT_S", "5"))
+CLAUDE_TIMEOUT_S = float(os.getenv("CLAUDE_TIMEOUT_S", "10"))
 
 
 def _load_band_ceiling(default: int = 2) -> int:
