@@ -783,13 +783,23 @@
 
     async function sendTurn(wavBlob) {
       talk.disabled = true;
-      // Both bubbles go up on release. Your own words don't exist yet — STT
-      // hasn't answered — but the *shape* of the thread shouldn't wait for them:
-      // a lone loading bubble with nothing above it reads as if you never spoke.
-      // The echo holds a placeholder for the STT round trip, then becomes your
-      // transcript, then gains tone underlines when the scores land.
+      // One bubble on release, not two. The echo goes up immediately and holds
+      // the learner's place while STT runs — its pending dots *are* the
+      // "transcribing…" indicator, in the thread rather than in a status line
+      // (same reasoning as the text path, where "thinking…" became a bubble).
+      //
+      // The partner's pending bubble is deliberately withheld until the
+      // transcript lands. Showing the partner "thinking" about a message that
+      // doesn't exist on screen yet inverts the conversation: you'd watch a
+      // reply being written before your own words appear. Waiting means the
+      // thread always reads in order — your message, then the partner
+      // considering it — which is also what a real chat app does.
       const echo = createBubble("user").pending();
-      const pending = createBubble("partner").pending();
+      let pending = null;
+      // Created on demand so an error before the transcript still has somewhere
+      // to land; after `transcript` this always returns the existing bubble.
+      const replyBubble = () =>
+        (pending = pending || createBubble("partner").pending());
       const startedAt = performance.now();
       const form = new FormData();
       form.append("audio", wavBlob, "turn.wav");
@@ -804,9 +814,11 @@
         // Everything that maps to a status — unknown topic, STT failure — is
         // settled before the first byte, so this still catches those cleanly.
         if (!resp.ok) {
+          // Nothing was transcribed, so the echo is the only bubble up and it
+          // carries the failure — no partner bubble is created for a turn the
+          // partner never saw.
           const detail = await resp.text();
-          echo.remove();
-          pending.fail("error " + resp.status + ": " + detail);
+          echo.fail("error " + resp.status + ": " + detail);
           setStatus("");
           return;
         }
@@ -819,6 +831,8 @@
           if (event.stage === "transcript") {
             transcript = event.transcript;
             echo.render(transcript, { emptyText: "(nothing recognized)" });
+            // Only now does the partner have something to be thinking about.
+            replyBubble();
           } else if (event.stage === "score") {
             // Scoring resolves seconds before the reply does, so the underlines
             // land early — repaint the bubble that's already up rather than
@@ -828,7 +842,7 @@
               echo.render(transcript, { pronunciation: event.pronunciation });
             }
           } else if (event.stage === "reply") {
-            pending.render(event.reply);
+            replyBubble().render(event.reply);
             // Only record a real exchange: an empty transcript means nothing was
             // recognized (the reply was a re-prompt), so it isn't part of history.
             if (transcript && transcript.zh) {
@@ -846,13 +860,15 @@
           } else if (event.stage === "error") {
             // Failed after the transcript was sent, so keep it — the learner can
             // see what they said, and only the reply is missing.
-            pending.fail("error: " + event.detail);
+            replyBubble().fail("error: " + event.detail);
           }
         }
         setStatus("");
       } catch (err) {
-        // A transcript already on screen is real; don't withdraw it.
-        pending.fail("request failed: " + err);
+        // A transcript already on screen is real; don't withdraw it. If the
+        // stream died before it arrived there is no partner bubble yet, so the
+        // echo carries the failure instead.
+        (pending || echo).fail("request failed: " + err);
       } finally {
         talk.disabled = false;
       }

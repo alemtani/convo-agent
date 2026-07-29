@@ -101,9 +101,11 @@ def test_transcript_renders_while_the_reply_is_still_pending(page):
     page.evaluate("window.__stub.manual = true")
     _speak(page)
 
-    # Nothing released yet: both bubbles are placeholders.
+    # Nothing released yet: the echo holds the learner's place while STT runs,
+    # and it is the *only* bubble. The partner isn't thinking about anything yet
+    # — a reply placeholder above a message that doesn't exist reads backwards.
     expect(bubbles(page, ".bubble.user.pending")).to_have_count(1)
-    expect(bubbles(page, ".bubble.partner.pending")).to_have_count(1)
+    expect(bubbles(page, ".bubble.partner")).to_have_count(0)
 
     page.evaluate("window.__stub.releaseNext()")   # transcript
 
@@ -114,6 +116,44 @@ def test_transcript_renders_while_the_reply_is_still_pending(page):
     expect(bubbles(page, ".bubble.partner.pending")).to_have_count(1)
     # Unscored so far — the underlines belong to the score event, not this one.
     expect(user.locator(".syl")).to_have_count(0)
+
+
+def test_the_partner_bubble_waits_for_the_transcript(page):
+    """Order in the thread, not just presence: you, then the partner.
+
+    The bubbles used to go up together on mic release, which meant watching a
+    reply be composed before your own sentence had appeared. Now the partner's
+    placeholder is created by the `transcript` event, so the thread never shows
+    the partner reacting to a message the learner can't see.
+    """
+    seed(page)
+    page.evaluate("window.__stub.manual = true")
+    _speak(page)
+
+    expect(bubbles(page)).to_have_count(1)
+    expect(bubbles(page).nth(0)).to_have_class(re.compile(r"\buser\b"))
+
+    page.evaluate("window.__stub.releaseNext()")   # transcript
+
+    expect(bubbles(page)).to_have_count(2)
+    expect(bubbles(page).nth(1)).to_have_class(re.compile(r"\bpartner\b"))
+
+
+def test_a_pre_transcript_failure_leaves_no_partner_bubble(page):
+    """A 502 from STT means the partner never saw the turn.
+
+    Everything that maps to a status is settled before the first byte, so there
+    is no transcript and no reply — inventing a failed partner bubble would
+    claim the partner tried and couldn't.
+    """
+    seed(page)
+    page.evaluate("window.__stub.status['/api/turn'] = 502")
+    _speak(page)
+
+    failed = bubbles(page, ".bubble.user.failed")
+    expect(failed).to_have_count(1)
+    expect(failed).to_contain_text("error 502")
+    expect(bubbles(page, ".bubble.partner")).to_have_count(0)
 
 
 def test_scores_repaint_the_transcript_bubble_instead_of_adding_one(page):
