@@ -29,3 +29,16 @@ def test_root_serves_static_page():
     # The page is the visible surface; it must reference the turn API it calls
     # (Phase 1 deepened the page from the hello round-trip to push-to-talk).
     assert "/api/turn" in resp.text
+
+
+def test_static_page_is_not_cached():
+    """The page must never be served from a stale cache.
+
+    All the client logic lives in `index.html`, so a cached copy silently hides
+    every frontend fix — the browser keeps running yesterday's JavaScript while
+    the server has today's. That is invisible (the page loads fine, it's just
+    wrong), and on a phone there's no easy hard-reload. `no-store` costs nothing
+    here: one small file, served locally or over a dev tunnel.
+    """
+    resp = client.get("/")
+    assert resp.headers["cache-control"] == "no-store"
