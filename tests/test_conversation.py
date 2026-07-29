@@ -8,6 +8,7 @@ Two tiers, no tokens spent:
   returns a recorded `ParsedMessage`-shaped object; assert we send the right
   request and correctly read a parsed response. Never assert model wording.
 """
+import anthropic
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -192,3 +193,49 @@ def test_get_client_is_a_singleton_built_from_config_key(monkeypatch):
 
     assert first is second           # cached — built once, reused
     assert built == ["test-key"]     # constructed from the configured key
+
+
+async def test_respond_passes_the_configured_deadline_to_the_sdk():
+    """The SDK's own `timeout`, not an outer `asyncio.wait_for`.
+
+    This is a real async HTTP client, so `timeout` aborts the request and
+    releases the connection; cancelling from outside would leave the SDK to
+    clean up behind us.
+    """
+    client, parse = _fake_client(_recorded_result())
+
+    await conversation.respond(
+        kb_block=KB,
+        sketch=SKETCH,
+        dialogue=[],
+        user_text="wo jiao xiao ming",
+        forgiveness_level=0.8,
+        client=client,
+    )
+
+    assert parse.call_args.kwargs["timeout"] == config.CLAUDE_TIMEOUT_S
+
+
+async def test_a_timed_out_call_becomes_a_conversation_error():
+    """Claude is 73% of the turn and the branch the reply waits on.
+
+    Unbounded, a stalled call is a pending bubble that never resolves. As a
+    `ConversationError` it is the same failure class as a refusal, which the
+    stream already reports in-band — its status line is long spent by then.
+    """
+    import httpx
+
+    client, parse = _fake_client(_recorded_result())
+    parse.side_effect = anthropic.APITimeoutError(
+        request=httpx.Request("POST", "https://api.anthropic.com/v1/messages")
+    )
+
+    with pytest.raises(conversation.ConversationError, match="timed out"):
+        await conversation.respond(
+            kb_block=KB,
+            sketch=SKETCH,
+            dialogue=[],
+            user_text="wo jiao xiao ming",
+            forgiveness_level=0.8,
+            client=client,
+        )

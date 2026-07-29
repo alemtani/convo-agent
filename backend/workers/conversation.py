@@ -11,6 +11,7 @@ production it lazily builds a shared `AsyncAnthropic`.
 """
 from typing import Dict, List, Optional, Tuple
 
+import anthropic
 from anthropic import AsyncAnthropic
 
 from backend import config
@@ -107,7 +108,21 @@ async def respond(
         forgiveness_level=forgiveness_level,
     )
 
-    response = await client.messages.parse(**request)
+    # The SDK's own deadline rather than `asyncio.wait_for`: this is a real async
+    # HTTP client, so `timeout` aborts the request and releases the connection,
+    # where an outer cancel would leave the SDK to clean up behind us. Claude is
+    # 73% of the turn and the branch the reply waits on, so an unbounded call
+    # here is a pending bubble that never resolves.
+    try:
+        response = await client.messages.parse(
+            **request, timeout=config.CLAUDE_TIMEOUT_S
+        )
+    except anthropic.APITimeoutError as exc:
+        # Same failure class as a refusal from the turn's point of view: the
+        # stream reports it in-band, because its status line is long spent.
+        raise ConversationError(
+            f"conversation worker timed out after {config.CLAUDE_TIMEOUT_S:g}s"
+        ) from exc
 
     if getattr(response, "stop_reason", None) == "refusal":
         raise ConversationError("conversation worker refused the turn")

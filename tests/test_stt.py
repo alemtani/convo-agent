@@ -108,3 +108,23 @@ async def test_canceled_raises_stt_error(patched):
 
     with pytest.raises(stt.SttError, match="bad key"):
         await stt.transcribe(b"FAKEWAV")
+
+
+async def test_a_stalled_recognizer_times_out_as_an_stt_error(monkeypatch):
+    """STT sits in front of everything, before the response picks a status.
+
+    Unbounded, a wedged Azure call holds the request open with nothing to show
+    for it — no transcript, no reply, no status line spent. The deadline turns
+    that into the failure the route already maps to 502.
+    """
+    import time
+
+    def never_returns(audio_wav, language):
+        time.sleep(30)
+        raise AssertionError("the timeout should have fired long before this")
+
+    monkeypatch.setattr(stt, "_recognize_sync", never_returns)
+    monkeypatch.setattr(stt.config, "STT_TIMEOUT_S", 0.05)
+
+    with pytest.raises(stt.SttError, match="timed out"):
+        await stt.transcribe(b"FAKEWAV")

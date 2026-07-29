@@ -8,6 +8,7 @@ import asyncio
 
 import azure.cognitiveservices.speech as speechsdk
 
+from backend import config
 from backend.speech._recognizer import cancellation_message, recognizer_for
 
 
@@ -36,5 +37,24 @@ async def transcribe(audio_wav: bytes, language: str = "zh-CN") -> str:
 
     ``recognize_once`` is blocking, so it runs in a worker thread to stay
     async-correct inside the FastAPI event loop.
+
+    A stall here is the worst kind: STT sits in front of everything, before the
+    response has committed to a status, so an unbounded wait holds the request
+    open without even a transcript to show for it. `STT_TIMEOUT_S` bounds it and
+    the timeout surfaces as `SttError`, which the route already maps to 502.
+
+    Caveat worth knowing: `wait_for` cancels the *await*, not the thread — a
+    Python thread can't be interrupted, so a wedged SDK call keeps a thread-pool
+    slot until Azure returns or the process exits. This frees the request and
+    the connection, which is the part that was unbounded; it is not a way to
+    reclaim the thread.
     """
-    return await asyncio.to_thread(_recognize_sync, audio_wav, language)
+    try:
+        return await asyncio.wait_for(
+            asyncio.to_thread(_recognize_sync, audio_wav, language),
+            timeout=config.STT_TIMEOUT_S,
+        )
+    except asyncio.TimeoutError as exc:
+        raise SttError(
+            f"Azure STT timed out after {config.STT_TIMEOUT_S:g}s"
+        ) from exc

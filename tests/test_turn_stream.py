@@ -33,6 +33,12 @@ def events(resp):
     return [json.loads(line) for line in resp.text.splitlines() if line.strip()]
 
 
+# Captured before the autouse fixture replaces it, so a test can put the real
+# implementation back and exercise the code path *inside* `assess` — the timeout
+# wrapper — rather than only the stub that stands in for it.
+_REAL_ASSESS = pronunciation.assess
+
+
 class _FakeUsage:
     input_tokens = 120
     output_tokens = 90
@@ -718,6 +724,36 @@ async def test_worker_failure_cancels_the_still_running_pa(monkeypatch):
     # Let the cancellation the generator requested actually be delivered.
     await asyncio.sleep(0)
     assert pa_cancelled.is_set(), "PA was left running after the turn failed"
+
+
+async def test_a_stalled_pa_still_lets_the_turn_finish(monkeypatch):
+    """A branch that hangs must not hold the response open forever.
+
+    This is the failure staging made expensive: `/api/turn` keeps an HTTP
+    response open for the whole turn, so before the deadline a wedged Azure call
+    parked a connection, a worker thread and the audio buffer indefinitely,
+    with the client watching a bubble that would never resolve.
+
+    Bounded, it lands where every other PA failure lands — `pronunciation: null`
+    and a completed turn — so a scoring stall costs the underlines, not the
+    conversation.
+    """
+    import time
+
+    def never_returns(audio_wav, reference_text, language):
+        time.sleep(30)
+
+    # The real `assess`, so the deadline under test is the one that ships.
+    monkeypatch.setattr(pronunciation, "assess", _REAL_ASSESS)
+    monkeypatch.setattr(pronunciation, "_assess_sync", never_returns)
+    monkeypatch.setattr(pronunciation.config, "PA_TIMEOUT_S", 0.05)
+
+    seen = await collect_audio_turn()
+
+    assert seen["score"].pronunciation is None
+    assert seen["score"].tone_errors == []
+    assert seen["reply"].reply.zh          # the conversation continued
+    assert "done" in seen and "error" not in seen
 
 
 async def test_a_worker_failure_never_escapes_the_stream(monkeypatch):

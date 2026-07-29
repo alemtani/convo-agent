@@ -28,6 +28,21 @@ FORGIVENESS_LEVEL_DEFAULT = 0.8
 # Aligned with the frontend's existing `tone-bad` cutoff in index.html.
 TONE_ERROR_THRESHOLD = 60.0
 
+# Nothing on the turn may wait forever. Staging raises the stakes: the spoken
+# path holds an *open HTTP response* for the whole turn, so a stalled upstream
+# call no longer just delays a reply — it parks a connection, a worker thread,
+# and the request's audio buffer indefinitely, with the client showing a pending
+# bubble that will never resolve. A deadline turns each of those into a failure
+# the turn already knows how to report.
+#
+# Sized off the Stage 0 measurements (STT 1.32s, PA 1.20s, Claude 3.56s) with
+# roughly an order of magnitude of headroom: the job here is to bound the worst
+# case, not to police a slow-but-working call. Env-overridable so a flaky network
+# doesn't need a code change.
+STT_TIMEOUT_S = float(os.getenv("STT_TIMEOUT_S", "15"))
+PA_TIMEOUT_S = float(os.getenv("PA_TIMEOUT_S", "15"))
+CLAUDE_TIMEOUT_S = float(os.getenv("CLAUDE_TIMEOUT_S", "45"))
+
 
 def _load_band_ceiling(default: int = 2) -> int:
     """The learner's HSK ceiling is *owned by the KB authoring workflow*
