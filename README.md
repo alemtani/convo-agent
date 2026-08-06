@@ -15,7 +15,7 @@ A Mandarin conversation practice agent powered by Claude and Azure Speech Servic
 1. **Clone the repo**
 
    ```bash
-   git clone git@github.com:alemtani/convo-agent.git
+   git clone https://github.com/alemtani/convo-agent.git
    cd convo-agent
    ```
 
