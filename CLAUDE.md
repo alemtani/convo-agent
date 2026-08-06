@@ -40,7 +40,7 @@ Live modules: `main.py`, `orchestrator.py`, `kb.py`, `pinyin.py`, `tones.py`,
 
 ```
 backend/
-  main.py              # FastAPI app, auth gate, static serving, CORS
+  main.py              # FastAPI app, static serving, CORS (auth gate: Phase 8)
   orchestrator.py      # turn coordination, context assembly, caching, bounding
   workers/
     conversation.py    # Claude conversation worker (cached prefix)
