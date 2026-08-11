@@ -1,0 +1,104 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r backend/requirements.txt
+
+      # Live tests (real Claude/Azure APIs) are excluded by pytest.ini's default
+      # `-m "not live"`, so CI needs no API keys and spends nothing. The coverage
+      # gate fails the build if backend coverage drops below 95%.
+      - name: Run tests with coverage
+        run: pytest --cov=backend --cov-report=term-missing --cov-fail-under=95
+
+  # The frontend smoke suite gets its own job because it needs a browser, not
+  # because it's flaky: the mic is a WAV file, the API is a `fetch` stub, and no
+  # assertion waits on a clock — so unlike the `live` marker it belongs in CI.
+  # It's excluded from the default `pytest` run only to keep a plain checkout
+  # (and the Stop hook) from needing a Chromium install.
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: tests/smoke/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r tests/smoke/requirements.txt
+
+      - name: Install Chromium
+        run: playwright install --with-deps chromium
+
+      # Path-scoped: this job installs no backend dependencies, and collection
+      # imports every module under `testpaths` before the marker deselects any.
+      - name: Run frontend smoke tests
+        run: pytest -m smoke tests/smoke
+
+  # Deploy lives in this workflow rather than its own so it can gate on the
+  # suites with a plain `needs:`. A separate workflow would have to use
+  # `workflow_run`, which fires on completion regardless of conclusion and
+  # resolves the wrong commit often enough to be a real hazard.
+  #
+  # `fly launch` and `fly secrets set` are still by hand (see README#deploying):
+  # they create resources and handle credentials. Only `fly deploy` is automated,
+  # and it needs exactly one repo secret, FLY_API_TOKEN.
+  deploy:
+    needs: [test, smoke]
+    # Merges only. A `pull_request` build must never reach production, and this
+    # workflow runs on both triggers.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    # One deploy at a time. Two merges in quick succession would otherwise race,
+    # and the loser can land an *older* image on top of a newer one. Not
+    # cancel-in-progress: a half-applied deploy is worse than a slow queue.
+    concurrency:
+      group: fly-deploy
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy
+        run: flyctl deploy --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      # The release blocker from README#deploying, automated. A deploy that
+      # comes up with the gate off puts an open Anthropic/Azure spend endpoint
+      # on a public hostname, and it fails open — the app serves fine, so
+      # nothing else would catch it. The app name comes from fly.toml so a
+      # rename can't leave this check silently probing a stale host.
+      - name: Verify the passcode gate is on
+        run: |
+          app=$(sed -n 's/^app *= *"\(.*\)"/\1/p' fly.toml)
+          echo "checking https://$app.fly.dev/health"
+          body=$(curl -fsS --retry 6 --retry-delay 5 --retry-all-errors \
+                   "https://$app.fly.dev/health")
+          echo "$body"
+          case "$body" in
+            *'"auth":"enabled"'*) echo "gate is on" ;;
+            *) echo "::error::gate is OFF — set APP_PASSCODE with 'fly secrets set'"; exit 1 ;;
+          esac
