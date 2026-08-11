@@ -33,9 +33,11 @@ deferred, not in the hot path).
 Target layout (per `docs/DESIGN.md`). The backend serves through Phase 3b: the
 full spoken loop `POST /api/turn` → Azure STT → PA ∥ conversation worker (cached
 prefix) → merged `tone_errors`, plus the mic-free `POST /api/turn/text` harness.
+`POST /api/tts` (M4) sits beside them, not inside the loop: it speaks one line of
+text, so replay is free and the turn never waits on a synthesis.
 Live modules: `main.py`, `orchestrator.py`, `kb.py`, `pinyin.py`, `tones.py`,
 `models.py`, `config.py`, `prompts.py`, `workers/conversation.py`,
-`speech/{stt,pronunciation,_recognizer}.py`. Still planned: `workers/feedback.py`,
+`speech/{stt,pronunciation,tts,_azure}.py`. Still planned: `workers/feedback.py`,
 `workers/sketch.py`, `db.py`, `profile.py` (Phases 4–8).
 
 ```
@@ -47,8 +49,10 @@ backend/
     feedback.py        # annotations → feedback + proficiency deltas
     sketch.py          # session sketch generation
   speech/
+    _azure.py          # shared credentialed SpeechConfig + recognizer
     stt.py             # Azure STT
     pronunciation.py   # Azure PA (two-pass)
+    tts.py             # Azure TTS (slowed SSML, cached by line)
   kb.py                # load topic markdown, parse frontmatter
   profile.py           # covered-set + proficiency CRUD + selection weighting
   pinyin.py            # romanize recognized speech for display (pypinyin)

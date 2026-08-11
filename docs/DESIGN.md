@@ -54,8 +54,10 @@ backend (stateless proxy):
 ```
 
 Dropping TTS from the critical path removes the slowest, most failure-prone leg
-and an entire Azure surface. A 🔊 "play this line" affordance (on-demand TTS) can
-be added later without touching the loop.
+and an entire Azure surface. M4 adds it back the way this leaves room for: a
+separate `POST /api/tts`, keyed on the reply text, called *after* the turn
+resolves. The loop above is unchanged, and a synthesis that fails or stalls
+costs a bubble its audio rather than costing the learner a turn.
 
 ---
 
@@ -543,10 +545,11 @@ from completed feedback rounds is already 💾, so learning progress survives.
 - DM-style mobile PWA with push-to-talk.
 - Passcode auth; deployed to Fly/Railway, reachable from a phone.
 - Two-bucket error surfacing.
+- Audio-only partner replies (Azure TTS on its own endpoint, slowed ~10%), with
+  🔊 replay and 👁 reveal.
 
 ### Deferred (designed-for)
 
-- On-demand TTS for partner lines.
 - Per-user KB writeback (LLM-maintained mistake/vocab wiki).
 - Conversation-level redo / branching UI.
 - Proficiency charts / EMA decay (start with simple averages).

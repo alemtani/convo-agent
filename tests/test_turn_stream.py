@@ -292,13 +292,13 @@ def test_missing_azure_credentials_is_a_502(monkeypatch):
     # Server started before .env had the key: empty creds must fail clean (502),
     # not surface Azure's raw RuntimeError(5) as a 500 — and, now that the body
     # is streamed, not as a half-written 200 either.
-    from backend.speech import _recognizer
+    from backend.speech import _azure
 
     # Real STT, not the fixture's stub — the failure being tested comes from the
     # recognizer refusing to build. `monkeypatch` is one instance shared with the
     # autouse fixture, so undo() drops its stubs; the turn never gets past STT.
     monkeypatch.undo()
-    monkeypatch.setattr(_recognizer.config, "AZURE_SPEECH_KEY", "")
+    monkeypatch.setattr(_azure.config, "AZURE_SPEECH_KEY", "")
 
     resp = client.post("/api/turn", files=_upload())
     assert resp.status_code == 502

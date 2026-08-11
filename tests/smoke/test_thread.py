@@ -71,7 +71,9 @@ def test_press_captures_frames_from_frame_zero(page):
     expect(bubbles(page).nth(0)).to_have_class(re.compile(r"\buser\b"))
     expect(bubbles(page).nth(0).locator(".syl")).to_have_count(4)   # 2 syllables × 2 rows
     expect(bubbles(page).nth(1)).to_have_class(re.compile(r"\bpartner\b"))
-    expect(bubbles(page).nth(1)).to_contain_text("你好")
+    # The reply is audio-only by default (M4), so its controls — not its text —
+    # are what say it landed. What the controls do is `test_reply_audio.py`.
+    expect(bubbles(page).nth(1).locator(".controls")).to_have_count(1)
 
     # The timings line is appended, while the transcript is *inserted* above the
     # pending bubble — so it has to end up last, not stranded between the turns.
@@ -196,7 +198,7 @@ def test_timings_line_waits_for_the_done_event(page):
     for _ in range(3):   # transcript, score, reply
         page.evaluate("window.__stub.releaseNext()")
 
-    expect(bubbles(page, ".bubble.partner")).to_contain_text("你好")
+    expect(bubbles(page, ".bubble.partner .controls")).to_have_count(1)
     expect(page.locator("#thread .timings")).to_have_count(0)
 
     page.evaluate("window.__stub.releaseNext()")   # done
@@ -248,6 +250,9 @@ def test_pending_bubble_exists_between_submit_and_response(page):
     expect(bubbles(page, ".bubble.partner.pending")).to_have_count(0)
     # Same node, now carrying the reply: replaced in place, not re-added.
     expect(bubbles(page, ".bubble.partner")).to_have_count(1)
+    # The reply is audio-only by default (M4), so reveal it to check *which*
+    # reply this node ended up holding — otherwise any repaint would pass.
+    page.click(".bubble.partner button.reveal")
     assert "很高兴认识你" in handle.inner_text()
 
 

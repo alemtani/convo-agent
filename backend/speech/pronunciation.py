@@ -19,7 +19,7 @@ import azure.cognitiveservices.speech as speechsdk
 from backend import config
 from backend.models import PronunciationScore, SyllableScore
 from backend.pinyin import to_pinyin
-from backend.speech._recognizer import cancellation_message, recognizer_for
+from backend.speech._azure import cancellation_message, recognizer_for
 
 
 class PaError(RuntimeError):

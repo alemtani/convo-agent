@@ -55,6 +55,23 @@
     .bubble .pinyin { opacity: 0.7; font-size: 0.85rem; }
     .bubble.empty { font-style: italic; opacity: 0.6; }
 
+    /* The partner's reply is audio first. 🔊 replays it, 👁 shows the words —
+       both always present, because a learner who can't parse the line needs a
+       way forward that isn't giving up on the session. Sized for a thumb. */
+    .bubble.partner .controls { display: flex; gap: 0.5rem; }
+    .bubble.partner .controls button {
+      font-size: 1.1rem;
+      line-height: 1;
+      padding: 0.25rem 0.4rem;
+      border: 0;
+      border-radius: 0.5rem;
+      background: rgba(127, 127, 127, 0.25);
+      color: inherit;
+      cursor: pointer;
+    }
+    /* Text on: the controls step back so the reply reads as the message. */
+    .bubble.partner:not(.unread) .controls { opacity: 0.55; margin-bottom: 0.35rem; }
+
     /* A turn in flight, shown as a bubble rather than a status line: the partner
        gets a dot-pulse placeholder, and your own echo is dimmed until the server
        confirms it. Both are upgraded in place — never removed and re-added. */
@@ -256,7 +273,7 @@
   </div>
 
   <h1>Convo Agent</h1>
-  <p class="muted">Speak or type Mandarin (greetings). A real partner replies and remembers the conversation; spoken words come back with per-syllable tone scores (green good / amber ok / red off). Tap ⌨️ to type in <strong>pinyin</strong> instead — your words come back as 汉字. Add tone numbers (<code>ni3hao3</code>) and your tones get checked too.</p>
+  <p class="muted">Speak or type Mandarin (greetings). A real partner replies and remembers the conversation; spoken words come back with per-syllable tone scores (green good / amber ok / red off). The partner <strong>speaks its reply</strong> instead of writing it — that's the listening practice. Tap 🔊 to hear a line again, 👁 to see the words when you're stuck, or 👁 in the bar below to show every reply's text. Tap ⌨️ to type in <strong>pinyin</strong> instead — your words come back as 汉字. Add tone numbers (<code>ni3hao3</code>) and your tones get checked too.</p>
 
   <div id="thread"></div>
 
@@ -270,6 +287,7 @@
     <button id="talk">🎙️ Hold to talk</button>
     <div id="controls">
       <button id="mode" title="Switch to typing">⌨️</button>
+      <button id="show-text" title="Show partner text">👁</button>
       <button id="reset" title="Start a new conversation">↺ New</button>
     </div>
     <div id="meter"><div id="meter-fill"></div></div>
@@ -285,6 +303,7 @@
     const meterFill = document.getElementById("meter-fill");
     const dock = document.getElementById("dock");
     const modeBtn = document.getElementById("mode");
+    const showTextBtn = document.getElementById("show-text");
     const textInput = document.getElementById("text-input");
     const send = document.getElementById("send");
 
@@ -331,6 +350,10 @@
 
     const UNLOCK_EVENTS = ["pointerdown", "touchend", "keydown"];
     let playCtx = null;
+    // Buffers actually started. There is no way to assert "a sound came out" in
+    // a headless browser, so the smoke suite counts this instead — it is the
+    // last step before the device, and the one autoplay can silently skip.
+    let plays = 0;
 
     function audioCtx() {
       if (playCtx) return playCtx;
@@ -377,6 +400,7 @@
     function playBuffer(buf) {
       const ctx = audioCtx();
       if (!ctx || ctx.state !== "running") return Promise.resolve(false);
+      plays += 1;
       return new Promise((resolve) => {
         const src = ctx.createBufferSource();
         src.buffer = buf;
@@ -405,6 +429,41 @@
       return playBuffer(await ctx.decodeAudioData(await res.arrayBuffer()));
     }
 
+    // --- Partner speech ----------------------------------------------------
+    //
+    // Decoded audio, keyed by the line it speaks. This Map *is* the "replay
+    // costs no second synthesis" guarantee on the client: 🔊 hits it and never
+    // reaches the network. The server keeps its own cache for what survives —
+    // a reload, or a line the partner repeats — so a miss here is cheap too.
+    //
+    // Decoded rather than raw: decodeAudioData is the expensive half, and a
+    // replay should be instant. A session's worth of one-sentence replies is a
+    // few megabytes of AudioBuffer, which is why nothing evicts from it; a new
+    // conversation drops the whole Map.
+    const speechCache = new Map();
+
+    async function fetchSpeech(text) {
+      if (speechCache.has(text)) return speechCache.get(text);
+      const ctx = audioCtx();
+      if (!ctx) throw new Error("no audio support");
+      const resp = await fetch("/api/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      if (!resp.ok) throw new Error("tts " + resp.status);
+      const buf = await ctx.decodeAudioData(await resp.arrayBuffer());
+      speechCache.set(text, buf);
+      return buf;
+    }
+
+    // Throws on a failed synthesis rather than failing quietly: the caller's
+    // recovery is to reveal the text, and a silent bubble with no text is the
+    // single way audio-only mode is worse than showing the reply.
+    async function speak(text) {
+      return playBuffer(await fetchSpeech(text));
+    }
+
     function playTone(freq, ms) {
       const ctx = audioCtx();
       if (!ctx || ctx.state !== "running") return false;
@@ -420,7 +479,7 @@
 
     window.__audio = {
       state: () => (playCtx ? playCtx.state : null),
-      playPcm, playUrl, playTone,
+      speak, playPcm, playUrl, playTone,
       // The manual iOS check for issue #27. Run `__audio.probe()` in the Safari
       // console, then leave the phone alone: the tone fires from a timer with
       // no gesture on the stack, which is precisely what M4 will do. Silence
@@ -430,6 +489,8 @@
       // way to make a desktop browser deliver iOS's interruption, and the
       // recovery path is the part most likely to be silently wrong.
       _suspend: () => (playCtx ? playCtx.suspend() : Promise.resolve()),
+      _plays: () => plays,
+      _cached: () => speechCache.size,
     };
 
     armUnlock();
@@ -566,6 +627,14 @@
         renderScored(el, opts.pronunciation);
         return;
       }
+      el.replaceChildren(...textRows(utt));
+      if (opts.toneErrors && opts.toneErrors.length) markToneErrors(el, utt, opts.toneErrors);
+    }
+
+    // 汉字 on top, pinyin beneath — the two rows every bubble is made of, split
+    // out so the partner's hide/reveal can build them without repainting the
+    // whole bubble through `paint`.
+    function textRows(utt) {
       const rows = [];
       // The optimistic echo has pinyin and no 汉字 yet; skip the row rather than
       // reserving blank space that would make the bubble jump on upgrade.
@@ -579,13 +648,93 @@
       pyRow.className = "pinyin";
       pyRow.textContent = utt.pinyin;
       rows.push(pyRow);
-      el.replaceChildren(...rows);
-      if (opts.toneErrors && opts.toneErrors.length) markToneErrors(el, utt, opts.toneErrors);
+      return rows;
     }
 
     // Create + paint in one step, for turns that arrive already complete.
     function renderLine(role, utt, opts) {
       return createBubble(role, opts).render(utt, opts);
+    }
+
+    // --- Partner replies: audio first, text on request ----------------------
+    //
+    // Hearing the reply *is* the practice; reading it hands back the answer. So
+    // partner bubbles show controls, not words, and the two escape hatches are
+    // load-bearing rather than polish — without 🔊 and 👁, a session where the
+    // learner can't parse a line simply dies with no recourse, which is the one
+    // way audio-only makes this app worse than the version that showed text.
+    //
+    // Two levels of state on purpose. `showText` is the mode; each bubble may
+    // override it. One boolean per bubble would lose the override the moment the
+    // mode moved: reveal a hard line, flip the mode on and off while checking
+    // another, and the first line silently re-hides.
+
+    const SHOW_TEXT_KEY = "convo.showText";
+    let showText = localStorage.getItem(SHOW_TEXT_KEY) === "1";
+    const replies = [];      // {el, utt, override} for every partner bubble up
+
+    function revealed(reply) {
+      return reply.override === null ? showText : reply.override;
+    }
+
+    function paintReply(reply) {
+      const visible = revealed(reply);
+      reply.el.className = "bubble partner" + (visible ? "" : " unread");
+
+      const controls = document.createElement("div");
+      controls.className = "controls";
+
+      const replay = document.createElement("button");
+      replay.className = "replay";
+      replay.textContent = "🔊";
+      replay.title = "Play again";
+      replay.addEventListener("click", () => playReply(reply));
+
+      const reveal = document.createElement("button");
+      reveal.className = "reveal";
+      reveal.textContent = visible ? "🙈" : "👁";
+      reveal.title = visible ? "Hide the text" : "Show the text";
+      reveal.addEventListener("click", () => {
+        reply.override = !visible;
+        paintReply(reply);
+      });
+
+      controls.append(replay, reveal);
+      reply.el.replaceChildren(controls, ...(visible ? textRows(reply.utt) : []));
+    }
+
+    // Free to press after the first time — `speechCache` answers without a
+    // network call. A failure reveals the text instead of leaving a bubble with
+    // neither audio nor words, which is the dead end 🔊 and 👁 exist to prevent.
+    function playReply(reply) {
+      return speak(reply.utt.zh).catch(() => {
+        reply.override = true;
+        paintReply(reply);
+        setStatus("audio unavailable — showing the text");
+      });
+    }
+
+    // Turn an existing bubble (pending dots, usually) into a partner reply.
+    // `speak: false` for the bulk restore on load: replaying an old session's
+    // audio on every page load would be both startling and billable.
+    function renderReply(handle, utt, opts) {
+      opts = opts || {};
+      const reply = { el: handle.el, utt, override: null };
+      replies.push(reply);
+      paintReply(reply);
+      if (opts.scroll !== false && stuck) scrollToBottom("smooth");
+      if (opts.speak !== false) playReply(reply);
+      return reply;
+    }
+
+    function applyShowText() {
+      localStorage.setItem(SHOW_TEXT_KEY, showText ? "1" : "0");
+      showTextBtn.textContent = showText ? "🙈" : "👁";
+      showTextBtn.title = showText ? "Hide partner text" : "Show partner text";
+      // Retroactive: the mode is a property of the thread, not of new messages.
+      // Turning text on to review what was said and finding only the newest
+      // replies changed would read as a bug.
+      replies.forEach((reply) => paintReply(reply));
     }
 
     // Typed tone errors, marked the same way spoken ones are: a red underline on
@@ -1014,7 +1163,7 @@
               echo.render(transcript, { pronunciation: event.pronunciation });
             }
           } else if (event.stage === "reply") {
-            replyBubble().render(event.reply);
+            renderReply(replyBubble(), event.reply);
             // Only record a real exchange: an empty transcript means nothing was
             // recognized (the reply was a re-prompt), so it isn't part of history.
             if (transcript && transcript.zh) {
@@ -1111,7 +1260,7 @@
         echo.render(data.transcript, {
           toneErrors: data.annotation && data.annotation.tone_errors,
         });
-        pending.render(data.reply);
+        renderReply(pending, data.reply);
         renderTimings(data.timings, data.usage, performance.now() - startedAt);
         dialogue.push({ role: "user", zh: data.transcript.zh, pinyin: data.transcript.pinyin });
         dialogue.push({ role: "partner", zh: data.reply.zh, pinyin: data.reply.pinyin });
@@ -1230,7 +1379,16 @@
     // at the newest message in one instant jump, like reopening a chat app.
     function restoreThread() {
       for (const t of dialogue) {
-        renderLine(t.role, { zh: t.zh, pinyin: t.pinyin || "" }, { scroll: false });
+        const utt = { zh: t.zh, pinyin: t.pinyin || "" };
+        if (t.role === "partner") {
+          // Restored replies keep their controls but stay quiet: replaying a
+          // whole past session on every page load would be startling, and every
+          // line of it is a synthesis the server may have to pay for again.
+          renderReply(createBubble("partner", { scroll: false }), utt,
+                      { scroll: false, speak: false });
+        } else {
+          renderLine(t.role, utt, { scroll: false });
+        }
       }
       stuck = true;
       scrollToBottom("auto");
@@ -1241,11 +1399,21 @@
       dialogue = [];
       localStorage.removeItem(STORE_KEY);
       thread.replaceChildren();
+      // The bubbles are gone, so their reveal state and decoded audio are dead
+      // weight — and the Map is the one thing here that grows without bound.
+      replies.length = 0;
+      speechCache.clear();
       stuck = true;
       setStatus("new conversation");
     });
 
+    showTextBtn.addEventListener("click", () => {
+      showText = !showText;
+      applyShowText();
+    });
+
     restoreThread();
+    applyShowText();
     applyMode();
     initGate();
 

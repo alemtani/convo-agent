@@ -5,7 +5,7 @@ import os
 
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import ValidationError
 
@@ -15,9 +15,10 @@ from backend.models import (
     DialogueTurn,
     PasscodeRequest,
     TextTurnRequest,
+    TtsRequest,
 )
-from backend.speech import stt
-from backend.speech._recognizer import SpeechConfigError
+from backend.speech import stt, tts
+from backend.speech._azure import SpeechConfigError
 from backend.workers import conversation
 
 logger = logging.getLogger(__name__)
@@ -207,6 +208,34 @@ async def turn_text(req: TextTurnRequest) -> ConversationTurnResponse:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except conversation.ConversationError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
+@app.post("/api/tts")
+async def tts_route(req: TtsRequest) -> Response:
+    """Speak one line — the partner's reply, as slowed Mandarin MP3.
+
+    Its own endpoint rather than a stage of `/api/turn`, and keyed on the text
+    alone. That is what makes replay free: the client asks for the same line and
+    gets it from its own buffer, or from the server's cache, without the turn
+    ever growing by the length of a synthesis. It also means a reply the learner
+    never asks to hear again costs one call, not two.
+
+    Any upstream failure — canceled, timed out, missing credentials — is a 502,
+    because the client's response to all of them is the same: reveal the text.
+    Audio-only mode with no audio and no text is a dead session.
+    """
+    try:
+        audio = await tts.synthesize(req.text)
+    except (tts.TtsError, SpeechConfigError) as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    # Replay is the client's in-memory buffer and the cache above, by design.
+    # Nothing in between should hold learner audio.
+    return Response(
+        content=audio,
+        media_type="audio/mpeg",
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 class NoCacheStaticFiles(StaticFiles):

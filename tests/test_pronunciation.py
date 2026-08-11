@@ -15,7 +15,7 @@ import types
 import pytest
 
 from backend.models import PronunciationScore
-from backend.speech import _recognizer
+from backend.speech import _azure
 from backend.speech import pronunciation as pa
 
 
@@ -99,15 +99,15 @@ def _make_fake_speechsdk(result, recorder):
 @pytest.fixture
 def patched(monkeypatch):
     """One fake SDK serves both `pronunciation` (PA config + result parsing) and
-    `_recognizer` (the shared construction PA delegates to)."""
-    monkeypatch.setattr(_recognizer.config, "AZURE_SPEECH_KEY", "test-key")
-    monkeypatch.setattr(_recognizer.config, "AZURE_SPEECH_REGION", "test-region")
+    `_azure` (the shared construction PA delegates to)."""
+    monkeypatch.setattr(_azure.config, "AZURE_SPEECH_KEY", "test-key")
+    monkeypatch.setattr(_azure.config, "AZURE_SPEECH_REGION", "test-region")
 
     def install(result):
         recorder = {}
         fake = _make_fake_speechsdk(result, recorder)
         monkeypatch.setattr(pa, "speechsdk", fake)
-        monkeypatch.setattr(_recognizer, "speechsdk", fake)
+        monkeypatch.setattr(_azure, "speechsdk", fake)
         return recorder
 
     return install
@@ -123,7 +123,7 @@ async def test_builds_pa_request_against_the_transcript(patched):
 
     await pa.assess(b"FAKEWAV", "老师")
 
-    # PA-specific request shape (shared construction is covered in test_recognizer).
+    # PA-specific request shape (shared construction is covered in test_azure).
     assert recorder["reference_text"] == "老师"
     assert recorder["grading_system"] == "HundredMark"
     assert recorder["granularity"] == "Phoneme"
