@@ -90,9 +90,27 @@ uvicorn backend.main:app --reload --port <port>
 ./scripts/tunnel.sh stop
 ```
 
-**Raise a frontend PR → start a tunnel and check it on the phone.** Desktop
-Chromium is all the smoke suite covers; mobile Safari is the target device and
-differs where it matters (autoplay, `AudioContext` unlock, safe areas, keyboard).
+**Raise a PR that changes what the learner experiences → start a tunnel and check
+it on the phone.** The test is *"does this change the session?"*, not *"does this
+touch `frontend/`"*. Backend work reaches the learner just as directly:
+
+- **Anything that changes the prompt** — the system prompt, what goes in the
+  cached KB block, a new instruction or a new model. The suite asserts the
+  request we *build*; it cannot see that the partner now replies differently.
+- **Anything that changes the turn's shape** — new fields on the response, a
+  changed timeout or error path, a different failure the client has to render.
+- **Anything that changes the KB the partner reads** — new vocab, a scenario, a
+  raised band ceiling.
+
+A green suite plus a live check are answering different questions. Tests say the
+code does what we specified; a real turn on a real phone says the specification
+was any good — and a prompt change that lands *before* the prompt work that gives
+it meaning (a KB block the system prompt doesn't yet explain) is exactly the case
+tests are blind to.
+
+Mobile Safari is the target device and differs from the smoke suite's desktop
+Chromium where it matters (autoplay, `AudioContext` unlock, safe areas, keyboard),
+so a frontend PR still always earns a tunnel — it is now the floor, not the rule.
 
 State is keyed per Claude session and each session picks its own free port, so
 concurrent agents in this repo never collide or kill each other's tunnel. A
