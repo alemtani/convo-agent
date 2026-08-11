@@ -107,23 +107,35 @@ knowingly give up: a real vendor might well announce the price unasked.
 
 ---
 
-## The guardrail: at least one `request` slot
+## The guardrail: substance and an obstacle
 
-> **A scenario must have ≥ 1 `request` slot.** That is the whole rule.
+> **A scenario must have more than one slot, and at least one of them must be
+> `request`.**
 
-An earlier draft tried to enforce this as *"reject scenarios satisfiable in one
-turn."* That rule cannot be written, because **every** scenario is satisfiable in
-one turn — a strong learner says *我要三个水果，多少钱？* and clears three slots
-before the partner has spoken twice.
+Two conditions, because they catch different degenerate shapes and neither implies
+the other.
 
-But the *intent* survives, and it is information-theoretic rather than temporal. A
-request slot is an irreducible obstacle: **no amount of packing lets the learner
-know the price before the vendor says it.** The obstacle is "produce a question
-form and consume the answer," not "spend N turns." A learner who clears that in
-one turn has still done the thing.
+**`n_slots > 1` — substance.** A single-slot scenario is a one-exchange
+conversation by construction. *"Find out whether it rains tomorrow"* is
+明天下雨吗？ → 不下雨。 and it's over. That's a flashcard with a situation attached.
 
-A scenario with `inform` slots only — however many — is a vocabulary drill. That
-is what this rule rejects.
+**`n_request_slots ≥ 1` — an obstacle.** A scenario with `inform` slots only,
+however many, never makes the learner extract anything. That's a vocabulary drill.
+A request slot is the irreducible obstacle: **no amount of packing lets the learner
+know the price before the vendor says it.**
+
+### This does not contradict the one-turn clear
+
+An earlier draft tried to write the first condition as *"reject scenarios
+satisfiable in one turn."* That rule cannot be written — every scenario is
+satisfiable in one turn by a learner who packs (see
+[example 3](#worked-example-3--the-one-turn-clear)).
+
+The distinction: we reject scenarios whose **only** shape is one turn, and accept
+that a strong learner may clear a substantive scenario in one turn. The rule is a
+floor on the design, not a ceiling on the learner. `n_slots > 1` is a property of
+the authored artifact and checkable statically; "how many turns did this take" is
+a property of a session and none of the validator's business.
 
 ---
 
@@ -149,9 +161,17 @@ max_turns = n_slots + n_request_slots + 2
 | Scenario | slots | request | `max_turns` | slack over expected pacing |
 | --- | --- | --- | --- | --- |
 | fruit stall | 3 | 1 | 6 | 3 |
-| weather ("will it rain tomorrow") | 2 | 1 | 5 | 3 |
+| weather (will it rain tomorrow · is it cold) | 2 | 2 | 6 | 4 |
 | directions (station → route) | 3 | 2 | 7 | 4 |
 | ordering food (3 informs + total) | 4 | 1 | 7 | 3 |
+
+The tightest budget the guardrail permits is **5 turns** (2 slots, 1 request).
+
+Note the weather row: an earlier draft listed it as *"will it rain tomorrow"* with
+a hand-waved inform slot to reach 2. Under the guardrail that scenario is a single
+request slot and gets rejected, which is the rule doing its job — the fix is to
+give it real substance (two things to find out) rather than to invent a slot that
+isn't a distinct act of communication.
 
 **What kind of claim this is.** `max_turns` is a **pacing policy**, not a fact:
 derived as the default, overridable per topic *with a stated reason*, and if it
@@ -535,7 +555,7 @@ made to prevent, caught by a deterministic script instead of by a confused
 learner. 水果 (band 1) is the in-band choice. 香蕉 (3) and 老板 (3) fail the same
 way.
 
-And a scenario with no obstacle:
+Now the two degenerate shapes. A scenario with no obstacle:
 
 ```yaml
   slots:
@@ -546,13 +566,35 @@ And a scenario with no obstacle:
 ```
 
 ```
+ERROR shopping: 1 slot — a one-exchange scenario. Needs more than one.
 ERROR shopping: no request slots — the learner never has to extract anything.
-      This is a vocabulary drill, not a scenario.
+                This is a vocabulary drill, not a scenario.
 ```
 
-That error message *is* the fix for problem 1. It is enforced at authoring time by
-the same script that already guards vocabulary scope — consistent with how this
-repo guards the KB generally (`validate.py`, not pytest; see `CLAUDE.md`).
+Both rules fire. And the more interesting case, which trips only the first — a
+single *request* slot, so there is a genuine obstacle but nothing to sustain a
+conversation:
+
+```yaml
+  slots:
+    - id: rain
+      kind: request
+      description: "Find out whether it will rain tomorrow"
+      expressible_with: [明天, 下雨]
+```
+
+```
+ERROR weather: 1 slot — a one-exchange scenario. Needs more than one.
+```
+
+明天下雨吗？ → 不下雨。 and the session is over. The learner did extract something,
+so the obstacle rule passes — but there is no scenario here, only a question. This
+is the shape that most easily slips past an author writing an "easy" topic, which
+is why `n_slots > 1` is a separate rule rather than a consequence of the other.
+
+These messages *are* the fix for problem 1. Enforced at authoring time by the same
+script that already guards vocabulary scope — consistent with how this repo guards
+the KB generally (`validate.py`, not pytest; see `CLAUDE.md`).
 
 ---
 
@@ -561,7 +603,8 @@ repo guards the KB generally (`validate.py`, not pytest; see `CLAUDE.md`).
 | Rule | Catches |
 | --- | --- |
 | every `expressible_with` word ∈ `target_vocab`, at or below the ceiling | unachievable slot (the 苹果 case) |
-| **zero `request` slots** | vocabulary drill masquerading as a scenario |
+| **`n_slots > 1`** | one-exchange scenario — a flashcard with a situation attached |
+| **`n_request_slots ≥ 1`** | vocabulary drill masquerading as a scenario |
 | duplicate slot ids; cycle in `depends_on`; `depends_on` naming an unknown id | malformed graph |
 | an authored `max_turns` override below the derived value, or without a reason | pacing override that starves the goal |
 | `situation` / `goal` non-empty and ASCII-only | a Chinese task description a band-1 learner can't read |
@@ -609,7 +652,7 @@ catch structural regressions, not to certify teaching quality.
 
 | Issue | Scope | Change from original plan |
 | --- | --- | --- |
-| **#28** | scenario slots in `topic.md`, five `validate.py` rules, derived `max_turns`, `kb.py` parsing, migrate `greetings` | **Grows.** Now the load-bearing PR of the milestone. |
+| **#28** | scenario slots in `topic.md`, six `validate.py` rules, derived `max_turns`, `kb.py` parsing, migrate `greetings` | **Grows.** Now the load-bearing PR of the milestone. |
 | **#30** | sketch worker — flavour only (opening line, persona, stall contents) | **Shrinks.** Criteria come from the KB; nothing that must not drift passes through a model. |
 | **#31** | slot tracker + pure-Python termination (three end conditions) + state-based situational pressure | **Absorbs** #32's `goal_met`. Scalar `goal_progress` replaced by an id set; both turn thresholds retired. |
 | **#32** | verdict worker — explains a *computed* outcome, plus the in-band model exchange | **Explains rather than decides.** |

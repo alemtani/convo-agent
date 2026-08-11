@@ -602,8 +602,9 @@ in Python, not a model's opinion. Consequently:
   A scalar cannot name the missing fact, so it cannot drive a useful hint.
 - **Bounding is state-driven**, which retires both the soft `target_turns` and any
   notion of a minimum (see *Conversation Bounding* above). The authoring guardrail
-  that stops a no-obstacle scenario is not a turn count but a structural rule:
-  **at least one `request` slot** — an obstacle no amount of packing can bypass.
+  that stops a degenerate scenario is not a turn count but two structural rules:
+  **more than one slot** (substance) and **at least one `request` slot** (an
+  obstacle no amount of packing can bypass).
 - The end-of-session worker **explains a computed verdict** rather than rendering
   one, which removes judge leniency bias structurally instead of prompting
   against it.
