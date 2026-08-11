@@ -181,3 +181,8 @@ reverse).
 See `docs/DESIGN.md` for the full architecture spec, data flow, data models,
 agent/caching design, session lifecycle, end-to-end scenarios, MVP scope, build
 order, and technical risk assessment.
+
+See `docs/SCENARIOS.md` for the goal-oriented scenario design (M2): slot-based
+goals, state-driven bounding with one derived `max_turns`, the three-tier slot
+tracker / termination / verdict split, `validate.py` guardrails, and four worked
+traces (happy, unhappy, one-turn clear, authoring rejection).

@@ -101,6 +101,11 @@ target_vocab: [家人, 妈妈, 爸爸, 哥哥, 姐姐, 几, 口]
 related: [greetings, self-intro]
 ```
 
+Frontmatter also carries the topic's **scenario seed** — the situation, the
+learner-visible goal, and the goal's machine-checkable form as a set of named
+binary slots. That format, and how the runtime uses it to bound a session and
+grade it, is specified in **[`SCENARIOS.md`](SCENARIOS.md)**.
+
 A topic does **not** declare an HSK band. The band ceiling ("what vocab is fair
 game") is a property of the *learner*, not the topic — it's universal
 (`config.HSK_BAND_CEILING`) and applies to every topic at once. A topic's own
@@ -299,28 +304,46 @@ but always empty.
 
 ## Conversation Bounding & Session Lifecycle
 
-A session has an arc and a clean end. Two thresholds set in the sketch:
+A session has an arc and a clean end. Once scenarios land (M2), bounding is driven
+by **slot state**, not by a turn schedule — the full rules are in
+[`SCENARIOS.md`](SCENARIOS.md); the summary is here because it supersedes the
+`target`/`max` scheme this section originally specified.
+
+One derived threshold, the cap:
 
 ```
-target_turns ≈ 10   # soft — begin steering toward goodbye
-max_turns    ≈ 16   # hard — force the closing turn
+max_turns = n_slots + n_request_slots + 2
 ```
 
-(A "turn" = one user utterance + one partner reply.)
+(A "turn" = one user utterance + one partner reply. The opening line does not
+consume budget.)
+
+There is deliberately **no minimum and no soft target.** Both were turn counters
+standing in for a state question, and slot state answers it directly: a scenario's
+physical floor is one turn (a strong learner can pack every slot into a single
+utterance), and steering toward 再见 while a slot is outstanding is
+counterproductive.
 
 Enforcement, caching-safe:
 
 - The stateless server derives the **turn index from the length of the submitted
   history** — no server counter.
 - The orchestrator injects a **phase hint** *after* the cache breakpoint (volatile,
-  so the stable prefix keeps hitting):
-  - `turn ≥ target_turns − 2` → "begin wrapping up; steer toward 再见."
-  - `turn ≥ max_turns` → "final turn; say goodbye." Worker sets
-    `should_give_feedback: true`; session marked **complete**.
+  so the stable prefix keeps hitting). It carries `missing: [slot_ids]` and an
+  instruction to withhold every unfilled request slot's answer. Pressure comes from
+  the *situation* being unresolved, never from the partner asking whether the
+  learner has questions.
+- Three end conditions, all pure Python: all slots filled; `turn == max_turns`
+  (forced close); or two consecutive learner closes (disengagement — better to fail
+  and read the verdict than be held in a scene you have left).
 
 ```
-active ──(turn ≥ target−2)──► wrapping ──(turn ≥ max, or partner says goodbye)──► complete
+active ──(missing ≠ ∅, turn ≥ max−1)──► wrapping ──┬─(all slots filled)──────► complete
+                                                    ├─(turn ≥ max)───────────► complete
+                                                    └─(2 learner closes)─────► complete
 ```
+
+Before M2 lands, `active → wrapping → complete` runs on `max_turns` alone.
 
 On **complete**, the client disables the mic, runs the final feedback round, and
 the proficiency writeback happens — then offers "Start new session." Every session
@@ -488,7 +511,7 @@ cache-hits 🟢, so the redo is cheap.
 
 ### Critical D — bounded session close
 
-As `turn` approaches `target_turns`, **[S]** injects a wrap-up phase hint (post-breakpoint,
+As `turn` approaches `max_turns`, **[S]** injects a wrap-up phase hint (post-breakpoint,
 cache intact); the partner steers toward 再见. At `max_turns` the hint forces a goodbye and
 `should_give_feedback: true`. **[C]** marks the session **complete**, disables the mic, runs
 the final feedback round, **[S]** writes 💾 proficiency + a `session_summary`, and "Start new
@@ -513,7 +536,9 @@ from completed feedback rounds is already 💾, so learning progress survives.
 - 10 HSK 3.0 (bands 1–2) topics authored as markdown KBs.
 - Accumulating covered-set with recency + weakness + focus weighting.
 - Feedback every 3 turns and at session end → proficiency writeback.
-- Bounded sessions (`target`/`max` turns) with a clean close.
+- Goal-oriented scenarios: authored slot goals, derived `max_turns`, computed
+  verdict + in-band model answer ([`SCENARIOS.md`](SCENARIOS.md)).
+- Bounded sessions — slot-state-driven, one derived cap — with a clean close.
 - Client-side turn redo.
 - DM-style mobile PWA with push-to-talk.
 - Passcode auth; deployed to Fly/Railway, reachable from a phone.
@@ -547,7 +572,7 @@ demoable until late. Per-phase how-to-validate steps live in the README's
 | 3a | `kb.py` + conversation worker, **text-only**; cached prefix (opening line hardcoded) | Text in → real Claude greeting reply + annotation; **cache hits proven**. |
 | 3b | ✅ Wire speech (2) into the worker (3a); populate `turn_annotation.tone_errors` from PA and surface per-syllable accuracy underlines in the frontend. (The PA spike found no reliable *produced* tone, so we show accuracy, not expected-vs-actual numbers — `said` stays `SAID_UNKNOWN`. Multi-turn history was pulled forward here.) | Speak → real Mandarin partner reply + per-syllable tone-accuracy underlines; the partner remembers prior turns. |
 | 4 | Multi-turn (client-held transcript, ~3 turns) + feedback worker (in-session text, **no persistence**) | A short greetings exchange with coaching feedback. |
-| 5 | Full bounding (`active→wrapping→complete`, phase hints) + sketch worker (replaces hardcoded opening) | A complete, naturally-bounded session start→goodbye. |
+| 5 | Scenario slots + derived `max_turns` + slot tracker + state-driven bounding (`active→wrapping→complete`, three end conditions) + sketch worker (flavour only, replaces hardcoded opening) + verdict worker — see [`SCENARIOS.md`](SCENARIOS.md) | A scenario with a stated goal, bounded start→goodbye, ending in a pass/fail verdict and a model answer when failed. |
 | 6 | Turn redo (client-side; server stays stateless) | Redo a turn / redo the conversation. |
 | 7 | `db.py` + `profile.py`: covered-set + proficiency writeback + weighting | Progress persists across sessions. |
 | 8 | Passcode auth gate + DM PWA + deploy | Real session, gated, on a phone. |
@@ -562,23 +587,30 @@ Between 3b and 4 sit fix workstreams for the problems the Phase-3b loop surfaced
 — text-only mode landed in Phase 3b's wake; turn latency and chat UX are tracked
 as GitHub issues rather than here, since they're work items, not design.
 
-**Deferred: goal-oriented ("targeted convo") sessions (Phase 4/5).** A session
-should present a clear objective up front — e.g. "introduce yourself and learn
-your partner's name" — and the learner uses their Chinese to navigate the
-situation and accomplish it. Today's sessions are open-ended interlocutor chat
-with a loose arc; nothing tells the learner what success looks like, and nothing
-grades it.
+**Goal-oriented ("targeted convo") sessions — specified in
+[`SCENARIOS.md`](SCENARIOS.md).** A session should present a clear objective up
+front and let the learner use their Chinese to accomplish it. The design in *this*
+document grades **coherence + tone accuracy only**; goal completion is a genuinely
+new success axis, and it turned out to need more than a bolt-on.
 
-The raw material is already authored: `kb/zh/greetings/topic.md` has an explicit
-**"Conversation goal"** section, and `dialogues.md` carries beats + a close
-condition for the sketch generator. But the design above grades **coherence +
-tone accuracy only** — goal completion is a genuinely new success axis. Layer it
-onto the two planned workers rather than inventing new machinery: the **Phase-5
-sketch worker** encodes the topic's stated goal as the arc's target and surfaces
-it at session start; the **Phase-4 feedback worker** grades goal completion when
-the session hits `complete`, alongside the existing coaching feedback. The
-carrying seams already exist — the sketch spec, `TurnAnnotation`,
-`should_give_feedback`, and `session_summary.aggregate_scores_json`.
+The short version of that spec, since it changes three things above. A scenario's
+goal is authored as a **set of named binary slots** — *inform* slots the learner
+must convey, *request* slots they must extract — so completion is a set comparison
+in Python, not a model's opinion. Consequently:
+
+- The per-turn worker returns a **set of slot ids** rather than a progress score.
+  A scalar cannot name the missing fact, so it cannot drive a useful hint.
+- **Bounding is state-driven**, which retires both the soft `target_turns` and any
+  notion of a minimum (see *Conversation Bounding* above). The authoring guardrail
+  that stops a degenerate scenario is not a turn count but two structural rules:
+  **more than one slot** (substance) and **at least one `request` slot** (an
+  obstacle no amount of packing can bypass).
+- The end-of-session worker **explains a computed verdict** rather than rendering
+  one, which removes judge leniency bias structurally instead of prompting
+  against it.
+
+Because slots are authored, they ride in the already-cached KB block and add no
+new cache surface; the sketch worker shrinks to flavour only.
 
 **Deferred UX polish (Phase 2).** Add a live **mic-level meter** during
 push-to-talk recording — right now the only "is it capturing?" feedback is the
