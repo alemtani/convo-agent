@@ -76,6 +76,30 @@ source .venv/bin/activate
 uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
+### Testing on a real phone
+
+A phone cannot use the mic against `http://<mac-ip>:8000` — the mic API needs a
+secure context, and browsers count https:// and localhost but not a LAN IP. Use
+a Cloudflare quick tunnel to give the local server a real HTTPS origin:
+
+```bash
+./scripts/tunnel.sh start          # prints the https:// URL and the port to serve on
+uvicorn backend.main:app --reload --port <port>
+./scripts/tunnel.sh status         # url + port
+./scripts/tunnel.sh stop
+```
+
+**Raise a frontend PR → start a tunnel and check it on the phone.** Desktop
+Chromium is all the smoke suite covers; mobile Safari is the target device and
+differs where it matters (autoplay, `AudioContext` unlock, safe areas, keyboard).
+
+State is keyed per Claude session and each session picks its own free port, so
+concurrent agents in this repo never collide or kill each other's tunnel. A
+**SessionEnd hook** runs `tunnel.sh stop`, so a tunnel cannot outlive the session
+that opened it — the hook is the guarantee, not this convention, because an
+abrupt exit gives Claude no turn in which to clean up. Tunnels started by hand
+with `cloudflared` directly are outside that guarantee.
+
 ## Testing & verification
 
 Run the suite: `pytest -q` (repo root, venv active). A **Stop hook**

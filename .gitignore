@@ -35,3 +35,6 @@ frontend/dist/
 # OS
 .DS_Store
 Thumbs.db
+
+# Local dev tunnel runtime state
+.tunnel/
