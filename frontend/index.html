@@ -221,7 +221,12 @@
       justify-content: center;
       gap: 0.75rem;
       padding: 1.5rem;
-      background: #fff;
+      /* Canvas/CanvasText, not #fff/#000. The page opts into `color-scheme:
+         light dark`, so on a dark-mode phone a hardcoded white panel inherits
+         the near-white CanvasText and renders white-on-white — an invisible
+         passcode field on the one screen you cannot skip. */
+      background: Canvas;
+      color: CanvasText;
     }
     #gate.show { display: flex; }
     #gate h2 { margin: 0; font-size: 1.1rem; }
@@ -230,8 +235,10 @@
       flex: 1;
       padding: 0.6rem 0.75rem;
       font-size: 1rem;         /* ≥16px or iOS Safari zooms the page on focus */
-      border: 1px solid #ccc;
+      border: 1px solid rgba(127, 127, 127, 0.4);
       border-radius: 0.5rem;
+      background: transparent;
+      color: inherit;
     }
     #gate button { padding: 0.6rem 1rem; font-size: 1rem; border-radius: 0.5rem; }
     #gate-error { color: #d33; font-size: 0.85rem; min-height: 1.2em; }
@@ -301,6 +308,131 @@
       lastSampleCount: null, // samples handed to the encoder on release
       warm: () => !!graph,
     };
+
+    // --- Playback audio ----------------------------------------------------
+    //
+    // The seam M4's partner audio will call, landed ahead of it on purpose.
+    //
+    // Safari lets an AudioContext leave "suspended" only if resume() runs
+    // inside a live user gesture. M4's audio arrives seconds after the
+    // push-to-talk release, with no gesture on the stack, so a context created
+    // at that moment starts locked and stays silent. One context, unlocked on
+    // the first interaction and reused all session, is the fix.
+    //
+    // The mic graph's context does not cover this. Unlock state is per
+    // AudioContext *instance*; that one is built at 16 kHz for capture, and it
+    // is closed on pagehide and whenever you switch to text mode. This one is
+    // separate, output-only and long-lived.
+    //
+    // iOS also re-suspends a running context on interruption — an incoming
+    // call, the silent switch, backgrounding. `statechange` re-arms the gesture
+    // listeners so the next tap recovers, instead of the session going quiet
+    // for good with no way back.
+
+    const UNLOCK_EVENTS = ["pointerdown", "touchend", "keydown"];
+    let playCtx = null;
+
+    function audioCtx() {
+      if (playCtx) return playCtx;
+      const Ctor = window.AudioContext || window.webkitAudioContext;
+      if (!Ctor) return null;
+      // No sampleRate hint: let the device pick its native rate so playback
+      // isn't resampled twice. decodeAudioData/createBuffer handle the rest.
+      playCtx = new Ctor();
+      playCtx.addEventListener("statechange", () => {
+        if (playCtx && playCtx.state === "suspended") armUnlock();
+      });
+      return playCtx;
+    }
+
+    function unlock() {
+      const ctx = audioCtx();
+      if (!ctx) return;
+      if (ctx.state !== "running") ctx.resume().catch(() => {});
+      // Some Safari versions want a node actually started inside the gesture,
+      // not just resume(). A one-frame silent buffer is the cheapest thing
+      // that satisfies that and is inaudible if it wasn't needed.
+      try {
+        const src = ctx.createBufferSource();
+        src.buffer = ctx.createBuffer(1, 1, ctx.sampleRate);
+        src.connect(ctx.destination);
+        src.start(0);
+      } catch (_) { /* already unlocked, or the call is unsupported */ }
+    }
+
+    function onUnlockGesture() {
+      // Remove all three by hand rather than relying on `once`: firing one
+      // would otherwise leave the other two armed for the rest of the session.
+      UNLOCK_EVENTS.forEach((ev) => window.removeEventListener(ev, onUnlockGesture, true));
+      unlock();
+    }
+
+    function armUnlock() {
+      UNLOCK_EVENTS.forEach((ev) => window.addEventListener(ev, onUnlockGesture, true));
+    }
+
+    // Play a decoded buffer. Resolves false rather than throwing when the
+    // context is missing or still locked — callers are timers and fetch
+    // callbacks with nowhere to report an exception.
+    function playBuffer(buf) {
+      const ctx = audioCtx();
+      if (!ctx || ctx.state !== "running") return Promise.resolve(false);
+      return new Promise((resolve) => {
+        const src = ctx.createBufferSource();
+        src.buffer = buf;
+        src.connect(ctx.destination);
+        src.onended = () => resolve(true);
+        src.start();
+      });
+    }
+
+    // Float32 in [-1,1], or Int16 as Azure hands it back.
+    async function playPcm(samples, rate) {
+      const ctx = audioCtx();
+      if (!ctx || !samples || !samples.length) return false;
+      const f32 = samples instanceof Float32Array
+        ? samples
+        : Float32Array.from(samples, (v) => v / 32768);
+      const buf = ctx.createBuffer(1, f32.length, rate || ctx.sampleRate);
+      buf.copyToChannel(f32, 0);
+      return playBuffer(buf);
+    }
+
+    async function playUrl(url) {
+      const ctx = audioCtx();
+      if (!ctx) return false;
+      const res = await fetch(url);
+      return playBuffer(await ctx.decodeAudioData(await res.arrayBuffer()));
+    }
+
+    function playTone(freq, ms) {
+      const ctx = audioCtx();
+      if (!ctx || ctx.state !== "running") return false;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      gain.gain.value = 0.1;
+      osc.frequency.value = freq || 880;
+      osc.connect(gain).connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + (ms || 200) / 1000);
+      return true;
+    }
+
+    window.__audio = {
+      state: () => (playCtx ? playCtx.state : null),
+      playPcm, playUrl, playTone,
+      // The manual iOS check for issue #27. Run `__audio.probe()` in the Safari
+      // console, then leave the phone alone: the tone fires from a timer with
+      // no gesture on the stack, which is precisely what M4 will do. Silence
+      // means the unlock did not hold.
+      probe: (delayMs) => setTimeout(() => playTone(880, 200), delayMs || 4000),
+      // Diagnostics for tests/smoke/, like window.__convo above: there is no
+      // way to make a desktop browser deliver iOS's interruption, and the
+      // recovery path is the part most likely to be silently wrong.
+      _suspend: () => (playCtx ? playCtx.suspend() : Promise.resolve()),
+    };
+
+    armUnlock();
 
     // Stateless server: the client holds the running transcript and resubmits it
     // each turn so the partner has memory. Each entry is {role, zh, pinyin}; we
