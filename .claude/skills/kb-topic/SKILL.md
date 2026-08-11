@@ -32,12 +32,52 @@ ships it via a PR.
 
 ```
 kb/zh/<id>/
-  topic.md      # frontmatter (id, display_name, target_vocab, proper_names, related) + overview
+  topic.md      # frontmatter (id, display_name, target_vocab, proper_names, related, scenario) + overview
   vocab.md      # curated tables: core words, compositional phrases, question words
   grammar.md    # minimal patterns, each using only vocab.md words
   dialogues.md  # 汉字 + generated pinyin seed exchanges
 ```
 Model the shape on `kb/zh/greetings/` — it is the reference example.
+
+## The `scenario:` block
+
+Every topic carries an authored goal, as **state code can check** rather than
+prose a model has an opinion about. Full design: `docs/SCENARIOS.md`.
+
+```yaml
+scenario:
+  situation: "You're at a fruit stall. The vendor greets you."   # English
+  goal: "Buy three pieces of fruit, and find out what they cost." # English
+  slots:
+    - id: item
+      kind: inform            # the learner must convey this
+      description: "Say you want fruit"
+      expressible_with: [水果, 要, 买]
+    - id: price
+      kind: request           # the learner must extract this
+      description: "Find out what they cost"
+      expressible_with: [多少, 钱]
+      depends_on: [item]
+```
+
+Authoring rules, all enforced by `validate.py`:
+
+1. **More than one slot, and at least one `request` slot.** One slot is a
+   flashcard with a situation attached; informs only is a vocabulary drill. A
+   `request` slot is the irreducible obstacle — no packing lets the learner know
+   the price before the vendor says it.
+2. **`situation` and `goal` are English.** A band-1 learner cannot read a Chinese
+   task description.
+3. **Every `expressible_with` word is in `target_vocab` and in band.** This is the
+   achievability check: "buy three 苹果" is rejected because 苹果 is band 3. It is a
+   hint to the extractor, *not* a string matcher — never write it as a phrase to
+   match.
+4. **Author no turn counts.** The cap derives as
+   `n_slots + n_request_slots + 2`, with the coefficients in `kb/zh/pacing.json`
+   — retune pacing there, never per topic. An override needs `max_turns` **and**
+   `max_turns_reason`, and may only ever raise the cap.
+5. `depends_on` is optional and feeds one consumer: the tracker's sanity guard
+   (a price credited before the item was named is a hallucination signal).
 
 ## Add a new topic
 
@@ -50,8 +90,9 @@ Model the shape on `kb/zh/greetings/` — it is the reference example.
 5. Write `dialogues.md` 汉字 lines (only in-scope words + `proper_names`). Then
    generate the pinyin line under each:
    `python kb/zh/_tools/annotate_pinyin.py kb/zh/<id>/vocab.md "<汉字 line>"`
-6. Write `topic.md` (frontmatter + overview). Declare any `proper_names` used in
-   dialogues (names are often out-of-HSK, e.g. 李/明, so they must be whitelisted).
+6. Write `topic.md` (frontmatter + overview + `scenario:` block). Declare any
+   `proper_names` used in dialogues (names are often out-of-HSK, e.g. 李/明, so
+   they must be whitelisted).
 7. Add the topic row to `kb/zh/index.md`.
 8. **Validate:** `python kb/zh/_tools/validate.py kb/zh/<id>` — fix every ERROR.
 9. Deliver via PR (see CLAUDE.md "Delivery").
@@ -76,4 +117,7 @@ Edit `band_ceiling` in `kb/zh/_hsk/ceiling.json`, then
 ## Tooling deps
 
 `pip install -r kb/zh/_tools/requirements.txt` (pypinyin; `build.py` and
-`validate.py` are stdlib-only).
+`validate.py` are stdlib-only). `validate.py` imports `backend.kb` for the
+frontmatter parser, so the guardrail reads a topic exactly as the service will —
+run it from the repo root. That import runs one way only: authoring tools may
+import `backend`, never the reverse.

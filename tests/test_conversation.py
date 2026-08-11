@@ -14,7 +14,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from backend import config
+from backend import config, kb
 from backend.models import (
     ConversationResult,
     SpokenConversationResult,
@@ -73,6 +73,33 @@ def test_forgiveness_literal_is_in_frozen_block_not_volatile():
     # The learner's words never leak into the cached system prefix.
     for block in req["system"]:
         assert "我叫小明" not in block["text"]
+
+
+def test_scenario_rides_the_cached_prefix_not_the_per_turn_messages():
+    """M2: authored slots are frozen KB, so they cost cached tokens once.
+
+    They are authored — they cannot change mid-session — so they belong inside
+    the KB block behind the breakpoint. (What is *volatile* is which slots are
+    still outstanding; that arrives with the tracker in #31 and must stay out of
+    this prefix.) Asserted on the real greetings block, because the point is that
+    the loader put it there.
+    """
+    real_kb = kb.load_kb_block("greetings")
+    req = conversation.build_request(
+        kb_block=real_kb,
+        sketch=SKETCH,
+        dialogue=[{"role": "user", "zh": "你好"}],
+        user_text="我叫小明",
+        forgiveness_level=0.8,
+        want_reading=True,
+    )
+    assert "# SCENARIO" in req["system"][1]["text"]
+    assert "Find out their name" in req["system"][1]["text"]
+    # Still cached as one frozen unit: the breakpoint sits after the sketch.
+    assert "cache_control" not in req["system"][1]
+    assert req["system"][2]["cache_control"] == {"type": "ephemeral"}
+    for message in req["messages"]:
+        assert "SCENARIO" not in message["content"]
 
 
 def test_model_is_held_fixed():

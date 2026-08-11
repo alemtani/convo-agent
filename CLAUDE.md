@@ -59,6 +59,7 @@ backend/
   __init__.py
 kb/zh/                 # knowledge base (git-versioned markdown)
   index.md
+  pacing.json          # scenario turn-cap coefficients (consumed by kb.py)
   <topic>/{topic,vocab,grammar,dialogues}.md
 frontend/              # mobile-first PWA (DM thread, push-to-talk, localStorage)
 tests/                 # pytest; mirrors backend/ modules; fixtures/ holds recorded responses
@@ -172,9 +173,18 @@ guardrail is `kb/zh/_tools/validate.py` (run by the skill and by hand), **not** 
 pytest suite — the Stop-hook test gate is for `backend/` correctness only. Tools:
 `kb/zh/_hsk/build.py` (regenerate the pinned `word→band` index),
 `kb/zh/_tools/annotate_pinyin.py` (dialogue pinyin from curated vocab),
-`kb/zh/_tools/validate.py` (scope/membership guardrail). The band ceiling is
-universal and lives in `kb/zh/_hsk/ceiling.json` (consumed by `config`, never the
-reverse).
+`kb/zh/_tools/validate.py` (scope/membership + scenario guardrail). The band
+ceiling is universal and lives in `kb/zh/_hsk/ceiling.json` (consumed by
+`config`, never the reverse); scenario pacing coefficients live the same way in
+`kb/zh/pacing.json` (consumed by `kb.py`).
+
+`validate.py` imports `backend.kb` for the `topic.md` parser, so the guardrail
+reads a topic exactly as the service will. That is the one coupling and it runs
+**one way** — authoring tools may import `backend`, never the reverse. Its
+scenario rules do have pytest coverage (`tests/test_kb_validate.py`), which is
+not a contradiction of the line above: those tests exercise *the validator*
+against deliberately broken fixtures under `tests/fixtures/kb_scenarios/`, and
+assert nothing about KB content.
 
 ## Design reference
 
