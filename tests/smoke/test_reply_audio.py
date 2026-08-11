@@ -193,7 +193,7 @@ def test_a_blocked_playback_is_a_failure_not_a_silence(page):
     """
     load(page)
     _send_text(page)                     # primes the cache; no network below
-    page.evaluate("window.__audio._suspend()")
+    page.evaluate("window.__audio._close()")
 
     outcome = page.evaluate(
         "window.__audio.speak('%s').then(() => 'played', (e) => e.blocked ? 'blocked' : 'other')"
@@ -207,13 +207,33 @@ def test_a_blocked_playback_reveals_the_text(page):
     """Same recovery as a failed synthesis: words beat silence."""
     load(page)
     bubble = _send_text(page)
-    page.evaluate("window.__audio._suspend()")
+    page.evaluate("window.__audio._close()")
 
-    # 🔊 from script, so no gesture re-arms the unlock mid-test.
+    # 🔊 from script, so no gesture unlocks the context mid-test.
     page.evaluate("document.querySelector('.bubble.partner button.replay').click()")
 
     expect(bubble.locator(".zh")).to_have_text(REPLY_ZH)
     expect(page.locator("#status")).to_contain_text("silent switch")
+
+
+def test_a_suspended_context_recovers_at_play_time(page):
+    """The iPhone bug, as close as Chromium can get to it.
+
+    iOS suspends this context when `getUserMedia` reconfigures the audio
+    session, and the suspension lands *after* the tap that caused it — so the
+    reply arrives, seconds later, with a suspended context and no gesture on the
+    stack. Playback has to recover on its own rather than wait for a tap that
+    is not coming.
+    """
+    load(page)
+    _send_text(page)
+    page.wait_for_function("window.__audio._plays() === 1")
+    page.evaluate("window.__audio._suspend()")
+
+    played = page.evaluate("window.__audio.speak('%s').then(() => true, () => false)" % REPLY_ZH)
+
+    assert played is True
+    assert page.evaluate("window.__audio.state()") == "running"
 
 
 def test_a_failed_synthesis_leaves_the_thread_usable(page):

@@ -355,6 +355,19 @@
     // last step before the device, and the one autoplay can silently skip.
     let plays = 0;
 
+    // A timestamped trace of what happened to the context, for the one thing no
+    // desktop browser can answer: whether the unlock held on a real iPhone.
+    // Bounded, and read from the Safari console via `__audio._log()`.
+    const audioLog = [];
+    function note(what) {
+      audioLog.push({
+        t: Math.round(performance.now()),
+        what,
+        state: playCtx ? playCtx.state : null,
+      });
+      if (audioLog.length > 60) audioLog.shift();
+    }
+
     function audioCtx() {
       if (playCtx) return playCtx;
       const Ctor = window.AudioContext || window.webkitAudioContext;
@@ -363,6 +376,7 @@
       // isn't resampled twice. decodeAudioData/createBuffer handle the rest.
       playCtx = new Ctor();
       playCtx.addEventListener("statechange", () => {
+        note("statechange");
         if (playCtx && playCtx.state === "suspended") armUnlock();
       });
       return playCtx;
@@ -371,7 +385,9 @@
     function unlock() {
       const ctx = audioCtx();
       if (!ctx) return;
-      if (ctx.state !== "running") ctx.resume().catch(() => {});
+      if (ctx.state === "running") return;    // idempotent: every tap may call it
+      note("unlock");
+      ctx.resume().catch(() => {});
       // Some Safari versions want a node actually started inside the gesture,
       // not just resume(). A one-frame silent buffer is the cheapest thing
       // that satisfies that and is inaudible if it wasn't needed.
@@ -383,23 +399,44 @@
       } catch (_) { /* already unlocked, or the call is unsupported */ }
     }
 
+    // Armed for the whole session, not removed after the first firing.
+    //
+    // That was the bug behind "no sound on iPhone". iOS suspends this context
+    // whenever the audio session is reconfigured, and `getUserMedia` does that
+    // on every mic press — so the suspension lands *after* the tap that caused
+    // it. A one-shot unlock plus a statechange re-arm therefore recovers on the
+    // *next* gesture, and the next thing to happen here is the reply arriving
+    // with no gesture on the stack. Staying armed makes every tap a recovery
+    // point instead; `unlock()` returns immediately when already running, so
+    // leaving three listeners registered costs nothing.
     function onUnlockGesture() {
-      // Remove all three by hand rather than relying on `once`: firing one
-      // would otherwise leave the other two armed for the rest of the session.
-      UNLOCK_EVENTS.forEach((ev) => window.removeEventListener(ev, onUnlockGesture, true));
       unlock();
     }
 
     function armUnlock() {
+      // Re-registering the same function+capture is a no-op, so `statechange`
+      // may call this as often as it likes.
       UNLOCK_EVENTS.forEach((ev) => window.addEventListener(ev, onUnlockGesture, true));
     }
 
     // Play a decoded buffer. Resolves false rather than throwing when the
     // context is missing or still locked — callers are timers and fetch
     // callbacks with nowhere to report an exception.
-    function playBuffer(buf) {
+    async function playBuffer(buf) {
       const ctx = audioCtx();
-      if (!ctx || ctx.state !== "running") return Promise.resolve(false);
+      if (!ctx) return false;
+      if (ctx.state !== "running") {
+        // Last resort, with no gesture on the stack. Safari may refuse, and
+        // that is a fine outcome — the caller reveals the text. But when the
+        // context was suspended by the *mic session* rather than by autoplay
+        // policy, this is all it takes, and that is the common case here.
+        note("resume-at-play");
+        try { await ctx.resume(); } catch (_) { /* refused; fall through */ }
+      }
+      if (ctx.state !== "running") {
+        note("blocked");
+        return false;
+      }
       plays += 1;
       return new Promise((resolve) => {
         const src = ctx.createBufferSource();
@@ -502,6 +539,12 @@
       _suspend: () => (playCtx ? playCtx.suspend() : Promise.resolve()),
       _plays: () => plays,
       _cached: () => speechCache.size,
+      _log: () => audioLog,
+      // Close it for good: the one state `resume()` cannot recover, which is
+      // how the smoke suite stands in for a device that refuses to play. A
+      // *suspended* context is recoverable in Chromium, so suspending there
+      // would test the happy path while claiming to test the sad one.
+      _close: () => (playCtx ? playCtx.close() : Promise.resolve()),
     };
 
     armUnlock();
@@ -1442,7 +1485,12 @@
 
     // Hold-to-talk: press to start, release (or leave the button) to send.
     talk.addEventListener("pointerdown", (e) => { e.preventDefault(); startRecording(); });
-    talk.addEventListener("pointerup", (e) => { e.preventDefault(); stopRecording(); });
+    // Unlock on *release*, explicitly. This is the last user gesture before the
+    // reply arrives, and by now `getUserMedia` has already done whatever it was
+    // going to do to the audio session — so a context suspended by the press is
+    // running again well before there is anything to play. `touchend` covers
+    // this on a phone; naming it here covers a pointer that isn't a finger.
+    talk.addEventListener("pointerup", (e) => { e.preventDefault(); unlock(); stopRecording(); });
     talk.addEventListener("pointercancel", () => stopRecording());
   </script>
 </body>
