@@ -80,6 +80,62 @@ lasts `SESSION_TTL_DAYS` (default 30). Rotating `APP_PASSCODE` invalidates every
 outstanding session — the signing key is derived from it, which is the only
 revocation lever a single shared credential has.
 
+## Deploying (Fly.io)
+
+The mic needs a secure context, so this is what makes the app reachable from a
+phone at all. `Dockerfile` and `fly.toml` are checked in; `fly launch` and
+`fly secrets set` touch your Fly account and are run by hand, not by CI.
+
+1. **Install flyctl and sign in** — see
+   [fly.io/docs/flyctl/install](https://fly.io/docs/flyctl/install/), then:
+
+   ```bash
+   fly auth login
+   ```
+
+2. **Create the app** (this repo's `fly.toml` already has the rest of the
+   config — region, health check, no volume):
+
+   ```bash
+   fly apps create <your-app-name>
+   ```
+
+   Edit `app = "convo-agent"` in `fly.toml` to `<your-app-name>` if you picked
+   something else.
+
+3. **Set secrets** — same four keys as `.env`, never committed:
+
+   ```bash
+   fly secrets set \
+     APP_PASSCODE=<a-passcode-only-you-know> \
+     ANTHROPIC_API_KEY=sk-ant-... \
+     AZURE_SPEECH_KEY=your-azure-speech-key \
+     AZURE_SPEECH_REGION=eastus
+   ```
+
+   `APP_PASSCODE` is the one that matters most here: without it the deploy is
+   open to anyone who finds the hostname (see [The passcode gate](#the-passcode-gate)).
+
+4. **Deploy:**
+
+   ```bash
+   fly deploy
+   ```
+
+5. **Verify the gate is actually on** — this is the release blocker check:
+
+   ```bash
+   curl https://<your-app-name>.fly.dev/health
+   # -> {"status":"ok","auth":"enabled"}       ← "disabled" means stop and fix secrets
+   ```
+
+6. Open `https://<your-app-name>.fly.dev` on your phone, log in with the
+   passcode, and confirm a spoken turn completes end to end.
+
+No persistent volume is configured — SQLite/durable learning state is cut from
+MVP scope (Phase 4+), so every deploy is stateless on disk. The KB markdown
+under `kb/zh/` is baked into the image at build time, not mounted.
+
 ## Try it yourself (manual validation)
 
 This section always shows **only what the app does right now** — one walkthrough,
