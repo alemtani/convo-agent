@@ -37,9 +37,22 @@ import pytest
 
 # Collected only when Playwright is installed. The default `pytest -q` run
 # deselects this suite by marker, but deselection happens after collection —
-# and collection imports the module — so a dev environment without the smoke
-# extras would fail at import time instead of quietly skipping.
-collect_ignore = [] if importlib.util.find_spec("playwright") else ["test_thread.py"]
+# and collection imports the module — so an environment without the smoke
+# extras (a plain checkout, the Stop hook, CI's backend job) would fail at
+# import time instead of quietly skipping.
+#
+# Globbed rather than listed by name. A hardcoded list makes every *new* smoke
+# file a CI break that is invisible locally: the suite passes on a dev machine,
+# where Playwright *is* importable, and only the backend job — which installs
+# just backend/requirements.txt — ever sees the ImportError. That is a trap
+# baited for the next person to add a file here, and it caught this PR. The
+# condition is "this directory needs Playwright", which is a property of the
+# directory, so ask the directory.
+collect_ignore = (
+    []
+    if importlib.util.find_spec("playwright")
+    else [path.name for path in Path(__file__).parent.glob("test_*.py")]
+)
 
 FRONTEND_DIR = Path(__file__).resolve().parents[2] / "frontend"
 
@@ -226,8 +239,14 @@ _STUB_JS = """
 @pytest.fixture
 def page(page):
     """A page whose `/api/turn*` calls answer from canned JSON."""
+    # `/health` is canned explicitly rather than left to the stub's `{}` default:
+    # the page probes it on load to decide whether to raise the passcode gate,
+    # and these tests are about the thread, not the gate. Saying `disabled` out
+    # loud keeps that a stated precondition instead of an accident of the
+    # default — a gate that appeared here would fail every test with a blank
+    # overlay and no obvious cause.
     page.add_init_script(
-        f"({_STUB_JS})({json.dumps({'/api/turn': TURN_AUDIO, '/api/turn/text': TURN_TEXT})})"
+        f"({_STUB_JS})({json.dumps({'/api/turn': TURN_AUDIO, '/api/turn/text': TURN_TEXT, '/health': {'status': 'ok', 'auth': 'disabled'}})})"
     )
     errors = []
     page.on("pageerror", lambda e: errors.append(str(e)))

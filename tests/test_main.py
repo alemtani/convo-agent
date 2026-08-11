@@ -13,7 +13,9 @@ client = TestClient(app)
 def test_health_ok():
     resp = client.get("/health")
     assert resp.status_code == 200
-    assert resp.json() == {"status": "ok"}
+    # `auth` rides along on the liveness probe so a deploy can be checked from
+    # outside; its two states are asserted in `test_auth.py`.
+    assert resp.json()["status"] == "ok"
 
 
 def test_hello_returns_hello_world():

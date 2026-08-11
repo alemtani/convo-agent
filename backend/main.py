@@ -1,17 +1,19 @@
+import contextlib
 import json
 import logging
 import os
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import ValidationError
 
-from backend import kb, orchestrator
+from backend import auth, config, kb, orchestrator
 from backend.models import (
     ConversationTurnResponse,
     DialogueTurn,
+    PasscodeRequest,
     TextTurnRequest,
 )
 from backend.speech import stt
@@ -20,7 +22,23 @@ from backend.workers import conversation
 
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Convo Agent", version="0.1.0")
+@contextlib.asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Say out loud when the app is serving `/api/*` to anyone who finds it.
+
+    A gate that defaults to off is only safe if "off" is impossible to miss:
+    this is the one line in the log that distinguishes a correct local run from
+    a deploy that forgot `APP_PASSCODE`.
+    """
+    if not auth.is_enabled():
+        logger.warning(
+            "APP_PASSCODE is not set — /api/* is UNAUTHENTICATED. Fine locally; "
+            "on a public deploy every caller spends your Anthropic/Azure quota."
+        )
+    yield
+
+
+app = FastAPI(title="Convo Agent", version="0.1.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -32,10 +50,72 @@ app.add_middleware(
 
 FRONTEND_DIR = os.path.join(os.path.dirname(__file__), os.pardir, "frontend")
 
+# Reachable without a session. `/health` is the platform's liveness probe —
+# gating it fails the deploy rather than securing anything — and `/api/auth` is
+# how you *get* a session, so gating it would be a closed loop. Everything else
+# under `/api/` costs money per call and stays behind the gate.
+_PUBLIC_API_PATHS = frozenset({"/health", "/api/auth"})
+
+
+@app.middleware("http")
+async def require_session(request: Request, call_next):
+    """Gate `/api/*` on a valid session cookie.
+
+    Middleware rather than a per-route dependency so a future route is gated by
+    default: forgetting to add a dependency is a silent hole, while forgetting
+    to add a path to `_PUBLIC_API_PATHS` is a visible 401 during development.
+
+    The static page is deliberately *not* gated — it carries no keys and no
+    learner data, and it is itself the login screen, so it has to render before
+    a session exists.
+    """
+    path = request.url.path
+    gated = auth.is_enabled() and path.startswith("/api/") and path not in _PUBLIC_API_PATHS
+    if gated and not auth.verify_token(request.cookies.get(auth.COOKIE_NAME)):
+        return JSONResponse({"detail": "authentication required"}, status_code=401)
+    return await call_next(request)
+
 
 @app.get("/health")
 async def health():
-    return {"status": "ok"}
+    """Liveness probe, plus the one externally-visible fact about the gate.
+
+    `auth` is here so a single curl against the deployed host answers "did the
+    passcode actually get set?" — the question you most want to ask right after
+    a deploy, and the one you cannot answer by looking at the page.
+    """
+    return {
+        "status": "ok",
+        "auth": "enabled" if auth.is_enabled() else "disabled",
+    }
+
+
+@app.post("/api/auth")
+async def login(req: PasscodeRequest, request: Request) -> JSONResponse:
+    """Exchange the shared passcode for a signed session cookie.
+
+    `Secure` is derived from the request scheme rather than configured: over
+    HTTPS (the deploy, via `X-Forwarded-Proto` and uvicorn's proxy headers) the
+    cookie is Secure; over plain HTTP on localhost it must not be, or the
+    browser drops it and local development can't log in. One less env var to get
+    wrong in exactly the place where getting it wrong is invisible.
+    """
+    if not auth.check_passcode(req.passcode):
+        # No detail about *why* — with a single shared credential there is
+        # nothing to distinguish, and the 401 is the whole message.
+        raise HTTPException(status_code=401, detail="invalid passcode")
+
+    response = JSONResponse({"status": "ok"})
+    response.set_cookie(
+        auth.COOKIE_NAME,
+        auth.issue_token(),
+        max_age=int(config.SESSION_TTL_DAYS * 86400),
+        httponly=True,          # the cookie is the credential; script can't read it
+        samesite="lax",
+        secure=request.url.scheme == "https",
+        path="/",
+    )
+    return response
 
 
 @app.get("/api/hello")
