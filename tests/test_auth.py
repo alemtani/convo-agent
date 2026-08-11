@@ -14,7 +14,7 @@ import time
 import pytest
 from fastapi.testclient import TestClient
 
-from backend import auth, config
+from backend import auth, config, orchestrator
 from backend.main import app
 
 PASSCODE = "open-sesame"
@@ -174,3 +174,91 @@ def test_static_page_is_reachable_without_a_session(gated):
 def test_api_is_open_when_the_gate_is_disabled(ungated):
     with TestClient(app) as client:
         assert client.get("/api/hello").status_code == 200
+
+
+# --- the endpoints that actually cost money -------------------------------
+#
+# `/api/hello` is free, so gating it proves the middleware runs but not that it
+# protects anything worth protecting. The turn routes are the reason this gate
+# exists: each one spends Azure STT, Azure PA and a Claude call. What follows
+# asserts the property that matters — an unauthenticated request is refused
+# *before* any upstream work is started, not merely refused.
+
+
+def test_spoken_turn_is_refused_without_spending_azure_or_claude(gated, monkeypatch):
+    """A 401 on `/api/turn` must cost nothing upstream.
+
+    Asserting the status alone would still pass if the gate ran *after* the
+    route body — which is exactly the regression that would make the gate
+    decorative: strangers couldn't read the reply, but they'd still be buying
+    it. The spy is the real assertion.
+    """
+    called = []
+
+    async def spy(*args, **kwargs):
+        called.append(kwargs)
+        raise AssertionError("upstream work started on an unauthenticated turn")
+
+    monkeypatch.setattr(orchestrator, "prepare_audio_turn", spy)
+
+    with TestClient(app) as client:
+        resp = client.post("/api/turn", files={"audio": ("a.wav", b"FAKEWAV", "audio/wav")})
+
+    assert resp.status_code == 401
+    assert called == []
+
+
+def test_text_turn_is_refused_without_spending_claude(gated, monkeypatch):
+    called = []
+
+    async def spy(*args, **kwargs):
+        called.append(kwargs)
+        raise AssertionError("worker ran on an unauthenticated turn")
+
+    monkeypatch.setattr(orchestrator, "run_text_turn", spy)
+
+    with TestClient(app) as client:
+        resp = client.post(
+            "/api/turn/text", json={"topic_id": "greetings", "text": "你好"}
+        )
+
+    assert resp.status_code == 401
+    assert called == []
+
+
+def test_gate_runs_before_request_validation(gated):
+    """An unauthenticated caller can't even probe the request schema.
+
+    `/api/turn` needs a multipart file; unauthenticated, the missing body must
+    surface as 401 rather than 422. Ordering the other way would leak the shape
+    of the API to anyone who asks, and — worse — means the gate sits downstream
+    of parsing, where an upload has already been read into memory.
+    """
+    with TestClient(app) as client:
+        assert client.post("/api/turn").status_code == 401
+        assert client.post("/api/turn/text", json={}).status_code == 401
+
+
+def test_every_api_route_is_gated_unless_explicitly_public(gated):
+    """Enumerate the app's routes so a *future* one is covered by default.
+
+    The per-endpoint tests above pin today's surface; this pins the rule. Adding
+    a route that quietly serves unauthenticated traffic should fail here rather
+    than in production, and the only way to opt out is to name the path in
+    `_PUBLIC_API_PATHS` — a visible, reviewable edit.
+    """
+    from backend.main import _PUBLIC_API_PATHS
+
+    with TestClient(app) as client:
+        checked = 0
+        for route in app.routes:
+            path = getattr(route, "path", "")
+            if not path.startswith("/api/") or path in _PUBLIC_API_PATHS:
+                continue
+            for method in sorted(getattr(route, "methods", set()) - {"HEAD", "OPTIONS"}):
+                resp = client.request(method, path)
+                assert resp.status_code == 401, f"{method} {path} is not gated"
+                checked += 1
+
+    # Guard against the loop silently checking nothing if the route table moves.
+    assert checked >= 3, f"expected to check the turn routes, only saw {checked}"
