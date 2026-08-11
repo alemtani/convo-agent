@@ -273,7 +273,7 @@
   </div>
 
   <h1>Convo Agent</h1>
-  <p class="muted">Speak or type Mandarin (greetings). A real partner replies and remembers the conversation; spoken words come back with per-syllable tone scores (green good / amber ok / red off). The partner <strong>speaks its reply</strong> instead of writing it — that's the listening practice. Tap 🔊 to hear a line again, 👁 to see the words when you're stuck, or 👁 in the bar below to show every reply's text. Tap ⌨️ to type in <strong>pinyin</strong> instead — your words come back as 汉字. Add tone numbers (<code>ni3hao3</code>) and your tones get checked too.</p>
+  <p class="muted">Speak or type Mandarin (greetings). A real partner replies and remembers the conversation; spoken words come back with per-syllable tone scores (green good / amber ok / red off). The partner <strong>speaks its reply</strong> instead of writing it — that's the listening practice. Tap 🔊 to hear a line again, 👁 to see the words when you're stuck, or <strong>👁 All</strong> below to show every reply at once. Tap ⌨️ to type in <strong>pinyin</strong> instead — your words come back as 汉字. Add tone numbers (<code>ni3hao3</code>) and your tones get checked too.</p>
 
   <div id="thread"></div>
 
@@ -287,7 +287,7 @@
     <button id="talk">🎙️ Hold to talk</button>
     <div id="controls">
       <button id="mode" title="Switch to typing">⌨️</button>
-      <button id="show-text" title="Show partner text">👁</button>
+      <button id="show-text" title="Show every reply's text">👁 All</button>
       <button id="reset" title="Start a new conversation">↺ New</button>
     </div>
     <div id="meter"><div id="meter-fill"></div></div>
@@ -742,8 +742,14 @@
 
     function applyShowText() {
       localStorage.setItem(SHOW_TEXT_KEY, showText ? "1" : "0");
-      showTextBtn.textContent = showText ? "🙈" : "👁";
-      showTextBtn.title = showText ? "Hide partner text" : "Show partner text";
+      // "All" is not decoration: without it this button carries the same two
+      // emoji as the one inside every bubble, and a global 👁 sitting next to a
+      // bubble whose text is already visible reads as the two controls
+      // disagreeing. The word is what makes it a statement about the thread.
+      showTextBtn.textContent = (showText ? "🙈" : "👁") + " All";
+      showTextBtn.title = showText
+        ? "Hide every reply's text"
+        : "Show every reply's text";
       // Retroactive: the mode is a property of the thread, not of new messages.
       // Turning text on to review what was said and finding only the newest
       // replies changed would read as a bug.
@@ -1422,6 +1428,10 @@
 
     showTextBtn.addEventListener("click", () => {
       showText = !showText;
+      // Global wins. A per-bubble reveal that outlived this tap would be an
+      // invisible exception: you press "show all", one bubble stays blank, and
+      // nothing on screen explains why. "All" has to mean all.
+      replies.forEach((reply) => { reply.override = null; });
       applyShowText();
     });
 

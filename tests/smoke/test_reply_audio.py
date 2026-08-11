@@ -113,20 +113,37 @@ def test_show_text_mode_is_retroactive(page):
     expect(bubble.locator(".zh")).to_have_text(REPLY_ZH)
 
 
-def test_a_revealed_bubble_survives_the_mode_going_off(page):
-    """The reason reveal is an override and not one boolean per bubble.
+def test_the_global_toggle_overrules_a_revealed_bubble(page):
+    """"All" means all — a per-bubble reveal does not outlive it.
 
-    Reveal a hard line, flip the mode on and off while checking another, and the
-    line you deliberately opened must still be open.
+    The first cut let the override survive, so pressing "hide all" could leave
+    one bubble still showing its text with nothing on screen explaining why. An
+    invisible exception is worse than losing the reveal, which is one tap to
+    redo.
     """
     load(page)
     bubble = _send_text(page)
     bubble.locator("button.reveal").click()
+    expect(bubble.locator(".zh")).to_have_count(1)
 
-    page.click("#show-text")        # mode on
-    page.click("#show-text")        # ...and off again
-
+    page.click("#show-text")        # show all — already visible, stays visible
     expect(bubble.locator(".zh")).to_have_text(REPLY_ZH)
+
+    page.click("#show-text")        # hide all — the override goes with it
+    expect(bubble.locator(".zh")).to_have_count(0)
+
+
+def test_the_global_button_names_its_scope(page):
+    """It sits beside a bubble carrying the same two emoji.
+
+    Bare, a global 👁 next to a bubble whose text is already visible reads as
+    the two controls disagreeing — which is exactly how it was reported.
+    """
+    load(page)
+
+    expect(page.locator("#show-text")).to_have_text("👁 All")
+    page.click("#show-text")
+    expect(page.locator("#show-text")).to_have_text("🙈 All")
 
 
 def test_show_text_preference_survives_a_reload(page):
