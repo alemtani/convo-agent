@@ -122,6 +122,10 @@ phone at all. `Dockerfile` and `fly.toml` are checked in; `fly launch` and
    fly deploy
    ```
 
+   After the first manual deploy you can hand this to CI. Merges to `main`
+   deploy automatically once one repo secret is set — see
+   [Automatic deploys](#automatic-deploys) below.
+
 5. **Verify the gate is actually on** — this is the release blocker check:
 
    ```bash
@@ -135,6 +139,30 @@ phone at all. `Dockerfile` and `fly.toml` are checked in; `fly launch` and
 No persistent volume is configured — SQLite/durable learning state is cut from
 MVP scope (Phase 4+), so every deploy is stateless on disk. The KB markdown
 under `kb/zh/` is baked into the image at build time, not mounted.
+
+### Automatic deploys
+
+Merges to `main` deploy to Fly automatically, from the `deploy` job in
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml). It runs only after both
+test jobs pass, and only on a push to `main` — a pull-request build never
+reaches production.
+
+One-time setup, run from a checkout with `flyctl` signed in:
+
+```bash
+fly tokens create deploy -x 999999h        # a deploy-scoped token, not your login
+gh secret set FLY_API_TOKEN                # paste the token (the whole FlyV1 ... string)
+```
+
+The token is scoped to deploying this one app. It is the only credential CI
+holds; `fly launch`, `fly apps create` and `fly secrets set` stay manual,
+because they create resources and handle the API keys.
+
+After deploying, the job re-runs the `/health` gate check from step 5 above and
+fails the build if `auth` comes back `disabled`. That failure mode is worth
+automating precisely because it fails *open*: the app serves normally, so the
+only symptom is an unauthenticated endpoint spending your Anthropic and Azure
+quota on a public hostname.
 
 ## Try it yourself (manual validation)
 
