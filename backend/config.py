@@ -14,6 +14,20 @@ ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 AZURE_SPEECH_KEY = os.getenv("AZURE_SPEECH_KEY", "")
 AZURE_SPEECH_REGION = os.getenv("AZURE_SPEECH_REGION", "eastus")
 
+# Shared passcode for the deployed app. Empty (the default) disables the gate,
+# which is what you want locally — there is no public URL to protect and a login
+# screen is pure friction. Setting it is therefore a *deploy* step, and because
+# forgetting it is the exact failure the gate exists to prevent, the state is
+# advertised rather than silent: `main` warns at startup and `/health` reports
+# `auth: enabled|disabled`. See `backend/auth.py`.
+APP_PASSCODE = os.getenv("APP_PASSCODE", "")
+
+# How long a session cookie stays valid. Long, because the "user base" is one
+# person's phone and re-entering a passcode is friction with no security payoff
+# at this scale — the meaningful revocation lever is rotating `APP_PASSCODE`,
+# which invalidates outstanding sessions regardless of this value.
+SESSION_TTL_DAYS = float(os.getenv("SESSION_TTL_DAYS", "30"))
+
 # Conversation worker (per-turn hot path). Sonnet 5 is the deliberate choice for
 # the loop — cheap and deterministic enough for every-turn calls (DESIGN.md).
 # Hold the model fixed per session: switching it mid-session busts the cache.

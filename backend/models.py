@@ -358,6 +358,17 @@ class SpokenConversationResult(BaseModel):
     turn_annotation: WorkerAnnotation
 
 
+class PasscodeRequest(BaseModel):
+    """Request body for `POST /api/auth`: the shared passcode, nothing else.
+
+    No length or shape validation on purpose — a rejected-before-comparison
+    passcode is a length oracle, and there is only one correct value to compare
+    against anyway (`auth.check_passcode`, constant time).
+    """
+
+    passcode: str
+
+
 class TextTurnRequest(BaseModel):
     """Request body for `POST /api/turn/text` (text mode).
 

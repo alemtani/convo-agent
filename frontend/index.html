@@ -207,9 +207,47 @@
       border-radius: inherit;
       transform-origin: left;
     }
+
+    /* Passcode gate. An overlay rather than a separate page so the app keeps
+       its single-file shape, and so a mid-session 401 (expired cookie) can
+       re-prompt in place without losing the thread underneath. */
+    #gate {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+      padding: 1.5rem;
+      background: #fff;
+    }
+    #gate.show { display: flex; }
+    #gate h2 { margin: 0; font-size: 1.1rem; }
+    #gate form { display: flex; gap: 0.5rem; width: 100%; max-width: 22rem; }
+    #gate input {
+      flex: 1;
+      padding: 0.6rem 0.75rem;
+      font-size: 1rem;         /* ≥16px or iOS Safari zooms the page on focus */
+      border: 1px solid #ccc;
+      border-radius: 0.5rem;
+    }
+    #gate button { padding: 0.6rem 1rem; font-size: 1rem; border-radius: 0.5rem; }
+    #gate-error { color: #d33; font-size: 0.85rem; min-height: 1.2em; }
   </style>
 </head>
 <body>
+  <div id="gate">
+    <h2>Convo Agent</h2>
+    <form id="gate-form">
+      <input id="gate-input" type="password" inputmode="text" autocomplete="current-password"
+             placeholder="passcode" aria-label="passcode" />
+      <button type="submit">Enter</button>
+    </form>
+    <div id="gate-error" role="alert"></div>
+  </div>
+
   <h1>Convo Agent</h1>
   <p class="muted">Speak or type Mandarin (greetings). A real partner replies and remembers the conversation; spoken words come back with per-syllable tone scores (green good / amber ok / red off). Tap ⌨️ to type in <strong>pinyin</strong> instead — your words come back as 汉字. Add tone numbers (<code>ni3hao3</code>) and your tones get checked too.</p>
 
@@ -817,7 +855,9 @@
           // Nothing was transcribed, so the echo is the only bubble up and it
           // carries the failure — no partner bubble is created for a turn the
           // partner never saw.
-          const detail = await resp.text();
+          const detail = gateIfUnauthorized(resp)
+            ? "log back in and hold to talk again"
+            : await resp.text();
           echo.fail("error " + resp.status + ": " + detail);
           setStatus("");
           return;
@@ -925,7 +965,9 @@
           }),
         });
         if (!resp.ok) {
-          const detail = await resp.text();
+          const detail = gateIfUnauthorized(resp)
+            ? "log back in and send again"
+            : await resp.text();
           restore("error " + resp.status + ": " + detail);
           return;
         }
@@ -983,6 +1025,73 @@
       sendText();
     });
 
+    // --- passcode gate ----------------------------------------------------
+    //
+    // The deployed app is a public URL in front of paid APIs, so `/api/*` needs
+    // a session cookie (see backend/auth.py). Locally the gate is off and none
+    // of this shows: `/health` reports which world we're in, and the session
+    // probe distinguishes "needs a passcode" from "already logged in".
+    const gate = document.getElementById("gate");
+    const gateForm = document.getElementById("gate-form");
+    const gateInput = document.getElementById("gate-input");
+    const gateError = document.getElementById("gate-error");
+
+    function showGate(msg) {
+      gateError.textContent = msg || "";
+      gate.classList.add("show");
+      gateInput.focus();
+    }
+
+    function hideGate() {
+      gate.classList.remove("show");
+      gateInput.value = "";
+      gateError.textContent = "";
+    }
+
+    // Every fetch of a gated endpoint funnels through here. A 401 mid-session
+    // means the cookie expired (or the passcode was rotated) — re-prompt in
+    // place rather than surfacing it as a turn failure, because the thread is
+    // still perfectly good and the learner just needs to log back in.
+    function gateIfUnauthorized(resp) {
+      if (resp.status === 401) {
+        showGate("Session expired — enter the passcode again.");
+        return true;
+      }
+      return false;
+    }
+
+    gateForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const passcode = gateInput.value;
+      if (!passcode) return;
+      gateError.textContent = "";
+      try {
+        const resp = await fetch("/api/auth", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ passcode }),
+        });
+        if (resp.ok) hideGate();
+        else gateError.textContent = "Wrong passcode.";
+      } catch (err) {
+        gateError.textContent = "Couldn't reach the server.";
+      }
+    });
+
+    async function initGate() {
+      try {
+        const health = await (await fetch("/health")).json();
+        if (health.auth !== "enabled") return;          // local dev: no gate
+        // Cheapest gated endpoint — asks "does my cookie still work?" without
+        // spending a turn.
+        const probe = await fetch("/api/hello");
+        if (probe.status === 401) showGate();
+      } catch (err) {
+        // A server we can't reach isn't an auth problem; the turn path will
+        // report it in context rather than us guessing behind a login screen.
+      }
+    }
+
     // Restore the running transcript on load (scores are per-turn, not persisted).
     // Bulk restore suppresses the per-bubble follow — N smooth scrolls racing
     // each other is what used to leave the thread parked mid-history — and lands
@@ -1006,6 +1115,7 @@
 
     restoreThread();
     applyMode();
+    initGate();
 
     // Hold-to-talk: press to start, release (or leave the button) to send.
     talk.addEventListener("pointerdown", (e) => { e.preventDefault(); startRecording(); });

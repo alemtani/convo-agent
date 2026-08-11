@@ -226,8 +226,14 @@ _STUB_JS = """
 @pytest.fixture
 def page(page):
     """A page whose `/api/turn*` calls answer from canned JSON."""
+    # `/health` is canned explicitly rather than left to the stub's `{}` default:
+    # the page probes it on load to decide whether to raise the passcode gate,
+    # and these tests are about the thread, not the gate. Saying `disabled` out
+    # loud keeps that a stated precondition instead of an accident of the
+    # default — a gate that appeared here would fail every test with a blank
+    # overlay and no obvious cause.
     page.add_init_script(
-        f"({_STUB_JS})({json.dumps({'/api/turn': TURN_AUDIO, '/api/turn/text': TURN_TEXT})})"
+        f"({_STUB_JS})({json.dumps({'/api/turn': TURN_AUDIO, '/api/turn/text': TURN_TEXT, '/health': {'status': 'ok', 'auth': 'disabled'}})})"
     )
     errors = []
     page.on("pageerror", lambda e: errors.append(str(e)))

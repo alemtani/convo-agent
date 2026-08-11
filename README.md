@@ -56,6 +56,30 @@ uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
 
 The health check is available at `GET /health`.
 
+## The passcode gate
+
+`/api/*` is protected by a single shared passcode exchanged for a signed session
+cookie — not an account system, just the smallest thing that stops a public URL
+from letting strangers spend your Anthropic and Azure quota.
+
+**Locally the gate is off.** Leave `APP_PASSCODE` unset and nothing changes: no
+login screen, no cookie. Startup logs a warning saying so.
+
+**On any public deploy it is required.** Set `APP_PASSCODE` and confirm from
+outside:
+
+```bash
+curl https://<your-host>/health
+# -> {"status":"ok","auth":"enabled"}       ← "disabled" means you are wide open
+```
+
+The page itself stays reachable without a session (it *is* the login screen and
+carries no keys); everything under `/api/` except `/api/auth` returns 401 until
+you log in. The cookie is `HttpOnly`, `SameSite=Lax`, `Secure` over HTTPS, and
+lasts `SESSION_TTL_DAYS` (default 30). Rotating `APP_PASSCODE` invalidates every
+outstanding session — the signing key is derived from it, which is the only
+revocation lever a single shared credential has.
+
 ## Try it yourself (manual validation)
 
 This section always shows **only what the app does right now** — one walkthrough,
