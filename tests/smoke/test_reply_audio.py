@@ -166,6 +166,39 @@ def test_a_failed_synthesis_reveals_the_text(page):
     assert page.evaluate("window.__audio._plays()") == 0
 
 
+def test_a_blocked_playback_is_a_failure_not_a_silence(page):
+    """A device that refuses to make a sound must not look like success.
+
+    `playBuffer` resolves false rather than throwing when the context is not
+    running, so passing its result through left the learner with no audio, no
+    error and no text — the dead end, reached silently. Found on a real iPhone,
+    where nothing on screen said anything had gone wrong.
+    """
+    load(page)
+    _send_text(page)                     # primes the cache; no network below
+    page.evaluate("window.__audio._suspend()")
+
+    outcome = page.evaluate(
+        "window.__audio.speak('%s').then(() => 'played', (e) => e.blocked ? 'blocked' : 'other')"
+        % REPLY_ZH
+    )
+
+    assert outcome == "blocked"
+
+
+def test_a_blocked_playback_reveals_the_text(page):
+    """Same recovery as a failed synthesis: words beat silence."""
+    load(page)
+    bubble = _send_text(page)
+    page.evaluate("window.__audio._suspend()")
+
+    # 🔊 from script, so no gesture re-arms the unlock mid-test.
+    page.evaluate("document.querySelector('.bubble.partner button.replay').click()")
+
+    expect(bubble.locator(".zh")).to_have_text(REPLY_ZH)
+    expect(page.locator("#status")).to_contain_text("silent switch")
+
+
 def test_a_failed_synthesis_leaves_the_thread_usable(page):
     """A silent turn is a setback, not the end of the session."""
     load(page)

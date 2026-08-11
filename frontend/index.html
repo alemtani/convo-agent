@@ -460,8 +460,19 @@
     // Throws on a failed synthesis rather than failing quietly: the caller's
     // recovery is to reveal the text, and a silent bubble with no text is the
     // single way audio-only mode is worse than showing the reply.
+    //
+    // A *blocked* playback throws too, and that distinction is the whole point.
+    // `playBuffer` resolves false when the context isn't running, so passing its
+    // result through made "the device refused to make a sound" indistinguishable
+    // from success: no audio, no error, no text — the exact dead end 🔊 and 👁
+    // exist to prevent, arrived at silently. The two failures need different
+    // words (one is ours, one is the phone), so they carry a flag.
     async function speak(text) {
-      return playBuffer(await fetchSpeech(text));
+      const buf = await fetchSpeech(text);
+      if (await playBuffer(buf)) return true;
+      const err = new Error("playback blocked");
+      err.blocked = true;
+      throw err;
     }
 
     function playTone(freq, ms) {
@@ -707,10 +718,12 @@
     // network call. A failure reveals the text instead of leaving a bubble with
     // neither audio nor words, which is the dead end 🔊 and 👁 exist to prevent.
     function playReply(reply) {
-      return speak(reply.utt.zh).catch(() => {
+      return speak(reply.utt.zh).catch((err) => {
         reply.override = true;
         paintReply(reply);
-        setStatus("audio unavailable — showing the text");
+        setStatus(err && err.blocked
+          ? "the phone blocked playback — check the silent switch"
+          : "audio unavailable — showing the text");
       });
     }
 
