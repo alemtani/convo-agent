@@ -14,9 +14,15 @@ import json
 import pytest
 from fastapi.testclient import TestClient
 
-from backend import orchestrator
+from backend import kb, orchestrator
 from backend.main import app
-from backend.models import PronunciationScore, SyllableScore, TurnAnnotation, Utterance
+from backend.models import (
+    PronunciationScore,
+    SessionState,
+    SyllableScore,
+    TurnAnnotation,
+    Utterance,
+)
 from backend.speech import pronunciation, stt
 from backend.workers import conversation
 from tests.helpers import collect_audio_turn
@@ -55,7 +61,7 @@ def stub_worker_and_pa(monkeypatch):
         )
 
     async def fake_respond(*, kb_block, sketch, dialogue, user_text, forgiveness_level,
-                           want_reading=True, client=None):
+                           want_reading=True, hint=None, client=None):
         return (
             Utterance(zh="你好！你叫什么名字？", pinyin="nǐ hǎo! nǐ jiào shénme míngzi?"),
             TurnAnnotation(coherence="on_track", topic_tags=["greetings"]),
@@ -309,7 +315,7 @@ def test_dialogue_defaults_to_empty(monkeypatch):
     captured = {}
 
     async def fake_respond(*, kb_block, sketch, dialogue, user_text, forgiveness_level,
-                           want_reading=True, client=None):
+                           want_reading=True, hint=None, client=None):
         captured["dialogue"] = dialogue
         return (
             Utterance(zh="你好", pinyin="nǐ hǎo"),
@@ -350,7 +356,7 @@ def test_route_threads_dialogue_history_into_the_stream(monkeypatch):
     captured = {}
 
     async def fake_respond(*, kb_block, sketch, dialogue, user_text, forgiveness_level,
-                           want_reading=True, client=None):
+                           want_reading=True, hint=None, client=None):
         captured["dialogue"] = dialogue
         return (
             Utterance(zh="认识你很高兴", pinyin="rènshi nǐ hěn gāoxìng"),
@@ -853,3 +859,175 @@ def test_stream_asks_intermediaries_not_to_buffer():
     resp = client.post("/api/turn", files=_upload())
     assert resp.headers["x-accel-buffering"] == "no"
     assert resp.headers["cache-control"] == "no-cache"
+
+
+# --- M2-C: session state on the spoken turn ------------------------------
+
+
+async def _stream(monkeypatch, *, slots_filled=(), learner_closed=False,
+                  state=None, transcript="你好", dialogue=None, capture=None):
+    """Drive one spoken turn with a stubbed tracker; return `{stage: event}`."""
+
+    async def fake_respond(*, kb_block, sketch, dialogue, user_text,
+                           forgiveness_level, want_reading=True, hint=None,
+                           client=None):
+        if capture is not None:
+            capture["hint"] = hint
+        return (
+            Utterance(zh="好。", pinyin="hǎo."),
+            TurnAnnotation(
+                coherence="on_track",
+                slots_filled=list(slots_filled),
+                learner_closed=learner_closed,
+            ),
+            None,
+            _FakeUsage(),
+        )
+
+    async def fake_transcribe(audio_wav, language="zh-CN"):
+        return transcript
+
+    monkeypatch.setattr(conversation, "respond", fake_respond)
+    monkeypatch.setattr(stt, "transcribe", fake_transcribe)
+
+    events = {}
+    async for event in orchestrator.stream_audio_turn(
+        b"FAKEWAV",
+        transcript=Utterance(zh=transcript, pinyin="nǐ hǎo"),
+        kb_block=kb.load_kb_block("greetings"),
+        scenario=kb.load_scenario("greetings"),
+        state=state or SessionState(),
+        dialogue=dialogue or [],
+    ):
+        events[event.stage] = event
+    return events
+
+
+async def test_state_rides_the_reply_event(monkeypatch):
+    """Not `done`: `done` waits for the PA branch as well.
+
+    State is derived from the worker's annotation, so it is ready when the reply
+    is. Holding it to `done` would leave the mic live for up to `PA_TIMEOUT_S`
+    after a session had already ended, and would split the state commit from the
+    dialogue commit the client makes on this same event.
+    """
+    events = await _stream(monkeypatch, slots_filled=["self_name"])
+    assert events["reply"].state.filled_at == {"self_name": 1}
+    assert not hasattr(events["done"], "state")
+
+
+async def test_a_completed_session_says_so_on_the_reply(monkeypatch):
+    events = await _stream(
+        monkeypatch,
+        slots_filled=["wellbeing"],
+        state=SessionState(filled_at={"self_name": 1, "partner_name": 2}),
+    )
+    assert events["reply"].state.status == "complete"
+    assert events["reply"].state.goal_met is True
+
+
+async def test_a_silent_turn_echoes_the_state_untouched(monkeypatch):
+    """Nothing recognized means no worker call — and so no progress to report.
+
+    The short-circuit must pass the submitted state straight through. Returning
+    a fresh one would wipe every filled slot on a single mumble, and the server
+    keeps no copy to restore it from.
+    """
+    submitted = SessionState(filled_at={"self_name": 1}, consecutive_closes=1)
+    events = await _stream(monkeypatch, transcript="", state=submitted)
+    assert events["reply"].state == submitted
+
+
+async def test_the_hint_reaches_the_worker_on_the_spoken_path(monkeypatch):
+    captured = {}
+    await _stream(
+        monkeypatch, state=SessionState(filled_at={"self_name": 1}), capture=captured
+    )
+    assert "partner_name" in captured["hint"]
+
+
+async def test_a_failed_turn_carries_no_state(monkeypatch):
+    """`error` replaces `reply`, so nothing ships — the client must not default.
+
+    A defaulted state would read as a reset of everything the learner had done.
+    """
+    async def boom(**kwargs):
+        raise conversation.ConversationError("nope")
+
+    monkeypatch.setattr(conversation, "respond", boom)
+
+    events = {}
+    async for event in orchestrator.stream_audio_turn(
+        b"FAKEWAV",
+        transcript=Utterance(zh="你好", pinyin="nǐ hǎo"),
+        kb_block=kb.load_kb_block("greetings"),
+        scenario=kb.load_scenario("greetings"),
+        state=SessionState(filled_at={"self_name": 1}),
+    ):
+        events[event.stage] = event
+
+    assert "reply" not in events
+    assert events["error"].stage == "error"
+
+
+# --- M2-C: the state form field on POST /api/turn ------------------------
+
+
+def test_state_round_trips_through_the_route(monkeypatch):
+    async def fake_respond(**kwargs):
+        return (
+            Utterance(zh="好。", pinyin="hǎo."),
+            TurnAnnotation(coherence="on_track", slots_filled=["partner_name"]),
+            None,
+            _FakeUsage(),
+        )
+
+    monkeypatch.setattr(conversation, "respond", fake_respond)
+
+    resp = client.post(
+        "/api/turn",
+        files=_upload(),
+        data={
+            "topic_id": "greetings",
+            "dialogue": json.dumps([{"role": "user", "zh": "我叫小明"},
+                                    {"role": "partner", "zh": "你好"}]),
+            "state": json.dumps({"filled_at": {"self_name": 1}}),
+        },
+    )
+
+    reply = by_stage(resp)["reply"]
+    assert reply["state"]["filled_at"] == {"self_name": 1, "partner_name": 2}
+
+
+def test_a_turn_on_a_completed_session_is_refused():
+    """The client gates the mic, but it must not be the *only* gate.
+
+    A second tab, a restored background tab, or any client/server disagreement
+    would otherwise keep a finished scenario answering turns.
+    """
+    resp = client.post(
+        "/api/turn",
+        files=_upload(),
+        data={
+            "topic_id": "greetings",
+            "state": json.dumps({"status": "complete", "goal_met": True}),
+        },
+    )
+    assert resp.status_code == 409
+
+
+def test_malformed_state_is_a_422_not_a_500():
+    resp = client.post(
+        "/api/turn",
+        files=_upload(),
+        data={"topic_id": "greetings", "state": "{not json"},
+    )
+    assert resp.status_code == 422
+    assert "state" in resp.json()["detail"]
+
+
+def test_an_absent_state_field_starts_a_fresh_session(monkeypatch):
+    """A turn sent before any state exists still works — same as `sketch`."""
+    resp = client.post("/api/turn", files=_upload(), data={"topic_id": "greetings"})
+    assert resp.status_code == 200
+    assert by_stage(resp)["reply"]["state"]["filled_at"] == {}

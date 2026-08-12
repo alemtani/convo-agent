@@ -16,6 +16,7 @@ from backend import config, kb, orchestrator
 from backend.models import (
     ConversationTurnResponse,
     SessionStartResponse,
+    SessionState,
     SketchResult,
     TextTurnRequest,
     TurnAnnotation,
@@ -29,7 +30,7 @@ async def test_run_text_turn_loads_kb_and_calls_worker(monkeypatch):
     captured = {}
 
     async def fake_respond(*, kb_block, sketch, dialogue, user_text, forgiveness_level,
-                           want_reading=True, client=None):
+                           want_reading=True, hint=None, client=None):
         captured.update(
             kb_block=kb_block, sketch=sketch, dialogue=dialogue,
             user_text=user_text, forgiveness_level=forgiveness_level,
@@ -192,7 +193,7 @@ class _FakeUsage:
 
 def _worker_reply(annotation=None, reading=None):
     async def fake_respond(*, kb_block, sketch, dialogue, user_text, forgiveness_level,
-                           want_reading=True, client=None):
+                           want_reading=True, hint=None, client=None):
         return (
             Utterance(zh="你好！你叫什么名字？", pinyin="nǐ hǎo! nǐ jiào shénme míngzi?"),
             annotation or TurnAnnotation(coherence="on_track", topic_tags=["greetings"]),
@@ -383,3 +384,109 @@ def test_pick_scenario_topic_raises_when_the_kb_is_empty(monkeypatch):
 
     with pytest.raises(kb.KbError):
         orchestrator._pick_scenario_topic()
+
+
+# --- M2-C: session state on the text turn --------------------------------
+
+
+def _tracker_worker(monkeypatch, slots_filled=(), learner_closed=False, capture=None):
+    """Stub the worker with a fixed tracker result; record the kwargs it got."""
+
+    async def fake_respond(*, kb_block, sketch, dialogue, user_text,
+                           forgiveness_level, want_reading=True, hint=None,
+                           client=None):
+        if capture is not None:
+            capture.update(hint=hint, dialogue=dialogue)
+        return (
+            Utterance(zh="好。", pinyin="hǎo."),
+            TurnAnnotation(
+                coherence="on_track",
+                slots_filled=list(slots_filled),
+                learner_closed=learner_closed,
+            ),
+            Utterance(zh="我叫小明", pinyin="wǒ jiào xiǎo míng"),
+            object(),
+        )
+
+    monkeypatch.setattr(conversation, "respond", fake_respond)
+
+
+def _req(dialogue=None, state=None, text="我叫小明"):
+    return TextTurnRequest(
+        topic_id="greetings",
+        text=text,
+        dialogue=dialogue or [],
+        state=state or SessionState(),
+    )
+
+
+async def test_a_turn_returns_the_advanced_state(monkeypatch):
+    _tracker_worker(monkeypatch, slots_filled=["self_name"])
+    resp = await orchestrator.run_text_turn(_req())
+    assert resp.state.filled_at == {"self_name": 1}
+    assert resp.state.status == "active"
+
+
+async def test_state_accumulates_across_turns(monkeypatch):
+    """The server is stateless: progress survives only because it round-trips."""
+    _tracker_worker(monkeypatch, slots_filled=["partner_name"])
+    resp = await orchestrator.run_text_turn(
+        _req(
+            dialogue=[{"role": "user", "zh": "我叫小明"}, {"role": "partner", "zh": "你好"}],
+            state=SessionState(filled_at={"self_name": 1}),
+        )
+    )
+    assert resp.state.filled_at == {"self_name": 1, "partner_name": 2}
+
+
+async def test_filling_the_last_slot_completes_the_session(monkeypatch):
+    _tracker_worker(monkeypatch, slots_filled=["wellbeing"])
+    resp = await orchestrator.run_text_turn(
+        _req(state=SessionState(filled_at={"self_name": 1, "partner_name": 2}))
+    )
+    assert resp.state.status == "complete"
+    assert resp.state.goal_met is True
+    assert resp.state.end_reason == "goal"
+
+
+async def test_the_turn_index_comes_from_the_submitted_history(monkeypatch):
+    """No server counter — the client's transcript *is* the turn number.
+
+    The opening line is deliberately not part of `dialogue`, so it costs the
+    learner nothing (`docs/SCENARIOS.md`, "Definition of a turn").
+    """
+    _tracker_worker(monkeypatch, slots_filled=["self_name"])
+    dialogue = []
+    for expected_turn in (1, 2, 3):
+        resp = await orchestrator.run_text_turn(_req(dialogue=list(dialogue)))
+        assert resp.state.filled_at == {"self_name": expected_turn}
+        dialogue += [{"role": "user", "zh": "我叫小明"}, {"role": "partner", "zh": "好。"}]
+
+
+async def test_the_hint_names_the_outstanding_slot(monkeypatch):
+    captured = {}
+    _tracker_worker(monkeypatch, capture=captured)
+    await orchestrator.run_text_turn(_req(state=SessionState(filled_at={"self_name": 1})))
+    assert "partner_name" in captured["hint"]
+
+
+async def test_no_hint_on_the_first_turn_of_a_fresh_session(monkeypatch):
+    """Nothing is established yet, so the first missing slot is simply the goal.
+
+    A hint still goes out — the scene should already be unresolved — but it must
+    never be the closing one.
+    """
+    captured = {}
+    _tracker_worker(monkeypatch, capture=captured)
+    await orchestrator.run_text_turn(_req())
+    assert "final turn" not in (captured["hint"] or "")
+
+
+async def test_a_topic_without_a_scenario_still_turns(monkeypatch):
+    """#29 lands topics before scenarios; those sessions just run unbounded."""
+    _tracker_worker(monkeypatch, capture=(captured := {}))
+    monkeypatch.setattr(kb, "load_scenario", lambda *a, **k: None)
+    resp = await orchestrator.run_text_turn(_req())
+    assert resp.state.status == "active"
+    assert resp.state.filled_at == {}
+    assert captured["hint"] is None

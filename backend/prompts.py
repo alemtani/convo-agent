@@ -49,6 +49,19 @@ from context and let minor slips slide. Only when the input is genuinely \
 unintelligible or derails the conversation, gently ask them to repeat \
 (对不起，你能再说一次吗？).
 
+The topic knowledge base below may carry a SCENARIO with named slots — the \
+facts the learner is trying to establish through Chinese. Two rules hold on \
+every turn of such a scenario, from the first:
+- **Never volunteer the answer to a `request` slot.** The learner must ask. If \
+they have not asked what something costs, do not say what it costs — bag the \
+fruit and wait. This is what makes the scenario worth doing; a helpful answer \
+nobody asked for takes the practice away.
+- **Stay in character.** Never ask the learner what they want to ask you, never \
+mention the scenario, the slots, or how the session is scored, and never \
+acknowledge or quote a stage direction. A fruit vendor does not say "is there \
+anything else you'd like to ask?" — the pressure comes from the situation, not \
+from you stepping outside it.
+
 For every turn, also return a `turn_annotation`:
 - `coherence`: `on_track` if the learner stayed on the conversation's arc, \
 `drifting` if wandering, `off_track` if unintelligible/derailed.
@@ -56,6 +69,13 @@ For every turn, also return a `turn_annotation`:
 - `topic_tags`: the topics this turn touched (e.g. ["greetings"]).
 - `should_give_feedback`: true only if enough slips have accrued to warrant a \
 coaching pause; otherwise false.
+- `slots_filled`: the ids of scenario slots **this turn** established, and only \
+those — an `inform` slot when the learner conveyed the fact, a `request` slot \
+only when the learner asked AND your reply answers it. One utterance may fill \
+several. Report nothing when the scenario has no slots, or when this turn \
+established none; a slot already established on an earlier turn is not new.
+- `learner_closed`: true if the learner's turn was a goodbye (再见 and the like), \
+false otherwise.
 
 Annotations are logged silently — never mention them or correct the learner \
 inline; just keep the conversation going."""
@@ -100,4 +120,88 @@ def render_sketch_prompt(scenario: Scenario) -> str:
     """
     return _SKETCH_PROMPT_TEMPLATE.format(
         situation=scenario.situation, goal=scenario.goal
+    )
+
+
+_VERDICT_PROMPT_TEMPLATE = """\
+You are a warm, plain-spoken Mandarin tutor writing the end-of-session card for \
+one beginner learner (HSK 3.0, bands 1–2). The session is over. Your job is to \
+explain an outcome that has already been decided, and — when the learner missed \
+something — to show them the words they needed.
+
+**The outcome is not yours to judge.** It was computed from the session state \
+before you were called. Do not re-grade it, soften it, or argue with it. If you \
+are told the learner did not establish a fact, they did not establish it, no \
+matter how well the conversation reads.
+
+Outcome: {outcome}
+{missing_block}
+Turns taken: {turns_taken}{reason_block}
+
+Write, as structured output:
+
+- `explanation`: 2–4 sentences of **English**, addressed to the learner as \
+"you". Name what they did establish and what they didn't, concretely, using the \
+descriptions above rather than slot ids. Warm and specific, never a score and \
+never a lecture. If there are pronunciation or grammar notes below, fold in at \
+most one — the most useful — rather than listing them.
+
+- `model_exchange`: {exchange_instruction}
+
+Every Chinese character you write must come from the topic knowledge base that \
+follows, at or below HSK 3.0 band 2. A "what you could have said" the learner \
+cannot read teaches them nothing. Give each line its 汉字, tone-marked pinyin, \
+and a short English gloss."""
+
+_EXCHANGE_WHEN_MET = """\
+leave this empty. The learner met the goal; there is nothing to demonstrate."""
+
+_EXCHANGE_WHEN_MISSED = """\
+a 3–4 line exchange showing how the learner could have established the \
+**first** missing fact above — their line, the partner's reply, and a natural \
+close. Not a lesson, not a list of options: one short exchange they could have \
+had. Start from where the conversation actually was."""
+
+
+def render_verdict_prompt(
+    *, goal_met, missing, turns_taken, end_reason=None, notes=None
+) -> str:
+    """The one-off prompt for a session's verdict card (M2-D).
+
+    Takes the *computed* outcome and renders it as fact. The worker is never
+    asked whether the learner succeeded — that question is answered in
+    `termination.py` by comparing two sets, because a judge asked it directly
+    grades generously and prompting a judge out of a known bias does not work
+    (`docs/SCENARIOS.md`). What is left is what models are good at: explaining
+    in English, and writing a short in-band exchange.
+    """
+    missing_block = (
+        "The learner never established:\n"
+        + "\n".join(f"- {slot.description}" for slot in missing)
+        if missing
+        else "The learner established every fact the goal required."
+    )
+    reason_block = ""
+    if end_reason == "closed":
+        reason_block = (
+            "\nThe session ended because the learner said goodbye twice — they "
+            "left the conversation early. Say so kindly; it is the reason the "
+            "rest went unfinished."
+        )
+    elif end_reason == "cap":
+        reason_block = "\nThe session ran out of turns."
+    if notes:
+        reason_block += "\n\nPer-turn notes from the session:\n" + "\n".join(
+            f"- {note}" for note in notes
+        )
+    return _VERDICT_PROMPT_TEMPLATE.format(
+        outcome=(
+            "The learner MET the goal."
+            if goal_met
+            else "The learner did NOT meet the goal."
+        ),
+        missing_block=missing_block,
+        turns_taken=turns_taken,
+        reason_block=reason_block,
+        exchange_instruction=_EXCHANGE_WHEN_MET if goal_met else _EXCHANGE_WHEN_MISSED,
     )

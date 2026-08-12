@@ -14,13 +14,17 @@ from backend.models import (
     ConversationTurnResponse,
     DialogueTurn,
     PasscodeRequest,
+    SessionState,
     SessionStartResponse,
     TextTurnRequest,
     TtsRequest,
+    VerdictCard,
+    VerdictRequest,
 )
 from backend.speech import stt, tts
 from backend.speech._azure import SpeechConfigError
 from backend.workers import conversation
+from backend.workers import feedback
 from backend.workers import sketch as sketch_worker
 
 logger = logging.getLogger(__name__)
@@ -149,12 +153,28 @@ async def session_start() -> SessionStartResponse:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
+def _refuse_if_complete(state: SessionState) -> None:
+    """409 a turn submitted against a session that has already ended.
+
+    The client disables its own controls at `complete`, but it must not be the
+    only gate: a second tab, a restored background tab, or any client/server
+    disagreement would otherwise keep answering turns in a scenario that is over
+    — and the verdict the learner is about to read would describe a transcript
+    that has since moved on.
+    """
+    if state.status == "complete":
+        raise HTTPException(
+            status_code=409, detail="this session is already complete"
+        )
+
+
 @app.post("/api/turn")
 async def turn(
     audio: UploadFile = File(...),
     topic_id: str = Form("greetings"),
     dialogue: str = Form("[]"),
     sketch: str = Form(""),
+    state: str = Form("{}"),
 ) -> StreamingResponse:
     """One spoken conversation turn, streamed as NDJSON.
 
@@ -183,6 +203,13 @@ async def turn(
     except (json.JSONDecodeError, ValidationError, TypeError) as exc:
         raise HTTPException(status_code=422, detail=f"invalid dialogue: {exc}") from exc
 
+    try:
+        session_state = SessionState.model_validate(json.loads(state))
+    except (json.JSONDecodeError, ValidationError, TypeError) as exc:
+        raise HTTPException(status_code=422, detail=f"invalid state: {exc}") from exc
+
+    _refuse_if_complete(session_state)
+
     audio_bytes = await audio.read()
     try:
         transcript, kb_block, timer = await orchestrator.prepare_audio_turn(
@@ -201,6 +228,8 @@ async def turn(
             timer=timer,
             dialogue=history,
             sketch=sketch,
+            scenario=kb.load_scenario(topic_id),
+            state=session_state,
         ):
             yield event.model_dump_json() + "\n"
 
@@ -231,11 +260,42 @@ async def turn_text(req: TextTurnRequest) -> ConversationTurnResponse:
     typed and spoken turns identically; it carries no tone scores, since those
     need audio.
     """
+    _refuse_if_complete(req.state)
     try:
         return await orchestrator.run_text_turn(req)
     except kb.KbError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except conversation.ConversationError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
+@app.post("/api/verdict", response_model=VerdictCard)
+async def verdict(req: VerdictRequest) -> VerdictCard:
+    """The end-of-session card: what the learner achieved, and what to say next.
+
+    Sits **beside** the turn loop rather than inside it (`/api/tts` is here for
+    the same reason): one uncached call per session, made after the last reply
+    has already rendered, so no turn ever waits on it.
+
+    Gated on a finished session. The unmet card carries the model exchange —
+    literally the sentence the learner has not yet worked out — so serving it
+    mid-session would hand over the answer. The gate is `status == "complete"`
+    and nothing more: a second, KB-side re-derivation would 409 forever if a
+    topic gained a slot while a session was open on someone's phone, stranding a
+    verdict they had actually earned.
+
+    `goal_met` and `missing` are recomputed inside the worker from the KB, so a
+    client claiming success it didn't have gets the truth back.
+    """
+    if req.state.status != "complete":
+        raise HTTPException(
+            status_code=409, detail="this session is not complete yet"
+        )
+    try:
+        return await feedback.verdict(req)
+    except kb.KbError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except feedback.FeedbackError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 

@@ -65,6 +65,7 @@ def build_request(
     user_text: str,
     forgiveness_level: float,
     want_reading: bool = True,
+    hint: Optional[str] = None,
 ) -> Dict:
     """Assemble the exact `messages.parse` kwargs for one turn.
 
@@ -84,6 +85,15 @@ def build_request(
     rather than sent as an empty `text` block: the API rejects those outright.
     The `cache_control` breakpoint moves to the KB block in that case, so the
     prefix still caches; it just doesn't include a sketch to freeze.
+
+    `hint` is M2-C's stage direction (`termination.pressure_hint`) — the one
+    genuinely volatile instruction in the turn, so it goes in `messages`, after
+    the breakpoint, and the frozen prefix stays byte-identical with or without
+    it. It rides the final user message as its *own* content block rather than
+    being concatenated onto the learner's words: the system prompt spends a
+    paragraph teaching the model to read messy pinyin as what the learner meant,
+    and splicing English instructions into that same string poisons exactly that
+    read. Prior turns never carry one — the direction is about this turn.
     """
     system = [
         {"type": "text", "text": render_system_prompt(forgiveness_level)},
@@ -96,7 +106,19 @@ def build_request(
         {"role": _ROLE_MAP[_as_dict(t)["role"]], "content": _as_dict(t)["zh"]}
         for t in dialogue
     ]
-    messages.append({"role": "user", "content": user_text})
+    messages.append(
+        {
+            "role": "user",
+            "content": (
+                [
+                    {"type": "text", "text": f"[Stage direction: {hint}]"},
+                    {"type": "text", "text": user_text},
+                ]
+                if hint
+                else user_text
+            ),
+        }
+    )
 
     # Omitted entirely when unset, not sent as a default: `effort` is a
     # parameter only some models take (Haiku 4.5 rejects it outright), and the
@@ -139,6 +161,7 @@ async def respond(
     user_text: str,
     forgiveness_level: float,
     want_reading: bool = True,
+    hint: Optional[str] = None,
     client: Optional[AsyncAnthropic] = None,
 ) -> Tuple[Utterance, WorkerAnnotation, Optional[Utterance], object]:
     """Run one conversation turn; return (reply, annotation, reading, usage).
@@ -158,6 +181,7 @@ async def respond(
         user_text=user_text,
         forgiveness_level=forgiveness_level,
         want_reading=want_reading,
+        hint=hint,
     )
 
     # The SDK's own deadline rather than `asyncio.wait_for`: this is a real async

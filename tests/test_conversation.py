@@ -27,7 +27,14 @@ KB = "VOCAB block bytes"
 SKETCH = "SKETCH bytes"
 
 
-def _build(dialogue=None, user_text="你好", forgiveness=0.8, want_reading=True, sketch=SKETCH):
+def _build(
+    dialogue=None,
+    user_text="你好",
+    forgiveness=0.8,
+    want_reading=True,
+    sketch=SKETCH,
+    hint=None,
+):
     return conversation.build_request(
         kb_block=KB,
         sketch=sketch,
@@ -35,6 +42,7 @@ def _build(dialogue=None, user_text="你好", forgiveness=0.8, want_reading=True
         user_text=user_text,
         forgiveness_level=forgiveness,
         want_reading=want_reading,
+        hint=hint,
     )
 
 
@@ -372,3 +380,117 @@ async def test_a_timed_out_call_becomes_a_conversation_error():
             forgiveness_level=0.8,
             client=client,
         )
+
+
+# --- M2-C: the per-turn stage direction ----------------------------------
+
+
+HINT = "The learner has not yet established: price — Find out what they cost."
+
+
+def test_a_hint_leaves_the_cached_prefix_byte_identical():
+    """The whole point of injecting after the breakpoint, asserted.
+
+    The hint is the one genuinely volatile thing M2-C adds to the turn. If it
+    ever reached `system`, every turn would write a new prefix instead of
+    reading the frozen one — the single most expensive mistake available here,
+    and invisible without this assertion.
+    """
+    assert _build(hint=HINT)["system"] == _build()["system"]
+
+
+def test_the_hint_rides_the_final_user_message_as_its_own_block():
+    req = _build(user_text="三个", hint=HINT)
+    content = req["messages"][-1]["content"]
+    assert content == [
+        {"type": "text", "text": f"[Stage direction: {HINT}]"},
+        {"type": "text", "text": "三个"},
+    ]
+
+
+def test_the_learner_text_is_never_spliced_into_the_directive():
+    """The prompt teaches the model to read messy pinyin as the learner's
+    meaning; English instructions inside that same string poison that read.
+    """
+    req = _build(user_text="san ge", hint=HINT)
+    directive, utterance = req["messages"][-1]["content"]
+    assert "san ge" not in directive["text"]
+    assert utterance["text"] == "san ge"
+
+
+def test_no_hint_keeps_the_plain_string_content():
+    """Turn 1 of every session has nothing outstanding to steer toward yet."""
+    assert _build(user_text="你好")["messages"][-1]["content"] == "你好"
+
+
+def test_prior_dialogue_turns_never_carry_a_hint():
+    """The directive is about *this* turn; replaying it would compound."""
+    req = _build(
+        dialogue=[
+            {"role": "user", "zh": "我要水果"},
+            {"role": "partner", "zh": "好！你要多少个？"},
+        ],
+        user_text="三个",
+        hint=HINT,
+    )
+    assert req["messages"][0]["content"] == "我要水果"
+    assert req["messages"][1]["content"] == "好！你要多少个？"
+    assert isinstance(req["messages"][2]["content"], list)
+
+
+# --- M2-C: the tracker, folded into the annotation -----------------------
+
+
+async def test_the_tracker_signal_is_parsed_off_a_recorded_response():
+    """Contract test: assert the id *set*, never the model's wording.
+
+    The tracker is folded into the annotation the worker already returns, so it
+    costs no extra call and no extra latency on a hot path that is already 73%
+    Claude (`docs/SCENARIOS.md`, "Runtime: three tiers").
+    """
+    result = _recorded_result()
+    result.turn_annotation = WorkerAnnotation(
+        coherence="on_track",
+        slots_filled=["item", "quantity"],
+        learner_closed=False,
+    )
+    client, _ = _fake_client(result)
+
+    _reply, annotation, _reading, _usage = await conversation.respond(
+        kb_block=KB,
+        sketch=SKETCH,
+        dialogue=[],
+        user_text="我要三个水果",
+        forgiveness_level=0.8,
+        client=client,
+    )
+
+    assert annotation.slots_filled == ["item", "quantity"]
+    assert annotation.learner_closed is False
+
+
+async def test_a_close_is_reported_on_the_annotation():
+    result = _recorded_result()
+    result.turn_annotation = WorkerAnnotation(coherence="on_track", learner_closed=True)
+    client, _ = _fake_client(result)
+
+    _reply, annotation, _reading, _usage = await conversation.respond(
+        kb_block=KB, sketch=SKETCH, dialogue=[], user_text="再见",
+        forgiveness_level=0.8, client=client,
+    )
+    assert annotation.learner_closed is True
+
+
+def test_the_tracker_fields_default_to_a_no_op():
+    """A turn that establishes nothing must parse, not fail — most turns do."""
+    annotation = WorkerAnnotation(coherence="on_track")
+    assert annotation.slots_filled == []
+    assert annotation.learner_closed is False
+
+
+def test_the_spoken_schema_carries_the_tracker_too():
+    """Both paths get it free by living on the shared annotation."""
+    for schema in (ConversationResult, SpokenConversationResult):
+        fields = schema.model_fields["turn_annotation"].annotation.model_fields
+        assert "slots_filled" in fields
+        assert "learner_closed" in fields

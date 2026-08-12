@@ -17,7 +17,7 @@ from typing import AsyncIterator, List, Optional, Tuple, Union
 
 from anthropic import AsyncAnthropic
 
-from backend import config, kb, timing, tones, typed_pinyin
+from backend import config, kb, termination, timing, tones, typed_pinyin
 from backend.models import (
     ConversationTurnResponse,
     DialogueTurn,
@@ -26,6 +26,7 @@ from backend.models import (
     ScenarioCard,
     ScoreEvent,
     SessionStartResponse,
+    SessionState,
     TextTurnRequest,
     TranscriptEvent,
     TurnAnnotation,
@@ -74,6 +75,8 @@ async def run_text_turn(
     """
     timer = timing.Timer()
     kb_block = kb.load_kb_block(req.topic_id)
+    scenario = kb.load_scenario(req.topic_id)
+    turn = _turn_index(req.dialogue)
 
     with timer.stage("claude"):
         reply, annotation, reading, usage = await conversation.respond(
@@ -82,10 +85,18 @@ async def run_text_turn(
             dialogue=req.dialogue,
             user_text=req.text,
             forgiveness_level=config.FORGIVENESS_LEVEL_DEFAULT,
+            hint=termination.pressure_hint(req.state, scenario=scenario, turn=turn),
             client=client,
         )
 
     tone_errors = typed_pinyin.tone_errors_from_typed(req.text, reading.zh)
+    state = termination.advance(
+        req.state,
+        scenario=scenario,
+        slots_filled=annotation.slots_filled,
+        learner_closed=annotation.learner_closed,
+        turn=turn,
+    )
     annotation = TurnAnnotation.from_worker(annotation, tone_errors)
 
     return ConversationTurnResponse(
@@ -94,7 +105,20 @@ async def run_text_turn(
         annotation=annotation,
         timings=_report(timer, usage, mode="text"),
         usage=TurnUsage.from_sdk(usage),
+        state=state,
     )
+
+
+def _turn_index(dialogue) -> int:
+    """The 1-based index of the turn being taken, from the submitted history.
+
+    Derived rather than counted: the server is stateless, so a counter would be
+    one more thing the client could desync. The client pushes learner and
+    partner strictly in pairs, and the opening line is deliberately never part
+    of `dialogue` — so it costs the learner none of their budget
+    (`docs/SCENARIOS.md`, "Definition of a turn").
+    """
+    return len(dialogue) // 2 + 1
 
 
 def _pick_scenario_topic() -> kb.Topic:
@@ -188,6 +212,8 @@ async def stream_audio_turn(
     timer: Optional[timing.Timer] = None,
     dialogue: Optional[List[DialogueTurn]] = None,
     sketch: str = "",
+    scenario: Optional[kb.Scenario] = None,
+    state: Optional[SessionState] = None,
     client: Optional[AsyncAnthropic] = None,
 ) -> AsyncIterator[StagedEvent]:
     """Coordinate one spoken turn, emitting each stage as it resolves.
@@ -218,13 +244,20 @@ async def stream_audio_turn(
     committed to 200.
     """
     timer = timer or timing.Timer()
+    state = state if state is not None else SessionState()
+    turn = _turn_index(dialogue or [])
 
     yield TranscriptEvent(transcript=transcript, **_at_emit(timer))
 
     if not transcript.zh:
         # Nothing to assess and nothing to answer, so neither branch is started:
         # silence must not cost an Azure PA call or a Claude turn.
-        yield ReplyEvent(reply=RETRY_REPLY, **_at_emit(timer))
+        #
+        # The state is echoed back *unchanged* rather than omitted or defaulted:
+        # no worker ran, so nothing was established, and a fresh state here would
+        # wipe every filled slot on a single unrecognized mumble — with no server
+        # copy to restore it from.
+        yield ReplyEvent(reply=RETRY_REPLY, state=state, **_at_emit(timer))
         # Still a measured turn: it cost an STT round trip, and dropping the
         # short-circuit from the numbers would bias the p50 downward.
         yield DoneEvent(timings=_report(timer, None, mode="audio"),
@@ -243,6 +276,9 @@ async def stream_audio_turn(
                 dialogue=dialogue or [],
                 user_text=transcript.zh,
                 forgiveness_level=config.FORGIVENESS_LEVEL_DEFAULT,
+                hint=termination.pressure_hint(
+                    state, scenario=scenario, turn=turn
+                ),
                 # STT already gave us the learner's 汉字, so the worker's reading
                 # of them would be an echo we drop — and the reply is the branch
                 # the learner waits behind. Don't buy tokens we throw away.
@@ -303,6 +339,17 @@ async def stream_audio_turn(
                         # completed here with none: the two are derived from the
                         # PA result and must not re-gate the reply on scoring.
                         annotation=TurnAnnotation.from_worker(annotation, []),
+                        # Session state rides here for the mirror-image reason:
+                        # it comes from this annotation, so it is ready now, and
+                        # holding it to `done` would make the session's end wait
+                        # on the PA branch it has nothing to do with.
+                        state=termination.advance(
+                            state,
+                            scenario=scenario,
+                            slots_filled=annotation.slots_filled,
+                            learner_closed=annotation.learner_closed,
+                            turn=turn,
+                        ),
                         **_at_emit(timer),
                     )
 
