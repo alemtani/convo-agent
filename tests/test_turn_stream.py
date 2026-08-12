@@ -803,6 +803,45 @@ async def test_a_worker_failure_never_escapes_the_stream(monkeypatch):
     assert "reply" not in seen and "done" not in seen
 
 
+def test_route_threads_the_sessions_sketch_through_to_the_worker(monkeypatch):
+    """`sketch` is client-held from `POST /api/session`, same contract as
+    `dialogue` — resubmitted byte-identical on the form field of every turn."""
+    captured = {}
+
+    async def fake_respond(*, sketch, **kwargs):
+        captured["sketch"] = sketch
+        return (
+            Utterance(zh="你好", pinyin="nǐ hǎo"),
+            TurnAnnotation(coherence="on_track"),
+            Utterance(zh="你好", pinyin="nǐ hǎo"),
+            object(),
+        )
+
+    monkeypatch.setattr(conversation, "respond", fake_respond)
+
+    resp = client.post(
+        "/api/turn", files=_upload(), data={"sketch": "The vendor is brisk."}
+    )
+    assert resp.status_code == 200
+    assert captured["sketch"] == "The vendor is brisk."
+
+
+def test_route_sketch_defaults_to_empty(monkeypatch):
+    async def fake_respond(*, sketch, **kwargs):
+        assert sketch == ""
+        return (
+            Utterance(zh="你好", pinyin="nǐ hǎo"),
+            TurnAnnotation(coherence="on_track"),
+            Utterance(zh="你好", pinyin="nǐ hǎo"),
+            object(),
+        )
+
+    monkeypatch.setattr(conversation, "respond", fake_respond)
+
+    resp = client.post("/api/turn", files=_upload())
+    assert resp.status_code == 200
+
+
 def test_stream_asks_intermediaries_not_to_buffer():
     """Staged delivery fails silently behind a buffering proxy.
 

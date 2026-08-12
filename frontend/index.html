@@ -25,6 +25,27 @@
     h1 { font-size: 1.25rem; }
     .muted { opacity: 0.6; font-size: 0.85rem; }
 
+    /* The authored scenario, English, pinned above the scrolling thread — not
+       a bubble in it. Slots are never rendered here (docs/SCENARIOS.md): the
+       learner sees the goal, never the machine-checkable criteria. */
+    #scenario-card {
+      margin-top: 0.75rem;
+      padding: 0.6rem 0.85rem;
+      border-radius: 0.75rem;
+      background: rgba(127, 127, 127, 0.1);
+      border: 1px solid rgba(127, 127, 127, 0.25);
+      font-size: 0.85rem;
+    }
+    #scenario-card[hidden] { display: none; }
+    #scenario-card .label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      opacity: 0.6;
+    }
+    #scenario-card .situation { margin: 0.1rem 0 0.4rem; }
+    #scenario-card .goal { font-weight: 600; }
+
     #thread {
       display: flex; flex-direction: column; gap: 0.75rem;
       margin-top: 1rem;
@@ -277,6 +298,13 @@
   <h1>Convo Agent</h1>
   <p class="muted">Speak or type Mandarin (greetings). A real partner replies and remembers the conversation; spoken words come back with per-syllable tone scores (green good / amber ok / red off). The partner <strong>speaks its reply</strong> instead of writing it — that's the listening practice. Tap 🔊 to hear a line again, 👁 to see the words when you're stuck, or <strong>👁 All</strong> below to show every reply at once. Tap ⌨️ to type in <strong>pinyin</strong> instead — your words come back as 汉字. Add tone numbers (<code>ni3hao3</code>) and your tones get checked too.</p>
 
+  <div id="scenario-card" hidden>
+    <div class="label">Your situation</div>
+    <div class="situation" id="scenario-situation"></div>
+    <div class="label">Your goal</div>
+    <div class="goal" id="scenario-goal"></div>
+  </div>
+
   <div id="thread"></div>
 
   <div id="dock">
@@ -300,6 +328,9 @@
     const talk = document.getElementById("talk");
     const reset = document.getElementById("reset");
     const thread = document.getElementById("thread");
+    const scenarioCard = document.getElementById("scenario-card");
+    const scenarioSituation = document.getElementById("scenario-situation");
+    const scenarioGoal = document.getElementById("scenario-goal");
     const status = document.getElementById("status");
     const meter = document.getElementById("meter");
     const meterFill = document.getElementById("meter-fill");
@@ -574,6 +605,87 @@
     }
 
     function setStatus(msg) { status.textContent = msg; }
+
+    // --- Session start (M2-B: sketch worker) --------------------------------
+    //
+    // `POST /api/session` generates this session's opening line + flavour once;
+    // the client freezes the result and resubmits `session.sketch` on every
+    // turn (the `sketch` field/form-field below), exactly like `dialogue` —
+    // the server never stores it. `scenario_card` is pinned above the thread,
+    // in English; slots are never fetched or rendered.
+    const SESSION_KEY = "convo.session.greetings";
+    let session = loadSession();
+
+    function loadSession() {
+      try { return JSON.parse(localStorage.getItem(SESSION_KEY)) || null; }
+      catch (_) { return null; }
+    }
+    function saveSession() {
+      localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    }
+
+    function renderScenarioCard(card) {
+      if (!card) { scenarioCard.hidden = true; return; }
+      scenarioSituation.textContent = card.situation;
+      scenarioGoal.textContent = card.goal;
+      scenarioCard.hidden = false;
+    }
+
+    // Fetches a fresh session and renders its opening line as the first
+    // partner bubble — but only into an empty thread. A page reload with a
+    // running conversation must not re-open the scene: `restoreThread()` will
+    // already replay the real history, and the opening line doesn't consume
+    // the turn budget so it is never itself part of `dialogue`.
+    //
+    // Calls dedupe onto one in-flight promise: `reset` fires this, and a
+    // second click before the first request lands must not double-fetch and
+    // append a second opening bubble — there is exactly one opening line.
+    let sessionStarting = null;
+
+    function startSession() {
+      if (sessionStarting) return sessionStarting;
+      sessionStarting = (async () => {
+        try {
+          const resp = await fetch("/api/session", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ topic_id: "greetings" }),
+          });
+          if (!resp.ok) {
+            // Not fatal — turns still work with an empty sketch (no flavour)
+            // and no scenario card, same as before this shipped — but a
+            // blank thread with no explanation reads as broken, not as "no
+            // flavour today," so say something (unless the gate is already
+            // saying it).
+            if (!gateIfUnauthorized(resp)) {
+              setStatus("couldn't load the scenario — you can still talk");
+            }
+            return;
+          }
+          session = await resp.json();
+          saveSession();
+          renderScenarioCard(session.scenario_card);
+          if (dialogue.length === 0) {
+            // Marked `.opening` so it reads as scene-setting, not a turn: it
+            // doesn't consume the budget and — same reasoning — the smoke
+            // suite (tests/smoke/test_thread.py) excludes it from turn-bubble
+            // counts. Rendered through `renderReply` for the same controls
+            // (🔊/👁) every partner line gets, but `speak: false` — audio
+            // firing the instant the page loads, before any gesture has
+            // unlocked playback, is the exact "startling and billable" case
+            // the bulk-restore path already avoids; a tap on 🔊 plays it.
+            const handle = createBubble("partner", { scroll: false });
+            handle.el.classList.add("opening");
+            renderReply(handle, session.opening_line, { scroll: false, speak: false });
+          }
+        } catch (err) {
+          setStatus("couldn't reach the server — you can still talk");
+        } finally {
+          sessionStarting = null;
+        }
+      })();
+      return sessionStarting;
+    }
 
     // --- Scrolling ---------------------------------------------------------
     //
@@ -1216,6 +1328,10 @@
       form.append("dialogue", JSON.stringify(
         dialogue.map((t) => ({ role: t.role, zh: t.zh }))
       ));
+      // This session's frozen flavour from POST /api/session — resubmitted
+      // byte-identical every turn so the conversation worker's cached prefix
+      // keeps hitting. Empty when no session has started yet.
+      form.append("sketch", (session && session.sketch) || "");
       let transcript = null;
       try {
         const resp = await fetch("/api/turn", { method: "POST", body: form });
@@ -1332,6 +1448,7 @@
             topic_id: "greetings",
             text: text,
             dialogue: dialogue.map((t) => ({ role: t.role, zh: t.zh })),
+            sketch: (session && session.sketch) || "",
           }),
         });
         if (!resp.ok) {
@@ -1483,17 +1600,23 @@
       scrollToBottom("auto");
     }
 
-    // New conversation: clear memory and the thread so the partner starts fresh.
+    // New conversation: clear memory and the thread so the partner starts
+    // fresh, then fetch a new session — a new scene needs its own opening
+    // line and flavour, not the one still sitting in localStorage.
     reset.addEventListener("click", () => {
       dialogue = [];
       localStorage.removeItem(STORE_KEY);
+      session = null;
+      localStorage.removeItem(SESSION_KEY);
       thread.replaceChildren();
       // The bubbles are gone, so their reveal state and decoded audio are dead
       // weight — and the Map is the one thing here that grows without bound.
       replies.length = 0;
       speechCache.clear();
+      renderScenarioCard(null);
       stuck = true;
       setStatus("new conversation");
+      startSession();
     });
 
     showTextBtn.addEventListener("click", () => {
@@ -1505,6 +1628,20 @@
       applyShowText();
     });
 
+    // A cached session renders immediately (no round trip); restoreThread()
+    // then replays any real history on top of it. No cached session (first
+    // visit, or one cleared by `reset`) fetches a fresh one — the opening line
+    // only ever appears ahead of an empty thread, never behind restored turns.
+    if (session) {
+      renderScenarioCard(session.scenario_card);
+      if (dialogue.length === 0) {
+        const handle = createBubble("partner", { scroll: false });
+        handle.el.classList.add("opening");
+        renderReply(handle, session.opening_line, { scroll: false, speak: false });
+      }
+    } else {
+      startSession();
+    }
     restoreThread();
     applyShowText();
     applyMode();

@@ -290,23 +290,39 @@ def load_topic(topic_id: str, root: str = KB_ROOT) -> Topic:
 
 
 @functools.lru_cache(maxsize=None)
+def load_vocab_block(topic_id: str, root: str = KB_ROOT) -> str:
+    """Concatenate vocab + grammar + dialogues only — no scenario section.
+
+    The scenario-free half of `load_kb_block`, memoized the same way. Exists
+    for the sketch worker (`backend/workers/sketch.py`): it needs the topic's
+    vocabulary to write an in-band opening line, but never the authored slots
+    — `docs/SCENARIOS.md` states flatly that scenario criteria "never pass
+    through a model," and the conversation worker's cached prefix is the only
+    place slots belong. Passing this instead of `load_kb_block` is what keeps
+    that true.
+    """
+    topic_dir = _topic_dir(topic_id, root)
+    parts = []
+    for filename, header in _KB_SECTIONS:
+        parts.append(f"{header}\n\n{_read(os.path.join(topic_dir, filename))}")
+    return "\n\n".join(parts)
+
+
+@functools.lru_cache(maxsize=None)
 def load_kb_block(topic_id: str, root: str = KB_ROOT) -> str:
-    """Concatenate vocab + grammar + dialogues into one deterministic block.
+    """Concatenate vocab + grammar + dialogues + scenario into one block.
 
     This is the cached payload: byte-identical across calls for a given topic,
     with a fixed section order and headers and no interpolated/volatile content.
 
     Memoized per `(topic_id, root)` for the life of the process — the KB is
     git-versioned and authored dev-time only (no runtime writer), so this lifts
-    the three blocking file reads off the async hot path after the first turn.
+    the blocking file reads off the async hot path after the first turn.
     `KbError` is not cached (a bad topic re-raises every call); edits to the
     markdown on disk require a process restart or `load_kb_block.cache_clear()`.
     """
-    topic_dir = _topic_dir(topic_id, root)
-    parts = []
-    for filename, header in _KB_SECTIONS:
-        parts.append(f"{header}\n\n{_read(os.path.join(topic_dir, filename))}")
-    topic = parse_topic_frontmatter(_read(os.path.join(topic_dir, "topic.md")))
+    parts = [load_vocab_block(topic_id, root)]
+    topic = parse_topic_frontmatter(_read(os.path.join(_topic_dir(topic_id, root), "topic.md")))
     if topic.scenario is not None:
         parts.append(render_scenario_block(topic.scenario))
     return "\n\n".join(parts)

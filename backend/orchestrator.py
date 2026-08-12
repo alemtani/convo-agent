@@ -22,7 +22,9 @@ from backend.models import (
     DialogueTurn,
     DoneEvent,
     ReplyEvent,
+    ScenarioCard,
     ScoreEvent,
+    SessionStartResponse,
     TextTurnRequest,
     TranscriptEvent,
     TurnAnnotation,
@@ -32,9 +34,9 @@ from backend.models import (
     Utterance,
 )
 from backend.pinyin import to_pinyin
-from backend.prompts import SKETCH_STUB
 from backend.speech import pronunciation, stt
 from backend.workers import conversation
+from backend.workers import sketch as sketch_worker
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +77,7 @@ async def run_text_turn(
     with timer.stage("claude"):
         reply, annotation, reading, usage = await conversation.respond(
             kb_block=kb_block,
-            sketch=SKETCH_STUB,
+            sketch=req.sketch,
             dialogue=req.dialogue,
             user_text=req.text,
             forgiveness_level=config.FORGIVENESS_LEVEL_DEFAULT,
@@ -91,6 +93,36 @@ async def run_text_turn(
         annotation=annotation,
         timings=_report(timer, usage, mode="text"),
         usage=TurnUsage.from_sdk(usage),
+    )
+
+
+async def start_session(
+    topic_id: str, client: Optional[AsyncAnthropic] = None
+) -> SessionStartResponse:
+    """Coordinate one session start: generate flavour, pin the scenario card.
+
+    One `sketch` worker call per session (M2-B) — the opening line and the
+    persona/color flavour that used to be the hardcoded `prompts.OPENING_LINE`
+    / `SKETCH_STUB`. The client freezes the response and resubmits `sketch`
+    byte-identical on every turn for the rest of the session, so this is the
+    one point in the session where a cache *write* happens rather than a read
+    (`docs/SCENARIOS.md`, "Caching"). `scenario_card` is the authored
+    `situation`/`goal` straight from `topic.md`; slots are never surfaced.
+
+    Raises `kb.KbError` for an unknown topic or one with no authored scenario,
+    `sketch.SketchError` on a refusal / unparseable reply.
+    """
+    topic = kb.load_topic(topic_id)
+    if topic.scenario is None:
+        raise kb.KbError(f"topic {topic_id!r} has no authored scenario")
+
+    result = await sketch_worker.generate(topic_id, topic.scenario, client=client)
+    return SessionStartResponse(
+        scenario_card=ScenarioCard(
+            situation=topic.scenario.situation, goal=topic.scenario.goal
+        ),
+        opening_line=result.opening_line,
+        sketch=result.sketch,
     )
 
 
@@ -126,6 +158,7 @@ async def stream_audio_turn(
     kb_block: str,
     timer: Optional[timing.Timer] = None,
     dialogue: Optional[List[DialogueTurn]] = None,
+    sketch: str = "",
     client: Optional[AsyncAnthropic] = None,
 ) -> AsyncIterator[StagedEvent]:
     """Coordinate one spoken turn, emitting each stage as it resolves.
@@ -177,7 +210,7 @@ async def stream_audio_turn(
         with timer.stage("claude"):
             return await conversation.respond(
                 kb_block=kb_block,
-                sketch=SKETCH_STUB,
+                sketch=sketch,
                 dialogue=dialogue or [],
                 user_text=transcript.zh,
                 forgiveness_level=config.FORGIVENESS_LEVEL_DEFAULT,

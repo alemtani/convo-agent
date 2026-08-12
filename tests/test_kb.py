@@ -131,6 +131,29 @@ def test_unknown_topic_raises_kberror():
         kb.load_topic("does-not-exist")
 
 
+# --- load_vocab_block: the scenario-free half, for the sketch worker (M2-B) -
+
+
+def test_load_vocab_block_matches_kb_block_minus_the_scenario_section():
+    """`load_kb_block` = `load_vocab_block` + the scenario section, byte for
+    byte — the split must not change what the conversation worker freezes."""
+    assert kb.load_kb_block("greetings") == kb.load_vocab_block("greetings") + "\n\n" + kb.render_scenario_block(
+        kb.load_topic("greetings").scenario
+    )
+
+
+def test_load_vocab_block_never_contains_the_scenario_section():
+    """The sketch worker's whole KB block, by construction — slots must never
+    reach a model call (`docs/SCENARIOS.md`, `backend/workers/sketch.py`)."""
+    block = kb.load_vocab_block("greetings")
+    assert "SCENARIO" not in block
+    assert "partner_name" not in block   # a greetings slot id
+
+
+def test_load_vocab_block_is_byte_identical_across_calls():
+    assert kb.load_vocab_block("greetings") == kb.load_vocab_block("greetings")
+
+
 # --- scenario parsing (M2) ------------------------------------------------
 
 

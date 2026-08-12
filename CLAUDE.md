@@ -30,15 +30,18 @@ deferred, not in the hot path).
 
 ## Key files and directories
 
-Target layout (per `docs/DESIGN.md`). The backend serves through Phase 3b: the
-full spoken loop `POST /api/turn` → Azure STT → PA ∥ conversation worker (cached
-prefix) → merged `tone_errors`, plus the mic-free `POST /api/turn/text` harness.
-`POST /api/tts` (M4) sits beside them, not inside the loop: it speaks one line of
-text, so replay is free and the turn never waits on a synthesis.
-Live modules: `main.py`, `orchestrator.py`, `kb.py`, `pinyin.py`, `tones.py`,
+Target layout (per `docs/DESIGN.md`). The backend serves through M2-B: the full
+spoken loop `POST /api/turn` → Azure STT → PA ∥ conversation worker (cached
+prefix) → merged `tone_errors`; the mic-free `POST /api/turn/text` harness;
+`POST /api/session`, the sketch worker's one call per session (opening line +
+flavour, plus the pinned scenario card — `docs/SCENARIOS.md`); and
+`POST /api/tts` (M4), which sits beside the loop, not inside it — it speaks one
+line of text, so replay is free and the turn never waits on a synthesis. Live
+modules: `main.py`, `orchestrator.py`, `kb.py`, `pinyin.py`, `tones.py`,
 `models.py`, `config.py`, `prompts.py`, `workers/conversation.py`,
-`speech/{stt,pronunciation,tts,_azure}.py`. Still planned: `workers/feedback.py`,
-`workers/sketch.py`, `db.py`, `profile.py` (Phases 4–8).
+`workers/sketch.py`, `speech/{stt,pronunciation,tts,_azure}.py`. Still planned:
+`workers/feedback.py` (tracker/termination/verdict, M2 #31–#32), `db.py`,
+`profile.py` (Phases 7–8).
 
 ```
 backend/

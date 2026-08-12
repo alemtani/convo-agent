@@ -27,10 +27,10 @@ KB = "VOCAB block bytes"
 SKETCH = "SKETCH bytes"
 
 
-def _build(dialogue=None, user_text="你好", forgiveness=0.8, want_reading=True):
+def _build(dialogue=None, user_text="你好", forgiveness=0.8, want_reading=True, sketch=SKETCH):
     return conversation.build_request(
         kb_block=KB,
-        sketch=SKETCH,
+        sketch=sketch,
         dialogue=dialogue or [],
         user_text=user_text,
         forgiveness_level=forgiveness,
@@ -100,6 +100,20 @@ def test_scenario_rides_the_cached_prefix_not_the_per_turn_messages():
     assert req["system"][2]["cache_control"] == {"type": "ephemeral"}
     for message in req["messages"]:
         assert "SCENARIO" not in message["content"]
+
+
+def test_empty_sketch_is_omitted_rather_than_sent_as_an_empty_block():
+    """A turn sent before `POST /api/session` has run defaults `sketch` to
+    `""` (`TextTurnRequest.sketch`) — that must not become an empty `text`
+    block, which the API rejects outright. The breakpoint moves to the KB
+    block instead, so the prefix still caches.
+    """
+    system = _build(user_text="你好", sketch="")["system"]
+    assert len(system) == 2
+    assert system[1]["text"] == KB
+    assert "cache_control" not in system[0]
+    assert system[1]["cache_control"] == {"type": "ephemeral"}
+    assert not any(block["text"] == "" for block in system)
 
 
 def test_model_is_held_fixed():

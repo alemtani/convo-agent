@@ -358,6 +358,54 @@ class SpokenConversationResult(BaseModel):
     turn_annotation: WorkerAnnotation
 
 
+class ScenarioCard(BaseModel):
+    """The learner-visible half of an authored scenario (`docs/SCENARIOS.md`).
+
+    `situation` and `goal`, English, straight from `topic.md`'s `scenario:`
+    block — pinned at the top of the thread. Slots are the machine-checkable
+    form of the same goal and are never shown here.
+    """
+
+    situation: str
+    goal: str
+
+
+class SketchResult(BaseModel):
+    """Structured output the sketch worker constrains Claude to.
+
+    One call at session start (`backend/workers/sketch.py`): `opening_line`
+    replaces the old hardcoded `prompts.OPENING_LINE`, and `sketch` — persona +
+    incidental color, never the goal or slots — replaces `prompts.SKETCH_STUB`.
+    Both freeze into the client-held session state and ride the conversation
+    worker's cached prefix for the rest of the session.
+    """
+
+    opening_line: Utterance
+    sketch: str
+
+
+class SessionStartRequest(BaseModel):
+    """Request body for `POST /api/session`: which topic to start."""
+
+    topic_id: str
+
+
+class SessionStartResponse(BaseModel):
+    """Response body for `POST /api/session`.
+
+    The one point in a session where flavour is *generated* rather than
+    reused: the client freezes `sketch` here and resubmits it byte-identical
+    on every turn (`TextTurnRequest.sketch`, the `sketch` form field on
+    `POST /api/turn`) — the server never stores or regenerates it, keeping the
+    stateless-proxy property. `opening_line` is rendered once as the first
+    partner bubble and does not consume the turn budget.
+    """
+
+    scenario_card: ScenarioCard
+    opening_line: Utterance
+    sketch: str
+
+
 class PasscodeRequest(BaseModel):
     """Request body for `POST /api/auth`: the shared passcode, nothing else.
 
@@ -378,11 +426,17 @@ class TextTurnRequest(BaseModel):
     tones checked), or 汉字 if they'd rather type those. The worker reads either
     and reports back which characters it understood. The audio path reuses the
     same orchestrator seam with `text` sourced from Azure STT instead.
+
+    `sketch` is this session's frozen flavour block from `POST /api/session`
+    (`SessionStartResponse.sketch`) — the client resubmits it byte-identical on
+    every turn, same as `dialogue`. Defaults to empty for a turn sent before a
+    session has been started, which degrades to no flavour rather than failing.
     """
 
     topic_id: str
     text: str
     dialogue: List[DialogueTurn] = []
+    sketch: str = ""
 
     @field_validator("text")
     @classmethod
