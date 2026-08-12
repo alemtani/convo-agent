@@ -108,7 +108,7 @@ def test_expired_session_mid_turn_re_prompts_without_losing_the_thread(page):
     reload would be their only recourse.
     """
     page.add_init_script(
-        "(([d]) => { localStorage.setItem('convo.dialogue.greetings', JSON.stringify(d));"
+        "(([d]) => { localStorage.setItem('convo.dialogue', JSON.stringify(d));"
         "localStorage.setItem('convo.mode', 'text'); })"
         f"({json.dumps([[{'role': 'user', 'zh': '你好', 'pinyin': 'nǐ hǎo'}]])})"
     )

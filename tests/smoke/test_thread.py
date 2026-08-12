@@ -31,15 +31,15 @@ HISTORY = [
 def seed(page, *, dialogue=None, mode="speak"):
     """Prime localStorage before the page's script runs, then load it.
 
-    Also seeds `convo.session.greetings` (M2-B), so the opening-line bubble
+    Also seeds `convo.session` (M2-B), so the opening-line bubble
     renders synchronously from localStorage instead of racing a `/api/session`
     fetch — this file's bubble-count assertions need that render to have
     already happened (or not) by the time they run, not "eventually."
     """
     page.add_init_script(
-        "(([d, m, s]) => { localStorage.setItem('convo.dialogue.greetings', JSON.stringify(d));"
+        "(([d, m, s]) => { localStorage.setItem('convo.dialogue', JSON.stringify(d));"
         "localStorage.setItem('convo.mode', m);"
-        "localStorage.setItem('convo.session.greetings', JSON.stringify(s)); })"
+        "localStorage.setItem('convo.session', JSON.stringify(s)); })"
         f"({json.dumps([dialogue or [], mode, SESSION_START])})"
     )
     page.goto("/")

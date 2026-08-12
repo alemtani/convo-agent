@@ -62,10 +62,10 @@ def load(page, mode="text"):
     """
     page.add_init_script(
         "(([m, s, d]) => {"
-        "if (localStorage.getItem('convo.session.greetings')) return;"
+        "if (localStorage.getItem('convo.session')) return;"
         "localStorage.setItem('convo.mode', m);"
-        "localStorage.setItem('convo.session.greetings', JSON.stringify(s));"
-        "localStorage.setItem('convo.dialogue.greetings', JSON.stringify(d)); })"
+        "localStorage.setItem('convo.session', JSON.stringify(s));"
+        "localStorage.setItem('convo.dialogue', JSON.stringify(d)); })"
         f"({json.dumps([mode, SESSION_START, DUMMY_HISTORY])})"
     )
     page.goto("/")
