@@ -16,6 +16,7 @@ from fastapi.testclient import TestClient
 
 from backend import auth, config, orchestrator
 from backend.main import app
+from backend.speech import tts
 
 PASSCODE = "open-sesame"
 
@@ -221,6 +222,27 @@ def test_text_turn_is_refused_without_spending_claude(gated, monkeypatch):
         resp = client.post(
             "/api/turn/text", json={"topic_id": "greetings", "text": "你好"}
         )
+
+    assert resp.status_code == 401
+    assert called == []
+
+
+def test_tts_is_refused_without_spending_azure(gated, monkeypatch):
+    """Synthesis is billed per character, and this route takes the text to bill.
+
+    The cheapest endpoint to abuse, for the same reason it is useful: no audio to
+    upload, no conversation to hold — just a body and a bill.
+    """
+    called = []
+
+    async def spy(*args, **kwargs):
+        called.append(args)
+        raise AssertionError("Azure TTS ran on an unauthenticated request")
+
+    monkeypatch.setattr(tts, "synthesize", spy)
+
+    with TestClient(app) as client:
+        resp = client.post("/api/tts", json={"text": "你好"})
 
     assert resp.status_code == 401
     assert called == []

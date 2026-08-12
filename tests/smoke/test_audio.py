@@ -1,5 +1,8 @@
 """Frontend smoke tests: the playback AudioContext unlock seam.
 
+The seam itself. What M4 built on top of it — autoplay, replay, reveal — is in
+`test_reply_audio.py`.
+
 M4 plays partner audio from a callback that fires seconds after the
 push-to-talk release, with no user gesture on the stack. Safari only lets an
 AudioContext leave "suspended" if `resume()` runs inside a live gesture, so a
@@ -72,7 +75,13 @@ def test_tone_plays_from_a_non_gesture_callback(page):
 
 
 def test_play_pcm_renders_int16_samples(page):
-    """M4 hands back Int16 PCM; the seam must accept it without a caller convert."""
+    """Int16 in, no caller-side convert.
+
+    Written expecting M4 to return raw PCM; it returns MP3, so the real partner
+    audio goes through `playUrl`/`decodeAudioData` instead (see
+    `test_reply_audio.py`). Kept because the seam still offers this path and a
+    tested capability is cheaper to keep than to re-derive.
+    """
     page.goto("/")
     page.locator("#talk").dispatch_event("pointerdown")
     ok = page.evaluate(

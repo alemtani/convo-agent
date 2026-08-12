@@ -23,9 +23,11 @@ that blocks to hold a response open would deadlock the test that wants to
 inspect the page meanwhile.
 """
 
+import base64
 import functools
 import http.server
 import importlib.util
+import io
 import json
 import math
 import struct
@@ -183,6 +185,35 @@ TURN_AUDIO = [
     {"stage": "done", "timings": TIMINGS, "usage": USAGE, "elapsed_ms": 1250.0},
 ]
 
+@pytest.fixture(scope="session")
+def fake_speech_b64():
+    """A tiny decodable audio clip for the `/api/tts` stub, base64 encoded.
+
+    A WAV, not an MP3, even though the real endpoint returns MP3: browsers sniff
+    the container in `decodeAudioData` and ignore the content type, and a WAV is
+    the one format we can produce here without shipping an encoder. What the
+    page does with the bytes — decode, cache, play — is identical either way,
+    and that is the whole of what these tests can observe.
+
+    Fabricating a fake MP3 would decode to a rejected promise, which the page
+    correctly treats as "synthesis failed" — every audio assertion would then be
+    testing the fallback path while appearing to test playback.
+    """
+    buf = io.BytesIO()
+    rate = 24000
+    with wave.open(buf, "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(rate)
+        w.writeframes(
+            b"".join(
+                struct.pack("<h", int(0.3 * 32767 * math.sin(2 * math.pi * 440 * i / rate)))
+                for i in range(rate // 4)
+            )
+        )
+    return base64.b64encode(buf.getvalue()).decode("ascii")
+
+
 _STUB_JS = """
 (canned) => {
   const state = {
@@ -224,6 +255,21 @@ _STUB_JS = """
       }));
     }
 
+    // Binary: `{__audio: "<base64>"}` answers with real decodable bytes, which
+    // is what /api/tts returns. Anything less and decodeAudioData rejects, and
+    // the page's honest fallback (reveal the text) would mask every playback
+    // assertion as a pass.
+    const audio = status === 200 && canned && canned.__audio;
+    if (audio) {
+      const bin = Uint8Array.from(atob(audio), (c) => c.charCodeAt(0));
+      const make = () => new Response(bin, {
+        status,
+        headers: { "Content-Type": "audio/mpeg" },
+      });
+      if (!state.manual) return Promise.resolve(make());
+      return new Promise((resolve) => state.waiting.push(() => resolve(make())));
+    }
+
     const body = status === 200 ? JSON.stringify(canned || {}) : "stubbed failure";
     const make = () => new Response(body, {
       status,
@@ -237,17 +283,21 @@ _STUB_JS = """
 
 
 @pytest.fixture
-def page(page):
-    """A page whose `/api/turn*` calls answer from canned JSON."""
+def page(page, fake_speech_b64):
+    """A page whose `/api/turn*` and `/api/tts` calls answer from canned data."""
     # `/health` is canned explicitly rather than left to the stub's `{}` default:
     # the page probes it on load to decide whether to raise the passcode gate,
     # and these tests are about the thread, not the gate. Saying `disabled` out
     # loud keeps that a stated precondition instead of an accident of the
     # default — a gate that appeared here would fail every test with a blank
     # overlay and no obvious cause.
-    page.add_init_script(
-        f"({_STUB_JS})({json.dumps({'/api/turn': TURN_AUDIO, '/api/turn/text': TURN_TEXT, '/health': {'status': 'ok', 'auth': 'disabled'}})})"
-    )
+    canned = {
+        "/api/turn": TURN_AUDIO,
+        "/api/turn/text": TURN_TEXT,
+        "/api/tts": {"__audio": fake_speech_b64},
+        "/health": {"status": "ok", "auth": "disabled"},
+    }
+    page.add_init_script(f"({_STUB_JS})({json.dumps(canned)})")
     errors = []
     page.on("pageerror", lambda e: errors.append(str(e)))
     yield page

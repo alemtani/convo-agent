@@ -88,6 +88,30 @@ TONE_ERROR_THRESHOLD = 60.0
 #
 # 15s is ~3x p95 and still well inside the "clear failure beats a bubble that
 # never resolves" bound the original number was reaching for.
+# Partner-reply synthesis (M4). Off the turn's critical path — `/api/tts` is its
+# own endpoint, keyed on text — so a slow one delays a bubble's audio, not the
+# reply itself. Still bounded: it holds a request open like anything else.
+#
+# Xiaoxiao is the zh-CN voice the PA live fixture already synthesizes with, so
+# the learner hears one voice across the app rather than two.
+TTS_VOICE = os.getenv("TTS_VOICE", "zh-CN-XiaoxiaoNeural")
+
+# Signed percentage handed to SSML `<prosody rate>`. Negative is slower. The
+# default neural pace is native-speed and a band-1–2 learner cannot segment it;
+# -10% is enough to hear word boundaries without sounding drugged. A dial, not a
+# constant — the right value is a measured question once real sessions run.
+TTS_RATE_PCT = int(os.getenv("TTS_RATE_PCT", "-10"))
+
+# More generous than STT's: the learner is not staring at a pending bubble
+# waiting for this. The reply text is already on screen (or one 👁 away), and a
+# missed synthesis degrades to a revealed line rather than a lost turn.
+TTS_TIMEOUT_S = float(os.getenv("TTS_TIMEOUT_S", "10"))
+
+# Lines kept in the server-side synthesis cache. At ~25 KB per one-sentence
+# reply, 64 entries is a couple of megabytes — small against the cost it avoids,
+# which is re-billing Azure for a line the learner just asked to hear again.
+TTS_CACHE_MAX_ENTRIES = int(os.getenv("TTS_CACHE_MAX_ENTRIES", "64"))
+
 STT_TIMEOUT_S = float(os.getenv("STT_TIMEOUT_S", "5"))
 PA_TIMEOUT_S = float(os.getenv("PA_TIMEOUT_S", "5"))
 CLAUDE_TIMEOUT_S = float(os.getenv("CLAUDE_TIMEOUT_S", "15"))

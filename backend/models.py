@@ -400,6 +400,34 @@ class TextTurnRequest(BaseModel):
         return v
 
 
+# A partner reply is a sentence. The cap is what keeps an unbounded body from
+# being an unbounded Azure bill — synthesis is billed per character, and behind a
+# single shared passcode this is the cheapest endpoint to abuse: no audio to
+# upload, no conversation to hold, just text and a charge.
+TTS_MAX_CHARS = 200
+
+
+class TtsRequest(BaseModel):
+    """Request body for `POST /api/tts`: one line to speak.
+
+    Only the text — no voice, no rate. Those are server config, so the client
+    cannot ask for an expensive voice, and the cache key stays a property of the
+    deployment rather than of whoever is calling.
+    """
+
+    text: str
+
+    @field_validator("text")
+    @classmethod
+    def _speakable(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("text must not be empty")
+        if len(v) > TTS_MAX_CHARS:
+            raise ValueError(f"text must be at most {TTS_MAX_CHARS} characters")
+        return v
+
+
 class ConversationTurnResponse(BaseModel):
     """Response body for `POST /api/turn/text`: the learner's turn + the reply.
 

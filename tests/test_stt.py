@@ -1,7 +1,7 @@
 """Azure STT boundary — contract tests with the SDK fully mocked.
 
 We assert that we *parse* each SDK result reason correctly (text / NoMatch /
-Canceled). The shared recognizer construction is covered in `test_recognizer.py`;
+Canceled). The shared recognizer construction is covered in `test_azure.py`;
 here we only check what `stt` adds on top. We never hit Azure and never assert
 real recognition text (that's a manual/live check).
 """
@@ -9,7 +9,7 @@ import types
 
 import pytest
 
-from backend.speech import _recognizer, stt
+from backend.speech import _azure, stt
 
 
 def _make_fake_speechsdk(result, recorder):
@@ -62,17 +62,17 @@ def _result(reason, text="", error_details=""):
 def patched(monkeypatch):
     """Install fake credentials; return a helper that wires a fake SDK + result.
 
-    The same fake serves both `stt` (result dispatch) and `_recognizer` (the
+    The same fake serves both `stt` (result dispatch) and `_azure` (the
     shared construction `stt` now delegates to).
     """
-    monkeypatch.setattr(_recognizer.config, "AZURE_SPEECH_KEY", "test-key")
-    monkeypatch.setattr(_recognizer.config, "AZURE_SPEECH_REGION", "test-region")
+    monkeypatch.setattr(_azure.config, "AZURE_SPEECH_KEY", "test-key")
+    monkeypatch.setattr(_azure.config, "AZURE_SPEECH_REGION", "test-region")
 
     def install(result):
         recorder = {}
         fake = _make_fake_speechsdk(result, recorder)
         monkeypatch.setattr(stt, "speechsdk", fake)
-        monkeypatch.setattr(_recognizer, "speechsdk", fake)
+        monkeypatch.setattr(_azure, "speechsdk", fake)
         return recorder
 
     return install
