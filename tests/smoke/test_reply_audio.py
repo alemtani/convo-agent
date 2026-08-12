@@ -87,7 +87,7 @@ def test_reveal_shows_the_text_in_place(page):
 
     bubble.locator("button.reveal").click()
 
-    expect(page.locator(".bubble.partner")).to_have_count(1)
+    expect(page.locator(".bubble.partner:not([data-opening])")).to_have_count(1)
     expect(bubble.locator(".zh")).to_have_text(REPLY_ZH)
     expect(bubble.locator(".pinyin")).to_be_visible()
 
@@ -210,7 +210,7 @@ def test_a_blocked_playback_reveals_the_text(page):
     page.evaluate("window.__audio._close()")
 
     # 🔊 from script, so no gesture unlocks the context mid-test.
-    page.evaluate("document.querySelector('.bubble.partner button.replay').click()")
+    page.evaluate("document.querySelector('.bubble.partner:not([data-opening]) button.replay').click()")
 
     expect(bubble.locator(".zh")).to_have_text(REPLY_ZH)
     expect(page.locator("#status")).to_contain_text("silent switch")
@@ -290,7 +290,7 @@ def test_a_failed_synthesis_leaves_the_thread_usable(page):
     page.evaluate("delete window.__stub.status['/api/tts']")
     _send_text(page, "zaijian")
 
-    expect(page.locator(".bubble.partner")).to_have_count(2)
+    expect(page.locator(".bubble.partner:not([data-opening])")).to_have_count(2)
     page.wait_for_function("window.__audio._plays() === 1")
 
 
@@ -303,7 +303,7 @@ def test_a_new_conversation_drops_the_cached_audio(page):
     page.click("#reset")
 
     assert page.evaluate("window.__audio._cached()") == 0
-    expect(page.locator(".bubble.partner")).to_have_count(0)
+    expect(page.locator(".bubble.partner:not([data-opening])")).to_have_count(0)
 
 
 def test_the_spoken_turn_speaks_its_reply(page):
@@ -321,6 +321,6 @@ def test_the_spoken_turn_speaks_its_reply(page):
     page.mouse.up()
     page.wait_for_function("window.__convo.lastSampleCount !== null")
 
-    expect(page.locator(".bubble.partner")).to_have_count(1)
-    expect(page.locator(".bubble.partner .zh")).to_have_count(0)
+    expect(page.locator(".bubble.partner:not([data-opening])")).to_have_count(1)
+    expect(page.locator(".bubble.partner:not([data-opening]) .zh")).to_have_count(0)
     page.wait_for_function("window.__audio._plays() === 1")

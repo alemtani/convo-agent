@@ -666,16 +666,19 @@
           saveSession();
           renderScenarioCard(session.scenario_card);
           if (dialogue.length === 0) {
-            // Marked `.opening` so it reads as scene-setting, not a turn: it
-            // doesn't consume the budget and — same reasoning — the smoke
+            // Marked `data-opening` so it reads as scene-setting, not a turn:
+            // it doesn't consume the budget and — same reasoning — the smoke
             // suite (tests/smoke/test_thread.py) excludes it from turn-bubble
-            // counts. Rendered through `renderReply` for the same controls
-            // (🔊/👁) every partner line gets, but `speak: false` — audio
-            // firing the instant the page loads, before any gesture has
+            // counts. A `data-` attribute rather than a class because
+            // `paintReply` below overwrites `className` wholesale on every
+            // repaint (e.g. tapping 👁) — a class added here would vanish on
+            // the first reveal. Rendered through `renderReply` for the same
+            // controls (🔊/👁) every partner line gets, but `speak: false` —
+            // audio firing the instant the page loads, before any gesture has
             // unlocked playback, is the exact "startling and billable" case
             // the bulk-restore path already avoids; a tap on 🔊 plays it.
             const handle = createBubble("partner", { scroll: false });
-            handle.el.classList.add("opening");
+            handle.el.dataset.opening = "true";
             renderReply(handle, session.opening_line, { scroll: false, speak: false });
           }
         } catch (err) {
@@ -1636,7 +1639,7 @@
       renderScenarioCard(session.scenario_card);
       if (dialogue.length === 0) {
         const handle = createBubble("partner", { scroll: false });
-        handle.el.classList.add("opening");
+        handle.el.dataset.opening = "true";
         renderReply(handle, session.opening_line, { scroll: false, speak: false });
       }
     } else {

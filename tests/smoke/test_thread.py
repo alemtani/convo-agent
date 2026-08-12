@@ -45,10 +45,10 @@ def seed(page, *, dialogue=None, mode="speak"):
     page.goto("/")
 
 
-def bubbles(page, selector=".bubble:not(.opening)"):
+def bubbles(page, selector=".bubble:not([data-opening])"):
     """Turn bubbles only, by default.
 
-    The seeded opening line is a `.bubble.partner.opening` — scene-setting
+    The seeded opening line is a `.bubble.partner[data-opening]` — scene-setting
     that doesn't consume the turn budget (`docs/SCENARIOS.md`) — so it is
     excluded here the same way it's excluded from the count the learner reads
     as "the conversation so far." Pass an explicit `selector` to see it.
@@ -123,7 +123,7 @@ def test_transcript_renders_while_the_reply_is_still_pending(page):
     # and it is the *only* bubble. The partner isn't thinking about anything yet
     # — a reply placeholder above a message that doesn't exist reads backwards.
     expect(bubbles(page, ".bubble.user.pending")).to_have_count(1)
-    expect(bubbles(page, ".bubble.partner:not(.opening)")).to_have_count(0)
+    expect(bubbles(page, ".bubble.partner:not([data-opening])")).to_have_count(0)
 
     page.evaluate("window.__stub.releaseNext()")   # transcript
 
@@ -171,7 +171,7 @@ def test_a_pre_transcript_failure_leaves_no_partner_bubble(page):
     failed = bubbles(page, ".bubble.user.failed")
     expect(failed).to_have_count(1)
     expect(failed).to_contain_text("error 502")
-    expect(bubbles(page, ".bubble.partner:not(.opening)")).to_have_count(0)
+    expect(bubbles(page, ".bubble.partner:not([data-opening])")).to_have_count(0)
 
 
 def test_scores_repaint_the_transcript_bubble_instead_of_adding_one(page):
@@ -216,7 +216,7 @@ def test_timings_line_waits_for_the_done_event(page):
 
     # The seeded opening line also renders through `renderReply` (M4), so it
     # carries `.controls` too — scope past it to the turn's own reply.
-    expect(bubbles(page, ".bubble.partner:not(.opening) .controls")).to_have_count(1)
+    expect(bubbles(page, ".bubble.partner:not([data-opening]) .controls")).to_have_count(1)
     expect(page.locator("#thread .timings")).to_have_count(0)
 
     page.evaluate("window.__stub.releaseNext()")   # done
@@ -267,11 +267,11 @@ def test_pending_bubble_exists_between_submit_and_response(page):
     page.evaluate("window.__stub.release()")
     expect(bubbles(page, ".bubble.partner.pending")).to_have_count(0)
     # Same node, now carrying the reply: replaced in place, not re-added.
-    expect(bubbles(page, ".bubble.partner:not(.opening)")).to_have_count(1)
+    expect(bubbles(page, ".bubble.partner:not([data-opening])")).to_have_count(1)
     # The reply is audio-only by default (M4), so reveal it to check *which*
     # reply this node ended up holding — otherwise any repaint would pass.
-    # Scoped past `.opening`: the seeded opening line has its own reveal button.
-    page.click(".bubble.partner:not(.opening) button.reveal")
+    # Scoped past `[data-opening]`: the seeded opening line has its own reveal button.
+    page.click(".bubble.partner:not([data-opening]) button.reveal")
     assert "很高兴认识你" in handle.inner_text()
 
 
@@ -387,7 +387,7 @@ def test_session_start_renders_the_scenario_card_and_opening_line(page):
     )
     expect(page.locator("#scenario-goal")).to_have_text(SESSION_START["scenario_card"]["goal"])
 
-    opening = bubbles(page, ".bubble.partner.opening")
+    opening = bubbles(page, ".bubble.partner[data-opening]")
     expect(opening).to_have_count(1)
     # Audio-only by default (M4), same as any other partner reply: reveal it
     # to check which line this bubble actually holds.
@@ -413,7 +413,7 @@ def test_session_start_failure_shows_a_status_message_and_does_not_crash(page):
 
     expect(page.locator("#status")).to_have_text("couldn't load the scenario — you can still talk")
     expect(page.locator("#scenario-card")).not_to_be_visible()
-    expect(bubbles(page, ".bubble.opening")).to_have_count(0)
+    expect(bubbles(page, ".bubble[data-opening]")).to_have_count(0)
 
 
 def test_reload_with_history_does_not_repeat_the_opening_line(page):
@@ -421,7 +421,7 @@ def test_reload_with_history_does_not_repeat_the_opening_line(page):
     the opening line only ever leads an *empty* thread."""
     seed(page, dialogue=HISTORY)
 
-    expect(bubbles(page, ".bubble.opening")).to_have_count(0)
+    expect(bubbles(page, ".bubble[data-opening]")).to_have_count(0)
     expect(bubbles(page)).to_have_count(len(HISTORY))
 
 
@@ -434,7 +434,7 @@ def test_new_conversation_clears_the_card_and_fetches_a_fresh_session(page):
     page.click("#reset")
 
     expect(bubbles(page)).to_have_count(0)
-    expect(bubbles(page, ".bubble.opening")).to_have_count(1)
+    expect(bubbles(page, ".bubble[data-opening]")).to_have_count(1)
     expect(page.locator("#scenario-card")).to_be_visible()
 
 
@@ -452,4 +452,4 @@ def test_double_clicking_reset_does_not_duplicate_the_opening_line(page):
         "document.getElementById('reset').click();"
     )
 
-    expect(bubbles(page, ".bubble.opening")).to_have_count(1)
+    expect(bubbles(page, ".bubble[data-opening]")).to_have_count(1)
