@@ -25,6 +25,60 @@
     h1 { font-size: 1.25rem; }
     .muted { opacity: 0.6; font-size: 0.85rem; }
 
+    /* The old always-visible instructions paragraph got clunky once the
+       scenario card joined it — most of it is "how the controls work,"
+       useful once, then just height everyone scrolls past forever. An ⓘ
+       button + popup keeps it one tap away without permanently taking the
+       space above the thread. */
+    #header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+    #header-row h1 { margin: 0; }
+    #info-btn {
+      font-size: 1.1rem;
+      line-height: 1;
+      padding: 0.3rem 0.5rem;
+      border-radius: 50%;
+      border: 1px solid rgba(127, 127, 127, 0.4);
+      background: transparent;
+      color: inherit;
+      opacity: 0.7;
+      cursor: pointer;
+    }
+    #info-panel {
+      position: fixed;
+      inset: 0;
+      z-index: 9;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      background: rgba(0, 0, 0, 0.4);
+    }
+    #info-panel:not([hidden]) { display: flex; }
+    #info-panel-content {
+      background: Canvas;
+      color: CanvasText;
+      border-radius: 0.75rem;
+      padding: 1.25rem;
+      max-width: 28rem;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+    #info-panel-content .muted { opacity: 0.85; }
+    #info-close {
+      margin-top: 1rem;
+      padding: 0.5rem 1rem;
+      border-radius: 0.5rem;
+      border: 1px solid rgba(127, 127, 127, 0.4);
+      background: transparent;
+      color: inherit;
+      cursor: pointer;
+    }
+
     /* The authored scenario, English, pinned above the scrolling thread — not
        a bubble in it. Slots are never rendered here (docs/SCENARIOS.md): the
        learner sees the goal, never the machine-checkable criteria. */
@@ -45,6 +99,13 @@
     }
     #scenario-card .situation { margin: 0.1rem 0 0.4rem; }
     #scenario-card .goal { font-weight: 600; }
+    /* Explicit "this is loading," not a blank space that might be broken.
+       A subtle pulse rather than a spinner — one line of text, low stakes. */
+    #scenario-card.loading { animation: card-pulse 1.4s ease-in-out infinite; }
+    @keyframes card-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
+    @media (prefers-reduced-motion: reduce) {
+      #scenario-card.loading { animation: none; opacity: 0.7; }
+    }
 
     #thread {
       display: flex; flex-direction: column; gap: 0.75rem;
@@ -295,8 +356,17 @@
     <div id="gate-error" role="alert"></div>
   </div>
 
-  <h1>Convo Agent</h1>
-  <p class="muted">Speak or type Mandarin (greetings). A real partner replies and remembers the conversation; spoken words come back with per-syllable tone scores (green good / amber ok / red off). The partner <strong>speaks its reply</strong> instead of writing it — that's the listening practice. Tap 🔊 to hear a line again, 👁 to see the words when you're stuck, or <strong>👁 All</strong> below to show every reply at once. Tap ⌨️ to type in <strong>pinyin</strong> instead — your words come back as 汉字. Add tone numbers (<code>ni3hao3</code>) and your tones get checked too.</p>
+  <div id="header-row">
+    <h1>Convo Agent</h1>
+    <button id="info-btn" type="button" title="How this works" aria-label="How this works">ⓘ</button>
+  </div>
+
+  <div id="info-panel" hidden>
+    <div id="info-panel-content">
+      <p class="muted">Speak or type Mandarin (greetings). A real partner replies and remembers the conversation; spoken words come back with per-syllable tone scores (green good / amber ok / red off). The partner <strong>speaks its reply</strong> instead of writing it — that's the listening practice. Tap 🔊 to hear a line again, 👁 to see the words when you're stuck, or <strong>👁 All</strong> below to show every reply at once. Tap ⌨️ to type in <strong>pinyin</strong> instead — your words come back as 汉字. Add tone numbers (<code>ni3hao3</code>) and your tones get checked too.</p>
+      <button id="info-close" type="button">Close</button>
+    </div>
+  </div>
 
   <div id="scenario-card" hidden>
     <div class="label">Your situation</div>
@@ -331,6 +401,9 @@
     const scenarioCard = document.getElementById("scenario-card");
     const scenarioSituation = document.getElementById("scenario-situation");
     const scenarioGoal = document.getElementById("scenario-goal");
+    const infoBtn = document.getElementById("info-btn");
+    const infoPanel = document.getElementById("info-panel");
+    const infoClose = document.getElementById("info-close");
     const status = document.getElementById("status");
     const meter = document.getElementById("meter");
     const meterFill = document.getElementById("meter-fill");
@@ -626,9 +699,28 @@
 
     function renderScenarioCard(card) {
       if (!card) { scenarioCard.hidden = true; return; }
+      scenarioCard.classList.remove("loading");
       scenarioSituation.textContent = card.situation;
       scenarioGoal.textContent = card.goal;
       scenarioCard.hidden = false;
+    }
+
+    // Shown the instant a fetch starts, not just on success — a blank space
+    // where the card will eventually appear reads as broken, not as loading.
+    function renderScenarioLoading() {
+      scenarioCard.classList.add("loading");
+      scenarioSituation.textContent = "Loading…";
+      scenarioGoal.textContent = "";
+      scenarioCard.hidden = false;
+    }
+
+    // Speech/typing are gated on a session existing: there is nothing valid
+    // to send without a server-issued `topic_id` (see `ensureSession` below),
+    // so disable both controls for the round trip rather than let a learner
+    // tap "talk" into a request that's just going to wait on them anyway.
+    function setSessionLoading(loading) {
+      talk.disabled = loading;
+      setComposerBusy(loading);
     }
 
     // Fetches a fresh session and renders its opening line as the first
@@ -644,6 +736,8 @@
 
     function startSession() {
       if (sessionStarting) return sessionStarting;
+      renderScenarioLoading();
+      setSessionLoading(true);
       sessionStarting = (async () => {
         try {
           // No body: the server picks the topic, not the client — the whole
@@ -654,7 +748,9 @@
             // and no scenario card, same as before this shipped — but a
             // blank thread with no explanation reads as broken, not as "no
             // flavour today," so say something (unless the gate is already
-            // saying it).
+            // saying it). Controls come back regardless: a failed scenario
+            // shouldn't block the conversation itself — you can still talk.
+            renderScenarioCard(null);
             if (!gateIfUnauthorized(resp)) {
               setStatus("couldn't load the scenario — you can still talk");
             }
@@ -670,19 +766,24 @@
             // counts. A `data-` attribute rather than a class because
             // `paintReply` below overwrites `className` wholesale on every
             // repaint (e.g. tapping 👁) — a class added here would vanish on
-            // the first reveal. Rendered through `renderReply` for the same
-            // controls (🔊/👁) every partner line gets, but `speak: false` —
-            // audio firing the instant the page loads, before any gesture has
-            // unlocked playback, is the exact "startling and billable" case
-            // the bulk-restore path already avoids; a tap on 🔊 plays it.
+            // the first reveal. Rendered through `renderReply` with default
+            // options, same as any other partner line: it attempts to speak
+            // itself, same as a live reply. On a truly fresh load (no gesture
+            // yet) the browser typically blocks that, and `playReply`'s
+            // existing fallback reveals the text with a status line — a
+            // one-time cost that's worth it for a session that opens the way
+            // every other reply in it does, and `reset` (a real click) very
+            // often has a gesture to unlock playback with already.
             const handle = createBubble("partner", { scroll: false });
             handle.el.dataset.opening = "true";
-            renderReply(handle, session.opening_line, { scroll: false, speak: false });
+            renderReply(handle, session.opening_line, { scroll: false });
           }
         } catch (err) {
+          renderScenarioCard(null);
           setStatus("couldn't reach the server — you can still talk");
         } finally {
           sessionStarting = null;
+          setSessionLoading(false);
         }
       })();
       return sessionStarting;
@@ -1526,6 +1627,16 @@
       if (mode === "text") textInput.focus();
     });
 
+    // --- Info popup ----------------------------------------------------------
+    //
+    // The instructions, one tap away instead of permanently occupying the
+    // space above the thread.
+    infoBtn.addEventListener("click", () => { infoPanel.hidden = false; });
+    infoClose.addEventListener("click", () => { infoPanel.hidden = true; });
+    infoPanel.addEventListener("click", (e) => {
+      if (e.target === infoPanel) infoPanel.hidden = true;   // tap the backdrop
+    });
+
     send.addEventListener("click", sendText);
     textInput.addEventListener("keydown", (e) => {
       if (e.key !== "Enter") return;
@@ -1663,7 +1774,7 @@
       if (dialogue.length === 0) {
         const handle = createBubble("partner", { scroll: false });
         handle.el.dataset.opening = "true";
-        renderReply(handle, session.opening_line, { scroll: false, speak: false });
+        renderReply(handle, session.opening_line, { scroll: false });
       }
     } else {
       startSession();
