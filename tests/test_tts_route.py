@@ -67,6 +67,11 @@ def test_tts_rejects_an_over_long_line(monkeypatch):
 
     Synthesis is billed per character, so an unbounded body is an unbounded bill
     behind a single shared passcode. Refuse it here, before Azure.
+
+    The 422 is load-bearing on the client, not just a rejection: it is the one
+    failure that is *permanent* for that line, so the page renders the reply as
+    text only and retires its 🔊 rather than offering a retry that cannot work.
+    See `tests/smoke/test_reply_audio.py`.
     """
     async def fake_synthesize(text):
         raise AssertionError("Azure should not be called past the cap")

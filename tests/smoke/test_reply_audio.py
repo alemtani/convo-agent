@@ -236,6 +236,51 @@ def test_a_suspended_context_recovers_at_play_time(page):
     assert page.evaluate("window.__audio.state()") == "running"
 
 
+def test_an_unspeakable_reply_renders_as_text_only(page):
+    """A reply past the endpoint's character cap has no audio form at all.
+
+    Rare — a partner reply is a sentence — but it is a different failure from
+    Azure being down, and it was reaching the learner dressed as that one:
+    "audio unavailable", with a 🔊 that could never work no matter how often it
+    was pressed.
+    """
+    load(page)
+    page.evaluate("window.__stub.status['/api/tts'] = 422")
+
+    bubble = _send_text(page)
+
+    expect(bubble.locator(".zh")).to_have_text(REPLY_ZH)
+    expect(page.locator("#status")).to_contain_text("too long to speak")
+    # Present but inert: a bubble missing the buttons every other bubble has
+    # reads as a rendering bug, not as an explanation.
+    expect(bubble.locator("button.replay")).to_be_disabled()
+    expect(bubble.locator("button.reveal")).to_be_disabled()
+
+
+def test_an_unspeakable_reply_cannot_be_hidden(page):
+    """Hiding it would leave a bubble with no audio *and* no words."""
+    load(page)
+    page.evaluate("window.__stub.status['/api/tts'] = 422")
+    bubble = _send_text(page)
+
+    page.click("#show-text")        # show all
+    page.click("#show-text")        # hide all — everything else goes quiet
+
+    expect(bubble.locator(".zh")).to_have_text(REPLY_ZH)
+
+
+def test_an_upstream_failure_keeps_its_controls_live(page):
+    """The contrast case: Azure being down is transient, so 🔊 stays worth a tap."""
+    load(page)
+    page.evaluate("window.__stub.status['/api/tts'] = 502")
+
+    bubble = _send_text(page)
+
+    expect(page.locator("#status")).to_contain_text("audio unavailable")
+    expect(bubble.locator("button.replay")).to_be_enabled()
+    expect(bubble.locator("button.reveal")).to_be_enabled()
+
+
 def test_a_failed_synthesis_leaves_the_thread_usable(page):
     """A silent turn is a setback, not the end of the session."""
     load(page)
@@ -262,11 +307,19 @@ def test_a_new_conversation_drops_the_cached_audio(page):
 
 
 def test_the_spoken_turn_speaks_its_reply(page):
-    """The same path from the mic side, where the reply arrives mid-stream."""
+    """The same path from the mic side, where the reply arrives mid-stream.
+
+    Both waits are on observable state, never on a clock. Releasing after a
+    fixed sleep made this the one flaky test in the suite: under full-suite load
+    the release beat the first frame, so no audio was captured and no turn was
+    ever sent — and it passed in isolation every time.
+    """
     page.goto("/")
-    page.locator("#talk").dispatch_event("pointerdown")
-    page.wait_for_timeout(150)
-    page.locator("#talk").dispatch_event("pointerup")
+    page.hover("#talk")
+    page.mouse.down()
+    page.wait_for_function("window.__convo.framesCaptured > 0")
+    page.mouse.up()
+    page.wait_for_function("window.__convo.lastSampleCount !== null")
 
     expect(page.locator(".bubble.partner")).to_have_count(1)
     expect(page.locator(".bubble.partner .zh")).to_have_count(0)
