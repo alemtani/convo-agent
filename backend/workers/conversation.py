@@ -78,12 +78,20 @@ def build_request(
     the shorter shape; text mode needs the reading and asks for the full one.
     The system prefix is byte-identical either way — the two schemas are the
     only difference between the requests.
+
+    `sketch` is omitted as its own block when empty — a turn sent before
+    `POST /api/session` has run (`TextTurnRequest.sketch` defaults to `""`) —
+    rather than sent as an empty `text` block: the API rejects those outright.
+    The `cache_control` breakpoint moves to the KB block in that case, so the
+    prefix still caches; it just doesn't include a sketch to freeze.
     """
     system = [
         {"type": "text", "text": render_system_prompt(forgiveness_level)},
         {"type": "text", "text": kb_block},
-        {"type": "text", "text": sketch, "cache_control": {"type": "ephemeral"}},
     ]
+    if sketch:
+        system.append({"type": "text", "text": sketch})
+    system[-1]["cache_control"] = {"type": "ephemeral"}
     messages = [
         {"role": _ROLE_MAP[_as_dict(t)["role"]], "content": _as_dict(t)["zh"]}
         for t in dialogue

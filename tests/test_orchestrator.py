@@ -15,12 +15,14 @@ import pytest
 from backend import config, kb, orchestrator
 from backend.models import (
     ConversationTurnResponse,
+    SessionStartResponse,
+    SketchResult,
     TextTurnRequest,
     TurnAnnotation,
     Utterance,
 )
-from backend.prompts import SKETCH_STUB
 from backend.workers import conversation
+from backend.workers import sketch as sketch_worker
 
 
 async def test_run_text_turn_loads_kb_and_calls_worker(monkeypatch):
@@ -45,6 +47,7 @@ async def test_run_text_turn_loads_kb_and_calls_worker(monkeypatch):
         topic_id="greetings",
         text="我叫小明",
         dialogue=[{"role": "user", "zh": "你好"}],
+        sketch="SKETCH bytes from this session's POST /api/session",
     )
     resp = await orchestrator.run_text_turn(req)
 
@@ -52,11 +55,33 @@ async def test_run_text_turn_loads_kb_and_calls_worker(monkeypatch):
     assert resp.reply.zh == "你好！你叫什么名字？"
     assert resp.annotation.coherence == "on_track"
 
-    # The orchestrator owns the sketch + forgiveness default and loads the real KB.
-    assert captured["sketch"] == SKETCH_STUB
+    # The orchestrator passes the client-held sketch straight through and owns
+    # only the forgiveness default; it loads the real KB.
+    assert captured["sketch"] == "SKETCH bytes from this session's POST /api/session"
     assert captured["forgiveness_level"] == config.FORGIVENESS_LEVEL_DEFAULT
     assert captured["user_text"] == "我叫小明"
     assert captured["kb_block"] == kb.load_kb_block("greetings")
+
+
+async def test_run_text_turn_defaults_sketch_to_empty_before_a_session_starts(monkeypatch):
+    """A turn sent before `POST /api/session` degrades to no flavour rather
+    than failing — same permissiveness as `dialogue` defaulting to `[]`."""
+    captured = {}
+
+    async def fake_respond(*, sketch, **kwargs):
+        captured["sketch"] = sketch
+        return (
+            Utterance(zh="你好", pinyin="nǐ hǎo"),
+            TurnAnnotation(coherence="on_track"),
+            Utterance(zh="你好", pinyin="nǐ hǎo"),
+            object(),
+        )
+
+    monkeypatch.setattr(conversation, "respond", fake_respond)
+
+    await orchestrator.run_text_turn(TextTurnRequest(topic_id="greetings", text="你好"))
+
+    assert captured["sketch"] == ""
 
 
 async def test_run_text_turn_transcript_is_the_workers_reading(monkeypatch):
@@ -212,3 +237,149 @@ async def test_turn_usage_is_none_when_the_worker_returns_no_usage(monkeypatch):
     )
 
     assert resp.usage.input_tokens is None
+
+
+# --- M2-B: session start (topic selection, sketch worker, scenario card) ---
+
+_FAKE_SCENARIO = kb.Scenario(
+    situation="fake situation", goal="fake goal",
+    slots=(kb.Slot(id="s", kind="inform", description="d"),
+           kb.Slot(id="r", kind="request", description="d2")),
+    max_turns=6,
+)
+
+
+def _fake_topic(topic_id, *, has_scenario=True):
+    return kb.Topic(
+        id=topic_id, display_name=topic_id, target_vocab=[], proper_names=[],
+        related=[], scenario=_FAKE_SCENARIO if has_scenario else None,
+    )
+
+
+async def test_start_session_calls_the_sketch_worker_and_pins_the_scenario_card(
+    monkeypatch,
+):
+    captured = {}
+
+    real_scenario = kb.load_topic("greetings").scenario
+
+    async def fake_generate(topic_id, scenario, *, client=None):
+        captured["topic_id"] = topic_id
+        captured["scenario"] = scenario
+        return SketchResult(
+            opening_line=Utterance(zh="你好！你叫什么名字？", pinyin="nǐ hǎo! nǐ jiào shénme míngzi?"),
+            sketch="The partner is warm and unhurried.",
+        )
+
+    monkeypatch.setattr(sketch_worker, "generate", fake_generate)
+
+    # Only "greetings" is on disk right now, so topic selection is
+    # deterministic without mocking it — see the `_pick_scenario_topic` tests
+    # below for the selection logic itself.
+    resp = await orchestrator.start_session()
+
+    assert isinstance(resp, SessionStartResponse)
+    assert resp.topic_id == "greetings"
+    assert captured["topic_id"] == "greetings"
+    # The already-loaded scenario is passed straight through — `generate` must
+    # not have to re-load the topic to get it (a duplicate disk read).
+    assert captured["scenario"] == real_scenario
+    assert resp.scenario_card.situation == real_scenario.situation
+    assert resp.scenario_card.goal == real_scenario.goal
+    assert resp.opening_line.zh == "你好！你叫什么名字？"
+    assert resp.sketch == "The partner is warm and unhurried."
+
+
+async def test_start_session_never_shows_slots_on_the_scenario_card(monkeypatch):
+    """`ScenarioCard` is `situation` + `goal` only — slots stay server-side
+    (`docs/SCENARIOS.md`)."""
+
+    async def fake_generate(topic_id, scenario, *, client=None):
+        return SketchResult(
+            opening_line=Utterance(zh="你好", pinyin="nǐ hǎo"), sketch="flavour"
+        )
+
+    monkeypatch.setattr(sketch_worker, "generate", fake_generate)
+
+    resp = await orchestrator.start_session()
+
+    assert set(type(resp.scenario_card).model_fields) == {"situation", "goal"}
+
+
+async def test_start_session_does_not_load_the_topic_twice(monkeypatch):
+    """The duplicate `kb.load_topic` call this used to make (once here, once
+    inside the sketch worker) cost a real disk read + frontmatter parse per
+    session start; `generate` now takes the already-loaded scenario instead."""
+    calls = []
+    real_load_topic = kb.load_topic
+
+    def counting_load_topic(topic_id, root=kb.KB_ROOT):
+        calls.append(topic_id)
+        return real_load_topic(topic_id, root)
+
+    async def fake_generate(topic_id, scenario, *, client=None):
+        return SketchResult(
+            opening_line=Utterance(zh="你好", pinyin="nǐ hǎo"), sketch="flavour"
+        )
+
+    monkeypatch.setattr(kb, "load_topic", counting_load_topic)
+    monkeypatch.setattr(sketch_worker, "generate", fake_generate)
+
+    await orchestrator.start_session()
+
+    # `_pick_scenario_topic`'s candidate scan is the one and only place that
+    # loads a topic — with just "greetings" on disk, exactly one call.
+    assert calls == ["greetings"]
+
+
+# --- `_pick_scenario_topic`: the selection policy itself --------------------
+
+
+def test_pick_scenario_topic_excludes_topics_with_no_scenario(monkeypatch):
+    monkeypatch.setattr(kb, "list_topic_ids", lambda root=kb.KB_ROOT: ["a", "b"])
+    monkeypatch.setattr(
+        kb, "load_topic",
+        lambda tid, root=kb.KB_ROOT: _fake_topic(tid, has_scenario=(tid == "b")),
+    )
+
+    topic = orchestrator._pick_scenario_topic()
+
+    assert topic.id == "b"
+
+
+def test_pick_scenario_topic_chooses_among_all_scenario_topics(monkeypatch):
+    """Uniform over every candidate — asserted on what `random.choice` is
+    handed, not by sampling repeatedly, so this stays deterministic."""
+    captured = {}
+
+    def fake_choice(seq):
+        captured["ids"] = sorted(t.id for t in seq)
+        return seq[0]
+
+    monkeypatch.setattr(orchestrator.random, "choice", fake_choice)
+    monkeypatch.setattr(kb, "list_topic_ids", lambda root=kb.KB_ROOT: ["a", "b", "c"])
+    monkeypatch.setattr(
+        kb, "load_topic",
+        lambda tid, root=kb.KB_ROOT: _fake_topic(tid, has_scenario=(tid != "c")),
+    )
+
+    orchestrator._pick_scenario_topic()
+
+    assert captured["ids"] == ["a", "b"]
+
+
+def test_pick_scenario_topic_raises_when_none_have_a_scenario(monkeypatch):
+    monkeypatch.setattr(kb, "list_topic_ids", lambda root=kb.KB_ROOT: ["a"])
+    monkeypatch.setattr(
+        kb, "load_topic", lambda tid, root=kb.KB_ROOT: _fake_topic(tid, has_scenario=False)
+    )
+
+    with pytest.raises(kb.KbError, match="no topic has an authored scenario"):
+        orchestrator._pick_scenario_topic()
+
+
+def test_pick_scenario_topic_raises_when_the_kb_is_empty(monkeypatch):
+    monkeypatch.setattr(kb, "list_topic_ids", lambda root=kb.KB_ROOT: [])
+
+    with pytest.raises(kb.KbError):
+        orchestrator._pick_scenario_topic()

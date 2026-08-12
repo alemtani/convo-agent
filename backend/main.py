@@ -14,12 +14,14 @@ from backend.models import (
     ConversationTurnResponse,
     DialogueTurn,
     PasscodeRequest,
+    SessionStartResponse,
     TextTurnRequest,
     TtsRequest,
 )
 from backend.speech import stt, tts
 from backend.speech._azure import SpeechConfigError
 from backend.workers import conversation
+from backend.workers import sketch as sketch_worker
 
 logger = logging.getLogger(__name__)
 
@@ -124,11 +126,35 @@ async def hello():
     return {"message": "hello world"}
 
 
+@app.post("/api/session", response_model=SessionStartResponse)
+async def session_start() -> SessionStartResponse:
+    """Start a session: pick a topic, generate its opening line + flavour.
+
+    No request body — the topic is the server's choice, not the caller's.
+    The frontend has no business knowing which topics exist; it gets
+    `topic_id` back on the response and echoes it on every turn after, the
+    same opaque way it already echoes `sketch`. One `sketch` worker call, from
+    the topic KB (`docs/SCENARIOS.md`, `backend/workers/sketch.py`). The
+    client freezes the response and resubmits `sketch` byte-identical on
+    every turn for the rest of the session (`TextTurnRequest.sketch`, the
+    `sketch` form field on `POST /api/turn`) — the server never stores it
+    (stateless proxy). `scenario_card` is `situation` + `goal` straight from
+    the authored seed, in English; slots are never shown.
+    """
+    try:
+        return await orchestrator.start_session()
+    except kb.KbError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except sketch_worker.SketchError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
 @app.post("/api/turn")
 async def turn(
     audio: UploadFile = File(...),
     topic_id: str = Form("greetings"),
     dialogue: str = Form("[]"),
+    sketch: str = Form(""),
 ) -> StreamingResponse:
     """One spoken conversation turn, streamed as NDJSON.
 
@@ -148,7 +174,9 @@ async def turn(
     Stateless: the client holds the running transcript and resubmits it as
     `dialogue` (a JSON array of prior `{role, zh}` turns) so the partner has
     memory across turns; the server appends this turn's STT text as the latest
-    user turn.
+    user turn. `sketch` is likewise client-held, from `POST /api/session`
+    (`SessionStartResponse.sketch`); it defaults to empty for a turn sent
+    before a session has been started, which degrades to no flavour.
     """
     try:
         history = [DialogueTurn.model_validate(t) for t in json.loads(dialogue)]
@@ -172,6 +200,7 @@ async def turn(
             kb_block=kb_block,
             timer=timer,
             dialogue=history,
+            sketch=sketch,
         ):
             yield event.model_dump_json() + "\n"
 

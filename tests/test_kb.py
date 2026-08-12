@@ -103,6 +103,28 @@ def test_load_topic_reads_committed_greetings():
     assert "老师" in topic.target_vocab
 
 
+def test_list_topic_ids_finds_the_committed_topics():
+    ids = kb.list_topic_ids()
+    assert "greetings" in ids
+    # Non-topic entries under the root (`_hsk/`, `_tools/`, `pacing.json`,
+    # `index.md`) must not appear — none of them has a `topic.md`.
+    assert "_hsk" not in ids
+    assert "_tools" not in ids
+
+
+def test_list_topic_ids_is_sorted():
+    ids = kb.list_topic_ids()
+    assert ids == sorted(ids)
+
+
+def test_list_topic_ids_empty_root_returns_empty(tmp_path):
+    assert kb.list_topic_ids(str(tmp_path)) == []
+
+
+def test_list_topic_ids_missing_root_returns_empty(tmp_path):
+    assert kb.list_topic_ids(str(tmp_path / "does-not-exist")) == []
+
+
 def test_load_kb_block_includes_vocab_grammar_dialogues():
     block = kb.load_kb_block("greetings")
     # Content from each of the three source files is present.
@@ -129,6 +151,29 @@ def test_unknown_topic_raises_kberror():
         kb.load_kb_block("does-not-exist")
     with pytest.raises(kb.KbError):
         kb.load_topic("does-not-exist")
+
+
+# --- load_vocab_block: the scenario-free half, for the sketch worker (M2-B) -
+
+
+def test_load_vocab_block_matches_kb_block_minus_the_scenario_section():
+    """`load_kb_block` = `load_vocab_block` + the scenario section, byte for
+    byte — the split must not change what the conversation worker freezes."""
+    assert kb.load_kb_block("greetings") == kb.load_vocab_block("greetings") + "\n\n" + kb.render_scenario_block(
+        kb.load_topic("greetings").scenario
+    )
+
+
+def test_load_vocab_block_never_contains_the_scenario_section():
+    """The sketch worker's whole KB block, by construction — slots must never
+    reach a model call (`docs/SCENARIOS.md`, `backend/workers/sketch.py`)."""
+    block = kb.load_vocab_block("greetings")
+    assert "SCENARIO" not in block
+    assert "partner_name" not in block   # a greetings slot id
+
+
+def test_load_vocab_block_is_byte_identical_across_calls():
+    assert kb.load_vocab_block("greetings") == kb.load_vocab_block("greetings")
 
 
 # --- scenario parsing (M2) ------------------------------------------------

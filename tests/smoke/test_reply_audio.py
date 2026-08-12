@@ -17,22 +17,57 @@ counts buffers actually started, which is the last step the page controls, and
 the real device check stays manual (issue #33's acceptance criterion).
 """
 
+import json
+
 import pytest
 from playwright.sync_api import expect
+
+from tests.smoke.conftest import SESSION_START
 
 pytestmark = pytest.mark.smoke
 
 REPLY_ZH = "你好！很高兴认识你。"     # matches conftest's canned typed reply
 
+# One already-restored exchange, seeded so `dialogue.length !== 0` and the
+# opening line (M2-B) never renders in this file — see `load()`.
+DUMMY_HISTORY = [
+    {"role": "user", "zh": "你好", "pinyin": "nǐ hǎo"},
+    {"role": "partner", "zh": "你好！", "pinyin": "nǐ hǎo!"},
+]
 
-def load(page):
-    """Load the page in typing mode.
+
+def load(page, mode="text"):
+    """Load the page with a session and a one-turn history already seeded.
 
     Most of what this file asserts is about the *reply*, which is identical
-    either way, and a typed turn reaches it without a two-second microphone.
-    `test_the_spoken_turn_speaks_its_reply` covers the mic path once.
+    in either mode, and a typed turn reaches it without a two-second
+    microphone — `test_the_spoken_turn_speaks_its_reply` covers the mic path
+    once, with `mode="speak"`.
+
+    Seeding matters here for a reason specific to this file: the opening line
+    (M2-B) speaks itself, same as any other reply. Left to fetch its own
+    session, it would land a `_plays()`/`_cached()`/`/api/tts`-request
+    increment before the test's own turn does, throwing off every exact-count
+    assertion below — this file was written assuming a clean slate where
+    nothing has played until `_send_text` runs. Seeding one already-restored
+    turn keeps that true: `dialogue.length === 0` is what gates the opening
+    line, and a restored turn renders silently (`speak: false`) by
+    construction, so it costs one extra `.bubble.partner` and nothing else.
+
+    Guarded on the session key already existing: `add_init_script` reruns on
+    every navigation, including `page.reload()` — several tests here reload
+    mid-test to check what survives, and an unconditional seed would stomp
+    the real `dialogue` the page itself had just saved (a turn sent, then
+    reload, then only the seeded dummy is left) with the original seed.
     """
-    page.add_init_script("localStorage.setItem('convo.mode', 'text')")
+    page.add_init_script(
+        "(([m, s, d]) => {"
+        "if (localStorage.getItem('convo.session.greetings')) return;"
+        "localStorage.setItem('convo.mode', m);"
+        "localStorage.setItem('convo.session.greetings', JSON.stringify(s));"
+        "localStorage.setItem('convo.dialogue.greetings', JSON.stringify(d)); })"
+        f"({json.dumps([mode, SESSION_START, DUMMY_HISTORY])})"
+    )
     page.goto("/")
 
 
@@ -87,7 +122,8 @@ def test_reveal_shows_the_text_in_place(page):
 
     bubble.locator("button.reveal").click()
 
-    expect(page.locator(".bubble.partner")).to_have_count(1)
+    # 2: the seeded dummy history's restored partner turn, plus this one.
+    expect(page.locator(".bubble.partner:not([data-opening])")).to_have_count(2)
     expect(bubble.locator(".zh")).to_have_text(REPLY_ZH)
     expect(bubble.locator(".pinyin")).to_be_visible()
 
@@ -153,7 +189,9 @@ def test_show_text_preference_survives_a_reload(page):
 
     page.reload()
 
-    expect(page.locator(".bubble.partner .zh")).to_have_text(REPLY_ZH)
+    # `.last`: the seeded dummy history's restored partner turn is revealed
+    # too (showText persisted), and its `.zh` happens to read "你好！" as well.
+    expect(page.locator(".bubble.partner").last.locator(".zh")).to_have_text(REPLY_ZH)
 
 
 def test_a_restored_reply_is_hidden_and_silent(page):
@@ -209,8 +247,13 @@ def test_a_blocked_playback_reveals_the_text(page):
     bubble = _send_text(page)
     page.evaluate("window.__audio._close()")
 
-    # 🔊 from script, so no gesture unlocks the context mid-test.
-    page.evaluate("document.querySelector('.bubble.partner button.replay').click()")
+    # 🔊 from script, so no gesture unlocks the context mid-test. The *last*
+    # match: `querySelector` takes the first, which would grab the seeded
+    # dummy history's own replay button instead of this turn's.
+    page.evaluate(
+        "[...document.querySelectorAll('.bubble.partner:not([data-opening]) button.replay')]"
+        ".at(-1).click()"
+    )
 
     expect(bubble.locator(".zh")).to_have_text(REPLY_ZH)
     expect(page.locator("#status")).to_contain_text("silent switch")
@@ -290,7 +333,8 @@ def test_a_failed_synthesis_leaves_the_thread_usable(page):
     page.evaluate("delete window.__stub.status['/api/tts']")
     _send_text(page, "zaijian")
 
-    expect(page.locator(".bubble.partner")).to_have_count(2)
+    # 3: the seeded dummy history's restored partner turn, plus these two.
+    expect(page.locator(".bubble.partner:not([data-opening])")).to_have_count(3)
     page.wait_for_function("window.__audio._plays() === 1")
 
 
@@ -303,7 +347,7 @@ def test_a_new_conversation_drops_the_cached_audio(page):
     page.click("#reset")
 
     assert page.evaluate("window.__audio._cached()") == 0
-    expect(page.locator(".bubble.partner")).to_have_count(0)
+    expect(page.locator(".bubble.partner:not([data-opening])")).to_have_count(0)
 
 
 def test_the_spoken_turn_speaks_its_reply(page):
@@ -314,13 +358,14 @@ def test_the_spoken_turn_speaks_its_reply(page):
     the release beat the first frame, so no audio was captured and no turn was
     ever sent — and it passed in isolation every time.
     """
-    page.goto("/")
+    load(page, mode="speak")
     page.hover("#talk")
     page.mouse.down()
     page.wait_for_function("window.__convo.framesCaptured > 0")
     page.mouse.up()
     page.wait_for_function("window.__convo.lastSampleCount !== null")
 
-    expect(page.locator(".bubble.partner")).to_have_count(1)
-    expect(page.locator(".bubble.partner .zh")).to_have_count(0)
+    # 2: the seeded dummy history's restored partner turn, plus this one.
+    expect(page.locator(".bubble.partner:not([data-opening])")).to_have_count(2)
+    expect(page.locator(".bubble.partner:not([data-opening]) .zh")).to_have_count(0)
     page.wait_for_function("window.__audio._plays() === 1")

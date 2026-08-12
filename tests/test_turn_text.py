@@ -120,6 +120,51 @@ def test_turn_text_dialogue_defaults_to_empty(monkeypatch):
     assert resp.status_code == 200
 
 
+def test_turn_text_threads_the_sessions_sketch_through_to_the_worker(monkeypatch):
+    """`sketch` is client-held from `POST /api/session` and resubmitted
+    byte-identical on every turn, same as `dialogue`."""
+    captured = {}
+
+    async def fake_respond(*, sketch, **kwargs):
+        captured["sketch"] = sketch
+        return (
+            Utterance(zh="你好", pinyin="nǐ hǎo"),
+            TurnAnnotation(coherence="on_track"),
+            Utterance(zh="你好", pinyin="nǐ hǎo"),
+            None,
+        )
+
+    monkeypatch.setattr(conversation, "respond", fake_respond)
+
+    resp = client.post(
+        "/api/turn/text",
+        json={
+            "topic_id": "greetings",
+            "text": "你好",
+            "sketch": "The classmate is friendly and a little shy.",
+        },
+    )
+
+    assert resp.status_code == 200
+    assert captured["sketch"] == "The classmate is friendly and a little shy."
+
+
+def test_turn_text_sketch_defaults_to_empty(monkeypatch):
+    async def fake_respond(*, sketch, **kwargs):
+        assert sketch == ""
+        return (
+            Utterance(zh="你好", pinyin="nǐ hǎo"),
+            TurnAnnotation(coherence="on_track"),
+            Utterance(zh="你好", pinyin="nǐ hǎo"),
+            None,
+        )
+
+    monkeypatch.setattr(conversation, "respond", fake_respond)
+
+    resp = client.post("/api/turn/text", json={"topic_id": "greetings", "text": "你好"})
+    assert resp.status_code == 200
+
+
 def test_text_turn_response_carries_stage_timings(monkeypatch):
     """Text mode is measured too — it is the control for the spoken path: the
     same worker call without STT or PA.

@@ -25,6 +25,88 @@
     h1 { font-size: 1.25rem; }
     .muted { opacity: 0.6; font-size: 0.85rem; }
 
+    /* The old always-visible instructions paragraph got clunky once the
+       scenario card joined it — most of it is "how the controls work,"
+       useful once, then just height everyone scrolls past forever. An ⓘ
+       button + popup keeps it one tap away without permanently taking the
+       space above the thread. */
+    #header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+    #header-row h1 { margin: 0; }
+    #info-btn {
+      font-size: 1.1rem;
+      line-height: 1;
+      padding: 0.3rem 0.5rem;
+      border-radius: 50%;
+      border: 1px solid rgba(127, 127, 127, 0.4);
+      background: transparent;
+      color: inherit;
+      opacity: 0.7;
+      cursor: pointer;
+    }
+    #info-panel {
+      position: fixed;
+      inset: 0;
+      z-index: 9;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      background: rgba(0, 0, 0, 0.4);
+    }
+    #info-panel:not([hidden]) { display: flex; }
+    #info-panel-content {
+      background: Canvas;
+      color: CanvasText;
+      border-radius: 0.75rem;
+      padding: 1.25rem;
+      max-width: 28rem;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+    #info-panel-content .muted { opacity: 0.85; }
+    #info-close {
+      margin-top: 1rem;
+      padding: 0.5rem 1rem;
+      border-radius: 0.5rem;
+      border: 1px solid rgba(127, 127, 127, 0.4);
+      background: transparent;
+      color: inherit;
+      cursor: pointer;
+    }
+
+    /* The authored scenario, English, pinned above the scrolling thread — not
+       a bubble in it. Slots are never rendered here (docs/SCENARIOS.md): the
+       learner sees the goal, never the machine-checkable criteria. */
+    #scenario-card {
+      margin-top: 0.75rem;
+      padding: 0.6rem 0.85rem;
+      border-radius: 0.75rem;
+      background: rgba(127, 127, 127, 0.1);
+      border: 1px solid rgba(127, 127, 127, 0.25);
+      font-size: 0.85rem;
+    }
+    #scenario-card[hidden] { display: none; }
+    #scenario-card .label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      opacity: 0.6;
+    }
+    #scenario-card .situation { margin: 0.1rem 0 0.4rem; }
+    #scenario-card .goal { font-weight: 600; }
+    /* Explicit "this is loading," not a blank space that might be broken.
+       A subtle pulse rather than a spinner — one line of text, low stakes. */
+    #scenario-card.loading { animation: card-pulse 1.4s ease-in-out infinite; }
+    @keyframes card-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
+    @media (prefers-reduced-motion: reduce) {
+      #scenario-card.loading { animation: none; opacity: 0.7; }
+    }
+
     #thread {
       display: flex; flex-direction: column; gap: 0.75rem;
       margin-top: 1rem;
@@ -274,8 +356,24 @@
     <div id="gate-error" role="alert"></div>
   </div>
 
-  <h1>Convo Agent</h1>
-  <p class="muted">Speak or type Mandarin (greetings). A real partner replies and remembers the conversation; spoken words come back with per-syllable tone scores (green good / amber ok / red off). The partner <strong>speaks its reply</strong> instead of writing it — that's the listening practice. Tap 🔊 to hear a line again, 👁 to see the words when you're stuck, or <strong>👁 All</strong> below to show every reply at once. Tap ⌨️ to type in <strong>pinyin</strong> instead — your words come back as 汉字. Add tone numbers (<code>ni3hao3</code>) and your tones get checked too.</p>
+  <div id="header-row">
+    <h1>Convo Agent</h1>
+    <button id="info-btn" type="button" title="How this works" aria-label="How this works">ⓘ</button>
+  </div>
+
+  <div id="info-panel" hidden>
+    <div id="info-panel-content">
+      <p class="muted">Speak or type Mandarin (greetings). A real partner replies and remembers the conversation; spoken words come back with per-syllable tone scores (green good / amber ok / red off). The partner <strong>speaks its reply</strong> instead of writing it — that's the listening practice. Tap 🔊 to hear a line again, 👁 to see the words when you're stuck, or <strong>👁 All</strong> below to show every reply at once. Tap ⌨️ to type in <strong>pinyin</strong> instead — your words come back as 汉字. Add tone numbers (<code>ni3hao3</code>) and your tones get checked too.</p>
+      <button id="info-close" type="button">Close</button>
+    </div>
+  </div>
+
+  <div id="scenario-card" hidden>
+    <div class="label">Your situation</div>
+    <div class="situation" id="scenario-situation"></div>
+    <div class="label">Your goal</div>
+    <div class="goal" id="scenario-goal"></div>
+  </div>
 
   <div id="thread"></div>
 
@@ -300,6 +398,12 @@
     const talk = document.getElementById("talk");
     const reset = document.getElementById("reset");
     const thread = document.getElementById("thread");
+    const scenarioCard = document.getElementById("scenario-card");
+    const scenarioSituation = document.getElementById("scenario-situation");
+    const scenarioGoal = document.getElementById("scenario-goal");
+    const infoBtn = document.getElementById("info-btn");
+    const infoPanel = document.getElementById("info-panel");
+    const infoClose = document.getElementById("info-close");
     const status = document.getElementById("status");
     const meter = document.getElementById("meter");
     const meterFill = document.getElementById("meter-fill");
@@ -574,6 +678,125 @@
     }
 
     function setStatus(msg) { status.textContent = msg; }
+
+    // --- Session start (M2-B: sketch worker) --------------------------------
+    //
+    // `POST /api/session` generates this session's opening line + flavour once;
+    // the client freezes the result and resubmits `session.sketch` on every
+    // turn (the `sketch` field/form-field below), exactly like `dialogue` —
+    // the server never stores it. `scenario_card` is pinned above the thread,
+    // in English; slots are never fetched or rendered.
+    const SESSION_KEY = "convo.session.greetings";
+    let session = loadSession();
+
+    function loadSession() {
+      try { return JSON.parse(localStorage.getItem(SESSION_KEY)) || null; }
+      catch (_) { return null; }
+    }
+    function saveSession() {
+      localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    }
+
+    function renderScenarioCard(card) {
+      if (!card) { scenarioCard.hidden = true; return; }
+      scenarioCard.classList.remove("loading");
+      scenarioSituation.textContent = card.situation;
+      scenarioGoal.textContent = card.goal;
+      scenarioCard.hidden = false;
+    }
+
+    // Shown the instant a fetch starts, not just on success — a blank space
+    // where the card will eventually appear reads as broken, not as loading.
+    function renderScenarioLoading() {
+      scenarioCard.classList.add("loading");
+      scenarioSituation.textContent = "Loading…";
+      scenarioGoal.textContent = "";
+      scenarioCard.hidden = false;
+    }
+
+    // Speech/typing are gated on a session existing: there is nothing valid
+    // to send without a server-issued `topic_id` (see `ensureSession` below),
+    // so disable both controls for the round trip rather than let a learner
+    // tap "talk" into a request that's just going to wait on them anyway.
+    function setSessionLoading(loading) {
+      talk.disabled = loading;
+      setComposerBusy(loading);
+    }
+
+    // Fetches a fresh session and renders its opening line as the first
+    // partner bubble — but only into an empty thread. A page reload with a
+    // running conversation must not re-open the scene: `restoreThread()` will
+    // already replay the real history, and the opening line doesn't consume
+    // the turn budget so it is never itself part of `dialogue`.
+    //
+    // Calls dedupe onto one in-flight promise: `reset` fires this, and a
+    // second click before the first request lands must not double-fetch and
+    // append a second opening bubble — there is exactly one opening line.
+    let sessionStarting = null;
+
+    function startSession() {
+      if (sessionStarting) return sessionStarting;
+      renderScenarioLoading();
+      setSessionLoading(true);
+      sessionStarting = (async () => {
+        try {
+          // No body: the server picks the topic, not the client — the whole
+          // point of this endpoint is that the frontend has no topic to send.
+          const resp = await fetch("/api/session", { method: "POST" });
+          if (!resp.ok) {
+            // Not fatal — turns still work with an empty sketch (no flavour)
+            // and no scenario card, same as before this shipped — but a
+            // blank thread with no explanation reads as broken, not as "no
+            // flavour today," so say something (unless the gate is already
+            // saying it). Controls come back regardless: a failed scenario
+            // shouldn't block the conversation itself — you can still talk.
+            renderScenarioCard(null);
+            if (!gateIfUnauthorized(resp)) {
+              setStatus("couldn't load the scenario — you can still talk");
+            }
+            return;
+          }
+          session = await resp.json();
+          saveSession();
+          renderScenarioCard(session.scenario_card);
+          if (dialogue.length === 0) {
+            // Marked `data-opening` so it reads as scene-setting, not a turn:
+            // it doesn't consume the budget and — same reasoning — the smoke
+            // suite (tests/smoke/test_thread.py) excludes it from turn-bubble
+            // counts. A `data-` attribute rather than a class because
+            // `paintReply` below overwrites `className` wholesale on every
+            // repaint (e.g. tapping 👁) — a class added here would vanish on
+            // the first reveal. Rendered through `renderReply` with default
+            // options, same as any other partner line: it attempts to speak
+            // itself, same as a live reply. On a truly fresh load (no gesture
+            // yet) the browser typically blocks that, and `playReply`'s
+            // existing fallback reveals the text with a status line — a
+            // one-time cost that's worth it for a session that opens the way
+            // every other reply in it does, and `reset` (a real click) very
+            // often has a gesture to unlock playback with already.
+            const handle = createBubble("partner", { scroll: false });
+            handle.el.dataset.opening = "true";
+            renderReply(handle, session.opening_line, { scroll: false });
+          }
+        } catch (err) {
+          renderScenarioCard(null);
+          setStatus("couldn't reach the server — you can still talk");
+        } finally {
+          sessionStarting = null;
+          setSessionLoading(false);
+        }
+      })();
+      return sessionStarting;
+    }
+
+    // A turn needs `session.topic_id` — the server's choice, never a guess
+    // made here — so every send path awaits this first. A no-op once a
+    // session exists (the overwhelmingly common case: `startSession()` above
+    // already ran at load), and otherwise gives the in-flight or a fresh
+    // fetch a chance to land before the turn is built.
+    function ensureSession() {
+      return session ? Promise.resolve(session) : startSession();
+    }
 
     // --- Scrolling ---------------------------------------------------------
     //
@@ -1191,6 +1414,14 @@
 
     async function sendTurn(wavBlob) {
       talk.disabled = true;
+      // `topic_id` is the server's choice, echoed back — there is nothing
+      // valid to send without it, so wait for it here rather than guessing.
+      await ensureSession();
+      if (!session) {
+        talk.disabled = false;
+        setStatus("couldn't start a session — try again in a moment");
+        return;
+      }
       // One bubble on release, not two. The echo goes up immediately and holds
       // the learner's place while STT runs — its pending dots *are* the
       // "transcribing…" indicator, in the thread rather than in a status line
@@ -1211,11 +1442,15 @@
       const startedAt = performance.now();
       const form = new FormData();
       form.append("audio", wavBlob, "turn.wav");
-      form.append("topic_id", "greetings");
+      form.append("topic_id", session.topic_id);
       // Send prior turns (role + zh only) so the partner has memory.
       form.append("dialogue", JSON.stringify(
         dialogue.map((t) => ({ role: t.role, zh: t.zh }))
       ));
+      // This session's frozen flavour from POST /api/session — resubmitted
+      // byte-identical every turn so the conversation worker's cached prefix
+      // keeps hitting.
+      form.append("sketch", session.sketch);
       let transcript = null;
       try {
         const resp = await fetch("/api/turn", { method: "POST", body: form });
@@ -1303,6 +1538,14 @@
       const text = textInput.value.trim();
       if (!text) return;
 
+      // `topic_id` is the server's choice, echoed back — there is nothing
+      // valid to send without it, so wait for it here rather than guessing.
+      await ensureSession();
+      if (!session) {
+        setStatus("couldn't start a session — try again in a moment");
+        return;
+      }
+
       setComposerBusy(true);
       setStatus("");
       // Optimistic echo: your own words belong on screen the moment you send
@@ -1329,9 +1572,10 @@
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            topic_id: "greetings",
+            topic_id: session.topic_id,
             text: text,
             dialogue: dialogue.map((t) => ({ role: t.role, zh: t.zh })),
+            sketch: session.sketch,
           }),
         });
         if (!resp.ok) {
@@ -1381,6 +1625,16 @@
       localStorage.setItem(MODE_KEY, mode);
       applyMode();
       if (mode === "text") textInput.focus();
+    });
+
+    // --- Info popup ----------------------------------------------------------
+    //
+    // The instructions, one tap away instead of permanently occupying the
+    // space above the thread.
+    infoBtn.addEventListener("click", () => { infoPanel.hidden = false; });
+    infoClose.addEventListener("click", () => { infoPanel.hidden = true; });
+    infoPanel.addEventListener("click", (e) => {
+      if (e.target === infoPanel) infoPanel.hidden = true;   // tap the backdrop
     });
 
     send.addEventListener("click", sendText);
@@ -1483,17 +1737,23 @@
       scrollToBottom("auto");
     }
 
-    // New conversation: clear memory and the thread so the partner starts fresh.
+    // New conversation: clear memory and the thread so the partner starts
+    // fresh, then fetch a new session — a new scene needs its own opening
+    // line and flavour, not the one still sitting in localStorage.
     reset.addEventListener("click", () => {
       dialogue = [];
       localStorage.removeItem(STORE_KEY);
+      session = null;
+      localStorage.removeItem(SESSION_KEY);
       thread.replaceChildren();
       // The bubbles are gone, so their reveal state and decoded audio are dead
       // weight — and the Map is the one thing here that grows without bound.
       replies.length = 0;
       speechCache.clear();
+      renderScenarioCard(null);
       stuck = true;
       setStatus("new conversation");
+      startSession();
     });
 
     showTextBtn.addEventListener("click", () => {
@@ -1505,6 +1765,20 @@
       applyShowText();
     });
 
+    // A cached session renders immediately (no round trip); restoreThread()
+    // then replays any real history on top of it. No cached session (first
+    // visit, or one cleared by `reset`) fetches a fresh one — the opening line
+    // only ever appears ahead of an empty thread, never behind restored turns.
+    if (session) {
+      renderScenarioCard(session.scenario_card);
+      if (dialogue.length === 0) {
+        const handle = createBubble("partner", { scroll: false });
+        handle.el.dataset.opening = "true";
+        renderReply(handle, session.opening_line, { scroll: false });
+      }
+    } else {
+      startSession();
+    }
     restoreThread();
     applyShowText();
     applyMode();

@@ -142,6 +142,21 @@ def browser_context_args(browser_context_args, frontend_server):
 TIMINGS = {"stt_ms": 300.0, "pa_ms": 250.0, "claude_ms": 900.0, "total_ms": 1250.0}
 USAGE = {"input_tokens": 4200, "output_tokens": 60, "cache_read_input_tokens": 4096}
 
+# M2-B: `POST /api/session`'s canned reply — the opening line + scenario card
+# a fresh thread renders before any turn happens. Real content doesn't matter
+# to these tests, only that the shape parses; `test_thread.py`'s `seed()`
+# pre-seeds this same shape into localStorage so the render is synchronous
+# (no fetch race) wherever a test cares about exact bubble counts.
+SESSION_START = {
+    "topic_id": "greetings",
+    "scenario_card": {
+        "situation": "You meet a classmate on campus in the morning.",
+        "goal": "Introduce yourself and find out their name.",
+    },
+    "opening_line": {"zh": "你好！你叫什么名字？", "pinyin": "nǐ hǎo! nǐ jiào shénme míngzi?"},
+    "sketch": "The classmate is warm and a little shy.",
+}
+
 TURN_TEXT = {
     "transcript": {"zh": "你好", "pinyin": "nǐ hǎo"},
     "reply": {"zh": "你好！很高兴认识你。", "pinyin": "nǐ hǎo! hěn gāoxìng rènshi nǐ."},
@@ -294,6 +309,7 @@ def page(page, fake_speech_b64):
     canned = {
         "/api/turn": TURN_AUDIO,
         "/api/turn/text": TURN_TEXT,
+        "/api/session": SESSION_START,
         "/api/tts": {"__audio": fake_speech_b64},
         "/health": {"status": "ok", "auth": "disabled"},
     }

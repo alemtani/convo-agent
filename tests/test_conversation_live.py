@@ -11,10 +11,14 @@ from anthropic import AsyncAnthropic
 
 from backend import config, kb
 from backend.models import ConversationResult, Utterance
-from backend.prompts import SKETCH_STUB
 from backend.workers import conversation
 
 pytestmark = pytest.mark.live
+
+# A stand-in for a session's frozen flavour block (`SessionStartResponse.sketch`
+# in real use) — these tests are about the KB block caching, not the sketch
+# worker itself, so any byte-stable string exercises the same cache mechanics.
+SKETCH_STUB = "A short first-meeting exchange."
 
 
 def _client():

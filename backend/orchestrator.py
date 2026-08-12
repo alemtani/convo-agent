@@ -12,6 +12,7 @@ the conversation worker, emitting each stage as it resolves.
 """
 import asyncio
 import logging
+import random
 from typing import AsyncIterator, List, Optional, Tuple, Union
 
 from anthropic import AsyncAnthropic
@@ -22,7 +23,9 @@ from backend.models import (
     DialogueTurn,
     DoneEvent,
     ReplyEvent,
+    ScenarioCard,
     ScoreEvent,
+    SessionStartResponse,
     TextTurnRequest,
     TranscriptEvent,
     TurnAnnotation,
@@ -32,9 +35,9 @@ from backend.models import (
     Utterance,
 )
 from backend.pinyin import to_pinyin
-from backend.prompts import SKETCH_STUB
 from backend.speech import pronunciation, stt
 from backend.workers import conversation
+from backend.workers import sketch as sketch_worker
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +78,7 @@ async def run_text_turn(
     with timer.stage("claude"):
         reply, annotation, reading, usage = await conversation.respond(
             kb_block=kb_block,
-            sketch=SKETCH_STUB,
+            sketch=req.sketch,
             dialogue=req.dialogue,
             user_text=req.text,
             forgiveness_level=config.FORGIVENESS_LEVEL_DEFAULT,
@@ -91,6 +94,64 @@ async def run_text_turn(
         annotation=annotation,
         timings=_report(timer, usage, mode="text"),
         usage=TurnUsage.from_sdk(usage),
+    )
+
+
+def _pick_scenario_topic() -> kb.Topic:
+    """Choose which topic a new session opens on.
+
+    Uniform random over every topic with an authored scenario — the only
+    selection policy that needs no state. `DESIGN.md`'s proficiency-weighted
+    selection (pinned focus, covered-set weighting) is a Phase 7-8 concern
+    that reads per-user learning state this endpoint has none of yet; this is
+    the seam it slots into later; not built now, not needed with one topic on
+    disk.
+
+    Raises `kb.KbError` if no topic has a scenario at all (nothing sessionable).
+    """
+    candidates = [
+        topic
+        for topic in (kb.load_topic(topic_id) for topic_id in kb.list_topic_ids())
+        if topic.scenario is not None
+    ]
+    if not candidates:
+        raise kb.KbError("no topic has an authored scenario")
+    return random.choice(candidates)
+
+
+async def start_session(client: Optional[AsyncAnthropic] = None) -> SessionStartResponse:
+    """Coordinate one session start: pick a topic, generate flavour, pin the
+    scenario card.
+
+    The topic is chosen here, never supplied by the caller — the frontend has
+    no business knowing which topics exist (that's the KB's business), so
+    `POST /api/session` takes no request body. `topic_id` rides back on the
+    response instead, and the client echoes it on every turn after
+    (`TextTurnRequest.topic_id`, the `topic_id` form field on `POST /api/turn`)
+    the same way it echoes `sketch` — an opaque value handed to it, not a
+    lookup it performs on its own.
+
+    One `sketch` worker call per session (M2-B) — the opening line and the
+    persona/color flavour that used to be the hardcoded `prompts.OPENING_LINE`
+    / `SKETCH_STUB`. The client freezes the response and resubmits `sketch`
+    byte-identical on every turn for the rest of the session, so this is the
+    one point in the session where a cache *write* happens rather than a read
+    (`docs/SCENARIOS.md`, "Caching"). `scenario_card` is the authored
+    `situation`/`goal` straight from `topic.md`; slots are never surfaced.
+
+    Raises `kb.KbError` if no topic has an authored scenario, `sketch.
+    SketchError` on a refusal / unparseable reply.
+    """
+    topic = _pick_scenario_topic()
+
+    result = await sketch_worker.generate(topic.id, topic.scenario, client=client)
+    return SessionStartResponse(
+        topic_id=topic.id,
+        scenario_card=ScenarioCard(
+            situation=topic.scenario.situation, goal=topic.scenario.goal
+        ),
+        opening_line=result.opening_line,
+        sketch=result.sketch,
     )
 
 
@@ -126,6 +187,7 @@ async def stream_audio_turn(
     kb_block: str,
     timer: Optional[timing.Timer] = None,
     dialogue: Optional[List[DialogueTurn]] = None,
+    sketch: str = "",
     client: Optional[AsyncAnthropic] = None,
 ) -> AsyncIterator[StagedEvent]:
     """Coordinate one spoken turn, emitting each stage as it resolves.
@@ -177,7 +239,7 @@ async def stream_audio_turn(
         with timer.stage("claude"):
             return await conversation.respond(
                 kb_block=kb_block,
-                sketch=SKETCH_STUB,
+                sketch=sketch,
                 dialogue=dialogue or [],
                 user_text=transcript.zh,
                 forgiveness_level=config.FORGIVENESS_LEVEL_DEFAULT,
