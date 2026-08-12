@@ -15,6 +15,14 @@ Checks (ERROR fails the run; WARN is advisory):
   - every word used in dialogues is in the topic's taught set
     (vocab tables + declared proper_names); an in-band-but-undocumented
     word is a WARN, an out-of-HSK / undeclared token is an ERROR
+  - the scenario block, if present (see docs/SCENARIOS.md):
+      · every `expressible_with` word ∈ target_vocab, at/below the ceiling   ERROR
+      · more than one slot — substance                                      ERROR
+      · at least one `request` slot — an obstacle                           ERROR
+      · no duplicate slot ids, unknown `depends_on`, or dependency cycle     ERROR
+      · a `max_turns` override is ≥ the derived cap and states a reason      ERROR
+      · `situation` / `goal` are non-empty and ASCII                         ERROR
+    A topic with no scenario at all is a WARN — topics may land first.
 
 Usage:
     python validate.py <topic_dir> [<topic_dir> ...]
@@ -28,6 +36,13 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ZH = os.path.join(HERE, os.pardir)            # kb/zh
+
+# Parse topic.md with the *loader's* parser, so the guardrail checks exactly
+# what the service will read — one parser, no drift. This is the only coupling
+# and it runs one way: authoring tools may import `backend`, never the reverse
+# (CLAUDE.md). `backend.kb` is stdlib-only, so this file stays stdlib-only too.
+sys.path.insert(0, os.path.abspath(os.path.join(ZH, os.pardir, os.pardir)))
+from backend import kb  # noqa: E402
 HSK = os.path.join(ZH, "_hsk", "hsk-3.0.json")
 CEILING = os.path.join(ZH, "_hsk", "ceiling.json")
 INDEX = os.path.join(ZH, "index.md")
@@ -35,8 +50,6 @@ INDEX = os.path.join(ZH, "index.md")
 HAN = r"一-鿿"
 HAN_RUN = re.compile(f"[{HAN}]+")
 TABLE_WORD = re.compile(rf"^\|\s*([{HAN}]+)\s*\|")
-FLOW_LIST = lambda key, text: (
-    re.search(rf"^{key}:\s*\[(.*?)\]", text, re.M))
 
 
 def load_json(path):
@@ -45,22 +58,13 @@ def load_json(path):
 
 
 def parse_frontmatter(topic_md):
-    with open(topic_md, encoding="utf-8") as f:
-        text = f.read()
-    m = re.match(r"^---\n(.*?)\n---", text, re.S)
-    fm = m.group(1) if m else ""
-    def scalar(key):
-        mm = re.search(rf"^{key}:\s*(.+)$", fm, re.M)
-        return mm.group(1).strip().strip('"') if mm else None
-    def flow(key):
-        mm = FLOW_LIST(key, fm)
-        return [w.strip() for w in mm.group(1).split(",") if w.strip()] if mm else []
-    return {
-        "id": scalar("id"),
-        "display_name": scalar("display_name"),
-        "target_vocab": flow("target_vocab"),
-        "proper_names": flow("proper_names"),
-    }
+    """Parse topic.md via the loader. Returns (topic, errors); topic is None if
+    the frontmatter is malformed — a bad topic gets an ERROR, not a traceback."""
+    try:
+        with open(topic_md, encoding="utf-8") as f:
+            return kb.parse_topic_frontmatter(f.read()), []
+    except (OSError, kb.KbError) as exc:
+        return None, [f"topic.md: {exc}"]
 
 
 def table_words(md_path):
@@ -118,37 +122,129 @@ def tokenize(run, lexicon):
     return matched, leftover
 
 
+def _cycle(slots):
+    """Return a slot id on a `depends_on` cycle, or None. Iterative DFS."""
+    graph = {s.id: [d for d in s.depends_on] for s in slots}
+    state = {}  # 0 = visiting, 1 = done
+    for start in graph:
+        if state.get(start):
+            continue
+        stack = [(start, iter(graph[start]))]
+        state[start] = 0
+        while stack:
+            node, deps = stack[-1]
+            nxt = next(deps, None)
+            if nxt is None:
+                state[node] = 1
+                stack.pop()
+            elif state.get(nxt) == 0:
+                return nxt
+            elif nxt in graph and state.get(nxt) is None:
+                state[nxt] = 0
+                stack.append((nxt, iter(graph[nxt])))
+    return None
+
+
+def scenario_errors(scenario, target_vocab, hsk, ceiling):
+    """The six authoring rules for a scenario block (docs/SCENARIOS.md)."""
+    errors = []
+    tv = set(target_vocab)
+
+    # 1. every expressible_with word is achievable: taught, and in band.
+    for slot in scenario.slots:
+        for w in slot.expressible_with:
+            band = hsk.get(w)
+            if band is not None and band > ceiling:
+                errors.append(f"slot '{slot.id}' expressible_with {w} is HSK band "
+                              f"{band}, above ceiling {ceiling}")
+            elif not in_band(w, hsk, ceiling):
+                errors.append(f"slot '{slot.id}' expressible_with {w} is not in the "
+                              f"HSK index (ceiling={ceiling})")
+            if w not in tv:
+                errors.append(f"slot '{slot.id}' expressible_with {w} not in target_vocab")
+
+    # 2. substance. A single slot is a one-exchange conversation by construction.
+    if scenario.n_slots <= 1:
+        errors.append(f"{scenario.n_slots} slot — a one-exchange scenario. "
+                      "Needs more than one.")
+
+    # 3. an obstacle. Informs only is a vocabulary drill, however many there are.
+    if scenario.n_request_slots < 1:
+        errors.append("no request slots — the learner never has to extract "
+                      "anything. This is a vocabulary drill, not a scenario.")
+
+    # 4. a well-formed slot graph.
+    seen = set()
+    for slot in scenario.slots:
+        if slot.id in seen:
+            errors.append(f"duplicate slot id '{slot.id}'")
+        seen.add(slot.id)
+    for slot in scenario.slots:
+        for dep in slot.depends_on:
+            if dep not in seen:
+                errors.append(f"slot '{slot.id}' depends_on unknown slot '{dep}'")
+    on_cycle = _cycle(scenario.slots)
+    if on_cycle:
+        errors.append(f"depends_on cycle through slot '{on_cycle}'")
+
+    # 5. a pacing override may buy room; it may never starve the goal, and it
+    #    must say why (the derivation is the default, not an opinion to ignore).
+    if scenario.authored_max_turns is not None:
+        derived = kb.derive_max_turns(scenario.n_slots, scenario.n_request_slots)
+        if scenario.authored_max_turns < derived:
+            errors.append(f"max_turns {scenario.authored_max_turns} is below the "
+                          f"derived {derived} — the override starves the goal")
+        if not scenario.max_turns_reason:
+            errors.append("max_turns override needs a `max_turns_reason`")
+
+    # 6. the learner has to be able to read the task.
+    for field in ("situation", "goal"):
+        value = getattr(scenario, field)
+        if not value.strip():
+            errors.append(f"scenario `{field}` is empty")
+        elif not value.isascii():
+            errors.append(f"scenario `{field}` is not ASCII — a band-1 learner "
+                          "cannot read a Chinese task description")
+    return errors
+
+
 def validate_topic(topic_dir, hsk, ceiling, index_text):
     errors, warns = [], []
-    fm = parse_frontmatter(os.path.join(topic_dir, "topic.md"))
+    fm, fm_errors = parse_frontmatter(os.path.join(topic_dir, "topic.md"))
+    if fm is None:
+        return fm_errors, warns
 
-    for field in ("id", "display_name"):
-        if not fm[field]:
-            errors.append(f"frontmatter missing `{field}`")
-    if not fm["target_vocab"]:
+    if not fm.target_vocab:
         errors.append("frontmatter missing/empty `target_vocab`")
 
     vocab_tbl = table_words(os.path.join(topic_dir, "vocab.md"))
     vocab_set = set(vocab_tbl)
 
     # membership: target_vocab + every vocab-table word
-    for w in set(fm["target_vocab"]) | vocab_set:
+    for w in set(fm.target_vocab) | vocab_set:
         if not in_band(w, hsk, ceiling):
             b = hsk.get(w)
             why = f"band {b}" if b is not None else "not in HSK index"
             errors.append(f"`{w}` is out of scope ({why}, ceiling={ceiling})")
 
     # every target word should be documented in vocab.md
-    for w in fm["target_vocab"]:
+    for w in fm.target_vocab:
         if w not in vocab_set:
             warns.append(f"`{w}` in target_vocab but not documented in vocab.md")
 
     # index.md lists the topic
-    if fm["id"] and fm["id"] not in index_text:
-        errors.append(f"topic id `{fm['id']}` not listed in kb/zh/index.md")
+    if fm.id and fm.id not in index_text:
+        errors.append(f"topic id `{fm.id}` not listed in kb/zh/index.md")
+
+    # the scenario block — absent is advisory, malformed is fatal
+    if fm.scenario is None:
+        warns.append("no `scenario:` block — the topic cannot be practised as a "
+                     "goal-oriented session (docs/SCENARIOS.md)")
+    else:
+        errors.extend(scenario_errors(fm.scenario, fm.target_vocab, hsk, ceiling))
 
     # dialogue scope
-    lexicon = vocab_set | set(fm["target_vocab"]) | set(fm["proper_names"])
+    lexicon = vocab_set | set(fm.target_vocab) | set(fm.proper_names)
     for run in dialogue_words(os.path.join(topic_dir, "dialogues.md")):
         matched, leftover = tokenize(run, lexicon)
         for tok in leftover:

@@ -59,6 +59,7 @@ backend/
   __init__.py
 kb/zh/                 # knowledge base (git-versioned markdown)
   index.md
+  pacing.json          # scenario turn-cap coefficients (consumed by kb.py)
   <topic>/{topic,vocab,grammar,dialogues}.md
 frontend/              # mobile-first PWA (DM thread, push-to-talk, localStorage)
 tests/                 # pytest; mirrors backend/ modules; fixtures/ holds recorded responses
@@ -89,9 +90,27 @@ uvicorn backend.main:app --reload --port <port>
 ./scripts/tunnel.sh stop
 ```
 
-**Raise a frontend PR → start a tunnel and check it on the phone.** Desktop
-Chromium is all the smoke suite covers; mobile Safari is the target device and
-differs where it matters (autoplay, `AudioContext` unlock, safe areas, keyboard).
+**Raise a PR that changes what the learner experiences → start a tunnel and check
+it on the phone.** The test is *"does this change the session?"*, not *"does this
+touch `frontend/`"*. Backend work reaches the learner just as directly:
+
+- **Anything that changes the prompt** — the system prompt, what goes in the
+  cached KB block, a new instruction or a new model. The suite asserts the
+  request we *build*; it cannot see that the partner now replies differently.
+- **Anything that changes the turn's shape** — new fields on the response, a
+  changed timeout or error path, a different failure the client has to render.
+- **Anything that changes the KB the partner reads** — new vocab, a scenario, a
+  raised band ceiling.
+
+A green suite plus a live check are answering different questions. Tests say the
+code does what we specified; a real turn on a real phone says the specification
+was any good — and a prompt change that lands *before* the prompt work that gives
+it meaning (a KB block the system prompt doesn't yet explain) is exactly the case
+tests are blind to.
+
+Mobile Safari is the target device and differs from the smoke suite's desktop
+Chromium where it matters (autoplay, `AudioContext` unlock, safe areas, keyboard),
+so a frontend PR still always earns a tunnel — it is now the floor, not the rule.
 
 State is keyed per Claude session and each session picks its own free port, so
 concurrent agents in this repo never collide or kill each other's tunnel. A
@@ -172,9 +191,18 @@ guardrail is `kb/zh/_tools/validate.py` (run by the skill and by hand), **not** 
 pytest suite — the Stop-hook test gate is for `backend/` correctness only. Tools:
 `kb/zh/_hsk/build.py` (regenerate the pinned `word→band` index),
 `kb/zh/_tools/annotate_pinyin.py` (dialogue pinyin from curated vocab),
-`kb/zh/_tools/validate.py` (scope/membership guardrail). The band ceiling is
-universal and lives in `kb/zh/_hsk/ceiling.json` (consumed by `config`, never the
-reverse).
+`kb/zh/_tools/validate.py` (scope/membership + scenario guardrail). The band
+ceiling is universal and lives in `kb/zh/_hsk/ceiling.json` (consumed by
+`config`, never the reverse); scenario pacing coefficients live the same way in
+`kb/zh/pacing.json` (consumed by `kb.py`).
+
+`validate.py` imports `backend.kb` for the `topic.md` parser, so the guardrail
+reads a topic exactly as the service will. That is the one coupling and it runs
+**one way** — authoring tools may import `backend`, never the reverse. Its
+scenario rules do have pytest coverage (`tests/test_kb_validate.py`), which is
+not a contradiction of the line above: those tests exercise *the validator*
+against deliberately broken fixtures under `tests/fixtures/kb_scenarios/`, and
+assert nothing about KB content.
 
 ## Design reference
 

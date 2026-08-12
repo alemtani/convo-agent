@@ -1,0 +1,6 @@
+{
+  "_note": "Coefficients for the derived scenario turn cap: max_turns = slot_weight*n_slots + request_slot_weight*n_request_slots + base. Owned by the KB authoring workflow (like _hsk/ceiling.json) and consumed by backend.kb — the service depends on this file, never the reverse. This is a pacing POLICY, not arithmetic: `slot_weight` reads as 'the band-1-2 partner elicits about one fact per turn', `request_slot_weight` buys one retry per extraction (where beginners fail), and `base` is one recovery turn plus the close. Retune here rather than editing every topic. See docs/SCENARIOS.md, 'Turn budget'.",
+  "slot_weight": 1,
+  "request_slot_weight": 1,
+  "base": 2
+}
