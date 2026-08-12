@@ -289,6 +289,26 @@ def load_topic(topic_id: str, root: str = KB_ROOT) -> Topic:
     return parse_topic_frontmatter(_read(os.path.join(_topic_dir(topic_id, root), "topic.md")))
 
 
+def list_topic_ids(root: str = KB_ROOT) -> List[str]:
+    """Every topic directory under `root` — a subdirectory with a `topic.md`.
+
+    A directory check rather than a hardcoded list, so a new topic (#29)
+    appears here the moment its `topic.md` lands, with no registry to update.
+    It also naturally excludes `root`'s non-topic entries (`_hsk/`, `_tools/`,
+    `pacing.json`, `index.md`) since none of those has a `topic.md` inside it.
+    Sorted for a deterministic order — callers that need randomness (session
+    topic selection) draw from this rather than relying on directory order,
+    which the filesystem doesn't guarantee.
+    """
+    if not os.path.isdir(root):
+        return []
+    return sorted(
+        name
+        for name in os.listdir(root)
+        if os.path.isfile(os.path.join(root, name, "topic.md"))
+    )
+
+
 @functools.lru_cache(maxsize=None)
 def load_vocab_block(topic_id: str, root: str = KB_ROOT) -> str:
     """Concatenate vocab + grammar + dialogues only — no scenario section.

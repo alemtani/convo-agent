@@ -14,7 +14,6 @@ from backend.models import (
     ConversationTurnResponse,
     DialogueTurn,
     PasscodeRequest,
-    SessionStartRequest,
     SessionStartResponse,
     TextTurnRequest,
     TtsRequest,
@@ -128,19 +127,22 @@ async def hello():
 
 
 @app.post("/api/session", response_model=SessionStartResponse)
-async def session_start(req: SessionStartRequest) -> SessionStartResponse:
-    """Start a session: generate this session's opening line + flavour.
+async def session_start() -> SessionStartResponse:
+    """Start a session: pick a topic, generate its opening line + flavour.
 
-    One `sketch` worker call, from the topic KB (`docs/SCENARIOS.md`,
-    `backend/workers/sketch.py`). The client freezes the response and
-    resubmits `sketch` byte-identical on every turn for the rest of the
-    session (`TextTurnRequest.sketch`, the `sketch` form field on
-    `POST /api/turn`) — the server never stores it (stateless proxy).
-    `scenario_card` is `situation` + `goal` straight from the authored seed,
-    in English; slots are never shown.
+    No request body — the topic is the server's choice, not the caller's.
+    The frontend has no business knowing which topics exist; it gets
+    `topic_id` back on the response and echoes it on every turn after, the
+    same opaque way it already echoes `sketch`. One `sketch` worker call, from
+    the topic KB (`docs/SCENARIOS.md`, `backend/workers/sketch.py`). The
+    client freezes the response and resubmits `sketch` byte-identical on
+    every turn for the rest of the session (`TextTurnRequest.sketch`, the
+    `sketch` form field on `POST /api/turn`) — the server never stores it
+    (stateless proxy). `scenario_card` is `situation` + `goal` straight from
+    the authored seed, in English; slots are never shown.
     """
     try:
-        return await orchestrator.start_session(req.topic_id)
+        return await orchestrator.start_session()
     except kb.KbError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except sketch_worker.SketchError as exc:

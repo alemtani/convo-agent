@@ -646,11 +646,9 @@
       if (sessionStarting) return sessionStarting;
       sessionStarting = (async () => {
         try {
-          const resp = await fetch("/api/session", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ topic_id: "greetings" }),
-          });
+          // No body: the server picks the topic, not the client — the whole
+          // point of this endpoint is that the frontend has no topic to send.
+          const resp = await fetch("/api/session", { method: "POST" });
           if (!resp.ok) {
             // Not fatal — turns still work with an empty sketch (no flavour)
             // and no scenario card, same as before this shipped — but a
@@ -688,6 +686,15 @@
         }
       })();
       return sessionStarting;
+    }
+
+    // A turn needs `session.topic_id` — the server's choice, never a guess
+    // made here — so every send path awaits this first. A no-op once a
+    // session exists (the overwhelmingly common case: `startSession()` above
+    // already ran at load), and otherwise gives the in-flight or a fresh
+    // fetch a chance to land before the turn is built.
+    function ensureSession() {
+      return session ? Promise.resolve(session) : startSession();
     }
 
     // --- Scrolling ---------------------------------------------------------
@@ -1306,6 +1313,14 @@
 
     async function sendTurn(wavBlob) {
       talk.disabled = true;
+      // `topic_id` is the server's choice, echoed back — there is nothing
+      // valid to send without it, so wait for it here rather than guessing.
+      await ensureSession();
+      if (!session) {
+        talk.disabled = false;
+        setStatus("couldn't start a session — try again in a moment");
+        return;
+      }
       // One bubble on release, not two. The echo goes up immediately and holds
       // the learner's place while STT runs — its pending dots *are* the
       // "transcribing…" indicator, in the thread rather than in a status line
@@ -1326,15 +1341,15 @@
       const startedAt = performance.now();
       const form = new FormData();
       form.append("audio", wavBlob, "turn.wav");
-      form.append("topic_id", "greetings");
+      form.append("topic_id", session.topic_id);
       // Send prior turns (role + zh only) so the partner has memory.
       form.append("dialogue", JSON.stringify(
         dialogue.map((t) => ({ role: t.role, zh: t.zh }))
       ));
       // This session's frozen flavour from POST /api/session — resubmitted
       // byte-identical every turn so the conversation worker's cached prefix
-      // keeps hitting. Empty when no session has started yet.
-      form.append("sketch", (session && session.sketch) || "");
+      // keeps hitting.
+      form.append("sketch", session.sketch);
       let transcript = null;
       try {
         const resp = await fetch("/api/turn", { method: "POST", body: form });
@@ -1422,6 +1437,14 @@
       const text = textInput.value.trim();
       if (!text) return;
 
+      // `topic_id` is the server's choice, echoed back — there is nothing
+      // valid to send without it, so wait for it here rather than guessing.
+      await ensureSession();
+      if (!session) {
+        setStatus("couldn't start a session — try again in a moment");
+        return;
+      }
+
       setComposerBusy(true);
       setStatus("");
       // Optimistic echo: your own words belong on screen the moment you send
@@ -1448,10 +1471,10 @@
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            topic_id: "greetings",
+            topic_id: session.topic_id,
             text: text,
             dialogue: dialogue.map((t) => ({ role: t.role, zh: t.zh })),
-            sketch: (session && session.sketch) || "",
+            sketch: session.sketch,
           }),
         });
         if (!resp.ok) {

@@ -103,6 +103,28 @@ def test_load_topic_reads_committed_greetings():
     assert "老师" in topic.target_vocab
 
 
+def test_list_topic_ids_finds_the_committed_topics():
+    ids = kb.list_topic_ids()
+    assert "greetings" in ids
+    # Non-topic entries under the root (`_hsk/`, `_tools/`, `pacing.json`,
+    # `index.md`) must not appear — none of them has a `topic.md`.
+    assert "_hsk" not in ids
+    assert "_tools" not in ids
+
+
+def test_list_topic_ids_is_sorted():
+    ids = kb.list_topic_ids()
+    assert ids == sorted(ids)
+
+
+def test_list_topic_ids_empty_root_returns_empty(tmp_path):
+    assert kb.list_topic_ids(str(tmp_path)) == []
+
+
+def test_list_topic_ids_missing_root_returns_empty(tmp_path):
+    assert kb.list_topic_ids(str(tmp_path / "does-not-exist")) == []
+
+
 def test_load_kb_block_includes_vocab_grammar_dialogues():
     block = kb.load_kb_block("greetings")
     # Content from each of the three source files is present.

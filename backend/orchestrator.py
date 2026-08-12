@@ -12,6 +12,7 @@ the conversation worker, emitting each stage as it resolves.
 """
 import asyncio
 import logging
+import random
 from typing import AsyncIterator, List, Optional, Tuple, Union
 
 from anthropic import AsyncAnthropic
@@ -96,10 +97,39 @@ async def run_text_turn(
     )
 
 
-async def start_session(
-    topic_id: str, client: Optional[AsyncAnthropic] = None
-) -> SessionStartResponse:
-    """Coordinate one session start: generate flavour, pin the scenario card.
+def _pick_scenario_topic() -> kb.Topic:
+    """Choose which topic a new session opens on.
+
+    Uniform random over every topic with an authored scenario — the only
+    selection policy that needs no state. `DESIGN.md`'s proficiency-weighted
+    selection (pinned focus, covered-set weighting) is a Phase 7-8 concern
+    that reads per-user learning state this endpoint has none of yet; this is
+    the seam it slots into later; not built now, not needed with one topic on
+    disk.
+
+    Raises `kb.KbError` if no topic has a scenario at all (nothing sessionable).
+    """
+    candidates = [
+        topic
+        for topic in (kb.load_topic(topic_id) for topic_id in kb.list_topic_ids())
+        if topic.scenario is not None
+    ]
+    if not candidates:
+        raise kb.KbError("no topic has an authored scenario")
+    return random.choice(candidates)
+
+
+async def start_session(client: Optional[AsyncAnthropic] = None) -> SessionStartResponse:
+    """Coordinate one session start: pick a topic, generate flavour, pin the
+    scenario card.
+
+    The topic is chosen here, never supplied by the caller — the frontend has
+    no business knowing which topics exist (that's the KB's business), so
+    `POST /api/session` takes no request body. `topic_id` rides back on the
+    response instead, and the client echoes it on every turn after
+    (`TextTurnRequest.topic_id`, the `topic_id` form field on `POST /api/turn`)
+    the same way it echoes `sketch` — an opaque value handed to it, not a
+    lookup it performs on its own.
 
     One `sketch` worker call per session (M2-B) — the opening line and the
     persona/color flavour that used to be the hardcoded `prompts.OPENING_LINE`
@@ -109,15 +139,14 @@ async def start_session(
     (`docs/SCENARIOS.md`, "Caching"). `scenario_card` is the authored
     `situation`/`goal` straight from `topic.md`; slots are never surfaced.
 
-    Raises `kb.KbError` for an unknown topic or one with no authored scenario,
-    `sketch.SketchError` on a refusal / unparseable reply.
+    Raises `kb.KbError` if no topic has an authored scenario, `sketch.
+    SketchError` on a refusal / unparseable reply.
     """
-    topic = kb.load_topic(topic_id)
-    if topic.scenario is None:
-        raise kb.KbError(f"topic {topic_id!r} has no authored scenario")
+    topic = _pick_scenario_topic()
 
-    result = await sketch_worker.generate(topic_id, topic.scenario, client=client)
+    result = await sketch_worker.generate(topic.id, topic.scenario, client=client)
     return SessionStartResponse(
+        topic_id=topic.id,
         scenario_card=ScenarioCard(
             situation=topic.scenario.situation, goal=topic.scenario.goal
         ),

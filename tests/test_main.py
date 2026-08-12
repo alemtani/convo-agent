@@ -54,6 +54,7 @@ def test_static_page_is_not_cached():
 
 def _session_response():
     return SessionStartResponse(
+        topic_id="greetings",
         scenario_card=ScenarioCard(
             situation="You meet a classmate on campus.", goal="Introduce yourself."
         ),
@@ -62,50 +63,59 @@ def _session_response():
     )
 
 
-def test_session_start_returns_card_opening_line_and_sketch(monkeypatch):
-    captured = {}
+def test_session_start_returns_topic_card_opening_line_and_sketch(monkeypatch):
+    called = []
 
-    async def fake_start(topic_id, client=None):
-        captured["topic_id"] = topic_id
+    async def fake_start(client=None):
+        called.append(True)
         return _session_response()
 
     monkeypatch.setattr(orchestrator, "start_session", fake_start)
 
-    resp = client.post("/api/session", json={"topic_id": "greetings"})
+    # No body: the server picks the topic, not the caller.
+    resp = client.post("/api/session")
 
     assert resp.status_code == 200
     body = resp.json()
+    assert body["topic_id"] == "greetings"
     assert body["scenario_card"] == {
         "situation": "You meet a classmate on campus.",
         "goal": "Introduce yourself.",
     }
     assert body["opening_line"] == {"zh": "你好！", "pinyin": "nǐ hǎo!"}
     assert body["sketch"] == "The classmate is friendly and a little shy."
-    assert captured["topic_id"] == "greetings"
+    assert called == [True]
 
 
-def test_session_start_unknown_topic_is_404(monkeypatch):
-    async def fake_start(topic_id, client=None):
-        raise kb.KbError("unknown topic: 'nope'")
+def test_session_start_no_scenario_topic_is_404(monkeypatch):
+    async def fake_start(client=None):
+        raise kb.KbError("no topic has an authored scenario")
 
     monkeypatch.setattr(orchestrator, "start_session", fake_start)
 
-    resp = client.post("/api/session", json={"topic_id": "nope"})
+    resp = client.post("/api/session")
     assert resp.status_code == 404
-    assert "nope" in resp.json()["detail"]
+    assert "no topic has an authored scenario" in resp.json()["detail"]
 
 
 def test_session_start_worker_refusal_is_502(monkeypatch):
-    async def fake_start(topic_id, client=None):
+    async def fake_start(client=None):
         raise sketch.SketchError("sketch worker refused the session")
 
     monkeypatch.setattr(orchestrator, "start_session", fake_start)
 
-    resp = client.post("/api/session", json={"topic_id": "greetings"})
+    resp = client.post("/api/session")
     assert resp.status_code == 502
     assert "refused" in resp.json()["detail"]
 
 
-def test_session_start_requires_topic_id():
-    resp = client.post("/api/session", json={})
-    assert resp.status_code == 422
+def test_session_start_ignores_a_body_if_one_is_sent(monkeypatch):
+    """No request model to validate against any more — a stray body (an old
+    client, or a curl copied from before this change) must not 422."""
+    async def fake_start(client=None):
+        return _session_response()
+
+    monkeypatch.setattr(orchestrator, "start_session", fake_start)
+
+    resp = client.post("/api/session", json={"topic_id": "greetings"})
+    assert resp.status_code == 200

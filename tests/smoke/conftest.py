@@ -148,6 +148,7 @@ USAGE = {"input_tokens": 4200, "output_tokens": 60, "cache_read_input_tokens": 4
 # pre-seeds this same shape into localStorage so the render is synchronous
 # (no fetch race) wherever a test cares about exact bubble counts.
 SESSION_START = {
+    "topic_id": "greetings",
     "scenario_card": {
         "situation": "You meet a classmate on campus in the morning.",
         "goal": "Introduce yourself and find out their name.",

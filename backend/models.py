@@ -384,23 +384,25 @@ class SketchResult(BaseModel):
     sketch: str
 
 
-class SessionStartRequest(BaseModel):
-    """Request body for `POST /api/session`: which topic to start."""
-
-    topic_id: str
-
-
 class SessionStartResponse(BaseModel):
-    """Response body for `POST /api/session`.
+    """Response body for `POST /api/session` — a request with no body.
 
-    The one point in a session where flavour is *generated* rather than
-    reused: the client freezes `sketch` here and resubmits it byte-identical
-    on every turn (`TextTurnRequest.sketch`, the `sketch` form field on
-    `POST /api/turn`) — the server never stores or regenerates it, keeping the
-    stateless-proxy property. `opening_line` is rendered once as the first
-    partner bubble and does not consume the turn budget.
+    The server picks the topic; the frontend has no business knowing which
+    topics exist, so there is nothing for it to send. `topic_id` rides back
+    here instead, and the client echoes it — an opaque value it was handed,
+    not one it looked up — on every turn (`TextTurnRequest.topic_id`, the
+    `topic_id` form field on `POST /api/turn`), the same way it already
+    echoes `sketch`.
+
+    This is the one point in a session where flavour is *generated* rather
+    than reused: the client freezes `sketch` here and resubmits it
+    byte-identical on every turn (`TextTurnRequest.sketch`) — the server
+    never stores or regenerates it, keeping the stateless-proxy property.
+    `opening_line` is rendered once as the first partner bubble and does not
+    consume the turn budget.
     """
 
+    topic_id: str
     scenario_card: ScenarioCard
     opening_line: Utterance
     sketch: str
