@@ -71,6 +71,8 @@
     }
     /* Text on: the controls step back so the reply reads as the message. */
     .bubble.partner:not(.unread) .controls { opacity: 0.55; margin-bottom: 0.35rem; }
+    /* A reply with no audio form: the controls stay, visibly inert. */
+    .bubble.partner .controls button:disabled { opacity: 0.35; cursor: default; }
 
     /* A turn in flight, shown as a bubble rather than a status line: the partner
        gets a dot-pulse placeholder, and your own echo is dimmed until the server
@@ -488,7 +490,15 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text }),
       });
-      if (!resp.ok) throw new Error("tts " + resp.status);
+      if (!resp.ok) {
+        const err = new Error("tts " + resp.status);
+        // 422 is *us* refusing, not Azure failing: the reply is longer than the
+        // cap the endpoint will speak. Nothing about it is transient, so it has
+        // to be told apart from an upstream error — retrying is pointless and a
+        // 🔊 that can never work is a lie.
+        err.unspeakable = resp.status === 422;
+        throw err;
+      }
       const buf = await ctx.decodeAudioData(await resp.arrayBuffer());
       speechCache.set(text, buf);
       return buf;
@@ -728,6 +738,10 @@
     const replies = [];      // {el, utt, override} for every partner bubble up
 
     function revealed(reply) {
+      // A reply too long to speak has no audio form, so the text *is* the reply
+      // rather than a hint about it. Neither 👁 nor "hide all" may take it away
+      // — hiding it would leave a bubble with nothing in it at all.
+      if (reply.unspeakable) return true;
       return reply.override === null ? showText : reply.override;
     }
 
@@ -738,16 +752,26 @@
       const controls = document.createElement("div");
       controls.className = "controls";
 
+      // Both controls are dead on an unspeakable reply, and say so rather than
+      // disappearing: a bubble that is missing the buttons every other bubble
+      // has reads as a rendering bug, while a disabled one with a reason reads
+      // as an explanation.
       const replay = document.createElement("button");
       replay.className = "replay";
       replay.textContent = "🔊";
-      replay.title = "Play again";
+      replay.disabled = !!reply.unspeakable;
+      replay.title = reply.unspeakable
+        ? "Too long to speak — read it instead"
+        : "Play again";
       replay.addEventListener("click", () => playReply(reply));
 
       const reveal = document.createElement("button");
       reveal.className = "reveal";
       reveal.textContent = visible ? "🙈" : "👁";
-      reveal.title = visible ? "Hide the text" : "Show the text";
+      reveal.disabled = !!reply.unspeakable;
+      reveal.title = reply.unspeakable
+        ? "There is no audio for this one, so the text stays"
+        : (visible ? "Hide the text" : "Show the text");
       reveal.addEventListener("click", () => {
         reply.override = !visible;
         paintReply(reply);
@@ -763,10 +787,13 @@
     function playReply(reply) {
       return speak(reply.utt.zh).catch((err) => {
         reply.override = true;
+        if (err && err.unspeakable) reply.unspeakable = true;
         paintReply(reply);
-        setStatus(err && err.blocked
-          ? "the phone blocked playback — check the silent switch"
-          : "audio unavailable — showing the text");
+        setStatus(
+          err && err.unspeakable ? "that reply is too long to speak — read it instead"
+          : err && err.blocked ? "the phone blocked playback — check the silent switch"
+          : "audio unavailable — showing the text"
+        );
       });
     }
 

@@ -223,6 +223,12 @@ async def tts_route(req: TtsRequest) -> Response:
     Any upstream failure — canceled, timed out, missing credentials — is a 502,
     because the client's response to all of them is the same: reveal the text.
     Audio-only mode with no audio and no text is a dead session.
+
+    The 422 from `TtsRequest` is a different kind of failure and the client
+    treats it as one. A line past `TTS_MAX_CHARS` is not temporarily
+    unavailable, it is unspeakable by this endpoint, so the page renders that
+    reply as text only and retires its 🔊 instead of offering a retry that can
+    never succeed.
     """
     try:
         audio = await tts.synthesize(req.text)
