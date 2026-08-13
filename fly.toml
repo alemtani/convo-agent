@@ -14,7 +14,14 @@ primary_region = "iad"
   force_https = true
   auto_stop_machines = true
   auto_start_machines = true
-  min_machines_running = 0
+  # One machine stays up. Scaling to zero costs a ~5s cold start on the first
+  # request, and that request is the learner opening the app: the page load
+  # itself is what wakes the machine, so the session call behind it races a
+  # server that isn't listening yet. A beginner reads that as "broken", not
+  # "waking up". The second machine still auto-starts under load, so this buys
+  # latency, not capacity — and a machine that is always serving someone never
+  # idles down anyway, so the cost only looks like a cost while nobody is here.
+  min_machines_running = 1
   processes = ["app"]
 
   [[http_service.checks]]
