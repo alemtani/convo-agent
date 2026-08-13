@@ -89,18 +89,27 @@ async def walk(http, anthropic_client, topic_id, *, verbose):
     session = resp.json()
 
     # `/api/session` picks its own topic, so a walk of a *named* topic overrides
-    # it on the turns. The sketch is then flavour from a different scene, which
-    # costs nothing here: this asks whether the slots are winnable, not whether
-    # the persona is coherent.
+    # it on the turns — and the task the learner is given must be overridden
+    # with it, from the KB rather than from the response. Reading the card off
+    # a session that drew a different topic sends the learner after the wrong
+    # facts entirely, which then reads as the *scenario* being unwinnable. It
+    # is not a hypothetical: it made `greetings` fail by having the learner
+    # order lunch.
     topic_id = topic_id or session["topic_id"]
     scenario = kb.load_scenario(topic_id)
     if scenario is None:
         raise SystemExit(f"{topic_id} has no scenario")
 
     descriptions = {slot.id: slot.description for slot in scenario.slots}
-    dialogue = [{"role": "partner", "zh": session["opening_line"]["zh"]}]
+    card = {"situation": scenario.situation, "goal": scenario.goal}
+
+    # The opening line is only usable when the session actually drew this topic;
+    # otherwise it opens a scene the turns are not in. Starting from an empty
+    # transcript is the honest fallback — the partner opens on turn 1 instead.
+    dialogue = []
+    if session["topic_id"] == topic_id:
+        dialogue.append({"role": "partner", "zh": session["opening_line"]["zh"]})
     state = {"filled_at": {}, "status": "active", "goal_met": False}
-    card = session["scenario_card"]
 
     turn = 0
     while state["status"] == "active":
