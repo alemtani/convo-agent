@@ -149,6 +149,7 @@ USAGE = {"input_tokens": 4200, "output_tokens": 60, "cache_read_input_tokens": 4
 # (no fetch race) wherever a test cares about exact bubble counts.
 SESSION_START = {
     "topic_id": "greetings",
+    "display_name": "Greetings (你好)",
     "scenario_card": {
         "situation": "You meet a classmate on campus in the morning.",
         "goal": "Introduce yourself and find out their name.",

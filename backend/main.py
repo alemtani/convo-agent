@@ -17,6 +17,8 @@ from backend.models import (
     SessionState,
     SessionStartResponse,
     TextTurnRequest,
+    TopicListing,
+    TopicListResponse,
     TtsRequest,
     VerdictCard,
     VerdictRequest,
@@ -141,6 +143,23 @@ async def login(req: PasscodeRequest, request: Request) -> JSONResponse:
 @app.get("/api/hello")
 async def hello():
     return {"message": "hello world"}
+
+
+@app.get("/api/topics", response_model=TopicListResponse)
+async def topics() -> TopicListResponse:
+    """The topic catalog — id, display name, and the blurb from `index.md`.
+
+    Read-only and session-free. `POST /api/session` still picks the topic
+    itself (a random draw over `kb.list_topic_ids`), so this is not yet a
+    picker the client posts back to; it is what lets the app *name* what it
+    drew, and the surface the topic list in `docs/CURRICULUM.md` grows from.
+    """
+    return TopicListResponse(
+        topics=[
+            TopicListing(id=t.id, display_name=t.display_name, summary=t.summary)
+            for t in kb.list_topics()
+        ]
+    )
 
 
 @app.post("/api/session", response_model=SessionStartResponse)

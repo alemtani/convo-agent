@@ -97,6 +97,13 @@
       letter-spacing: 0.04em;
       opacity: 0.6;
     }
+    /* The topic the server drew. Empty until a session exists, so it collapses
+       rather than reserving a blank line during the load state. */
+    #scenario-card .topic {
+      font-weight: 700;
+      margin-bottom: 0.35rem;
+    }
+    #scenario-card .topic:empty { display: none; }
     #scenario-card .situation { margin: 0.1rem 0 0.4rem; }
     #scenario-card .goal { font-weight: 600; }
     /* Explicit "this is loading," not a blank space that might be broken.
@@ -405,6 +412,7 @@
   </div>
 
   <div id="scenario-card" hidden>
+    <div class="topic" id="scenario-topic"></div>
     <div class="label">Your situation</div>
     <div class="situation" id="scenario-situation"></div>
     <div class="label">Your goal</div>
@@ -435,6 +443,7 @@
     const reset = document.getElementById("reset");
     const thread = document.getElementById("thread");
     const scenarioCard = document.getElementById("scenario-card");
+    const scenarioTopic = document.getElementById("scenario-topic");
     const scenarioSituation = document.getElementById("scenario-situation");
     const scenarioGoal = document.getElementById("scenario-goal");
     const infoBtn = document.getElementById("info-btn");
@@ -804,9 +813,14 @@
       localStorage.setItem(SESSION_KEY, JSON.stringify(session));
     }
 
-    function renderScenarioCard(card) {
+    // `displayName` is the topic the server drew (#29). It defaults to empty
+    // rather than to a slug: a session cached before this shipped has no
+    // `display_name`, and the `:empty` rule collapses the line instead of
+    // printing "undefined" over a conversation in progress.
+    function renderScenarioCard(card, displayName) {
       if (!card) { scenarioCard.hidden = true; return; }
       scenarioCard.classList.remove("loading");
+      scenarioTopic.textContent = displayName || "";
       scenarioSituation.textContent = card.situation;
       scenarioGoal.textContent = card.goal;
       scenarioCard.hidden = false;
@@ -874,7 +888,7 @@
           }
           session = await resp.json();
           saveSession();
-          renderScenarioCard(session.scenario_card);
+          renderScenarioCard(session.scenario_card, session.display_name);
           if (dialogue.length === 0) {
             // Marked `data-opening` so it reads as scene-setting, not a turn:
             // it doesn't consume the budget and — same reasoning — the smoke
@@ -2119,7 +2133,7 @@
     // visit, or one cleared by `reset`) fetches a fresh one — the opening line
     // only ever appears ahead of an empty thread, never behind restored turns.
     if (session) {
-      renderScenarioCard(session.scenario_card);
+      renderScenarioCard(session.scenario_card, session.display_name);
       if (dialogue.length === 0) {
         const handle = createBubble("partner", { scroll: false });
         handle.el.dataset.opening = "true";

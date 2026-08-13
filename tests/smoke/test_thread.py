@@ -453,3 +453,49 @@ def test_double_clicking_reset_does_not_duplicate_the_opening_line(page):
     )
 
     expect(bubbles(page, ".bubble[data-opening]")).to_have_count(1)
+
+
+# --- M2-E: more than one topic on disk (#29) --------------------------------
+
+
+def test_scenario_card_names_the_topic(page):
+    """The learner is told which scene they drew, not just its situation."""
+    seed(page)
+    expect(page.locator("#scenario-topic")).to_have_text(SESSION_START["display_name"])
+
+
+def test_scenario_card_topic_is_blank_for_a_session_cached_before_this_shipped(page):
+    """An old cached session has no `display_name`; it must degrade, not print
+    "undefined" over a conversation the learner is in the middle of."""
+    old = {k: v for k, v in SESSION_START.items() if k != "display_name"}
+    page.add_init_script(
+        "((s) => localStorage.setItem('convo.session', JSON.stringify(s)))"
+        f"({json.dumps(old)})"
+    )
+    page.goto("/")
+    expect(page.locator("#scenario-topic")).to_have_text("")
+    # The rest of the card still renders — the missing field costs one line.
+    expect(page.locator("#scenario-situation")).to_have_text(
+        SESSION_START["scenario_card"]["situation"]
+    )
+
+
+def test_a_transcript_does_not_leak_across_topics(page):
+    """State stamped with another topic belongs to a scenario that isn't on
+    screen. Its slot ids mean nothing here and its `complete` would disable the
+    mic on a scene the learner has never spoken into, so the derived stores are
+    dropped on load — the acceptance bar for #29.
+    """
+    stale_state = {"filled_at": {"partner_name": 1}, "status": "complete",
+                   "topic_id": "family"}
+    page.add_init_script(
+        "(([d, s, t]) => { localStorage.setItem('convo.dialogue', JSON.stringify(d));"
+        "localStorage.setItem('convo.session', JSON.stringify(s));"
+        "localStorage.setItem('convo.state', JSON.stringify(t)); })"
+        f"({json.dumps([HISTORY, SESSION_START, stale_state])})"
+    )
+    page.goto("/")
+    # The other topic's transcript is gone, and so is its `complete`.
+    expect(bubbles(page)).to_have_count(0)
+    assert page.evaluate("localStorage.getItem('convo.dialogue')") is None
+    assert page.evaluate("localStorage.getItem('convo.state')") is None

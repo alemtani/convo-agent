@@ -38,3 +38,6 @@ Thumbs.db
 
 # Local dev tunnel runtime state
 .tunnel/
+
+# Agent worktrees — nested checkouts, never repo content
+.claude/worktrees/

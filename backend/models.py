@@ -462,9 +462,38 @@ class SessionStartResponse(BaseModel):
     """
 
     topic_id: str
+    # The learner's name for what the server drew. `topic_id` is a slug and
+    # was a fine label while there was one topic; with the catalog on disk
+    # (#29) the client has to show *which* scene this is, and it must not
+    # need a second request to `GET /api/topics` to find out.
+    display_name: str
     scenario_card: ScenarioCard
     opening_line: Utterance
     sketch: str
+
+
+class TopicListing(BaseModel):
+    """One row of `GET /api/topics` — a topic a learner can recognise.
+
+    Blurb only. Vocab, grammar and the scenario slots stay server-side: the
+    client never needs them, and `situation`/`goal` reach it through
+    `SessionStartResponse.scenario_card` once a session actually starts.
+    """
+
+    id: str
+    display_name: str
+    summary: str
+
+
+class TopicListResponse(BaseModel):
+    """Response body for `GET /api/topics`.
+
+    An object rather than a bare array so the catalog can grow fields —
+    covered state, weights, a pin (`docs/CURRICULUM.md`) — without a
+    breaking change to the shape the client parses.
+    """
+
+    topics: List[TopicListing]
 
 
 class ModelLine(BaseModel):

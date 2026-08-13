@@ -490,3 +490,23 @@ async def test_a_topic_without_a_scenario_still_turns(monkeypatch):
     assert resp.state.status == "active"
     assert resp.state.filled_at == {}
     assert captured["hint"] is None
+
+
+# --- M2-E: the session names its topic (#29) --------------------------------
+
+
+async def test_start_session_returns_the_topic_display_name(monkeypatch):
+    """With more than one topic on disk, `topic_id` is no longer a label.
+
+    The learner is told what they drew, and the client must not have to fetch
+    the catalog to find out — it already has the session.
+    """
+    async def fake_generate(topic_id, scenario, client=None):
+        return SketchResult(
+            opening_line=Utterance(zh="你好", pinyin="nǐ hǎo"), sketch="S"
+        )
+
+    monkeypatch.setattr(sketch_worker, "generate", fake_generate)
+    resp = await orchestrator.start_session()
+    assert resp.display_name == kb.load_topic(resp.topic_id).display_name
+    assert resp.display_name
