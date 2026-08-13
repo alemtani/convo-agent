@@ -31,12 +31,25 @@ logger = logging.getLogger(__name__)
 
 @contextlib.asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Say out loud when the app is serving `/api/*` to anyone who finds it.
+    """Configure our own logging, then say whether `/api/*` is open to anyone.
+
+    uvicorn configures the `uvicorn.*` loggers and leaves the root logger at
+    WARNING, so every `logger.info` under `backend/` was being dropped —
+    including the per-turn timings line that exists precisely so a slow turn can
+    be attributed without a debugger. That was invisible until a session
+    misbehaved on a phone and the log had nothing in it but request lines.
+
+    `force=True` because uvicorn has already installed its handlers by now.
 
     A gate that defaults to off is only safe if "off" is impossible to miss:
     this is the one line in the log that distinguishes a correct local run from
     a deploy that forgot `APP_PASSCODE`.
     """
+    logging.basicConfig(
+        level=config.LOG_LEVEL,
+        format="%(levelname)s:  %(name)s %(message)s",
+        force=True,
+    )
     if not auth.is_enabled():
         logger.warning(
             "APP_PASSCODE is not set — /api/* is UNAUTHENTICATED. Fine locally; "

@@ -22,6 +22,7 @@ from typing import List, Optional, Set
 
 import anthropic
 from anthropic import AsyncAnthropic
+from pydantic import ValidationError
 
 from backend import config, kb
 from backend.models import (
@@ -130,11 +131,20 @@ def build_request(*, kb_block: str, dialogue, prompt: str) -> dict:
     )
     return {
         "model": config.CONVERSATION_MODEL,
-        "max_tokens": 1024,
-        # Unlike the turn loop, this one call is allowed to think: it is off the
-        # hot path, it reads a whole transcript, and composing an in-band
-        # exchange from a constrained vocabulary is the kind of task where the
-        # extra tokens buy something. Bounded by `VERDICT_TIMEOUT_S` regardless.
+        # Room for a paragraph of English plus a four-line exchange, with the
+        # 汉字 and pinyin that carries. 1024 was not enough and failed *silently*
+        # — as a truncated string, not an error.
+        "max_tokens": 2048,
+        # Thinking off, for the reason `workers/conversation.py` spells out and
+        # this worker had to learn twice: Sonnet 5 thinks whenever the field is
+        # omitted, and `max_tokens` caps thinking *plus* output. An earlier
+        # version left it on deliberately — this call is off the hot path, and
+        # composing an in-band exchange seemed worth deliberation — and the
+        # reasoning ate the budget, so the JSON ended mid-string and the card
+        # showed the learner "Internal Server Error". If deliberation turns out
+        # to be worth buying here, buy it explicitly with a thinking budget
+        # inside a larger cap, not by leaving the field off.
+        "thinking": {"type": "disabled"},
         "system": [{"type": "text", "text": prompt}],
         "messages": [
             {
@@ -190,9 +200,19 @@ async def verdict(
         raise FeedbackError(
             f"verdict worker timed out after {config.VERDICT_TIMEOUT_S:g}s"
         ) from exc
+    except ValidationError as exc:
+        # `messages.parse` validates inside the SDK, so a response that is cut
+        # off mid-JSON surfaces here rather than as `parsed_output is None`.
+        # Uncaught it is a 500 and the learner reads "Internal Server Error" on
+        # the card; as a `FeedbackError` it is the 502 the client already
+        # degrades from, with a Try again button.
+        raise FeedbackError("verdict worker returned unparseable output") from exc
 
-    if getattr(response, "stop_reason", None) == "refusal":
+    stop_reason = getattr(response, "stop_reason", None)
+    if stop_reason == "refusal":
         raise FeedbackError("verdict worker refused the session")
+    if stop_reason == "max_tokens":
+        raise FeedbackError("verdict worker's answer was too long to finish")
     result = response.parsed_output
     if result is None:
         raise FeedbackError("verdict worker returned unparseable output")

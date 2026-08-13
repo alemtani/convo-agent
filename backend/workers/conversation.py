@@ -15,6 +15,7 @@ from typing import Dict, List, Optional, Tuple
 
 import anthropic
 from anthropic import AsyncAnthropic
+from pydantic import ValidationError
 
 from backend import config
 from backend.models import (
@@ -199,9 +200,20 @@ async def respond(
         raise ConversationError(
             f"conversation worker timed out after {config.CLAUDE_TIMEOUT_S:g}s"
         ) from exc
+    except ValidationError as exc:
+        # A response cut off mid-JSON is validated *inside* `messages.parse`, so
+        # it arrives as an exception rather than as `parsed_output is None`.
+        # Uncaught, it is a 500 instead of the in-band turn error the client
+        # knows how to render.
+        raise ConversationError(
+            "conversation worker returned unparseable output"
+        ) from exc
 
-    if getattr(response, "stop_reason", None) == "refusal":
+    stop_reason = getattr(response, "stop_reason", None)
+    if stop_reason == "refusal":
         raise ConversationError("conversation worker refused the turn")
+    if stop_reason == "max_tokens":
+        raise ConversationError("conversation worker's reply ran past max_tokens")
     result = response.parsed_output
     if result is None:
         raise ConversationError("conversation worker returned unparseable output")

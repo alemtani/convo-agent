@@ -112,6 +112,11 @@ TTS_TIMEOUT_S = float(os.getenv("TTS_TIMEOUT_S", "10"))
 # which is re-billing Azure for a line the learner just asked to hear again.
 TTS_CACHE_MAX_ENTRIES = int(os.getenv("TTS_CACHE_MAX_ENTRIES", "64"))
 
+# Our own loggers. uvicorn leaves the root logger at WARNING, so without this
+# every `logger.info` under `backend/` is dropped — including the per-turn
+# timings line and the session state machine.
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+
 STT_TIMEOUT_S = float(os.getenv("STT_TIMEOUT_S", "5"))
 PA_TIMEOUT_S = float(os.getenv("PA_TIMEOUT_S", "5"))
 CLAUDE_TIMEOUT_S = float(os.getenv("CLAUDE_TIMEOUT_S", "15"))

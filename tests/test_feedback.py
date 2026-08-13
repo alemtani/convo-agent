@@ -17,6 +17,7 @@ from unittest.mock import AsyncMock
 import anthropic
 import httpx
 import pytest
+from pydantic import ValidationError
 
 from backend import config, kb
 from backend.models import (
@@ -333,3 +334,43 @@ async def test_the_model_exchange_is_not_annotated():
     client, _ = _fake_client(_recorded())
     card = await feedback.verdict(_req(), client=client)
     assert card.model_exchange[0].zh == "你叫什么名字？"
+
+
+# --- Truncation and parse failures are 502s, never 500s -------------------
+
+
+def test_thinking_is_disabled_with_room_for_the_output():
+    """The trap `conversation.py` documents, which this worker walked into.
+
+    Sonnet 5 thinks by default when the field is omitted, and `max_tokens` caps
+    thinking *plus* output — so reasoning ate the budget and the JSON was cut
+    off mid-string, ~269 characters in. Caught in production, not by a test,
+    because a truncated response is a perfectly valid request.
+    """
+    req = feedback.build_request(kb_block="KB", dialogue=[], prompt="P")
+    assert req["thinking"] == {"type": "disabled"}
+    assert req["max_tokens"] >= 2048
+
+
+async def test_a_truncated_response_becomes_a_feedback_error():
+    """The SDK raises `ValidationError` from inside `messages.parse`.
+
+    Uncaught it is a 500 and the card reads "Internal Server Error"; as a
+    `FeedbackError` it is a 502 the client already degrades gracefully from,
+    with a Try again button.
+    """
+    client, parse = _fake_client(_recorded())
+    # The real thing: what the SDK raises when it validates a cut-off body.
+    try:
+        VerdictResult.model_validate_json('{"explanation":"You did ')
+    except ValidationError as truncated:
+        parse.side_effect = truncated
+
+    with pytest.raises(feedback.FeedbackError, match="unparseable"):
+        await feedback.verdict(_req(), client=client)
+
+
+async def test_hitting_the_token_cap_becomes_a_feedback_error():
+    client, _ = _fake_client(None, stop_reason="max_tokens")
+    with pytest.raises(feedback.FeedbackError, match="too long"):
+        await feedback.verdict(_req(), client=client)

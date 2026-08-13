@@ -494,3 +494,32 @@ def test_the_spoken_schema_carries_the_tracker_too():
         fields = schema.model_fields["turn_annotation"].annotation.model_fields
         assert "slots_filled" in fields
         assert "learner_closed" in fields
+
+
+async def test_a_truncated_response_becomes_a_conversation_error():
+    """`messages.parse` validates inside the SDK, so truncation raises here.
+
+    Uncaught it is a 500 on a turn; as a `ConversationError` it is the failure
+    class the stream already reports in-band. Found on the verdict worker in
+    production and fixed across all three by the same reasoning.
+    """
+    client, parse = _fake_client(_recorded_result())
+    try:
+        ConversationResult.model_validate_json('{"partner_response":{"zh":"你')
+    except Exception as truncated:
+        parse.side_effect = truncated
+
+    with pytest.raises(conversation.ConversationError, match="unparseable"):
+        await conversation.respond(
+            kb_block=KB, sketch=SKETCH, dialogue=[], user_text="你好",
+            forgiveness_level=0.8, client=client,
+        )
+
+
+async def test_hitting_the_token_cap_becomes_a_conversation_error():
+    client, _ = _fake_client(None, stop_reason="max_tokens")
+    with pytest.raises(conversation.ConversationError):
+        await conversation.respond(
+            kb_block=KB, sketch=SKETCH, dialogue=[], user_text="你好",
+            forgiveness_level=0.8, client=client,
+        )

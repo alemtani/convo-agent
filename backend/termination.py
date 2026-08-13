@@ -75,6 +75,20 @@ def advance(
     elif closes >= CLOSES_TO_END:
         status, end_reason = "complete", "closed"
 
+    # One line per turn, at INFO. The session's whole state machine is invisible
+    # otherwise: a session that runs past its cap looks, from the request log,
+    # exactly like a session that is going fine.
+    logger.info(
+        "turn %d/%d filled=%s missing=%s closes=%d -> %s%s",
+        turn,
+        scenario.max_turns,
+        sorted(filled_at),
+        sorted(missing),
+        closes,
+        status,
+        f" ({end_reason})" if end_reason else "",
+    )
+
     return state.model_copy(
         update={
             "filled_at": filled_at,
