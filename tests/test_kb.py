@@ -390,3 +390,63 @@ def test_load_scenario_is_none_for_a_topic_without_one(tmp_path):
 def test_load_scenario_raises_for_an_unknown_topic():
     with pytest.raises(kb.KbError):
         kb.load_scenario("no-such-topic")
+
+
+# --- M2-E: the topic catalog (#29) ------------------------------------------
+
+
+def test_list_topics_returns_id_display_name_and_summary():
+    """`index.md` is the human-facing catalog; the API reads it, not a registry."""
+    topics = kb.list_topics()
+    by_id = {t.id: t for t in topics}
+    assert "greetings" in by_id
+    assert by_id["greetings"].display_name == "Greetings (你好)"
+    assert "name" in by_id["greetings"].summary.lower()
+
+
+def test_list_topics_covers_every_topic_directory():
+    """A topic on disk with no catalog row is an authoring bug, not a 404.
+
+    `list_topic_ids` is what `/api/session` draws from, so a topic missing from
+    the catalog would be startable and undiscoverable at the same time.
+    """
+    assert [t.id for t in kb.list_topics()] == kb.list_topic_ids()
+
+
+def test_list_topics_is_sorted_by_id():
+    ids = [t.id for t in kb.list_topics()]
+    assert ids == sorted(ids)
+
+
+def test_list_topics_ignores_rows_without_a_topic_dir(tmp_path):
+    """A stale catalog row must not invent a topic the server cannot load."""
+    (tmp_path / "real").mkdir()
+    (tmp_path / "real" / "topic.md").write_text(
+        "---\nid: real\ndisplay_name: \"Real\"\n---\n", encoding="utf-8"
+    )
+    (tmp_path / "index.md").write_text(
+        "| id | display name | HSK band | summary |\n"
+        "|---|---|---|---|\n"
+        "| [real](real/topic.md) | Real | 1–2 | A real topic. |\n"
+        "| [ghost](ghost/topic.md) | Ghost | 1–2 | Deleted last week. |\n",
+        encoding="utf-8",
+    )
+    topics = kb.list_topics(str(tmp_path))
+    assert [t.id for t in topics] == ["real"]
+
+
+def test_list_topics_falls_back_to_frontmatter_when_row_is_missing(tmp_path):
+    """A topic with no catalog row still lists — with an empty summary.
+
+    Degrading beats hiding: an un-catalogued topic is drawable by
+    `/api/session`, so it has to be nameable by `/api/topics` too.
+    """
+    (tmp_path / "orphan").mkdir()
+    (tmp_path / "orphan" / "topic.md").write_text(
+        "---\nid: orphan\ndisplay_name: \"Orphan (孤)\"\n---\n", encoding="utf-8"
+    )
+    (tmp_path / "index.md").write_text("no table here\n", encoding="utf-8")
+    topics = kb.list_topics(str(tmp_path))
+    assert [(t.id, t.display_name, t.summary) for t in topics] == [
+        ("orphan", "Orphan (孤)", "")
+    ]

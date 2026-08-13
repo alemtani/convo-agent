@@ -18,6 +18,7 @@ report on it.
 import functools
 import json
 import os
+import re
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
@@ -97,6 +98,68 @@ class Topic:
     # Optional: topics can land before their scenario does (#29), and the
     # runtime requirement lands with the scenario loop itself (#30).
     scenario: Optional[Scenario] = None
+
+
+@dataclass(frozen=True)
+class TopicSummary:
+    """One catalog row — what `GET /api/topics` shows before a session starts.
+
+    Deliberately not `Topic`: the catalog is a *browsing* view. It carries the
+    blurb a learner picks by and nothing a session needs, so listing topics
+    never parses a scenario or a vocab list it will not use.
+    """
+
+    id: str
+    display_name: str
+    summary: str
+
+
+def _catalog_rows(root: str) -> Dict[str, Tuple[str, str]]:
+    """`id -> (display_name, summary)` from the `index.md` markdown table.
+
+    The catalog lives in `index.md` because it is written for a human reading
+    the repo, and a second machine-readable copy would drift from it. Parsing
+    is deliberately loose — an unparseable row is skipped, never raised. A bad
+    blurb must not take down topic listing, and `validate.py` already owns
+    telling an author their row is wrong.
+    """
+    try:
+        text = _read(os.path.join(root, "index.md"))
+    except KbError:
+        return {}
+
+    rows: Dict[str, Tuple[str, str]] = {}
+    for line in text.splitlines():
+        line = line.strip()
+        if not line.startswith("|"):
+            continue
+        cells = [c.strip() for c in line.strip("|").split("|")]
+        if len(cells) < 4:
+            continue
+        # Column 1 is a markdown link whose text is the topic id.
+        match = re.match(r"\[([^\]]+)\]\(", cells[0])
+        if not match:
+            continue  # the header row and its `|---|` separator land here
+        rows[match.group(1).strip()] = (cells[1], cells[3])
+    return rows
+
+
+def list_topics(root: str = KB_ROOT) -> List[TopicSummary]:
+    """Every topic on disk, with its catalog blurb. Sorted by id.
+
+    Directories are the source of truth, not the catalog: `/api/session` draws
+    from `list_topic_ids`, so anything startable has to be listable. A stale
+    row for a deleted topic is dropped; a topic with no row still lists, named
+    from its own frontmatter with an empty summary.
+    """
+    rows = _catalog_rows(root)
+    topics = []
+    for topic_id in list_topic_ids(root):
+        display_name, summary = rows.get(topic_id, ("", ""))
+        if not display_name:
+            display_name = load_topic(topic_id, root).display_name
+        topics.append(TopicSummary(topic_id, display_name, summary))
+    return topics
 
 
 def _parse_list(raw: str) -> List[str]:

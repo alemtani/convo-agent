@@ -55,6 +55,7 @@ def test_static_page_is_not_cached():
 def _session_response():
     return SessionStartResponse(
         topic_id="greetings",
+        display_name="Greetings (你好)",
         scenario_card=ScenarioCard(
             situation="You meet a classmate on campus.", goal="Introduce yourself."
         ),
@@ -119,3 +120,26 @@ def test_session_start_ignores_a_body_if_one_is_sent(monkeypatch):
 
     resp = client.post("/api/session", json={"topic_id": "greetings"})
     assert resp.status_code == 200
+
+
+# --- M2-E: `GET /api/topics` (#29) ------------------------------------------
+
+
+def test_topics_lists_the_catalog():
+    resp = client.get("/api/topics")
+    assert resp.status_code == 200
+    topics = resp.json()["topics"]
+    by_id = {t["id"]: t for t in topics}
+    assert "greetings" in by_id
+    assert by_id["greetings"]["display_name"] == "Greetings (你好)"
+    assert by_id["greetings"]["summary"]
+
+
+def test_topics_lists_everything_a_session_can_draw():
+    """The catalog and the draw pool must not disagree.
+
+    `/api/session` draws from `kb.list_topic_ids`. A topic in that pool but
+    absent here would start a session the learner has no name for.
+    """
+    resp = client.get("/api/topics")
+    assert [t["id"] for t in resp.json()["topics"]] == kb.list_topic_ids()

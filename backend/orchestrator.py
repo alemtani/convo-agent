@@ -171,6 +171,7 @@ async def start_session(client: Optional[AsyncAnthropic] = None) -> SessionStart
     result = await sketch_worker.generate(topic.id, topic.scenario, client=client)
     return SessionStartResponse(
         topic_id=topic.id,
+        display_name=topic.display_name,
         scenario_card=ScenarioCard(
             situation=topic.scenario.situation, goal=topic.scenario.goal
         ),
