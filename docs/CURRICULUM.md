@@ -409,10 +409,32 @@ Findings from the first batch, kept because they will recur:
 - **The obvious word is often out of band.** 年纪 (3), 苹果 (3), 咖啡 (3), 附近
   (4), 前面/后面 (3), 伞 (4) — every one of them the first word an author reaches
   for. Check the index before building a slot around a noun, not after.
-- **Compound rows are checked character by character.** 有没有 is itself a band-6
-  entry; 便宜一点儿 fails on 便 (6) and 儿 (absent). A phrase is only safe in a
-  vocab row if every character is separately in band. Patterns like A-not-A
-  belong in `grammar.md` prose instead.
+
+  **The fix is not to raise the ceiling.** That is the tempting move and it does
+  not work yet: `config.HSK_BAND_CEILING` is read by nothing, and `prompts.py`
+  states the level as a string literal in four places, so raising the number
+  changes what `validate.py` *accepts* and not one word of what the partner is
+  *told*. You would get a KB that legally contains 苹果 and a partner instructed
+  never to say it — strictly worse than today, where the two agree. That is
+  stage **C0**, and it has to land before a bump means anything.
+
+  The deeper reason is that the ceiling is a claim about *the learner*, not an
+  authoring convenience. Band 3 adds 953 words; raising it to dodge one noun
+  asserts the learner knows all of them, in every topic at once. The evidence
+  from this batch is that band 2 was not the real constraint — five topics
+  validated clean with 53–69 target words each, and nothing was blocked. Words
+  were substituted: 多大 for 年纪, 水果 for 苹果.
+- **A phrase row has two independent ways to fail**, and telling them apart is
+  what tells you how to fix it. `in_band` tries the whole word first, and falls
+  back to every character only if the phrase is not a list entry at all:
+  - **The phrase is itself a high-band entry.** 有没有 is a band-6 word, so it
+    fails on the whole-word lookup — even though 有 and 没有 are both band 1. No
+    amount of decomposition helps. Patterns like A-not-A belong in `grammar.md`
+    prose instead, where the dialogue tokenizer splits them anyway.
+  - **The phrase is not listed, and a character is out of band.** 便宜一点儿 is
+    not an entry, so each character is checked, and 便 is band 6. Note that
+    便宜 *alone* is band 2 and perfectly fine — the phrase failed, not the word.
+    Shorten the row rather than abandoning the vocabulary.
 - **`annotate_pinyin.py` gets 不/一 sandhi wrong** when the word is in the
   curated vocab table: the lexicon entry wins over pypinyin's context-aware
   reading, so it emits `bù` before a fourth tone and `yī gè` for 一个. Rephrase
