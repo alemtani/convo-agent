@@ -286,11 +286,13 @@ async def turn_text(req: TextTurnRequest) -> ConversationTurnResponse:
     Text mode — the first-class alternative to `POST /api/turn` for practising
     where you can't speak. Same stateless contract as the spoken loop (the client
     holds the transcript and resubmits it as `dialogue`) and the same orchestrator
-    seam, minus STT and PA. Input is **hanzi-only**: the learner types 汉字 with
-    their keyboard's pinyin IME, and `TextTurnRequest` rejects romanization with
-    422. The response echoes their turn with derived pinyin so the client renders
-    typed and spoken turns identically; it carries no tone scores, since those
-    need audio.
+    seam, minus STT and PA. Input is **pinyin or 汉字**: a beginner without an
+    IME types `ni hao` (or `ni3hao3` to have tones read), and the worker reports
+    back which characters it understood. `TextTurnRequest` refuses only an empty
+    turn — judging whether a romanized string means anything is the worker's job,
+    in context, not a validator's. The response echoes their turn with derived
+    pinyin so the client renders typed and spoken turns identically; it carries
+    no tone scores, since those need audio.
     """
     _refuse_if_complete(req.state)
     try:
