@@ -39,6 +39,37 @@ def to_pinyin(zh: str) -> str:
     return " ".join(s for s in syllables if any(c.isalpha() for c in s))
 
 
+#: A run of 汉字 embedded in otherwise-English prose, plus whatever immediately
+#: follows it. The trailing group is lookahead-ish: it lets `annotate_hanzi` see
+#: an existing "(…)" gloss and leave it alone.
+_HANZI_RUN = re.compile(f"({HANZI.pattern}+)(\\s*\\()?")
+
+
+def annotate_hanzi(text: str) -> str:
+    """Append pinyin after each run of 汉字 in English prose.
+
+    The verdict card quotes the learner's own phrases back at them — "you asked
+    with 你叫什么名字" — and a band-1 learner is precisely the person who cannot
+    read that. So the romanization is added here, from pypinyin, rather than
+    asked of the model: it is the same "the server owns romanization" rule the
+    input echo already follows, and it cannot be forgotten on a bad generation.
+
+    A run already followed by a parenthetical is left alone. The model
+    occasionally glosses a phrase itself, in context, and one reading beats two.
+    """
+    if not text:
+        return ""
+
+    def _replace(match: "re.Match") -> str:
+        run, following_paren = match.group(1), match.group(2)
+        if following_paren:
+            return match.group(0)
+        reading = to_pinyin(run)
+        return f"{run} ({reading})" if reading else run
+
+    return _HANZI_RUN.sub(_replace, text)
+
+
 def toneless_syllables(zh: str) -> List[str]:
     """Per-character toneless pinyin for `zh` (`上海` → `["shang", "hai"]`).
 

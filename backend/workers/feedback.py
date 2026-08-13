@@ -31,6 +31,7 @@ from backend.models import (
     VerdictRequest,
     VerdictResult,
 )
+from backend.pinyin import annotate_hanzi
 from backend.prompts import render_verdict_prompt
 
 logger = logging.getLogger(__name__)
@@ -202,7 +203,10 @@ async def verdict(
         end_reason=end_reason,
         missing=missing,
         turns_taken=turns_taken,
-        explanation=result.explanation,
+        # The explanation quotes the learner's own phrases back at them, and a
+        # band-1 learner cannot read bare 汉字 — which is the whole audience for
+        # this card. Romanization is the server's job here as everywhere else.
+        explanation=annotate_hanzi(result.explanation),
         # A demonstration on a session the learner already passed would be
         # noise; the prompt asks for none, and this makes it structural.
         model_exchange=[] if goal_met else result.model_exchange,

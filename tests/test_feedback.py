@@ -302,3 +302,34 @@ def test_an_oversized_transcript_is_rejected():
         "state": _COMPLETE,
     })
     assert resp.status_code == 422
+
+
+# --- The card is readable by the learner it is written for ----------------
+
+
+async def test_hanzi_in_the_explanation_gets_pinyin():
+    """The card quotes the learner's phrases back; they must be able to read it.
+
+    Added server-side rather than asked of the model — the same rule the input
+    echo follows, and it cannot be forgotten on a bad generation.
+    """
+    client, _ = _fake_client(
+        _recorded(explanation="You introduced yourself with 我叫小明, nicely done.")
+    )
+    card = await feedback.verdict(_req(), client=client)
+    assert "我叫小明 (wǒ jiào xiǎo míng)" in card.explanation
+
+
+async def test_an_explanation_the_model_already_glossed_is_left_alone():
+    client, _ = _fake_client(
+        _recorded(explanation="In 最近 (zuìjìn), the second syllable falls.")
+    )
+    card = await feedback.verdict(_req(), client=client)
+    assert card.explanation == "In 最近 (zuìjìn), the second syllable falls."
+
+
+async def test_the_model_exchange_is_not_annotated():
+    """It already carries its own pinyin line — a second one would be noise."""
+    client, _ = _fake_client(_recorded())
+    card = await feedback.verdict(_req(), client=client)
+    assert card.model_exchange[0].zh == "你叫什么名字？"

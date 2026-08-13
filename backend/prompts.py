@@ -144,7 +144,9 @@ Write, as structured output:
 "you". Name what they did establish and what they didn't, concretely, using the \
 descriptions above rather than slot ids. Warm and specific, never a score and \
 never a lecture. If there are pronunciation or grammar notes below, fold in at \
-most one — the most useful — rather than listing them.
+most one — the most useful — rather than listing them. When you quote the \
+learner's Chinese, write the 汉字 on their own — pinyin is added automatically \
+afterwards, so writing it yourself produces the reading twice.
 
 - `model_exchange`: {exchange_instruction}
 

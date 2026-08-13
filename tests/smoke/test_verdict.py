@@ -52,19 +52,16 @@ UNMET_CARD = {
 }
 
 
-def seed(page, *, state=None, verdict=None, last_verdict=None, dialogue=None):
+def seed(page, *, state=None, verdict=None, dialogue=None):
     """Prime localStorage before the page script runs, then load it."""
-    payload = json.dumps([
-        dialogue or [], SESSION_START, state, verdict, last_verdict,
-    ])
+    payload = json.dumps([dialogue or [], SESSION_START, state, verdict])
     page.add_init_script(
-        "(([d, s, st, v, lv]) => {"
+        "(([d, s, st, v]) => {"
         "  localStorage.setItem('convo.dialogue', JSON.stringify(d));"
         "  localStorage.setItem('convo.mode', 'text');"
         "  localStorage.setItem('convo.session', JSON.stringify(s));"
         "  if (st) localStorage.setItem('convo.state', JSON.stringify(st));"
         "  if (v) localStorage.setItem('convo.verdict', JSON.stringify(v));"
-        "  if (lv) localStorage.setItem('convo.verdict.last', JSON.stringify(lv));"
         f"}})({payload})"
     )
     page.goto("/")
@@ -211,16 +208,19 @@ def test_a_new_session_re_enables_the_controls(page):
     assert page.evaluate("localStorage.getItem('convo.state')") is None
 
 
-def test_the_last_card_survives_into_the_new_session(page):
-    """It holds the phrase they were told to memorise; don't delete it."""
-    seed(page, state=COMPLETE, verdict=UNMET_CARD, last_verdict=UNMET_CARD)
+def test_a_new_session_clears_the_card(page):
+    """A fresh conversation starts clean.
+
+    An earlier version kept the previous card pinned above the new scene. On a
+    phone it just crowded the top of the thread with the last session's result.
+    """
+    seed(page, state=COMPLETE, verdict=UNMET_CARD)
+    expect(card(page)).to_have_count(1)
+
     page.click("#thread .verdict [data-action='new-session']")
 
-    kept = page.locator("#thread .verdict.previous")
-    expect(kept).to_have_count(1)
-    expect(kept).to_contain_text("你叫什么名字？")
-    # Kept, but not offering to start yet another session from a stale card.
-    expect(kept.locator("[data-action='new-session']")).to_have_count(0)
+    expect(card(page)).to_have_count(0)
+    assert page.evaluate("localStorage.getItem('convo.verdict')") is None
 
 
 # --- The server disagrees --------------------------------------------------

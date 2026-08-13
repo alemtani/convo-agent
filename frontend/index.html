@@ -138,9 +138,6 @@
       border: 1px solid rgba(127, 127, 127, 0.4); background: transparent;
       color: inherit; cursor: pointer;
     }
-    /* The last card is kept across a reset (it holds the phrase the learner
-       was told to memorise) but must not compete with the new scene. */
-    .verdict.previous { opacity: 0.75; font-size: 0.82rem; }
     .verdict.pending { animation: card-pulse 1.4s ease-in-out infinite; }
     @media (prefers-reduced-motion: reduce) {
       .verdict.pending { animation: none; opacity: 0.7; }
@@ -717,7 +714,6 @@
     const STATE_KEY = "convo.state";
     const NOTES_KEY = "convo.notes";
     const VERDICT_KEY = "convo.verdict";
-    const LAST_VERDICT_KEY = "convo.verdict.last";
     let dialogue = loadDialogue();
 
     function loadDialogue() {
@@ -925,10 +921,9 @@
       return el;
     }
 
-    function renderVerdict(card, { previous = false } = {}) {
+    function renderVerdict(card) {
       const el = verdictNode();
-      el.className = "verdict" + (card.goal_met ? " met" : "") +
-                     (previous ? " previous" : "");
+      el.className = "verdict" + (card.goal_met ? " met" : "");
       const headline = document.createElement("div");
       headline.className = "headline";
       headline.textContent = card.goal_met ? "You did it." : "Not quite.";
@@ -969,7 +964,7 @@
         }
       }
 
-      if (!previous) el.appendChild(verdictActions());
+      el.appendChild(verdictActions());
       scrollToBottom("auto");
       return el;
     }
@@ -1051,7 +1046,6 @@
           }
           const card = await resp.json();
           localStorage.setItem(VERDICT_KEY, JSON.stringify(card));
-          localStorage.setItem(LAST_VERDICT_KEY, JSON.stringify(card));
           renderVerdict(card);
           return card;
         } catch (err) {
@@ -2094,9 +2088,10 @@
       notes = {};
       localStorage.removeItem(STATE_KEY);
       localStorage.removeItem(NOTES_KEY);
-      // The *current* card goes; the last one is kept (below) — it holds the
-      // phrase the learner was just told to memorise, and the only button on
-      // it must not be the thing that deletes it.
+      // The card goes with everything else. An earlier version kept the last
+      // one pinned above the new scene, on the theory that it holds the phrase
+      // the learner was told to memorise — in practice it just crowds the top
+      // of a fresh conversation with the previous one's result.
       localStorage.removeItem(VERDICT_KEY);
       thread.replaceChildren();
       // The bubbles are gone, so their reveal state and decoded audio are dead
@@ -2107,8 +2102,6 @@
       stuck = true;
       setStatus("new conversation");
       applyControls(false);
-      const last = readJson(LAST_VERDICT_KEY, null);
-      if (last) renderVerdict(last, { previous: true });
       startSession();
     });
 
