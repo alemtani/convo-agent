@@ -9,6 +9,7 @@ all HSK 3.0 bands). The ceiling a topic is validated at is *universal* —
 | id | display name | HSK band | summary |
 |---|---|---|---|
 | [greetings](greetings/topic.md) | Greetings (你好) | 1–2 | Greet, exchange names, ask "how are you?", say goodbye. |
+| [self-intro](self-intro/topic.md) | Self-introduction (自我介绍) | 1–2 | Say where you are from, what you do, what languages you speak, how old you are. |
 
-_More topics to follow (self-intro, family, shopping, weather, …) once the
-greetings sample is judged good._
+_More topics to follow (family, shopping, weather, …) once the greetings sample
+is judged good._
