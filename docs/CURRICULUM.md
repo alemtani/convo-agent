@@ -322,6 +322,128 @@ profile, reusing the `w_focus` pin already in `DESIGN.md`'s selection weight.
 
 ---
 
+## The first slate, and where it came from
+
+Stage 0 needed an actual list of topics. Picking them by taste would have been
+faster and worse — the point of a topic is that it matches something the learner
+was taught, so the slate has to answer to a syllabus, not to an author's sense of
+what makes a fun scene.
+
+**The rule: take the intersection of the two courses a beginner is most likely to
+be using.** This learner uses HelloChinese. Most people use Duolingo. A topic
+both courses teach early is a topic almost any beginner arrives already holding
+vocabulary for — and one neither teaches is a topic where the app would be
+teaching rather than giving practice, which is not what it is for.
+
+The two courses map differently, and that difference is the useful part:
+
+| | HelloChinese | Duolingo Chinese |
+|---|---|---|
+| structure | HSK-aligned, situational units | thematic, loosely ordered |
+| maps onto our band ceiling | directly — it *is* HSK | approximately |
+| use it for | which topic, and roughly when | a sanity check that the topic is common |
+
+So HelloChinese decides the slate and Duolingo vetoes anything idiosyncratic.
+
+| topic | theme in both courses | authored |
+|---|---|---|
+| `greetings` | greetings, names | ✅ |
+| `self-intro` | nationality, language, occupation | ✅ |
+| `family` | family members, ages | ✅ |
+| `numbers-money` | numbers, prices, shopping | ✅ |
+| `food-ordering` | food, restaurant | ✅ |
+| `time-date` | days, dates, making plans | — |
+| `weather` | weather, seasons | — |
+| `directions` | places, transport, asking the way | — |
+
+The unit *names* above are by theme, not by unit number. Neither course
+publishes a stable machine-readable index, and a wrong number is worse than no
+number — so this table is deliberately not precise about ordering. `_syllabus.md`
+(C1) is where real unit records go, entered by hand as they are finished.
+
+### Themes are more portable than the courses that teach them
+
+Being imprecise about ordering turns out to be the more general choice, not just
+the safer one. Greet, introduce yourself, count, buy something, order food, ask
+the way — beginner courses converge on roughly that sequence regardless of the
+language, because it is ordered by *what a beginner can do with it*, not by
+anything specific to Mandarin.
+
+That is worth stating because it changes what a topic slate *is*. If the ordering
+were an artifact of HelloChinese, then adding a language (C5) would mean
+researching a new course and deriving a new slate. If it is a property of
+beginners, the slate largely ports: a JLPT N5 or CEFR A1 course wants the same
+eight scenes, with different vocabulary underneath them and different scenario
+details on top.
+
+So the split holds at every level of this doc. **The scene is portable; the
+lexicon is not.** `lang.json` and the ordered level list carry the part that
+differs; the topic slate is closer to a constant. Which means the admin request
+in the north star — *"add Japanese at JLPT N5, travel domain, eight topics"* — is
+more plausible than it sounds, because "eight topics" is not eight unsolved
+authoring problems. It is eight known scenes needing a new lexicon.
+
+Unverified against an actual N5 or A1 syllabus. Recorded as a claim to check when
+a second language is real, not as a finding.
+
+### The easy topics are the hard ones
+
+The last three are unauthored on purpose: they are the ones where the guardrail
+bites. `validate.py` requires more than one slot and at least one `request` slot,
+and "say it is cold" satisfies neither — it is a vocabulary drill with weather
+words in it.
+
+The fix that works for all three is the same shape: **two things to find out,
+plus one to tell.** "Find out tomorrow's weather and whether it will be cold,
+then say what you will wear." That is a scenario. "Describe the weather" is a
+flashcard.
+
+This is the rules working. Budget authoring time for it — the topics that look
+easiest need the most thought to have a shape at all, which is the opposite of
+the intuition.
+
+### What authoring five topics actually taught
+
+Findings from the first batch, kept because they will recur:
+
+- **The obvious word is often out of band.** 年纪 (3), 苹果 (3), 咖啡 (3), 附近
+  (4), 前面/后面 (3), 伞 (4) — every one of them the first word an author reaches
+  for. Check the index before building a slot around a noun, not after.
+
+  **The fix is not to raise the ceiling.** That is the tempting move and it does
+  not work yet: `config.HSK_BAND_CEILING` is read by nothing, and `prompts.py`
+  states the level as a string literal in four places, so raising the number
+  changes what `validate.py` *accepts* and not one word of what the partner is
+  *told*. You would get a KB that legally contains 苹果 and a partner instructed
+  never to say it — strictly worse than today, where the two agree. That is
+  stage **C0**, and it has to land before a bump means anything.
+
+  The deeper reason is that the ceiling is a claim about *the learner*, not an
+  authoring convenience. Band 3 adds 953 words; raising it to dodge one noun
+  asserts the learner knows all of them, in every topic at once. The evidence
+  from this batch is that band 2 was not the real constraint — five topics
+  validated clean with 53–69 target words each, and nothing was blocked. Words
+  were substituted: 多大 for 年纪, 水果 for 苹果.
+- **A phrase row has two independent ways to fail**, and telling them apart is
+  what tells you how to fix it. `in_band` tries the whole word first, and falls
+  back to every character only if the phrase is not a list entry at all:
+  - **The phrase is itself a high-band entry.** 有没有 is a band-6 word, so it
+    fails on the whole-word lookup — even though 有 and 没有 are both band 1. No
+    amount of decomposition helps. Patterns like A-not-A belong in `grammar.md`
+    prose instead, where the dialogue tokenizer splits them anyway.
+  - **The phrase is not listed, and a character is out of band.** 便宜一点儿 is
+    not an entry, so each character is checked, and 便 is band 6. Note that
+    便宜 *alone* is band 2 and perfectly fine — the phrase failed, not the word.
+    Shorten the row rather than abandoning the vocabulary.
+- **`annotate_pinyin.py` gets 不/一 sandhi wrong** when the word is in the
+  curated vocab table: the lexicon entry wins over pypinyin's context-aware
+  reading, so it emits `bù` before a fourth tone and `yī gè` for 一个. Rephrase
+  the line rather than hand-correcting generated pinyin — the generated line is
+  the invariant.
+- **Tests that assert the KB's inventory break on the second topic.** Two
+  `test_orchestrator.py` tests hardcoded "greetings is the only topic". Assert
+  the *shape* of a scan, never its contents.
+
 ## Staging
 
 Each stage is usable alone. Nothing here blocks the MVP.
