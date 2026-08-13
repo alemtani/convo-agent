@@ -352,9 +352,9 @@ So HelloChinese decides the slate and Duolingo vetoes anything idiosyncratic.
 | `family` | family members, ages | ✅ |
 | `numbers-money` | numbers, prices, shopping | ✅ |
 | `food-ordering` | food, restaurant | ✅ |
-| `time-date` | days, dates, making plans | — |
-| `weather` | weather, seasons | — |
-| `directions` | places, transport, asking the way | — |
+| `time-date` | days, dates, making plans | cut from the MVP |
+| `weather` | weather, seasons | cut from the MVP |
+| `directions` | places, transport, asking the way | cut from the MVP |
 
 The unit *names* above are by theme, not by unit number. Neither course
 publishes a stable machine-readable index, and a wrong number is worse than no
@@ -388,10 +388,13 @@ a second language is real, not as a finding.
 
 ### The easy topics are the hard ones
 
-The last three are unauthored on purpose: they are the ones where the guardrail
-bites. `validate.py` requires more than one slot and at least one `request` slot,
-and "say it is cold" satisfies neither — it is a vocabulary drill with weather
-words in it.
+The last three were cut. #29 closed at five topics, and this section stays
+because the reasoning is what a future author needs, not a record of what got
+built.
+
+They are the ones where the guardrail bites. `validate.py` requires more than one
+slot and at least one `request` slot, and "say it is cold" satisfies neither — it
+is a vocabulary drill with weather words in it.
 
 The fix that works for all three is the same shape: **two things to find out,
 plus one to tell.** "Find out tomorrow's weather and whether it will be cold,

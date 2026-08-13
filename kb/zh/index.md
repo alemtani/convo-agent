@@ -22,5 +22,5 @@ ignored.
 
 Rows are sorted by `id`, which is the order the API returns them in.
 
-_More topics to follow (time and date, weather, directions) — see
-`docs/CURRICULUM.md` for where the slate comes from._
+_Five topics is where the MVP stopped. See `docs/CURRICULUM.md` for where the
+slate came from, and for the three that were considered and cut._
