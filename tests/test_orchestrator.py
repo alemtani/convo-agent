@@ -274,9 +274,10 @@ async def test_start_session_calls_the_sketch_worker_and_pins_the_scenario_card(
 
     monkeypatch.setattr(sketch_worker, "generate", fake_generate)
 
-    # Pin the candidate list so selection is deterministic however many topics
-    # are authored — see the `_pick_scenario_topic` tests below for the
-    # selection logic itself.
+    # Narrow the candidate scan to one topic so selection is deterministic —
+    # `_pick_scenario_topic` picks uniformly at random over everything on disk,
+    # and this test is about what start_session *does with* the topic it got.
+    # See the `_pick_scenario_topic` tests below for the selection logic itself.
     monkeypatch.setattr(kb, "list_topic_ids", lambda root=kb.KB_ROOT: ["greetings"])
 
     resp = await orchestrator.start_session()
@@ -331,10 +332,12 @@ async def test_start_session_does_not_load_the_topic_twice(monkeypatch):
     await orchestrator.start_session()
 
     # `_pick_scenario_topic`'s candidate scan is the one and only place that
-    # loads a topic — one call per topic on disk, none repeated. Asserted
-    # against `list_topic_ids` rather than a literal, so authoring a new topic
-    # does not fail a test about call counts.
+    # loads a topic: every topic on disk once, and none of them twice. Asserting
+    # the *shape* of the scan rather than a literal id list keeps the test about
+    # the double-load bug instead of about how many topics the KB happens to
+    # ship.
     assert calls == kb.list_topic_ids()
+    assert len(calls) == len(set(calls))
 
 
 # --- `_pick_scenario_topic`: the selection policy itself --------------------
