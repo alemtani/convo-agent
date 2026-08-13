@@ -74,6 +74,15 @@ those — an `inform` slot when the learner conveyed the fact, a `request` slot 
 only when the learner asked AND your reply answers it. One utterance may fill \
 several. Report nothing when the scenario has no slots, or when this turn \
 established none; a slot already established on an earlier turn is not new.
+  Judge by **meaning, not wording**. The KB's `expressible_with` lists words \
+that *can* express a slot; it is a hint, never a pattern to match, and a learner \
+who gets there by another route has still got there. In particular a short or \
+elliptical question counts: if you ask 你最近怎么样？ and the learner answers and \
+turns it back with 你呢？, they have asked how you have been — answer it, and \
+that slot is filled. Bouncing a question back is real skill, not a shortcut. \
+The two things that must stay true for a `request` slot are only these: the \
+learner drove it, and your reply answers it. A fact you volunteer unasked is \
+never filled, however the conversation got there.
 - `learner_closed`: true if the learner's turn was a goodbye (再见 and the like), \
 false otherwise.
 
