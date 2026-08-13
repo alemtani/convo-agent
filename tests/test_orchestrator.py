@@ -273,10 +273,11 @@ async def test_start_session_calls_the_sketch_worker_and_pins_the_scenario_card(
         )
 
     monkeypatch.setattr(sketch_worker, "generate", fake_generate)
+    # Pin the candidate list so selection is deterministic while the topic
+    # itself still comes off disk — see the `_pick_scenario_topic` tests below
+    # for the selection logic itself.
+    monkeypatch.setattr(kb, "list_topic_ids", lambda root=kb.KB_ROOT: ["greetings"])
 
-    # Only "greetings" is on disk right now, so topic selection is
-    # deterministic without mocking it — see the `_pick_scenario_topic` tests
-    # below for the selection logic itself.
     resp = await orchestrator.start_session()
 
     assert isinstance(resp, SessionStartResponse)
@@ -325,11 +326,14 @@ async def test_start_session_does_not_load_the_topic_twice(monkeypatch):
 
     monkeypatch.setattr(kb, "load_topic", counting_load_topic)
     monkeypatch.setattr(sketch_worker, "generate", fake_generate)
+    # One candidate, so the scan loads exactly one topic and any second load
+    # would be the duplicate this test guards against.
+    monkeypatch.setattr(kb, "list_topic_ids", lambda root=kb.KB_ROOT: ["greetings"])
 
     await orchestrator.start_session()
 
     # `_pick_scenario_topic`'s candidate scan is the one and only place that
-    # loads a topic — with just "greetings" on disk, exactly one call.
+    # loads a topic — one candidate, exactly one call.
     assert calls == ["greetings"]
 
 
