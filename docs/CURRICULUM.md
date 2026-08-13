@@ -361,6 +361,31 @@ publishes a stable machine-readable index, and a wrong number is worse than no
 number — so this table is deliberately not precise about ordering. `_syllabus.md`
 (C1) is where real unit records go, entered by hand as they are finished.
 
+### Themes are more portable than the courses that teach them
+
+Being imprecise about ordering turns out to be the more general choice, not just
+the safer one. Greet, introduce yourself, count, buy something, order food, ask
+the way — beginner courses converge on roughly that sequence regardless of the
+language, because it is ordered by *what a beginner can do with it*, not by
+anything specific to Mandarin.
+
+That is worth stating because it changes what a topic slate *is*. If the ordering
+were an artifact of HelloChinese, then adding a language (C5) would mean
+researching a new course and deriving a new slate. If it is a property of
+beginners, the slate largely ports: a JLPT N5 or CEFR A1 course wants the same
+eight scenes, with different vocabulary underneath them and different scenario
+details on top.
+
+So the split holds at every level of this doc. **The scene is portable; the
+lexicon is not.** `lang.json` and the ordered level list carry the part that
+differs; the topic slate is closer to a constant. Which means the admin request
+in the north star — *"add Japanese at JLPT N5, travel domain, eight topics"* — is
+more plausible than it sounds, because "eight topics" is not eight unsolved
+authoring problems. It is eight known scenes needing a new lexicon.
+
+Unverified against an actual N5 or A1 syllabus. Recorded as a claim to check when
+a second language is real, not as a finding.
+
 ### The easy topics are the hard ones
 
 The last three are unauthored on purpose: they are the ones where the guardrail
