@@ -18,9 +18,14 @@ Not urgent. Written down so the near-term work bends toward it rather than away.
 
 The home screen is a **topic list**, not a hardcoded session. Each row carries
 its state: covered or locked, how fresh (which unit taught it, when), how strong
-(from the proficiency profile), and a pin to force it into the next draw. Three
-topics fresh from this week's lessons sit at the top because the selection weight
-put them there, not because anything was configured.
+(from the proficiency profile), how long since it was last practised, and a pin
+to force it into the next draw.
+
+What surfaces is a *mix* — this week's units, and the older topic the learner
+keeps getting wrong. Neither because anything was configured.
+
+And any row is tappable. The list is a recommendation with a reason attached,
+never a gate.
 
 This is `GET /api/topics` (#29) plus the profile layer, plus one action — *mark a
 unit covered* — which is the only input the learner ever gives about their
@@ -99,7 +104,7 @@ exposure: a word met two units ago is still being learned.
 
 1. **Selection.** Recently covered units raise the weight of topics using their
    vocab — the `freshness(covered_at)` term in `DESIGN.md`, finally with a data
-   source.
+   source. One term of four. See "Accumulation, not a queue" below.
 2. **Preference.** The system prompt already separates a hard rule from a soft one
    (`backend/prompts.py:23`): *"Use **ONLY** vocabulary and grammar at or below
    HSK 3.0 band 2, and **prefer** words that appear in the topic knowledge base."*
@@ -107,6 +112,50 @@ exposure: a word met two units ago is still being learned.
 
 If the syllabus record is empty or stale, behaviour degrades to exactly today's.
 That property is what lets the record stay hand-maintained and rough.
+
+---
+
+## Accumulation, not a queue
+
+The syllabus framing above has a failure mode, and it is the worst one available:
+building a system that only ever drills the newest unit. A learner who finishes
+unit 14 does not stop needing unit 3. Weakness is the *reason to practise*;
+recency is only a reason to practise **sooner**.
+
+So, stated as invariants rather than left implicit in a formula:
+
+1. **Covered is monotonic.** A topic that has ever been covered stays fair game
+   forever. Nothing ages out of the pool, ever. (`DESIGN.md` says this; it is
+   restated here because the syllabus record makes recency newly tempting.)
+2. **Weakness outranks freshness in the long run.** `freshness(covered_at)` decays
+   — roughly two weeks. `w_weak · (1 − derived_strength)` does not decay; it
+   persists until the learner actually improves. A topic the learner is bad at
+   should keep resurfacing after the new-unit excitement has faded, and should be
+   able to *outweigh* a freshly covered topic the learner is already good at.
+3. **Staleness is a third, independent pull.** `w_stale · staleness(last_practiced)`
+   catches the topic that is neither new nor known-weak but simply hasn't come up.
+   Without it, a topic that was strong six months ago never returns and the
+   strength score silently goes stale with it.
+4. **Manual choice always wins.** The learner can pick any covered topic directly,
+   and it runs. The weighted draw is the *default*, not a gate. Deliberate review —
+   "I want to redo greetings" — must never require beating an algorithm.
+
+### What this means for the four terms
+
+```
+weight(topic) =
+    w_weak  · (1 − derived_strength)      # persistent — the main long-run driver
+  + w_fresh · freshness(covered_at)        # decays ~2wks — "drill what I just learned"
+  + w_stale · staleness(last_practiced)    # grows — nothing gets forgotten
+  + w_focus · pinned_this_session          # the learner's explicit override
+```
+
+The syllabus record (C1) feeds exactly one of these — `w_fresh`. It is the term
+with a decay on it, deliberately. The other three are what make the app a
+practice tool rather than a homework queue.
+
+**A weak topic covered months ago must be able to beat a strong topic covered
+yesterday.** That is a testable property, not a vibe, and C3 should test it.
 
 ---
 
@@ -312,7 +361,15 @@ topics.
 
 ## Open threads
 
-- **Freshness decay.** `DESIGN.md` guesses ~2 weeks. Untested.
+- **Freshness decay.** `DESIGN.md` guesses ~2 weeks. Untested. It is the decay
+  that stops the app becoming a recency queue, so it matters more than its
+  offhand tone suggests — too slow and new units crowd out weak old ones for
+  months.
+- **The four coefficients are unset.** `w_weak`, `w_fresh`, `w_stale`, `w_focus`
+  have no values yet. Their *relative* sizes encode the whole policy — in
+  particular `w_weak` vs `w_fresh` decides whether weakness or recency wins after
+  the decay. They want one home and a comment explaining the trade, the way
+  `pacing.json` handles its coefficients.
 - **Ceiling and syllabus can disagree.** A unit may teach a band-3 word before the
   ceiling rises. Current answer: the ceiling wins, the word drops from the
   preference set. Revisit if it bites.
