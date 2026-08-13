@@ -1217,7 +1217,7 @@
       }
       if (opts.pronunciation && opts.pronunciation.syllables.length) {
         el.replaceChildren();
-        renderScored(el, opts.pronunciation);
+        renderScored(el, utt, opts.pronunciation);
         return;
       }
       el.replaceChildren(...textRows(utt));
@@ -1355,6 +1355,10 @@
       replies.forEach((reply) => paintReply(reply));
     }
 
+    // Mirrors backend/pinyin.py's HANZI; the u flag makes the ranges match by
+    // code point so a supplementary-plane character isn't split into surrogates.
+    const HANZI = /[一-鿿㐀-䶿豈-﫿\u{20000}-\u{2a6df}]/u;
+
     // Typed tone errors, marked the same way spoken ones are: a red underline on
     // the syllable, detail in the tooltip. The learner already reads that
     // vocabulary from the mic path, so text mode borrows it rather than inventing
@@ -1362,9 +1366,6 @@
     // turn that repeats one (谢谢).
     function markToneErrors(el, utt, errors) {
       if (!el || !errors || !errors.length) return;
-      // Mirrors backend/pinyin.py's HANZI; the u flag makes the ranges match by
-      // code point so a supplementary-plane character isn't split into surrogates.
-      const HANZI = /[一-鿿㐀-䶿豈-﫿\u{20000}-\u{2a6df}]/u;
       // Only the 汉字 row is split. The worker writes pinyin in real orthography,
       // grouping a multi-syllable *word* into one token (péngyou, gāoxìng,
       // rènshi), so it has fewer tokens than the turn has characters — pairing
@@ -1447,24 +1448,86 @@
       return "tone-bad";
     }
 
-    // 汉字 and pinyin rows split into per-syllable spans, each underlined by its
-    // accuracy (which folds in tone correctness), then an overall-score badge.
-    function renderScored(el, pron) {
+    // Attach PA's syllables to the transcript's characters, by position.
+    //
+    // Azure's syllable list is not a tokenization of what STT recognized. It
+    // merges characters into words, re-splits them, and drops some outright —
+    // 你你好你好。 came back as 你 / 你 / 好 / 你好, a two-character entry sitting
+    // beside single ones. So the list can only ever say "this much of the
+    // sentence scored like this"; it cannot be used as the sentence.
+    //
+    // Walk it forward against the transcript and keep the first unconsumed
+    // match. Forward-only is what makes a repeated character (谢谢) land on the
+    // right one, and an entry the transcript doesn't contain is skipped rather
+    // than inserted — PA's text never becomes displayed text.
+    function alignScores(chars, syllables) {
+      const byIndex = new Map();
+      let cursor = 0;
+      for (const s of syllables) {
+        const needle = Array.from(s.hanzi || "");
+        if (!needle.length) continue;
+        let at = -1;
+        for (let i = cursor; i + needle.length <= chars.length && at < 0; i++) {
+          if (needle.every((c, j) => chars[i + j] === c)) at = i;
+        }
+        if (at < 0) continue;
+        needle.forEach((_, j) => byIndex.set(at + j, s));
+        cursor = at + needle.length;
+      }
+      return byIndex;
+    }
+
+    // The learner's own turn: the transcript, underlined per character by the
+    // accuracy PA gave it (which folds in tone correctness), then an
+    // overall-score badge.
+    //
+    // The transcript is the text — always. Rebuilding the bubble from
+    // `pron.syllables` is what made a learner's 便宜 vanish from
+    // 你要一个苹果便宜吗 the moment the scores landed, while the *full* transcript
+    // was still what went to the partner. The partner then answered words that
+    // were no longer on screen. A character PA never scored is shown plain; it
+    // is not deleted.
+    function renderScored(el, utt, pron) {
+      // A score event without a transcript shouldn't happen, but PA's own hanzi
+      // beats an empty bubble if it ever does.
+      const chars = Array.from(utt.zh || pron.syllables.map((s) => s.hanzi).join(""));
+      const scores = alignScores(chars, pron.syllables);
+
+      // On the spoken path the pinyin line is machine-derived per character and
+      // punctuation-free (backend/pinyin.py), so it splits 1:1 with the hanzi.
+      // When the counts disagree — a worker-written line groups a word into one
+      // token (péngyou) — the line stays whole rather than misaligning, the same
+      // call `markToneErrors` makes.
+      const tokens = (utt.pinyin || "").trim().split(/\s+/).filter(Boolean);
+      const hanziCount = chars.filter((c) => HANZI.test(c)).length;
+      const splitPinyin = hanziCount > 0 && tokens.length === hanziCount;
+
       const zhRow = document.createElement("div");
       zhRow.className = "zh scored";
       const pyRow = document.createElement("div");
-      pyRow.className = "pinyin scored";
-      for (const s of pron.syllables) {
-        const cls = "syl " + toneClass(s.accuracy);
-        const title = s.pinyin + " · " + Math.round(s.accuracy);
-        for (const [row, text] of [[zhRow, s.hanzi], [pyRow, s.pinyin]]) {
+      pyRow.className = splitPinyin ? "pinyin scored" : "pinyin";
+      if (!splitPinyin) pyRow.textContent = utt.pinyin || "";
+
+      let hanziSeen = 0;
+      chars.forEach((char, i) => {
+        const s = scores.get(i);
+        const cls = "syl" + (s ? " " + toneClass(s.accuracy) : "");
+        const title = s ? s.pinyin + " · " + Math.round(s.accuracy) : "";
+        const texts = [[zhRow, char]];
+        // Punctuation rides along in the 汉字 row only — it has no reading.
+        if (HANZI.test(char)) {
+          if (splitPinyin) texts.push([pyRow, tokens[hanziSeen]]);
+          hanziSeen++;
+        }
+        for (const [row, text] of texts) {
           const span = document.createElement("span");
           span.className = cls;
           span.textContent = text;
-          span.title = title;
+          if (title) span.title = title;
           row.appendChild(span);
         }
-      }
+      });
+
       const badge = document.createElement("span");
       badge.className = "score-badge";
       badge.textContent = "tone " + Math.round(pron.overall) + "/100";
