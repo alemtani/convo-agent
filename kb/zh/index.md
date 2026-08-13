@@ -9,6 +9,7 @@ all HSK 3.0 bands). The ceiling a topic is validated at is *universal* —
 | id | display name | HSK band | summary |
 |---|---|---|---|
 | [greetings](greetings/topic.md) | Greetings (你好) | 1–2 | Greet, exchange names, ask "how are you?", say goodbye. |
+| [numbers-money](numbers-money/topic.md) | Numbers and money (多少钱) | 1–2 | Count, ask a price, ask for a cheaper or smaller one, order. |
 
 _More topics to follow (self-intro, family, shopping, weather, …) once the
 greetings sample is judged good._
