@@ -273,7 +273,6 @@ async def test_start_session_calls_the_sketch_worker_and_pins_the_scenario_card(
         )
 
     monkeypatch.setattr(sketch_worker, "generate", fake_generate)
-
     # Narrow the candidate scan to one topic so selection is deterministic —
     # `_pick_scenario_topic` picks uniformly at random over everything on disk,
     # and this test is about what start_session *does with* the topic it got.
@@ -328,6 +327,9 @@ async def test_start_session_does_not_load_the_topic_twice(monkeypatch):
 
     monkeypatch.setattr(kb, "load_topic", counting_load_topic)
     monkeypatch.setattr(sketch_worker, "generate", fake_generate)
+    # One candidate, so the scan loads exactly one topic and any second load
+    # would be the duplicate this test guards against.
+    monkeypatch.setattr(kb, "list_topic_ids", lambda root=kb.KB_ROOT: ["greetings"])
 
     await orchestrator.start_session()
 
