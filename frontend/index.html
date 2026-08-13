@@ -864,15 +864,66 @@
     // append a second opening bubble — there is exactly one opening line.
     let sessionStarting = null;
 
+    // The one request the whole session hangs on, made at the worst possible
+    // moment: the app scales to zero, so a first visit is also a cold start.
+    // The navigation survives that window (the proxy holds it until the machine
+    // answers) but this POST need not — and a POST killed at the connection
+    // layer is *not* replayed by the browser the way an idempotent GET is. That
+    // is the failure a real phone hit: `GET /` 200, `GET /api/hello` 200, and
+    // no `POST /api/session` in the server log at all, under a permanent
+    // "couldn't reach the server" that nothing on the page could clear.
+    //
+    // So: retry, backing off, and treat only *transient* answers as retryable.
+    // A 401 belongs to the gate and a 4xx isn't going to change its mind —
+    // retrying either just spends the learner's patience on a settled question.
+    // The delays are seconds because the thing we're waiting for is a machine
+    // booting, not a packet.
+    const SESSION_RETRY_MS = [500, 1200, 2500, 4000];
+    const retryableStatus = (status) => status === 0 || status === 408 ||
+                                        status === 429 || status >= 500;
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+    // Only the messages *this* function wrote get cleared on success. A blanket
+    // clear would wipe whatever else the page is saying at the time — the
+    // playback fallback's line, `reset`'s "new conversation" — for a reason
+    // that has nothing to do with it.
+    let sessionErrorShown = false;
+    function setSessionStatus(msg) {
+      sessionErrorShown = Boolean(msg);
+      setStatus(msg);
+    }
+    function clearSessionStatus() {
+      if (sessionErrorShown) setSessionStatus("");
+    }
+
     function startSession() {
       if (sessionStarting) return sessionStarting;
       renderScenarioLoading();
       setSessionLoading(true);
       sessionStarting = (async () => {
         try {
-          // No body: the server picks the topic, not the client — the whole
-          // point of this endpoint is that the frontend has no topic to send.
-          const resp = await fetch("/api/session", { method: "POST" });
+          let resp = null;
+          for (let attempt = 0; ; attempt += 1) {
+            try {
+              // No body: the server picks the topic, not the client — the whole
+              // point of this endpoint is that the frontend has no topic to send.
+              resp = await fetch("/api/session", { method: "POST" });
+              if (resp.ok || !retryableStatus(resp.status)) break;
+            } catch (err) {
+              resp = null;                        // dropped connection, offline
+            }
+            if (attempt >= SESSION_RETRY_MS.length) break;
+            // Said out loud, because the wait is long enough to look like a
+            // hang: a cold machine takes seconds, and a silent pulsing card
+            // reads as broken well before the retry that fixes it lands.
+            setSessionStatus("waking the server…");
+            await sleep(SESSION_RETRY_MS[attempt]);
+          }
+          if (!resp) {
+            renderScenarioCard(null);
+            setSessionStatus("couldn't reach the server — you can still talk");
+            return;
+          }
           if (!resp.ok) {
             // Not fatal — turns still work with an empty sketch (no flavour)
             // and no scenario card, same as before this shipped — but a
@@ -881,11 +932,11 @@
             // saying it). Controls come back regardless: a failed scenario
             // shouldn't block the conversation itself — you can still talk.
             renderScenarioCard(null);
-            if (!gateIfUnauthorized(resp)) {
-              setStatus("couldn't load the scenario — you can still talk");
-            }
+            if (gateIfUnauthorized(resp)) setSessionStatus("");
+            else setSessionStatus("couldn't load the scenario — you can still talk");
             return;
           }
+          clearSessionStatus();
           session = await resp.json();
           saveSession();
           renderScenarioCard(session.scenario_card, session.display_name);
@@ -909,8 +960,10 @@
             renderReply(handle, session.opening_line, { scroll: false });
           }
         } catch (err) {
+          // Whatever got past the retry loop: a truncated body, unparseable
+          // JSON. Same recovery either way — no scene, but a usable page.
           renderScenarioCard(null);
-          setStatus("couldn't reach the server — you can still talk");
+          setSessionStatus("couldn't reach the server — you can still talk");
         } finally {
           sessionStarting = null;
           setSessionLoading(false);
@@ -2142,6 +2195,18 @@
     } else {
       startSession();
     }
+
+    // Last resort, after the retries have all given up: a session that never
+    // started is the one state the app cannot work its way out of, and the two
+    // moments a phone most often *can* is when the network returns and when the
+    // learner comes back to the tab. Both are free to listen for, neither fires
+    // once a session exists, and `startSession` dedupes anything overlapping.
+    const retrySessionIfMissing = () => { if (!session) startSession(); };
+    window.addEventListener("online", retrySessionIfMissing);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") retrySessionIfMissing();
+    });
+
     restoreThread();
     applyShowText();
     applyMode();

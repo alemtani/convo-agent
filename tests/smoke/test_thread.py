@@ -402,7 +402,12 @@ def test_session_start_renders_the_scenario_card_and_opening_line(page):
 def test_session_start_failure_shows_a_status_message_and_does_not_crash(page):
     """A 502 from `/api/session` (a sketch-worker refusal or timeout) must not
     leave a blank thread with no explanation — the learner can still talk, but
-    they need to be told nothing's wrong with *them*."""
+    they need to be told nothing's wrong with *them*.
+
+    A 502 is retried first (see `test_session_start.py`: it is also what a cold
+    machine answers), so this waits out the whole backoff — the message here is
+    the one that survives every retry, not the first thing the page says.
+    """
     page.add_init_script(
         "(() => { const t = setInterval(() => {"
         "  if (!window.__stub) return; clearInterval(t);"
@@ -411,7 +416,9 @@ def test_session_start_failure_shows_a_status_message_and_does_not_crash(page):
     )
     page.goto("/")
 
-    expect(page.locator("#status")).to_have_text("couldn't load the scenario — you can still talk")
+    expect(page.locator("#status")).to_have_text(
+        "couldn't load the scenario — you can still talk", timeout=20_000
+    )
     expect(page.locator("#scenario-card")).not_to_be_visible()
     expect(bubbles(page, ".bubble[data-opening]")).to_have_count(0)
 
