@@ -322,6 +322,81 @@ profile, reusing the `w_focus` pin already in `DESIGN.md`'s selection weight.
 
 ---
 
+## The first slate, and where it came from
+
+Stage 0 needed an actual list of topics. Picking them by taste would have been
+faster and worse — the point of a topic is that it matches something the learner
+was taught, so the slate has to answer to a syllabus, not to an author's sense of
+what makes a fun scene.
+
+**The rule: take the intersection of the two courses a beginner is most likely to
+be using.** This learner uses HelloChinese. Most people use Duolingo. A topic
+both courses teach early is a topic almost any beginner arrives already holding
+vocabulary for — and one neither teaches is a topic where the app would be
+teaching rather than giving practice, which is not what it is for.
+
+The two courses map differently, and that difference is the useful part:
+
+| | HelloChinese | Duolingo Chinese |
+|---|---|---|
+| structure | HSK-aligned, situational units | thematic, loosely ordered |
+| maps onto our band ceiling | directly — it *is* HSK | approximately |
+| use it for | which topic, and roughly when | a sanity check that the topic is common |
+
+So HelloChinese decides the slate and Duolingo vetoes anything idiosyncratic.
+
+| topic | theme in both courses | authored |
+|---|---|---|
+| `greetings` | greetings, names | ✅ |
+| `self-intro` | nationality, language, occupation | ✅ |
+| `family` | family members, ages | ✅ |
+| `numbers-money` | numbers, prices, shopping | ✅ |
+| `food-ordering` | food, restaurant | ✅ |
+| `time-date` | days, dates, making plans | — |
+| `weather` | weather, seasons | — |
+| `directions` | places, transport, asking the way | — |
+
+The unit *names* above are by theme, not by unit number. Neither course
+publishes a stable machine-readable index, and a wrong number is worse than no
+number — so this table is deliberately not precise about ordering. `_syllabus.md`
+(C1) is where real unit records go, entered by hand as they are finished.
+
+### The easy topics are the hard ones
+
+The last three are unauthored on purpose: they are the ones where the guardrail
+bites. `validate.py` requires more than one slot and at least one `request` slot,
+and "say it is cold" satisfies neither — it is a vocabulary drill with weather
+words in it.
+
+The fix that works for all three is the same shape: **two things to find out,
+plus one to tell.** "Find out tomorrow's weather and whether it will be cold,
+then say what you will wear." That is a scenario. "Describe the weather" is a
+flashcard.
+
+This is the rules working. Budget authoring time for it — the topics that look
+easiest need the most thought to have a shape at all, which is the opposite of
+the intuition.
+
+### What authoring five topics actually taught
+
+Findings from the first batch, kept because they will recur:
+
+- **The obvious word is often out of band.** 年纪 (3), 苹果 (3), 咖啡 (3), 附近
+  (4), 前面/后面 (3), 伞 (4) — every one of them the first word an author reaches
+  for. Check the index before building a slot around a noun, not after.
+- **Compound rows are checked character by character.** 有没有 is itself a band-6
+  entry; 便宜一点儿 fails on 便 (6) and 儿 (absent). A phrase is only safe in a
+  vocab row if every character is separately in band. Patterns like A-not-A
+  belong in `grammar.md` prose instead.
+- **`annotate_pinyin.py` gets 不/一 sandhi wrong** when the word is in the
+  curated vocab table: the lexicon entry wins over pypinyin's context-aware
+  reading, so it emits `bù` before a fourth tone and `yī gè` for 一个. Rephrase
+  the line rather than hand-correcting generated pinyin — the generated line is
+  the invariant.
+- **Tests that assert the KB's inventory break on the second topic.** Two
+  `test_orchestrator.py` tests hardcoded "greetings is the only topic". Assert
+  the *shape* of a scan, never its contents.
+
 ## Staging
 
 Each stage is usable alone. Nothing here blocks the MVP.
