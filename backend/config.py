@@ -112,6 +112,11 @@ TTS_TIMEOUT_S = float(os.getenv("TTS_TIMEOUT_S", "10"))
 # which is re-billing Azure for a line the learner just asked to hear again.
 TTS_CACHE_MAX_ENTRIES = int(os.getenv("TTS_CACHE_MAX_ENTRIES", "64"))
 
+# Our own loggers. uvicorn leaves the root logger at WARNING, so without this
+# every `logger.info` under `backend/` is dropped — including the per-turn
+# timings line and the session state machine.
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+
 STT_TIMEOUT_S = float(os.getenv("STT_TIMEOUT_S", "5"))
 PA_TIMEOUT_S = float(os.getenv("PA_TIMEOUT_S", "5"))
 CLAUDE_TIMEOUT_S = float(os.getenv("CLAUDE_TIMEOUT_S", "15"))
@@ -129,6 +134,14 @@ CLAUDE_TIMEOUT_S = float(os.getenv("CLAUDE_TIMEOUT_S", "15"))
 # going to repeat themselves anyway. Env-overridable in case a flaky network
 # makes one attempt the wrong trade.
 CLAUDE_MAX_RETRIES = int(os.getenv("CLAUDE_MAX_RETRIES", "0"))
+
+# The verdict call (M2-D) sits beside the loop, not in it — no turn waits on it.
+# But a *learner* does: the card renders in a pending state the moment the
+# session ends, so this is sized to what a person will sit in front of, not to
+# what the API might eventually manage. Longer than a turn because the call is
+# uncached and reads the whole transcript; far short of the SDK's 10-minute
+# default, which would be a spinner with no end.
+VERDICT_TIMEOUT_S = float(os.getenv("VERDICT_TIMEOUT_S", "20"))
 
 
 def _load_band_ceiling(default: int = 2) -> int:

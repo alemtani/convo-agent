@@ -20,6 +20,7 @@ from typing import Optional
 
 import anthropic
 from anthropic import AsyncAnthropic
+from pydantic import ValidationError
 
 from backend import config, kb
 from backend.models import SketchResult
@@ -98,9 +99,16 @@ async def generate(
         raise SketchError(
             f"sketch worker timed out after {config.CLAUDE_TIMEOUT_S:g}s"
         ) from exc
+    except ValidationError as exc:
+        # A cut-off response is validated inside `messages.parse`; uncaught it
+        # is a 500 rather than the 502 this endpoint's failures are shaped as.
+        raise SketchError("sketch worker returned unparseable output") from exc
 
-    if getattr(response, "stop_reason", None) == "refusal":
+    stop_reason = getattr(response, "stop_reason", None)
+    if stop_reason == "refusal":
         raise SketchError("sketch worker refused the session")
+    if stop_reason == "max_tokens":
+        raise SketchError("sketch worker's flavour ran past max_tokens")
     result = response.parsed_output
     if result is None:
         raise SketchError("sketch worker returned unparseable output")

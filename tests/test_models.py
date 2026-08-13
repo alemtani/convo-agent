@@ -244,9 +244,13 @@ def test_conversation_turn_response_shape():
             "tone_errors": [],
             "topic_tags": ["greetings"],
             "should_give_feedback": False,
+            # M2-C's tracker rides the annotation both paths already carry.
+            "slots_filled": [],
+            "learner_closed": False,
         },
         "timings": None,
         "usage": None,
+        "state": None,
     }
 
 

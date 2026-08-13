@@ -117,3 +117,87 @@ async def test_live_each_output_shape_caches_on_its_own_prefix():
     assert (
         warm_text.cache_read_input_tokens != warm_spoken.cache_read_input_tokens
     ), "expected distinct prefixes — has the schema left the cached span?"
+
+
+# --- M2-C: the tracker's tolerance for how a learner actually talks --------
+
+
+async def test_live_a_request_slot_fills_when_asked_and_answered():
+    """The bug behind a session on a phone that would not end.
+
+    The learner asked 你叫什么名字 on turn 1 and the partner answered with its
+    name in the same reply. `partner_name` was never credited — not that turn,
+    not any later one — so the goal could not complete and the session ran to
+    its cap. Replaying the real transcript reproduced it every time on the old
+    prompt and never on this one.
+
+    The fix is extractor prompting, which is what `SCENARIOS.md` prescribes for
+    "authored slots make scenarios rigid": the seed fixes *which* facts count,
+    and the extractor judges semantically whether one was established. So this
+    has to run against the real model — a recorded fixture would only prove we
+    can write a fixture.
+    """
+    _reply, annotation, _reading, _usage = await conversation.respond(
+        kb_block=kb.load_kb_block("greetings"),
+        sketch=SKETCH_STUB,
+        dialogue=[{"role": "partner", "zh": "早上好！"}],
+        user_text="早上好，你叫什么名字？",
+        forgiveness_level=config.FORGIVENESS_LEVEL_DEFAULT,
+        want_reading=False,
+        client=_client(),
+    )
+
+    # Asked, and the partner's reply is where the name comes from — so the fact
+    # is established on this turn, whatever words carried it.
+    assert "partner_name" in annotation.slots_filled, (
+        "the learner asked for the name and the partner answered; "
+        f"tracker reported {annotation.slots_filled}"
+    )
+
+
+async def test_live_an_elliptical_question_fills_its_slot():
+    """你呢 counts — turning the question back is skill, not a shortcut.
+
+    Never actually observed failing (30 runs, both prompts), so this guards an
+    invariant rather than fixing a bug: the loosening above must not later be
+    tightened in a way that starts demanding the canonical 你最近怎么样.
+    """
+    _reply, annotation, _reading, _usage = await conversation.respond(
+        kb_block=kb.load_kb_block("greetings"),
+        sketch=SKETCH_STUB,
+        dialogue=[
+            {"role": "user", "zh": "我叫亚当。"},
+            {"role": "partner", "zh": "认识你很高兴！你最近怎么样？"},
+        ],
+        user_text="我很好，你呢？",
+        forgiveness_level=config.FORGIVENESS_LEVEL_DEFAULT,
+        want_reading=False,
+        client=_client(),
+    )
+
+    assert "wellbeing" in annotation.slots_filled, (
+        "turning the question back with 你呢 is how a real learner asks this; "
+        f"tracker reported {annotation.slots_filled}"
+    )
+
+
+async def test_live_a_volunteered_fact_is_still_never_credited():
+    """The mitigation must not become leniency.
+
+    Loosening the extractor toward meaning is exactly the change that could
+    start crediting facts the *partner* gave away — the mirror-image failure
+    `SCENARIOS.md` calls the worse one, because it turns every session into a
+    pass. The learner here asks nothing.
+    """
+    _reply, annotation, _reading, _usage = await conversation.respond(
+        kb_block=kb.load_kb_block("greetings"),
+        sketch=SKETCH_STUB,
+        dialogue=[{"role": "partner", "zh": "你好！"}],
+        user_text="你好。",
+        forgiveness_level=config.FORGIVENESS_LEVEL_DEFAULT,
+        want_reading=False,
+        client=_client(),
+    )
+
+    assert "partner_name" not in annotation.slots_filled
+    assert "wellbeing" not in annotation.slots_filled

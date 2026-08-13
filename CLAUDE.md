@@ -30,26 +30,33 @@ deferred, not in the hot path).
 
 ## Key files and directories
 
-Target layout (per `docs/DESIGN.md`). The backend serves through M2-B: the full
+Target layout (per `docs/DESIGN.md`). The backend serves through M2-D: the full
 spoken loop `POST /api/turn` → Azure STT → PA ∥ conversation worker (cached
 prefix) → merged `tone_errors`; the mic-free `POST /api/turn/text` harness;
 `POST /api/session`, the sketch worker's one call per session (opening line +
-flavour, plus the pinned scenario card — `docs/SCENARIOS.md`); and
-`POST /api/tts` (M4), which sits beside the loop, not inside it — it speaks one
-line of text, so replay is free and the turn never waits on a synthesis. Live
-modules: `main.py`, `orchestrator.py`, `kb.py`, `pinyin.py`, `tones.py`,
-`models.py`, `config.py`, `prompts.py`, `workers/conversation.py`,
-`workers/sketch.py`, `speech/{stt,pronunciation,tts,_azure}.py`. Still planned:
-`workers/feedback.py` (tracker/termination/verdict, M2 #31–#32), `db.py`,
+flavour, plus the pinned scenario card — `docs/SCENARIOS.md`);
+`POST /api/verdict`, the end-of-session card; and `POST /api/tts` (M4). The last
+two both sit *beside* the loop rather than inside it, for the same reason: one
+speaks a line, one explains a finished session, and neither is something a turn
+should wait on. Live modules: `main.py`, `orchestrator.py`, `termination.py`,
+`kb.py`, `pinyin.py`, `tones.py`, `models.py`, `config.py`, `prompts.py`,
+`workers/{conversation,sketch,feedback}.py`,
+`speech/{stt,pronunciation,tts,_azure}.py`. Still planned: `db.py`,
 `profile.py` (Phases 7–8).
+
+Session state is client-held, like `sketch`: `termination.py` computes it from
+the tracker fields on the worker's annotation and the client resubmits it every
+turn. It rides `ReplyEvent`, never `DoneEvent` — state is ready when the reply
+is, and `done` waits on the PA branch too.
 
 ```
 backend/
   main.py              # FastAPI app, static serving, CORS (auth gate: Phase 8)
   orchestrator.py      # turn coordination, context assembly, caching, bounding
+  termination.py       # slot state → end conditions + situational pressure (pure)
   workers/
-    conversation.py    # Claude conversation worker (cached prefix)
-    feedback.py        # annotations → feedback + proficiency deltas
+    conversation.py    # Claude conversation worker (cached prefix) + slot tracker
+    feedback.py        # verdict card: explains a computed outcome, once
     sketch.py          # session sketch generation
   speech/
     _azure.py          # shared credentialed SpeechConfig + recognizer

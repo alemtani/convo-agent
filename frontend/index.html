@@ -107,6 +107,42 @@
       #scenario-card.loading { animation: none; opacity: 0.7; }
     }
 
+    /* The verdict card (M2-D). Lives at the *end* of the thread, not pinned
+       above it: the scenario card is the brief you keep glancing at, this is
+       the last thing that happened. */
+    .verdict {
+      margin: 0.9rem 0 0.4rem;
+      padding: 0.75rem 0.9rem;
+      border-radius: 0.9rem;
+      background: rgba(127, 127, 127, 0.1);
+      border: 1px solid rgba(127, 127, 127, 0.3);
+      font-size: 0.9rem;
+    }
+    .verdict.met { border-color: rgba(64, 160, 96, 0.55); }
+    .verdict .headline { font-weight: 700; margin-bottom: 0.35rem; }
+    .verdict .explanation { margin: 0; }
+    .verdict .missed {
+      margin: 0.5rem 0 0; padding-left: 1.1rem; font-size: 0.85rem; opacity: 0.85;
+    }
+    .verdict .exchange-label {
+      margin-top: 0.7rem; font-size: 0.7rem; text-transform: uppercase;
+      letter-spacing: 0.04em; opacity: 0.6;
+    }
+    .verdict .line { margin-top: 0.4rem; }
+    .verdict .line .zh { font-size: 1.05rem; }
+    .verdict .line .py { opacity: 0.75; font-size: 0.8rem; }
+    .verdict .line .en { opacity: 0.6; font-size: 0.8rem; }
+    .verdict .actions { margin-top: 0.75rem; display: flex; gap: 0.5rem; }
+    .verdict button {
+      font: inherit; padding: 0.35rem 0.7rem; border-radius: 0.6rem;
+      border: 1px solid rgba(127, 127, 127, 0.4); background: transparent;
+      color: inherit; cursor: pointer;
+    }
+    .verdict.pending { animation: card-pulse 1.4s ease-in-out infinite; }
+    @media (prefers-reduced-motion: reduce) {
+      .verdict.pending { animation: none; opacity: 0.7; }
+    }
+
     #thread {
       display: flex; flex-direction: column; gap: 0.75rem;
       margin-top: 1rem;
@@ -666,7 +702,18 @@
     // Stateless server: the client holds the running transcript and resubmits it
     // each turn so the partner has memory. Each entry is {role, zh, pinyin}; we
     // send only {role, zh} (the wire contract) and keep pinyin for re-rendering.
-    const STORE_KEY = "convo.dialogue.greetings";
+    //
+    // Keys carry no topic suffix. The server picks the topic and it arrives
+    // *inside* the session object, so a key built from `topic_id` could not be
+    // constructed before `loadSession()` had already returned — every reload
+    // would miss its own session and start a new scene over the top of a
+    // conversation in progress. There is only ever one live session; the
+    // `topic_id` stamped on the state (checked below) is what guards a stale
+    // store once #29 puts more than one topic on disk.
+    const STORE_KEY = "convo.dialogue";
+    const STATE_KEY = "convo.state";
+    const NOTES_KEY = "convo.notes";
+    const VERDICT_KEY = "convo.verdict";
     let dialogue = loadDialogue();
 
     function loadDialogue() {
@@ -675,6 +722,52 @@
     }
     function saveDialogue() {
       localStorage.setItem(STORE_KEY, JSON.stringify(dialogue));
+    }
+
+    function readJson(key, fallback) {
+      try { return JSON.parse(localStorage.getItem(key)) || fallback; }
+      catch (_) { return fallback; }
+    }
+
+    // --- Session state (M2-C) -----------------------------------------------
+    //
+    // The server computes it, we hold it and resubmit it — same contract as
+    // `sketch` and `dialogue`. It is written in the *same block* as the
+    // dialogue it belongs to (see the `reply` handlers), because a turn whose
+    // exchange was saved and whose consequences were not is a session that has
+    // silently lost progress it can never recompute.
+    let state = readJson(STATE_KEY, null) || { filled_at: {}, status: "active" };
+    // Per-turn tone/grammar notes, keyed by turn index, for the verdict roll-up.
+    let notes = readJson(NOTES_KEY, {});
+
+    function saveState() {
+      localStorage.setItem(STATE_KEY, JSON.stringify(state));
+      localStorage.setItem(NOTES_KEY, JSON.stringify(notes));
+    }
+
+    function isComplete() { return state && state.status === "complete"; }
+
+    // Notes arrive on two different events on the spoken path — `grammar_notes`
+    // with the reply, `tone_errors` with the score — and a slow Azure call
+    // legitimately puts the score *after* the reply. So each turn's record is
+    // merged into by both, under an index captured before either can run.
+    function recordNote(turnIndex, fields) {
+      const prior = notes[turnIndex] || {};
+      notes[turnIndex] = Object.assign(prior, fields);
+    }
+
+    // Flattened at verdict time: the worker wants sentences about the session,
+    // not our wire shapes.
+    function notesForVerdict() {
+      const out = [];
+      for (const turn of Object.keys(notes).sort((a, b) => a - b)) {
+        const note = notes[turn] || {};
+        for (const g of note.grammar_notes || []) out.push(`turn ${turn}: ${g}`);
+        for (const t of note.tone_errors || []) {
+          out.push(`turn ${turn}: tone ${t.expected} on ${t.syllable}`);
+        }
+      }
+      return out.slice(0, 60);
     }
 
     function setStatus(msg) { status.textContent = msg; }
@@ -686,8 +779,22 @@
     // turn (the `sketch` field/form-field below), exactly like `dialogue` —
     // the server never stores it. `scenario_card` is pinned above the thread,
     // in English; slots are never fetched or rendered.
-    const SESSION_KEY = "convo.session.greetings";
+    const SESSION_KEY = "convo.session";
     let session = loadSession();
+
+    // A stored state written under a different topic belongs to a scenario
+    // that isn't on screen: its slot ids mean nothing here and its `complete`
+    // would disable the mic on a scene the learner has not spoken into. Drop
+    // the *derived* stores and keep the session, which is what defines the
+    // topic in the first place.
+    if (session && state && state.topic_id && state.topic_id !== session.topic_id) {
+      dialogue = [];
+      state = { filled_at: {}, status: "active" };
+      notes = {};
+      for (const key of [STORE_KEY, STATE_KEY, NOTES_KEY, VERDICT_KEY]) {
+        localStorage.removeItem(key);
+      }
+    }
 
     function loadSession() {
       try { return JSON.parse(localStorage.getItem(SESSION_KEY)) || null; }
@@ -718,9 +825,18 @@
     // to send without a server-issued `topic_id` (see `ensureSession` below),
     // so disable both controls for the round trip rather than let a learner
     // tap "talk" into a request that's just going to wait on them anyway.
+    // One place decides whether the learner can speak or type. Every `finally`
+    // that used to restore the controls now routes through here instead of
+    // setting `disabled` directly — otherwise the first thing a completed turn
+    // does is re-arm the mic on a session that just ended.
+    function applyControls(busy) {
+      const off = busy || isComplete();
+      talk.disabled = off;
+      textInput.disabled = send.disabled = off;
+    }
+
     function setSessionLoading(loading) {
-      talk.disabled = loading;
-      setComposerBusy(loading);
+      applyControls(loading);
     }
 
     // Fetches a fresh session and renders its opening line as the first
@@ -787,6 +903,182 @@
         }
       })();
       return sessionStarting;
+    }
+
+    // --- The verdict card (M2-D) -------------------------------------------
+    //
+    // Fetched once, when the session completes, and then *persisted*. A phone
+    // that locks and reloads must show the same card it showed before — not a
+    // blank finished app, and not a second uncached Sonnet call rewording the
+    // feedback under someone who was re-reading it.
+    let verdictFetching = null;
+
+    function verdictNode() {
+      const el = document.createElement("div");
+      el.className = "verdict";
+      el.dataset.verdict = "true";
+      thread.appendChild(el);
+      return el;
+    }
+
+    function renderVerdict(card) {
+      const el = verdictNode();
+      el.className = "verdict" + (card.goal_met ? " met" : "");
+      const headline = document.createElement("div");
+      headline.className = "headline";
+      headline.textContent = card.goal_met ? "You did it." : "Not quite.";
+      el.appendChild(headline);
+
+      const explanation = document.createElement("p");
+      explanation.className = "explanation";
+      explanation.textContent = card.explanation || "";
+      el.appendChild(explanation);
+
+      if ((card.missing || []).length) {
+        const list = document.createElement("ul");
+        list.className = "missed";
+        for (const slot of card.missing) {
+          const item = document.createElement("li");
+          item.textContent = slot.description;
+          list.appendChild(item);
+        }
+        el.appendChild(list);
+      }
+
+      if ((card.model_exchange || []).length) {
+        const label = document.createElement("div");
+        label.className = "exchange-label";
+        label.textContent = "What you could have said";
+        el.appendChild(label);
+        for (const line of card.model_exchange) {
+          const row = document.createElement("div");
+          row.className = "line";
+          for (const [cls, text] of [["zh", line.zh], ["py", line.pinyin],
+                                     ["en", line.english]]) {
+            const span = document.createElement("div");
+            span.className = cls;
+            span.textContent = text || "";
+            row.appendChild(span);
+          }
+          el.appendChild(row);
+        }
+      }
+
+      el.appendChild(verdictActions());
+      scrollToBottom("auto");
+      return el;
+    }
+
+    function verdictActions(retry) {
+      const actions = document.createElement("div");
+      actions.className = "actions";
+      if (retry) {
+        const again = document.createElement("button");
+        again.textContent = "Try again";
+        again.dataset.action = "retry-verdict";
+        // Every input is client-held, so a failed verdict is retryable without
+        // replaying anything. Without this, one blip at the moment a session
+        // ends permanently costs the learner the only teaching in it.
+        again.addEventListener("click", () => { clearVerdictNodes(); showVerdict(); });
+        actions.appendChild(again);
+      }
+      const fresh = document.createElement("button");
+      fresh.textContent = "Start a new session";
+      fresh.dataset.action = "new-session";
+      fresh.addEventListener("click", () => reset.click());
+      actions.appendChild(fresh);
+      return actions;
+    }
+
+    function clearVerdictNodes() {
+      thread.querySelectorAll("[data-verdict]").forEach((el) => el.remove());
+    }
+
+    function renderVerdictPending() {
+      const el = verdictNode();
+      el.className = "verdict pending";
+      el.textContent = "Session over — writing your feedback…";
+      scrollToBottom("auto");
+    }
+
+    function renderVerdictFailed(detail) {
+      const el = verdictNode();
+      el.className = "verdict";
+      const headline = document.createElement("div");
+      headline.className = "headline";
+      headline.textContent = "Session over.";
+      el.appendChild(headline);
+      const explanation = document.createElement("p");
+      explanation.className = "explanation";
+      explanation.textContent = "Couldn't load your feedback — " + detail;
+      el.appendChild(explanation);
+      el.appendChild(verdictActions(true));
+      scrollToBottom("auto");
+    }
+
+    // Cache first, then fetch. Deduped onto one in-flight promise the same way
+    // `startSession` is: `reply` and a reload can both notice `complete`.
+    async function showVerdict() {
+      const cached = readJson(VERDICT_KEY, null);
+      if (cached) { renderVerdict(cached); return cached; }
+      if (verdictFetching) return verdictFetching;
+
+      renderVerdictPending();
+      verdictFetching = (async () => {
+        try {
+          const resp = await fetch("/api/verdict", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              topic_id: session ? session.topic_id : "",
+              dialogue: dialogue.map((t) => ({ role: t.role, zh: t.zh })),
+              state: state,
+              notes: notesForVerdict(),
+            }),
+          });
+          clearVerdictNodes();
+          if (!resp.ok) {
+            const detail = gateIfUnauthorized(resp)
+              ? "log back in to see it"
+              : await resp.text();
+            renderVerdictFailed(detail);
+            return null;
+          }
+          const card = await resp.json();
+          localStorage.setItem(VERDICT_KEY, JSON.stringify(card));
+          renderVerdict(card);
+          return card;
+        } catch (err) {
+          clearVerdictNodes();
+          renderVerdictFailed(String(err));
+          return null;
+        } finally {
+          verdictFetching = null;
+        }
+      })();
+      return verdictFetching;
+    }
+
+    // Called wherever a turn reports new state. Persisting and gating live
+    // together because they must never disagree.
+    function adoptState(next) {
+      if (!next) return;          // an error event ships none; do not default
+      state = next;
+      if (session) state.topic_id = session.topic_id;
+      saveState();
+      applyControls(false);
+      if (isComplete()) showVerdict();
+    }
+
+    // A turn refused with 409 means the server considers this session finished
+    // and we don't. Believe the server, then run the normal card path — without
+    // flipping locally first, the verdict fetch would 409 too and the learner
+    // would get two errors and a blank screen.
+    function adoptCompletionFrom409() {
+      state = Object.assign({}, state, { status: "complete" });
+      saveState();
+      applyControls(false);
+      showVerdict();
     }
 
     // A turn needs `session.topic_id` — the server's choice, never a guess
@@ -1451,12 +1743,26 @@
       // byte-identical every turn so the conversation worker's cached prefix
       // keeps hitting.
       form.append("sketch", session.sketch);
+      // This session's progress, held here because the server keeps none.
+      form.append("state", JSON.stringify(state));
+      // Captured before the request, not read inside the handlers: `reply`
+      // pushes two entries into `dialogue`, so a late `score` reading
+      // `dialogue.length` would file its tone errors against the next turn.
+      const turnIndex = dialogue.length / 2 + 1;
       let transcript = null;
       try {
         const resp = await fetch("/api/turn", { method: "POST", body: form });
         // Everything that maps to a status — unknown topic, STT failure — is
         // settled before the first byte, so this still catches those cleanly.
         if (!resp.ok) {
+          if (resp.status === 409) {
+            // Not an error to show: the session is over and we were the last
+            // to know. Withdraw the echo and show the card instead.
+            echo.remove();
+            setStatus("this session is finished");
+            adoptCompletionFrom409();
+            return;
+          }
           // Nothing was transcribed, so the echo is the only bubble up and it
           // carries the failure — no partner bubble is created for a turn the
           // partner never saw.
@@ -1486,6 +1792,7 @@
             if (event.pronunciation) {
               echo.render(transcript, { pronunciation: event.pronunciation });
             }
+            recordNote(turnIndex, { tone_errors: event.tone_errors || [] });
           } else if (event.stage === "reply") {
             renderReply(replyBubble(), event.reply);
             // Only record a real exchange: an empty transcript means nothing was
@@ -1494,7 +1801,15 @@
               dialogue.push({ role: "user", zh: transcript.zh, pinyin: transcript.pinyin });
               dialogue.push({ role: "partner", zh: event.reply.zh, pinyin: event.reply.pinyin });
               saveDialogue();
+              recordNote(turnIndex, {
+                grammar_notes: (event.annotation && event.annotation.grammar_notes) || [],
+              });
             }
+            // Written here, in the same block as the dialogue it belongs to —
+            // a turn saved without its consequences is progress that cannot be
+            // recomputed. (A silent turn echoes the state back unchanged, so
+            // this is safe on the re-prompt path too.)
+            adoptState(event.state);
           } else if (event.stage === "done") {
             // The terminal event, so the timings line is appended last in the
             // thread no matter which of score/reply arrived second. Its
@@ -1515,7 +1830,9 @@
         // echo carries the failure instead.
         (pending || echo).fail("request failed: " + err);
       } finally {
-        talk.disabled = false;
+        // Through `applyControls`, never `talk.disabled = false`: a session
+        // that just completed must stay closed.
+        applyControls(false);
       }
     }
 
@@ -1531,7 +1848,7 @@
     // Tone numbers are optional (`ni3hao3` gets tones checked, `nihao` doesn't).
 
     function setComposerBusy(busy) {
-      textInput.disabled = send.disabled = busy;
+      applyControls(busy);
     }
 
     async function sendText() {
@@ -1548,6 +1865,8 @@
 
       setComposerBusy(true);
       setStatus("");
+      // Captured before the request, for the same reason as the spoken path.
+      const turnIndex = dialogue.length / 2 + 1;
       // Optimistic echo: your own words belong on screen the moment you send
       // them, not a round trip later. All we have locally is the pinyin you
       // typed, so paint that (dimmed) and upgrade the same bubble to the
@@ -1576,9 +1895,20 @@
             text: text,
             dialogue: dialogue.map((t) => ({ role: t.role, zh: t.zh })),
             sketch: session.sketch,
+            state: state,
           }),
         });
         if (!resp.ok) {
+          if (resp.status === 409) {
+            // The session finished elsewhere (another tab, a restored one).
+            // Hand the text back and show the card rather than an HTTP error.
+            echo.remove();
+            pending.remove();
+            textInput.value = text;
+            setStatus("this session is finished");
+            adoptCompletionFrom409();
+            return;
+          }
           const detail = gateIfUnauthorized(resp)
             ? "log back in and send again"
             : await resp.text();
@@ -1598,6 +1928,11 @@
         dialogue.push({ role: "user", zh: data.transcript.zh, pinyin: data.transcript.pinyin });
         dialogue.push({ role: "partner", zh: data.reply.zh, pinyin: data.reply.pinyin });
         saveDialogue();
+        recordNote(turnIndex, {
+          grammar_notes: (data.annotation && data.annotation.grammar_notes) || [],
+          tone_errors: (data.annotation && data.annotation.tone_errors) || [],
+        });
+        adoptState(data.state);
         setStatus("");
       } catch (err) {
         restore("request failed: " + err);
@@ -1745,6 +2080,19 @@
       localStorage.removeItem(STORE_KEY);
       session = null;
       localStorage.removeItem(SESSION_KEY);
+      // The state must go too. Left behind, a completed session's `status`
+      // survives into the new scene: `applyControls` disables the mic on a
+      // scenario the learner has not spoken into, every turn 409s, and the
+      // only recovery affordance is the button that just did this.
+      state = { filled_at: {}, status: "active" };
+      notes = {};
+      localStorage.removeItem(STATE_KEY);
+      localStorage.removeItem(NOTES_KEY);
+      // The card goes with everything else. An earlier version kept the last
+      // one pinned above the new scene, on the theory that it holds the phrase
+      // the learner was told to memorise — in practice it just crowds the top
+      // of a fresh conversation with the previous one's result.
+      localStorage.removeItem(VERDICT_KEY);
       thread.replaceChildren();
       // The bubbles are gone, so their reveal state and decoded audio are dead
       // weight — and the Map is the one thing here that grows without bound.
@@ -1753,6 +2101,7 @@
       renderScenarioCard(null);
       stuck = true;
       setStatus("new conversation");
+      applyControls(false);
       startSession();
     });
 
@@ -1782,6 +2131,11 @@
     restoreThread();
     applyShowText();
     applyMode();
+    // Gate the controls to the restored state *before* anything can be typed,
+    // and re-show the card a finished session already earned. `showVerdict`
+    // reads its cache first, so a reload costs no second Sonnet call.
+    applyControls(false);
+    if (isComplete()) showVerdict();
     initGate();
 
     // Hold-to-talk: press to start, release (or leave the button) to send.

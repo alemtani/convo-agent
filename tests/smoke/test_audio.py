@@ -47,9 +47,9 @@ def load(page):
     seed is guarded on the session key not already existing."""
     page.add_init_script(
         "(([s, d]) => {"
-        "if (localStorage.getItem('convo.session.greetings')) return;"
-        "localStorage.setItem('convo.session.greetings', JSON.stringify(s));"
-        "localStorage.setItem('convo.dialogue.greetings', JSON.stringify(d)); })"
+        "if (localStorage.getItem('convo.session')) return;"
+        "localStorage.setItem('convo.session', JSON.stringify(s));"
+        "localStorage.setItem('convo.dialogue', JSON.stringify(d)); })"
         f"({json.dumps([SESSION_START, DUMMY_HISTORY])})"
     )
     page.goto("/")

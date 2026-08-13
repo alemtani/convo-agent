@@ -128,3 +128,20 @@ async def test_a_stalled_recognizer_times_out_as_an_stt_error(monkeypatch):
 
     with pytest.raises(stt.SttError, match="timed out"):
         await stt.transcribe(b"FAKEWAV")
+
+
+async def test_malformed_audio_becomes_an_stt_error(monkeypatch):
+    """A client can upload anything. Azure raises from the SDK, not our code.
+
+    Building the recognizer over a non-WAV body raises `RuntimeError`
+    (`SPXERR_INVALID_HEADER`) *before* any result exists, so it never reached
+    the `ResultReason` check below — it escaped `transcribe` unwrapped and the
+    route returned 500 instead of the 502 it maps `SttError` to.
+    """
+    def boom(*args, **kwargs):
+        raise RuntimeError("Exception with an error code: 0xa (SPXERR_INVALID_HEADER)")
+
+    monkeypatch.setattr(stt, "recognizer_for", boom)
+
+    with pytest.raises(stt.SttError, match="SPXERR_INVALID_HEADER"):
+        await stt.transcribe(b"not-a-wav")

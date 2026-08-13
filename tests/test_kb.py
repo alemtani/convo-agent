@@ -355,3 +355,38 @@ def test_committed_greetings_carries_a_valid_scenario():
     assert scenario.max_turns == kb.derive_max_turns(
         scenario.n_slots, scenario.n_request_slots
     )
+
+
+# --- M2-C: the scenario on the per-turn path ------------------------------
+
+
+def test_load_scenario_returns_the_parsed_scenario():
+    scenario = kb.load_scenario("greetings")
+    assert [s.id for s in scenario.slots] == ["self_name", "partner_name", "wellbeing"]
+    assert scenario.max_turns == 7
+
+
+def test_load_scenario_is_memoized_like_the_kb_block():
+    """It is now read on every turn, so it must not re-parse `topic.md` each time.
+
+    `load_kb_block` is cached for exactly this reason; termination needs the
+    parsed `Scenario` rather than the rendered string, and an uncached loader
+    would put a blocking file read back on the async hot path.
+    """
+    assert kb.load_scenario("greetings") is kb.load_scenario("greetings")
+
+
+def test_load_scenario_is_none_for_a_topic_without_one(tmp_path):
+    """Topics can land before their scenario does (#29) — that is not an error."""
+    topic_dir = tmp_path / "bare"
+    topic_dir.mkdir()
+    (topic_dir / "topic.md").write_text(
+        "---\nid: bare\ndisplay_name: \"Bare\"\ntarget_vocab: [你, 好]\n---\n\n# Bare\n",
+        encoding="utf-8",
+    )
+    assert kb.load_scenario("bare", root=str(tmp_path)) is None
+
+
+def test_load_scenario_raises_for_an_unknown_topic():
+    with pytest.raises(kb.KbError):
+        kb.load_scenario("no-such-topic")

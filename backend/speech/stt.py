@@ -58,3 +58,10 @@ async def transcribe(audio_wav: bytes, language: str = "zh-CN") -> str:
         raise SttError(
             f"Azure STT timed out after {config.STT_TIMEOUT_S:g}s"
         ) from exc
+    except RuntimeError as exc:
+        # The SDK raises out of *recognizer construction* for a body that isn't
+        # a WAV (`SPXERR_INVALID_HEADER`) — before any result exists, so the
+        # `ResultReason` handling below never sees it. A client can upload
+        # anything, so unwrapped this is a 500 on bad input rather than the 502
+        # the route maps `SttError` to.
+        raise SttError(f"Azure STT could not read the audio: {exc}") from exc

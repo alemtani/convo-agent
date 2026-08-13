@@ -8,9 +8,9 @@ their own words as much as the partner's. In Phase 3 the partner reply is produc
 by the conversation worker and a separate `turn_annotation` is added alongside
 these fields (not nested inside the utterance).
 """
-from typing import List, Literal, Optional
+from typing import Dict, List, Literal, Optional, Set
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, PositiveInt, field_validator
 
 
 class Utterance(BaseModel):
@@ -189,11 +189,20 @@ class ReplyEvent(TurnEvent):
 
     Carries no scores — those went out on `score`. Deriving anything here from
     the PA result would make the reply wait on scoring.
+
+    It *does* carry `state`, because session state is derived from the worker's
+    annotation and so is ready at exactly this moment. Putting it on `done`
+    would make termination wait for the PA branch — up to `PA_TIMEOUT_S` of a
+    live mic on a session that has already ended — and would split the state
+    commit from the dialogue commit the client performs right here. A client
+    that loses the connection between the two events must not end up with the
+    turn recorded and its consequences lost.
     """
 
     stage: Literal["reply"] = "reply"
     reply: Utterance
     annotation: Optional["TurnAnnotation"] = None
+    state: Optional["SessionState"] = None
 
 
 class DoneEvent(TurnEvent):
@@ -279,12 +288,22 @@ class WorkerAnnotation(BaseModel):
     construction instead of by instruction.
 
     `TurnAnnotation` is still what goes on the wire — see `from_worker`.
+
+    `slots_filled` and `learner_closed` are M2-C's tracker, folded in here rather
+    than bought with a second call: both are observations about the learner's
+    utterance, which is what an annotation is, and living on the shared shape
+    means the spoken schema gets them for free. The model's job with
+    `slots_filled` is narrow — *which of these named facts did this turn
+    establish?* — structured extraction, not judgment. What the ids then *mean*
+    is decided in `termination.py`, in Python.
     """
 
     coherence: Literal["on_track", "drifting", "off_track"]
     grammar_notes: List[str] = []
     topic_tags: List[str] = []
     should_give_feedback: bool = False
+    slots_filled: List[str] = []
+    learner_closed: bool = False
 
 
 class TurnAnnotation(WorkerAnnotation):
@@ -358,6 +377,46 @@ class SpokenConversationResult(BaseModel):
     turn_annotation: WorkerAnnotation
 
 
+class SessionState(BaseModel):
+    """How far the learner has got, and whether the session is over (M2-C).
+
+    The server is a stateless proxy, so this travels the same road as `sketch`
+    and `dialogue`: the server computes it, the client holds it, and the client
+    resubmits it on the next turn. Nothing here is persisted server-side.
+
+    `filled_at` maps a slot id to the turn that established it. A dict rather
+    than a set plus a parallel order field, because the verdict worker explains
+    *both* halves — which facts are missing (a set comparison) and when each
+    landed (`docs/SCENARIOS.md`, worked example 1). `filled` is derived from it
+    and is deliberately not a wire field: two sources of truth for the same
+    thing is how they drift apart.
+
+    The client can of course lie about its own progress. This is a single-user
+    practice app with no score to game, and lying only costs the learner their
+    verdict — so `goal_met` is recomputed server-side wherever it matters
+    (`workers/feedback.py`) rather than defended with a server session table,
+    which is the thing the stateless-proxy rule exists to avoid.
+
+    There is no `wrapping` status. The final turn is a *derived* phase
+    (`turn >= max_turns`), not stored — a third status would be one more thing
+    the client could desync.
+    """
+
+    filled_at: Dict[str, PositiveInt] = Field(default_factory=dict, max_length=32)
+    consecutive_closes: int = Field(default=0, ge=0)
+    status: Literal["active", "complete"] = "active"
+    goal_met: bool = False
+    end_reason: Optional[Literal["goal", "cap", "closed"]] = None
+    # Which topic this state belongs to, stamped by the client at write time so
+    # a restored store can be checked against the session it was written under
+    # (#29 puts more than one topic on disk). Absent on a fresh state.
+    topic_id: Optional[str] = None
+
+    @property
+    def filled(self) -> Set[str]:
+        return set(self.filled_at)
+
+
 class ScenarioCard(BaseModel):
     """The learner-visible half of an authored scenario (`docs/SCENARIOS.md`).
 
@@ -408,6 +467,83 @@ class SessionStartResponse(BaseModel):
     sketch: str
 
 
+class ModelLine(BaseModel):
+    """One line of the verdict's "what you could have said" exchange.
+
+    English gloss included: a band-1 learner reading a corrected exchange needs
+    to know what it *means*, or the demonstration teaches only mimicry.
+    """
+
+    zh: str
+    pinyin: str
+    english: str
+
+
+class VerdictResult(BaseModel):
+    """Structured output the verdict worker constrains Claude to (M2-D).
+
+    Deliberately *not* the wire shape. The worker returns only the two things a
+    model is actually good at — a short English explanation, and an in-band
+    Chinese exchange — while `goal_met` and `missing` are recomputed by the
+    server and assembled into `VerdictCard` around this. The judge is never
+    asked whether the learner succeeded, so it cannot be lenient about it
+    (`docs/SCENARIOS.md`, "Runtime: three tiers").
+    """
+
+    explanation: str
+    model_exchange: List[ModelLine] = []
+
+
+class MissingSlot(BaseModel):
+    """A goal fact the learner never established, in learner-readable form."""
+
+    id: str
+    description: str
+
+
+class VerdictCard(BaseModel):
+    """Response body for `POST /api/verdict`: the end-of-session card.
+
+    `goal_met` and `missing` are the server's, recomputed from the KB and the
+    session's filled set — never the model's, and never the client's. What the
+    worker contributes is `explanation` and, when the goal was missed, a 3–4
+    line `model_exchange` the learner could have said instead.
+    """
+
+    goal_met: bool
+    end_reason: Optional[Literal["goal", "cap", "closed"]] = None
+    missing: List[MissingSlot] = []
+    explanation: str
+    model_exchange: List[ModelLine] = []
+    turns_taken: int = 0
+
+
+class VerdictRequest(BaseModel):
+    """Request body for `POST /api/verdict`.
+
+    Bounded on purpose, like `TtsRequest`: behind one shared passcode this is an
+    uncached Sonnet call over caller-supplied text, which makes it the most
+    expensive thing in the app to abuse. A real session cannot approach these
+    limits — the turn cap tops out well under 20 turns.
+
+    `notes` is the per-turn tone/grammar signal the client accumulated, rolled
+    up rather than re-derived: the annotations already happened, once, on turns
+    that are over.
+    """
+
+    topic_id: str
+    dialogue: List[DialogueTurn] = Field(default_factory=list, max_length=40)
+    state: SessionState = Field(default_factory=SessionState)
+    notes: List[str] = Field(default_factory=list, max_length=60)
+
+    @field_validator("notes")
+    @classmethod
+    def _bound_note_length(cls, notes: List[str]) -> List[str]:
+        if any(len(note) > 300 for note in notes):
+            raise ValueError("a note is longer than 300 characters")
+        return notes
+
+
 class PasscodeRequest(BaseModel):
     """Request body for `POST /api/auth`: the shared passcode, nothing else.
 
@@ -433,11 +569,17 @@ class TextTurnRequest(BaseModel):
     (`SessionStartResponse.sketch`) — the client resubmits it byte-identical on
     every turn, same as `dialogue`. Defaults to empty for a turn sent before a
     session has been started, which degrades to no flavour rather than failing.
+
+    `state` is this session's progress (`SessionState`) — computed by the server,
+    held by the client, resubmitted here, on the same terms as `sketch`. It
+    defaults to a fresh state, so a turn sent before any state exists still
+    works.
     """
 
     topic_id: str
     text: str
     dialogue: List[DialogueTurn] = []
+    state: SessionState = Field(default_factory=SessionState)
     sketch: str = ""
 
     @field_validator("text")
@@ -500,3 +642,6 @@ class ConversationTurnResponse(BaseModel):
     annotation: TurnAnnotation
     timings: Optional[TurnTimings] = None
     usage: Optional[TurnUsage] = None
+    # The spoken path's equivalent rides `ReplyEvent`; text mode has one
+    # response, so it rides that.
+    state: Optional[SessionState] = None

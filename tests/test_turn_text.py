@@ -191,3 +191,37 @@ def test_text_turn_response_carries_stage_timings(monkeypatch):
     assert body["timings"]["total_ms"] is not None
     assert body["timings"]["stt_ms"] is None
     assert body["timings"]["pa_ms"] is None
+
+
+# --- M2-C: session state on the text route -------------------------------
+
+
+def test_state_round_trips_through_the_text_route(monkeypatch):
+    async def fake_respond(**kwargs):
+        return (
+            Utterance(zh="好。", pinyin="hǎo."),
+            TurnAnnotation(coherence="on_track", slots_filled=["self_name"]),
+            Utterance(zh="我叫小明", pinyin="wǒ jiào xiǎo míng"),
+            object(),
+        )
+
+    monkeypatch.setattr(conversation, "respond", fake_respond)
+
+    resp = client.post(
+        "/api/turn/text",
+        json={"topic_id": "greetings", "text": "我叫小明"},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["state"]["filled_at"] == {"self_name": 1}
+
+
+def test_a_text_turn_on_a_completed_session_is_refused():
+    resp = client.post(
+        "/api/turn/text",
+        json={
+            "topic_id": "greetings",
+            "text": "你好",
+            "state": {"status": "complete", "goal_met": True},
+        },
+    )
+    assert resp.status_code == 409

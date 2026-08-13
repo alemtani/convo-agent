@@ -310,6 +310,22 @@ def list_topic_ids(root: str = KB_ROOT) -> List[str]:
 
 
 @functools.lru_cache(maxsize=None)
+def load_scenario(topic_id: str, root: str = KB_ROOT) -> Optional[Scenario]:
+    """The parsed `scenario:` block, or `None` for a topic that has none.
+
+    Memoized for the same reason `load_kb_block` is: M2-C reads this on **every**
+    turn (`termination.advance` needs the slot ids and the turn cap), and
+    `load_topic` re-reads and re-parses `topic.md` on each call — a blocking file
+    read inside an async handler, which is exactly what the caching on its
+    siblings exists to keep off the hot path.
+
+    `None` is not an error: topics can land before their scenario does (#29), and
+    those sessions simply run unbounded, as they did before M2-C.
+    """
+    return load_topic(topic_id, root).scenario
+
+
+@functools.lru_cache(maxsize=None)
 def load_vocab_block(topic_id: str, root: str = KB_ROOT) -> str:
     """Concatenate vocab + grammar + dialogues only — no scenario section.
 
