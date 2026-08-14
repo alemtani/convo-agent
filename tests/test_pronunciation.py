@@ -17,6 +17,7 @@ import pytest
 from backend.models import PronunciationScore
 from backend.speech import _azure
 from backend.speech import pronunciation as pa
+from tests.fakes_speech import canceled_event, make_recognizer_class, recognized_event
 
 
 def _syl(grapheme, accuracy, syllable=""):
@@ -40,12 +41,16 @@ def _result(reason, accuracy=0.0, words=None, error_details=""):
     )
 
 
-def _make_fake_speechsdk(result, recorder):
+def _make_fake_speechsdk(recognizer_class, recorder):
     class FakeSpeechConfig:
         def __init__(self, subscription, region):
             self.subscription = subscription
             self.region = region
             self.speech_recognition_language = None
+            self.properties = {}
+
+        def set_property(self, property_id, value):
+            self.properties[property_id] = value
 
     class FakeAudioConfig:
         def __init__(self, filename):
@@ -59,14 +64,6 @@ def _make_fake_speechsdk(result, recorder):
 
         def apply_to(self, recognizer):
             recorder["applied_to"] = recognizer
-
-    class FakeRecognizer:
-        def __init__(self, speech_config, audio_config):
-            recorder["speech_config"] = speech_config
-            recorder["audio_config"] = audio_config
-
-        def recognize_once(self):
-            return result
 
     class FakePaResult:
         def __init__(self, res):
@@ -90,8 +87,14 @@ def _make_fake_speechsdk(result, recorder):
         PronunciationAssessmentGradingSystem=grading,
         PronunciationAssessmentGranularity=granularity,
         PronunciationAssessmentResult=FakePaResult,
-        SpeechRecognizer=FakeRecognizer,
+        SpeechRecognizer=recognizer_class,
         ResultReason=reasons,
+        CancellationReason=types.SimpleNamespace(
+            EndOfStream="EndOfStream", Error="Error"
+        ),
+        PropertyId=types.SimpleNamespace(
+            Speech_SegmentationSilenceTimeoutMs="SegmentationSilenceTimeoutMs"
+        ),
         CancellationDetails=cancellation,
     )
 
@@ -99,13 +102,26 @@ def _make_fake_speechsdk(result, recorder):
 @pytest.fixture
 def patched(monkeypatch):
     """One fake SDK serves both `pronunciation` (PA config + result parsing) and
-    `_azure` (the shared construction PA delegates to)."""
+    `_azure` (the shared construction and continuous loop PA delegates to).
+
+    ``install`` takes the assessed segments the audio produces, in order — one
+    per stretch of speech Azure separates, which is what a learner's pause makes.
+    """
     monkeypatch.setattr(_azure.config, "AZURE_SPEECH_KEY", "test-key")
     monkeypatch.setattr(_azure.config, "AZURE_SPEECH_REGION", "test-region")
 
-    def install(result):
+    def install(*results, canceled=None):
+        events = [("recognized", recognized_event(r)) for r in results]
+        if canceled is None:
+            events.append(("canceled", canceled_event("EndOfStream")))
+        else:
+            events.append(("canceled", canceled_event("Error", result=canceled)))
+        events.append(("session_stopped", None))
+
         recorder = {}
-        fake = _make_fake_speechsdk(result, recorder)
+        fake = _make_fake_speechsdk(
+            make_recognizer_class(events, recorder), recorder
+        )
         monkeypatch.setattr(pa, "speechsdk", fake)
         monkeypatch.setattr(_azure, "speechsdk", fake)
         return recorder
@@ -168,14 +184,73 @@ async def test_word_without_syllables_falls_back_to_word_grapheme(patched):
     ]
 
 
+async def test_scores_span_speech_on_both_sides_of_a_pause(patched):
+    """PA had the same `recognize_once` bug as STT, and it has to be fixed with it.
+
+    The frontend now aligns these syllables onto the transcript and renders
+    anything unscored as plain text. So if STT returns the whole sentence while
+    PA still covers only the phrase before the pause, the second half is
+    permanently unscored — the learner is told, silently, that half of what they
+    said was not worth grading.
+    """
+    patched(
+        _result(
+            "RecognizedSpeech",
+            accuracy=90.0,
+            words=[_word("我想要", 90.0, [_syl("我", 90.0), _syl("想要", 90.0)])],
+        ),
+        _result(
+            "RecognizedSpeech",
+            accuracy=70.0,
+            words=[_word("咖啡", 70.0, [_syl("咖", 60.0), _syl("啡", 80.0)])],
+        ),
+    )
+
+    score = await pa.assess(b"FAKEWAV", "我想要咖啡")
+
+    assert [s.hanzi for s in score.syllables] == ["我", "想要", "咖", "啡"]
+
+
+async def test_overall_weighs_each_segment_by_its_length(patched):
+    """One number for the whole utterance, not the last segment's number.
+
+    Azure scores each segment on its own. Averaging them flat would let a
+    one-syllable afterthought count as much as the sentence before it.
+    """
+    patched(
+        _result(
+            "RecognizedSpeech",
+            accuracy=90.0,
+            words=[_word("我想要", 90.0, [_syl("我", 90.0), _syl("想", 90.0), _syl("要", 90.0)])],
+        ),
+        _result(
+            "RecognizedSpeech",
+            accuracy=50.0,
+            words=[_word("啊", 50.0, [_syl("啊", 50.0)])],
+        ),
+    )
+
+    score = await pa.assess(b"FAKEWAV", "我想要啊")
+
+    # (90*3 + 50*1) / 4 = 80, not the flat mean of 70.
+    assert score.overall == 80.0
+
+
 async def test_no_match_returns_none(patched):
     patched(_result("NoMatch"))
 
     assert await pa.assess(b"FAKEWAV", "你好") is None
 
 
+async def test_no_segments_at_all_returns_none(patched):
+    """Silence: the session opens, ends, and never recognizes anything."""
+    patched()
+
+    assert await pa.assess(b"FAKEWAV", "你好") is None
+
+
 async def test_canceled_raises_pa_error(patched):
-    patched(_result("Canceled", error_details="bad key"))
+    patched(canceled=types.SimpleNamespace(error_details="bad key"))
 
     with pytest.raises(pa.PaError, match="bad key"):
         await pa.assess(b"FAKEWAV", "你好")
