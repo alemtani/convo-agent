@@ -19,21 +19,24 @@ import azure.cognitiveservices.speech as speechsdk
 from backend import config
 from backend.models import PronunciationScore, SyllableScore
 from backend.pinyin import to_pinyin
-from backend.speech._azure import cancellation_message, recognizer_for
+from backend.speech._azure import (
+    RecognitionTimeout,
+    cancellation_message,
+    recognize_continuous,
+    recognizer_for,
+)
 
 
 class PaError(RuntimeError):
     """Azure pronunciation assessment failed (canceled or unexpected reason)."""
 
 
-def _to_score(result) -> PronunciationScore:
-    """Map Azure's assessment result onto our `PronunciationScore`.
+def _syllables_of(assessment) -> list:
+    """Walk one assessed segment's words → syllables into `SyllableScore`s.
 
-    Walk words → syllables, keying each scored chunk by its hanzi grapheme. When
-    a word carries no syllable breakdown, score the whole word as one chunk so a
-    grapheme always surfaces.
+    Key each scored chunk by its hanzi grapheme. When a word carries no syllable
+    breakdown, score the whole word as one chunk so a grapheme always surfaces.
     """
-    assessment = speechsdk.PronunciationAssessmentResult(result)
     syllables = []
     for word in assessment.words:
         word_syllables = word.syllables or []
@@ -55,9 +58,36 @@ def _to_score(result) -> PronunciationScore:
                     accuracy=word.accuracy_score,
                 )
             )
-    return PronunciationScore(
-        overall=assessment.accuracy_score, syllables=syllables
+    return syllables
+
+
+def _to_score(segments) -> Optional[PronunciationScore]:
+    """Merge every assessed segment into one score for the whole utterance.
+
+    Azure assesses each segment separately, so a learner who pauses mid-sentence
+    gets several partial results. They are one utterance to the learner and the
+    frontend aligns these syllables onto the whole transcript, so they merge in
+    spoken order.
+
+    ``overall`` is the segments' accuracy weighted by how many syllables each
+    covers. A flat mean would let a one-syllable afterthought count for as much
+    as the sentence before it.
+    """
+    per_segment = []
+    for result in segments:
+        assessment = speechsdk.PronunciationAssessmentResult(result)
+        syllables = _syllables_of(assessment)
+        if syllables:
+            per_segment.append((assessment.accuracy_score, syllables))
+
+    if not per_segment:
+        return None
+
+    merged = [syl for _, syllables in per_segment for syl in syllables]
+    total = sum(
+        accuracy * len(syllables) for accuracy, syllables in per_segment
     )
+    return PronunciationScore(overall=total / len(merged), syllables=merged)
 
 
 def _assess_sync(
@@ -65,8 +95,15 @@ def _assess_sync(
 ) -> Optional[PronunciationScore]:
     """Blocking pronunciation assessment of ``audio_wav`` against a reference.
 
-    Shares the recognizer construction with `stt` via `recognizer_for`; the only
-    PA-specific step is applying the assessment config before recognition.
+    Shares the recognizer construction and the continuous-recognition loop with
+    `stt` via `_azure`; the only PA-specific step is applying the assessment
+    config before recognition.
+
+    Continuous recognition here is not optional polish — it has to match `stt`.
+    `stt`'s transcript is this call's reference text, so if PA still stopped at
+    the learner's first pause it would score only the phrase before it while the
+    transcript carried the whole sentence, and the frontend would render the rest
+    permanently unscored.
     """
     pa_config = speechsdk.PronunciationAssessmentConfig(
         reference_text=reference_text,
@@ -76,16 +113,15 @@ def _assess_sync(
 
     with recognizer_for(audio_wav, language) as recognizer:
         pa_config.apply_to(recognizer)
-        result = recognizer.recognize_once()
+        segments, canceled = recognize_continuous(
+            recognizer, config.PA_TIMEOUT_S
+        )
 
-    reason = result.reason
-    if reason == speechsdk.ResultReason.RecognizedSpeech:
-        return _to_score(result)
-    if reason == speechsdk.ResultReason.NoMatch:
-        # Audio processed but nothing scorable — degrade to no scores.
-        return None
+    if canceled is not None:
+        raise PaError(f"Azure PA canceled {cancellation_message(canceled)}")
 
-    raise PaError(f"Azure PA canceled {cancellation_message(result)}")
+    # Nothing scorable in the audio — degrade to no scores rather than fail.
+    return _to_score(segments)
 
 
 async def assess(
@@ -93,7 +129,7 @@ async def assess(
 ) -> Optional[PronunciationScore]:
     """Assess ``audio_wav`` against ``reference_text`` and return tone scores.
 
-    Blocking ``recognize_once`` runs in a worker thread to stay async-correct,
+    Blocking recognition runs in a worker thread to stay async-correct,
     mirroring `stt.transcribe`.
 
     Bounded by `PA_TIMEOUT_S`. A wedged PA call is the one most likely to go
@@ -110,7 +146,9 @@ async def assess(
             asyncio.to_thread(_assess_sync, audio_wav, reference_text, language),
             timeout=config.PA_TIMEOUT_S,
         )
-    except asyncio.TimeoutError as exc:
+    except (asyncio.TimeoutError, RecognitionTimeout) as exc:
+        # Two deadlines, one message — see `stt.transcribe`. One frees the
+        # streamed response, the other frees the recognition thread.
         raise PaError(
             f"Azure PA timed out after {config.PA_TIMEOUT_S:g}s"
         ) from exc
