@@ -1,5 +1,9 @@
 # CLAUDE.md
 
+Shared project brief: [`AGENTS.md`](AGENTS.md). This file is the Claude Code
+addendum — hooks, tunnel lifetime, and the `kb-topic` skill. Both files load.
+If they disagree on **what is built**, `AGENTS.md` wins.
+
 ## Project purpose
 
 Convo Agent is a Mandarin conversation practice tool for a single beginner
@@ -9,8 +13,8 @@ Services provides speech-to-text and pronunciation/tone assessment.
 
 Each topic is a small markdown **knowledge base** (vocab, grammar, dialogues);
 a conversation is the *applied form* of that KB — generated from it, scored
-against it. Input is spoken; the partner's reply is text (on-demand TTS is
-deferred, not in the hot path).
+against it. Input is spoken; the partner's reply is text. On-demand TTS sits
+on `POST /api/tts`, beside the loop, not in the hot path.
 
 ## Tech stack
 
@@ -18,7 +22,8 @@ deferred, not in the hot path).
 - FastAPI + Uvicorn (stateless turn proxy)
 - Anthropic SDK (Claude API) — Sonnet 5 on the per-turn loop; prompt caching
 - Azure Cognitive Services Speech SDK (STT + Pronunciation Assessment)
-- aiosqlite (async SQLite) — durable learning state only, not transcripts
+- aiosqlite (async SQLite) — planned for durable learning state only
+  (Phase 7). Not in the running app. Transcripts stay on the client.
 - Pydantic for data validation
 - pypinyin — server-side pinyin romanization of recognized speech (also an
   authoring-tool dep; see `kb/zh/_tools/`)
@@ -42,7 +47,7 @@ should wait on. Live modules: `main.py`, `orchestrator.py`, `termination.py`,
 `kb.py`, `pinyin.py`, `tones.py`, `models.py`, `config.py`, `prompts.py`,
 `workers/{conversation,sketch,feedback}.py`,
 `speech/{stt,pronunciation,tts,_azure}.py`. Still planned: `db.py`,
-`profile.py` (Phases 7–8).
+`profile.py` (Phase 7). Auth and deploy (the old Phase 8) have shipped.
 
 Session state is client-held, like `sketch`: `termination.py` computes it from
 the tracker fields on the worker's annotation and the client resubmits it every
@@ -51,9 +56,10 @@ is, and `done` waits on the PA branch too.
 
 ```
 backend/
-  main.py              # FastAPI app, static serving, CORS (auth gate: Phase 8)
+  main.py              # FastAPI app, static serving, CORS, passcode gate
   orchestrator.py      # turn coordination, context assembly, caching, bounding
   termination.py       # slot state → end conditions + situational pressure (pure)
+  auth.py              # shared passcode → signed session cookie
   workers/
     conversation.py    # Claude conversation worker (cached prefix) + slot tracker
     feedback.py        # verdict card: explains a computed outcome, once
@@ -64,11 +70,10 @@ backend/
     pronunciation.py   # Azure PA (two-pass)
     tts.py             # Azure TTS (slowed SSML, cached by line)
   kb.py                # load topic markdown, parse frontmatter
-  profile.py           # covered-set + proficiency CRUD + selection weighting
   pinyin.py            # romanize recognized speech for display (pypinyin)
   models.py            # Pydantic models
-  db.py                # aiosqlite setup
   config.py            # env vars (API keys, Azure region)
+  # planned: db.py, profile.py (Phase 7 — covered-set + proficiency)
   requirements.txt
   __init__.py
 kb/zh/                 # knowledge base (git-versioned markdown)

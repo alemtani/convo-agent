@@ -4,11 +4,12 @@ A Mandarin conversation practice agent powered by Claude and Azure Speech Servic
 
 ## Architecture
 
-- **FastAPI** backend serving a REST API
-- **Anthropic Claude API** for conversational AI
-- **Azure Speech Services** for speech-to-text, text-to-speech, and pronunciation assessment
-- **SQLite** (via aiosqlite) for async data persistence
-- Frontend expected at `http://localhost:3000` (CORS pre-configured)
+- **FastAPI** backend serving the API and the PWA (`frontend/`)
+- **Anthropic Claude API** for the partner, the session sketch, and the verdict
+- **Azure Speech Services** for speech-to-text, pronunciation assessment, and on-demand TTS
+- **Client-held session state** in `localStorage` — the server is a stateless turn proxy
+- Durable learning state (SQLite) is designed, not built. See [`AGENTS.md`](AGENTS.md).
+- CORS also allows `http://localhost:3000` for a separately-hosted frontend
 
 ## Setup
 
@@ -41,11 +42,13 @@ A Mandarin conversation practice agent powered by Claude and Azure Speech Servic
    AZURE_SPEECH_REGION=eastus
    ```
 
-   **Getting an Azure Speech key** (needed from Phase 1; Anthropic isn't used
-   until Phase 3): in the [Azure portal](https://portal.azure.com), create a
-   **Speech** resource (Free **F0** tier is plenty), region **East US** (matches
-   the `eastus` default in `backend/config.py`). Then under **Keys and Endpoint**,
-   copy **KEY 1** → `AZURE_SPEECH_KEY` and the **Region** → `AZURE_SPEECH_REGION`.
+   **Getting an Azure Speech key:** in the [Azure portal](https://portal.azure.com),
+   create a **Speech** resource (Free **F0** tier is plenty), region **East US**
+   (matches the `eastus` default in `backend/config.py`). Then under
+   **Keys and Endpoint**, copy **KEY 1** → `AZURE_SPEECH_KEY` and the
+   **Region** → `AZURE_SPEECH_REGION`. A spoken session also needs
+   `ANTHROPIC_API_KEY` — the partner, the opening line, and the verdict
+   all call Claude.
 
 ## Running the dev server
 
@@ -172,16 +175,18 @@ Because phases are cumulative (each builds on the last), running the current
 walkthrough exercises everything underneath it. The full phase plan lives in
 [`docs/DESIGN.md`](docs/DESIGN.md#build-order--walking-skeleton).
 
-### What works today: Phase 2 — speech-to-text + per-syllable tone scores
+### What works today: a bounded scenario, spoken or typed
 
-Hold a button, speak Mandarin, and see your words transcribed **with a tone
-score on each syllable**, plus a fixed 你好 reply. Proves the two-pass speech
-path (mic → upload → Azure STT → Azure pronunciation assessment against that
-transcript → rendered, color-coded transcript). **Needs an Azure Speech key**
-(Anthropic is not used until Phase 3).
+The server draws one of five topics, pins an English situation and goal above
+the thread, and plays a partner who will not volunteer the facts you are
+supposed to extract. You have a derived turn cap. The session ends with a
+verdict: did you hit the goal, and what should you have said.
 
-1. Set `AZURE_SPEECH_KEY` / `AZURE_SPEECH_REGION` in `.env` (see
-   [Setup](#setup) above for how to provision the Azure Speech resource).
+**Needs both keys** — Azure for speech, Anthropic for the partner, the
+opening line, and the verdict.
+
+1. Set `ANTHROPIC_API_KEY`, `AZURE_SPEECH_KEY`, and `AZURE_SPEECH_REGION`
+   in `.env` (see [Setup](#setup)).
 
 2. Start the server:
 
@@ -192,26 +197,36 @@ transcript → rendered, color-coded transcript). **Needs an Azure Speech key**
 
 3. Open **http://localhost:8000/** in your browser (use `localhost`, not a LAN
    IP — the mic needs a secure context, and `localhost` counts as one).
-4. **Hold** the *🎙️ Hold to talk* button — a live mic-level meter fills as you
-   speak, so you can see the mic is capturing — say a Mandarin phrase (e.g.
-   你好老师), and release.
-5. ✅ **Expected:** a green bubble with your transcribed words, each syllable
-   underlined by how well you pronounced it (green = good, amber = ok, red = off)
-   and an overall **tone NN/100** badge; then a grey bubble reading
-   **你好 / nǐ hǎo**. Hover a syllable for its pinyin + score. (No speech detected
-   shows *(nothing recognized)*; if scoring fails the turn still shows your
-   transcript, just without tone colors.)
+4. Read the scenario card. The partner speaks first. That line does not
+   spend a turn.
+5. **Hold** *Hold to talk* — a live mic-level meter fills as you speak —
+   answer in Mandarin, and release. Or tap the keyboard and type pinyin
+   (`ni hao` or `ni3hao3`).
+6. ✅ **Expected:** your words appear with per-syllable tone underlines
+   (green / amber / red) on the spoken path; the partner replies in 汉字 +
+   pinyin. You can tap to hear a reply. The session ends when you fill
+   every goal slot, you hit the turn cap, or you say goodbye twice. A
+   verdict card explains the outcome. *New* draws a fresh topic.
+
+   No speech detected replies 请再说一次 and does not spend a turn. If
+   scoring fails, the turn still shows your transcript, just without tone
+   colors.
 
 <details>
 <summary>Prefer the command line?</summary>
 
 ```bash
-# Post any 16 kHz mono WAV; the reply is always the fixed 你好.
-curl -F "audio=@your-clip.wav" http://localhost:8000/api/turn
-# -> {"transcript":{…},"reply":{"zh":"你好","pinyin":"nǐ hǎo"},
-#     "pronunciation":{"overall":80.0,"syllables":[{"hanzi":"老","pinyin":"lǎo","accuracy":97.0}, …]}}
-curl http://localhost:8000/health      # -> {"status":"ok"}
+curl http://localhost:8000/health
+# -> {"status":"ok","auth":"disabled"}     locally; "enabled" on a public host
+
+curl -s -X POST http://localhost:8000/api/session
+# -> topic_id, display_name, scenario_card, opening_line, sketch
 ```
+
+A spoken turn is an NDJSON stream (`transcript`, then `score` / `reply`,
+then `done`), not one JSON object. Use `scripts/replay.py` to measure
+latency, or `scripts/walk_scenario.py` to prove a topic is winnable.
+Both spend real quota.
 </details>
 
 ## Measuring turn latency
@@ -291,19 +306,21 @@ See `kb/zh/_hsk/README.md` for how the wordlist and band ceiling work.
 
 ## Current status
 
-Built incrementally in user-visible phases (see **Try it yourself** above):
+The walking-skeleton phases live in
+[`docs/DESIGN.md`](docs/DESIGN.md#build-order--walking-skeleton).
+[`AGENTS.md`](AGENTS.md) is the short map of what is live.
 
-- ✅ **Phase 0 — hello world:** static page served by FastAPI round-trips a
-  string through `GET /api/hello`. Proves the page → backend path end-to-end.
-- ✅ **Phase 1 — push-to-talk → speech-to-text:** the page records 16 kHz WAV in
-  the browser and uploads it to `POST /api/turn`; Azure STT transcribes it and the
-  backend returns a fixed 你好 reply. Proves the audio path before adding scores.
-- ✅ **Phase 2 — pronunciation assessment (per-syllable tone scores):** a second
-  pass runs Azure PA against the STT transcript and returns a per-syllable
-  accuracy breakdown the page renders as color-coded underlines. PA failures
-  degrade to transcript-only rather than failing the turn.
-- ⏳ Phases 3+ — the Claude conversation partner, feedback, bounded sessions, and
-  durable progress. Not yet implemented.
+- ✅ **Phases 0–3b** — page, spoken loop, pronunciation underlines, Claude
+  partner with a cached prefix, multi-turn history on the client.
+- ✅ **M1** — passcode gate, Fly.io deploy, CI deploy on `main`, phone
+  AudioContext unlock.
+- ✅ **M2** — authored scenario slots, sketch worker, slot tracker,
+  state-driven end conditions, verdict card. Five topics. Topic catalog
+  (`GET /api/topics`); session start still draws the topic.
+- ✅ **M4** — on-demand TTS, beside the loop.
+- ⏳ **Phase 6** — per-turn redo. Not built. *New* starts a fresh session.
+- ⏳ **Phase 7** — `db.py` / `profile.py`, covered-set, proficiency,
+  weighted draw. Not built.
 
-Also in place from the scaffold: CORS, `/health`, config loading API keys from
-`.env`, and the knowledge-base tooling under `kb/zh/`.
+In-session coaching every N turns (the original Phase 4 feedback worker)
+did not ship. The only coaching card is the end-of-session verdict.
