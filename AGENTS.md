@@ -4,8 +4,8 @@ Shared brief for every coding agent (Grok, Claude Code, or anything else).
 Read this first. Then read the file you are about to change.
 
 Claude Code also loads [`CLAUDE.md`](CLAUDE.md) — hooks, tunnel lifetime, and
-the `kb-topic` skill. If this file and `CLAUDE.md` disagree on **what is
-built**, this file wins. Then fix the other file in the same PR.
+the `kb-topic` skill. Leave that file to Claude Code. Do not edit it from
+this track.
 
 ---
 
@@ -48,24 +48,68 @@ Shipped, in the order a learner hits it:
 - Mobile-first PWA (`frontend/index.html`). Transcript and session state
   live in `localStorage`.
 
-Not built:
+Limits of the running app (not a backlog, just what is missing today):
 
-- `backend/db.py`, `backend/profile.py` — no covered-set, no proficiency,
-  no weighted draw. Session start is uniform random.
+- No `backend/db.py` / `backend/profile.py`. No covered-set, no proficiency
+  store, no weighted draw. Session start is uniform random.
   `schema.sql` exists; nothing reads it. No Fly volume.
-- In-session coaching every N turns. The only feedback card is the verdict.
-- Per-turn redo. "New" starts a fresh session.
-- Learner-picked topic. The catalog is read-only.
-- Syllabus / curriculum stages C0–C9 (`docs/CURRICULUM.md`). Open issues
-  #44–#53, plus #51 (`HSK_BAND_CEILING` loaded and unused).
-
-Recent follow-ups, not blockers: #63 (fetch timeouts, speech tunables,
-dead `SessionState.topic_id`). Authoring bug: #56 (`annotate_pinyin.py`
-sandhi).
+- No in-session coaching. The only feedback card is the verdict.
+- No per-turn redo. "New" starts a fresh session.
+- The topic catalog is read-only. The learner does not pick.
 
 The last product work on `main` is polish after M2: #58 (keep one machine
 warm), #59 (session-start retry), #60 (score the transcript in place),
 #62 (keep speech after a pause). A new session starts from that tip.
+
+---
+
+## What's next
+
+Two tracks. Both are open. Neither blocks the other. The issue list is
+the detail; this is the split.
+
+### Grow the surface — more topics, scenarios, languages
+
+Five Mandarin topics is where the MVP stopped. The next content is more
+scenes for this learner, then the same scene shape in another language.
+
+- Author more `kb/zh/<id>/` topics with a real scenario (more than one
+  slot, at least one `request`). The cut slate — time/date, weather,
+  directions — is the hard shape: two things to find out, plus one to
+  tell. See [`docs/CURRICULUM.md`](docs/CURRICULUM.md).
+- A second language is designed, not built: `kb/<lang>/lang.json`, a
+  pinned lexicon, romanization as a capability. C5 (#48), C9 (#50).
+  C7 (#52) is the live-edit hook: a session pins a `content_hash`, so
+  new topics apply to the *next* session, not mid-turn.
+- Authoring must stay honest as the slate grows. C4 (#47) hardens
+  `validate.py` into the generation gate. #56 is the known pinyin-sandhi
+  bug in `annotate_pinyin.py`.
+
+### Fit the session to this learner
+
+The loop works. It does not yet know what you have learned or where you
+are weak. Every session is the same draw, the same band-2 partner, the
+same pacing.
+
+That is the curriculum track ([`docs/CURRICULUM.md`](docs/CURRICULUM.md),
+issues #44–#53):
+
+| Issue | Stage | What it changes for the learner |
+|---|---|---|
+| #51 | C0 | The partner actually reads `HSK_BAND_CEILING`. Today the prompt hardcodes band 2. |
+| #44 | C1 | A syllabus record: which units they just finished. |
+| #45 | C2 | Prefer covered vocab. Soft, never a hard filter. |
+| #46 | C3 | Weighted draw from recency, weakness, staleness — not uniform random. |
+| #48 | C5 | Split **band** (which words) from **stage** (how hard the conversation is). |
+| #49 | C6 | Purpose facet — family, travel, work — reweights the draw. |
+| #53 | C8 | In-app topic list: covered, weak, stale, pin, tap to play. |
+
+C3 and C8 need the Phase 7 store (`db.py`, `profile.py`). C0 does not —
+it is the first thing that makes a ceiling bump mean anything.
+
+Leftover loop polish from the bug bash sits beside this track, not
+instead of it: #63 (fetch timeouts, speech tunables, dead
+`SessionState.topic_id`).
 
 ---
 
