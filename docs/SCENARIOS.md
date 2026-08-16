@@ -4,7 +4,10 @@ Companion to [`DESIGN.md`](DESIGN.md). That document specifies the turn loop,
 caching, and session lifecycle. This one specifies **what a session is trying to
 achieve, and how the system knows when it got there**.
 
-Status: designed, not built. Covers milestone **M2 — scenarios** (issues #28–#32).
+Status: **built.** Milestone **M2 — scenarios** shipped as issues #28–#32
+and #29 (closed 2026-08-12 / 2026-08-13). This document is the spec the
+code implements. If a sentence below still talks as if M2 is future work,
+the code and [`AGENTS.md`](../AGENTS.md) win.
 
 ---
 
@@ -650,17 +653,20 @@ catch structural regressions, not to certify teaching quality.
 
 ## Sequencing (M2 — scenarios)
 
-| Issue | Scope | Change from original plan |
-| --- | --- | --- |
-| **#28** | scenario slots in `topic.md`, six `validate.py` rules, derived `max_turns`, `kb.py` parsing, migrate `greetings` | **Grows.** Now the load-bearing PR of the milestone. |
-| **#30** | sketch worker — flavour only (opening line, persona, stall contents) | **Shrinks.** Criteria come from the KB; nothing that must not drift passes through a model. |
-| **#31** | slot tracker + pure-Python termination (three end conditions) + state-based situational pressure | **Absorbs** #32's `goal_met`. Scalar `goal_progress` replaced by an id set; both turn thresholds retired. |
-| **#32** | verdict worker — explains a *computed* outcome, plus the in-band model exchange | **Explains rather than decides.** |
-| **#29** | topics API + per-topic client store + author 6–8 topics with slots | **Moves last.** Prove the format on one scenario end-to-end before authoring seven more. |
+All five issues closed. The table stays as the record of how the plan
+moved, not as a backlog.
 
-The `GET /api/topics` and per-topic-store half of #29 has no dependency on
-scenario mechanics and can land earlier if the hardcoded `topic_id` becomes
-annoying first.
+| Issue | Scope | What changed in the plan | Shipped |
+| --- | --- | --- | --- |
+| **#28** | scenario slots in `topic.md`, six `validate.py` rules, derived `max_turns`, `kb.py` parsing, migrate `greetings` | **Grew.** The load-bearing PR of the milestone. | #38 |
+| **#30** | sketch worker — flavour only (opening line, persona, stall contents) | **Shrank.** Criteria come from the KB; nothing that must not drift passes through a model. | #40 |
+| **#31** | slot tracker + pure-Python termination (three end conditions) + state-based situational pressure | **Absorbed** #32's `goal_met`. Scalar `goal_progress` replaced by an id set; both turn thresholds retired. | #42 |
+| **#32** | verdict worker — explains a *computed* outcome, plus the in-band model exchange | **Explains rather than decides.** | #42 |
+| **#29** | topics API + author topics with slots | **Moved last**, then closed at **five** topics rather than 6–8. | #54, #55, #57 |
+
+`GET /api/topics` landed on its own (#54). Session start still draws the
+topic; the catalog is read-only. A learner-picked topic is curriculum
+work (C8, #53), not leftover M2.
 
 ---
 

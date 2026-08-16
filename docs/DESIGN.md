@@ -16,6 +16,15 @@ shopping, weather…) is a small, version-controlled wiki of vocab, grammar, and
 example dialogues. A conversation is the *applied form* of that knowledge base —
 generated from it, scored against it.
 
+**What's live.** The spoken and typed loops, scenario slots, sketch, verdict,
+on-demand TTS, passcode gate, and Fly deploy have shipped. Five topics.
+There is no SQLite store and no proficiency writeback yet — session start
+draws uniformly, and the only end-of-session card is the verdict. The short
+map is [`AGENTS.md`](../AGENTS.md). The phase table at the bottom of this
+file marks shipped vs remaining. Sections below still describe the *target*
+architecture; a sentence that assumes a covered-set or a per-turn redo is
+design, not the running app.
+
 ---
 
 ## Locked Architecture & Tech Stack
@@ -23,7 +32,7 @@ generated from it, scored against it.
 | Component | Choice | Rationale |
 |---|---|---|
 | **Platform** | Mobile-first responsive web (PWA), publicly hosted | Primary use is on a phone; no app store needed |
-| **Interaction** | Push-to-talk, **speech in → text out** | Input must be spoken (the whole point); text reply keeps the pipeline simple. On-demand TTS is a later add, not in the hot path |
+| **Interaction** | Push-to-talk, **speech in → text out** | Input must be spoken (the whole point); text reply keeps the pipeline simple. On-demand TTS is its own endpoint, not in the hot path |
 | **STT** | Azure Speech-to-Text | Stays in the Azure ecosystem |
 | **Pronunciation** | Azure Pronunciation Assessment (PA) | Only production-grade Mandarin tone scoring without building a research system |
 | **LLM** | Claude API (Anthropic) | Conversation engine + feedback generation |
@@ -45,19 +54,23 @@ everywhere, so adding a second user or language later is data, not a re-architec
 [mobile mic] → hold-to-talk → record → upload audio blob to backend
         │
 backend (stateless proxy):
-        ├─ Azure STT  ─┐ (parallel)
-        └─ Azure PA   ─┘  → transcript + per-syllable tone scores
+        Azure STT  →  transcript event (first, alone)
+             │
+             ├─ Azure PA          → score event (tone underlines)
+             └─ Conversation      → reply event (汉字 + pinyin + session state)
+                  worker (Claude)
+             both done            → done event
         │
-        → Conversation worker (Claude) → partner reply (汉字 + pinyin) as TEXT
+[client] → render each event as it lands, append to local transcript
         │
-[client] → render reply in the DM thread, append to local transcript
+        ↻ POST /api/tts after the turn, if the learner asks to hear the line
 ```
 
-Dropping TTS from the critical path removes the slowest, most failure-prone leg
-and an entire Azure surface. M4 adds it back the way this leaves room for: a
-separate `POST /api/tts`, keyed on the reply text, called *after* the turn
-resolves. The loop above is unchanged, and a synthesis that fails or stalls
-costs a bubble its audio rather than costing the learner a turn.
+STT has to finish first: PA needs the transcript as its reference, and the
+partner needs the same text. PA and Claude then run at the same time. TTS
+is a separate `POST /api/tts`, keyed on the reply text, called *after* the
+turn resolves. A synthesis that fails or stalls costs a bubble its audio
+rather than costing the learner a turn.
 
 ---
 
@@ -184,7 +197,7 @@ individually cacheable Claude calls so context and cost stay bounded.
                     ┌──────────────┐ ┌──────────────┐ ┌──────────────┐
                     │  Sketch (1×) │ │ Conversation │ │   Feedback   │
                     │  Sonnet      │ │   worker     │ │   worker     │
-                    │              │ │  Sonnet 4.6  │ │ Sonnet / Opus│
+                    │              │ │  Sonnet 5    │ │ Sonnet / Opus│
                     └──────────────┘ └──────────────┘ └──────────────┘
 ```
 
@@ -220,7 +233,7 @@ Per session the orchestrator builds one **stable prefix** and marks it with a
 Rules that protect the cache:
 
 - **Topic KB is the expensive payload** and is byte-identical across every turn of
-  a session → cache reads at ~0.1× instead of full price. On Sonnet 4.6 the
+  a session → cache reads at ~0.1× instead of full price. On Sonnet 5 the
   2048-token minimum cacheable prefix is easily cleared by a topic's
   vocab + grammar + dialogues. (Min prefix is 4096 on Haiku/Opus.)
 - **Keep the system prompt byte-frozen** — no `user_id`, `datetime.now()`, or
@@ -306,10 +319,10 @@ but always empty.
 
 ## Conversation Bounding & Session Lifecycle
 
-A session has an arc and a clean end. Once scenarios land (M2), bounding is driven
-by **slot state**, not by a turn schedule — the full rules are in
-[`SCENARIOS.md`](SCENARIOS.md); the summary is here because it supersedes the
-`target`/`max` scheme this section originally specified.
+A session has an arc and a clean end. Bounding is driven by **slot state**,
+not by a turn schedule — the full rules are in [`SCENARIOS.md`](SCENARIOS.md);
+the summary is here because it supersedes the `target`/`max` scheme this
+section originally specified.
 
 One derived threshold, the cap:
 
@@ -340,16 +353,18 @@ Enforcement, caching-safe:
   and read the verdict than be held in a scene you have left).
 
 ```
-active ──(missing ≠ ∅, turn ≥ max−1)──► wrapping ──┬─(all slots filled)──────► complete
-                                                    ├─(turn ≥ max)───────────► complete
-                                                    └─(2 learner closes)─────► complete
+active ──┬─(all slots filled)──────► complete   (goal met)
+         ├─(turn ≥ max)───────────► complete   (cap)
+         └─(2 learner closes)─────► complete   (left)
 ```
 
-Before M2 lands, `active → wrapping → complete` runs on `max_turns` alone.
+There is no `wrapping` phase. Steering toward 再见 while a slot is
+outstanding is the thing this design refuses. On the last turn the
+pressure hint stays aimed at the missing slot and adds "then close."
 
-On **complete**, the client disables the mic, runs the final feedback round, and
-the proficiency writeback happens — then offers "Start new session." Every session
-closes with feedback and a progress update rather than trailing off.
+On **complete**, the client disables the mic and calls `POST /api/verdict`.
+Proficiency writeback is Phase 7 and is not built. "New" starts a fresh
+session.
 
 ---
 
@@ -443,30 +458,40 @@ convo-agent/
 ├── backend/
 │   ├── main.py            # FastAPI, auth gate, static serving
 │   ├── orchestrator.py    # turn coordination, context assembly, caching, bounding
+│   ├── termination.py     # slot state → end conditions + pressure (pure)
+│   ├── auth.py            # shared passcode → signed session cookie
 │   ├── workers/
 │   │   ├── conversation.py  # Claude conversation worker (cached prefix)
-│   │   ├── feedback.py      # annotations → feedback + proficiency deltas
+│   │   ├── feedback.py      # verdict card: explains a computed outcome, once
 │   │   └── sketch.py        # session sketch generation
 │   ├── speech/
+│   │   ├── _azure.py        # shared credentialed SpeechConfig
 │   │   ├── stt.py           # Azure STT
-│   │   └── pronunciation.py # Azure PA (two-pass)
+│   │   ├── pronunciation.py # Azure PA (two-pass)
+│   │   └── tts.py           # Azure TTS (slowed SSML, cached by line)
 │   ├── kb.py              # load topic markdown, parse frontmatter
-│   ├── profile.py         # covered-set + proficiency CRUD + selection weighting
 │   ├── models.py          # Pydantic
-│   ├── db.py              # aiosqlite
-│   └── config.py          # env-based keys/config
+│   ├── config.py          # env-based keys/config
+│   ├── db.py              # planned: aiosqlite (Phase 7)
+│   └── profile.py         # planned: covered-set + proficiency (Phase 7)
 ├── kb/zh/                 # the knowledge base (git-versioned markdown)
 │   ├── index.md
 │   └── <topic>/{topic,vocab,grammar,dialogues}.md
 ├── frontend/             # mobile-first PWA (DM thread, push-to-talk, localStorage)
 ├── schema.sql
 ├── docs/DESIGN.md        # this file
+├── AGENTS.md             # shared agent brief — what is live
 └── README.md
 ```
 
 ---
 
 ## End-to-End Scenarios
+
+This is the **target** session, including the covered-set draw and
+proficiency writeback. Today there is no 💾 store: session start draws
+uniformly, and the only end-of-session write is the verdict card on the
+client.
 
 Notation: **[C]** client · **[S]** stateless backend · **[Claude]** · **[Azure]**.
 🟢 = cache hit · 💾 = the only server-persisted writes.
@@ -482,7 +507,7 @@ Notation: **[C]** client · **[S]** stateless backend · **[Claude]** · **[Azur
 6. **[S]** **[Azure STT]** + **[Azure PA]** in parallel → transcript + tone scores.
 7. **[S]** assemble request: stable prefix `[system + KB + sketch]` 🟢 + client dialogue
    + this turn `[transcript + PA + phase hint]`.
-8. **[Claude]** (Sonnet 4.6) → JSON: `partner_response`, `turn_annotation`,
+8. **[Claude]** (Sonnet 5) → JSON: `partner_response`, `turn_annotation`,
    `should_give_feedback: false`.
 9. **[S]** return `{partner_response, annotation}`. Persist nothing.
 10. **[C]** Append partner + your bubbles (and the annotation) to the local log. Loop to 5.
@@ -530,23 +555,29 @@ from completed feedback rounds is already 💾, so learning progress survives.
 
 ## MVP Scope
 
-### Included
+### Shipped
 
-- Speech-in / text-out turn loop (Azure STT + PA → Claude conversation → text).
-- Orchestrator + cached conversation worker (Sonnet 4.6) with structured output.
+- Speech-in / text-out turn loop (Azure STT → PA ∥ Claude → text). Typed
+  pinyin path beside it.
+- Orchestrator + cached conversation worker (Sonnet 5) with structured output.
 - Stateless proxy; client holds transcript in `localStorage`.
-- 10 HSK 3.0 (bands 1–2) topics authored as markdown KBs.
-- Accumulating covered-set with recency + weakness + focus weighting.
-- Feedback every 3 turns and at session end → proficiency writeback.
+- Five HSK 3.0 (bands 1–2) topics authored as markdown KBs.
 - Goal-oriented scenarios: authored slot goals, derived `max_turns`, computed
   verdict + in-band model answer ([`SCENARIOS.md`](SCENARIOS.md)).
 - Bounded sessions — slot-state-driven, one derived cap — with a clean close.
-- Client-side turn redo.
-- DM-style mobile PWA with push-to-talk.
-- Passcode auth; deployed to Fly/Railway, reachable from a phone.
-- Two-bucket error surfacing.
+- DM-style mobile PWA with push-to-talk and a live mic-level meter.
+- Passcode auth; deployed to Fly.io, reachable from a phone.
 - Audio-only partner replies (Azure TTS on its own endpoint, slowed ~10%), with
   🔊 replay and 👁 reveal.
+
+### Still in MVP, not built
+
+- Accumulating covered-set with recency + weakness + focus weighting.
+- Feedback every 3 turns → proficiency writeback. The verdict card shipped;
+  the in-session coaching round and the DB write did not.
+- Client-side turn redo. "New" starts a fresh session.
+- Two-bucket error surfacing as specified (typed `{category, user_message}`).
+  Failures are visible; the taxonomy is not.
 
 ### Deferred (designed-for)
 
@@ -556,6 +587,8 @@ from completed feedback rounds is already 💾, so learning progress survives.
 - Tunable forgiveness level (hardcoded 0.8 first).
 - Multi-user accounts; second language.
 - Topic-generator skill (hand-author markdown until the cadence hurts).
+- The remaining five of the original "10 topics" slate. Five is where the
+  MVP stopped; see [`CURRICULUM.md`](CURRICULUM.md).
 
 ### Build Order — walking skeleton
 
@@ -567,18 +600,18 @@ supersedes — an earlier horizontal order (KB → worker → speech → …) th
 demoable until late. Per-phase how-to-validate steps live in the README's
 **Try it yourself** section (updated in place each phase, never appended).
 
-| Phase | Adds | Supported (visible) |
-| --- | --- | --- |
-| 0 | `GET /api/hello` + static page (FastAPI static mount) | Page round-trips a string through the backend. |
-| 1 | Push-to-talk upload → Azure STT; hardcoded 你好 reply | Speak → see your words transcribed + a fixed 汉字 reply. |
-| 2 | Azure PA in parallel with STT (two-pass) | …plus per-syllable tone scores. |
-| 3a | `kb.py` + conversation worker, **text-only**; cached prefix (opening line hardcoded) | Text in → real Claude greeting reply + annotation; **cache hits proven**. |
-| 3b | ✅ Wire speech (2) into the worker (3a); populate `turn_annotation.tone_errors` from PA and surface per-syllable accuracy underlines in the frontend. (The PA spike found no reliable *produced* tone, so we show accuracy, not expected-vs-actual numbers — `said` stays `SAID_UNKNOWN`. Multi-turn history was pulled forward here.) | Speak → real Mandarin partner reply + per-syllable tone-accuracy underlines; the partner remembers prior turns. |
-| 4 | Multi-turn (client-held transcript, ~3 turns) + feedback worker (in-session text, **no persistence**) | A short greetings exchange with coaching feedback. |
-| 5 | Scenario slots + derived `max_turns` + slot tracker + state-driven bounding (`active→wrapping→complete`, three end conditions) + sketch worker (flavour only, replaces hardcoded opening) + verdict worker — see [`SCENARIOS.md`](SCENARIOS.md) | A scenario with a stated goal, bounded start→goodbye, ending in a pass/fail verdict and a model answer when failed. |
-| 6 | Turn redo (client-side; server stays stateless) | Redo a turn / redo the conversation. |
-| 7 | `db.py` + `profile.py`: covered-set + proficiency writeback + weighting | Progress persists across sessions. |
-| 8 | Passcode auth gate + DM PWA + deploy | Real session, gated, on a phone. |
+| Phase | Status | Adds | Supported (visible) |
+| --- | --- | --- | --- |
+| 0 | shipped | `GET /api/hello` + static page (FastAPI static mount) | Page round-trips a string through the backend. |
+| 1 | shipped | Push-to-talk upload → Azure STT; hardcoded 你好 reply (later replaced) | Speak → see your words transcribed + a 汉字 reply. |
+| 2 | shipped | Azure PA after STT (two-pass); live mic-level meter | …plus per-syllable tone scores. |
+| 3a | shipped | `kb.py` + conversation worker, **text-only**; cached prefix | Text in → real Claude reply + annotation; **cache hits proven**. |
+| 3b | shipped | Wire speech (2) into the worker (3a); `tone_errors` from PA accuracy, not produced tone (`said` stays `SAID_UNKNOWN`). Multi-turn history was pulled forward here. | Speak → real Mandarin partner reply + per-syllable tone-accuracy underlines; the partner remembers prior turns. |
+| 4 | partial | Multi-turn (client-held transcript) shipped in 3b. In-session coaching every N turns did **not** ship — the verdict card (phase 5) is the only coaching surface. | A multi-turn exchange. No mid-session feedback card. |
+| 5 | shipped | Scenario slots + derived `max_turns` + slot tracker + state-driven bounding (`active→complete`, three end conditions) + sketch worker (flavour only) + verdict worker — see [`SCENARIOS.md`](SCENARIOS.md). Closed at five topics. | A scenario with a stated goal, bounded start→goodbye, ending in a pass/fail verdict and a model answer when failed. |
+| 6 | not built | Turn redo (client-side; server stays stateless) | Redo a turn / redo the conversation. |
+| 7 | not built | `db.py` + `profile.py`: covered-set + proficiency writeback + weighting | Progress persists across sessions. |
+| 8 | shipped (as M1, before 5) | Passcode auth gate + DM PWA + deploy | Real session, gated, on a phone. |
 
 Phase 3 is split (3a text-only worker + cache proof, then 3b speech wiring)
 because it bundles the KB loader, cached-prefix invariant, opening line, and
@@ -615,14 +648,7 @@ in Python, not a model's opinion. Consequently:
 Because slots are authored, they ride in the already-cached KB block and add no
 new cache surface; the sketch worker shrinks to flavour only.
 
-**Deferred UX polish (Phase 2).** Add a live **mic-level meter** during
-push-to-talk recording — right now the only "is it capturing?" feedback is the
-button turning red. A natural fold-in when Phase 2 reshapes the recording UI for
-tone scores. Cheap and client-only: tap an `AnalyserNode` off the existing Web
-Audio source (or reuse the Float32 frames already collected in `index.html`),
-animate a bar on `requestAnimationFrame`, and reset it on release. The meter is
-for the *recording* window only; the post-release transcribe wait keeps the
-existing "transcribing…" status.
+The Phase 2 mic-level meter shipped.
 
 ---
 

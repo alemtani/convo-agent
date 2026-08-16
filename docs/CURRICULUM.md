@@ -70,8 +70,9 @@ The learner studies elsewhere — a topic-structured app, roughly 50 units of 3�
 lessons each. This app is where they *apply* a unit. So the practice surface has
 to move when the syllabus moves.
 
-Today it doesn't. There is one topic, `greetings`, and the only scope signal is a
-universal HSK band ceiling.
+Today it doesn't. There are five topics; session start draws one at random.
+The only scope signal is still a universal HSK band ceiling. There is no
+syllabus record and no covered-set.
 
 ### Units and topics are not the same object
 
@@ -453,7 +454,7 @@ Each stage is usable alone. Nothing here blocks the MVP.
 
 | Stage | What | Depends on |
 |---|---|---|
-| 0 | Author topics by hand; find out what actually hurts | — (this is #29) |
+| 0 | Author topics by hand; find out what actually hurts | — (#29, closed at five topics) |
 | C0 | Fix the dead `HSK_BAND_CEILING`: prompt reads the ceiling | — |
 | C1 | `_syllabus.md` + `kb-topic` records a finished unit | 0 |
 | C2 | Covered vocab as a soft preference in the prompt | C1 |
