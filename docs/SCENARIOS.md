@@ -9,6 +9,10 @@ and #29 (closed 2026-08-12 / 2026-08-13). This document is the spec the
 code implements. If a sentence below still talks as if M2 is future work,
 the code and [`AGENTS.md`](../AGENTS.md) win.
 
+What the first real session then found — a tracker too strict, and a verdict
+that invents rules to explain it — is in [`Known risks`](#known-risks) and
+planned in [`ACCESSIBILITY.md`](ACCESSIBILITY.md).
+
 ---
 
 ## The problem
@@ -672,12 +676,33 @@ work (C8, #53), not leftover M2.
 
 ## Known risks
 
-**Authored slots make scenarios rigid.** A learner who reaches the goal by an
-unanticipated but valid route might not trip the slot. The
-`expressible_with`-is-a-hint rule is the mitigation: the extractor judges
+**Authored slots make scenarios rigid — and real use confirmed it.** A learner
+who reaches the goal by an unanticipated but valid route might not trip the slot.
+The `expressible_with`-is-a-hint rule is the mitigation: the extractor judges
 semantically whether the fact was established, and only the *set of facts that
-count* is fixed. If real use shows the extractor being too strict, the fix is
-extractor prompting, not more vocabulary in the seed.
+count* is fixed.
+
+This risk is now **observed, not predicted.** In the first session run by the
+learner (2026-08-16) the extractor withheld `wellbeing` in `greetings` from a
+turn that plainly asked 你最近怎么样, and withheld credit for pinyin typed
+`zui jian` that it granted to the same word typed `zuijian` — despite the system
+prompt telling it to accept pinyin "spaced or run together." The fix is the one
+named above: extractor prompting, held by a `live` eval set. Tracked in
+[`ACCESSIBILITY.md`](ACCESSIBILITY.md), chunk A2.
+
+**A withheld slot does not stay contained — the verdict rationalizes it.** This
+one was not predicted, and it is the more damaging half. The verdict worker is
+told the computed outcome as fact and instructed not to re-grade it. Handed a
+transcript where the learner clearly asked and an outcome saying they did not,
+the model reconciles the two the only way left to it: it **invents a criterion**.
+The session above told the learner their reply "didn't confirm you understood her
+answer" — a rule that appears in no KB, no slot, and no line of
+`termination.py`.
+
+So the guardrail that stops a judge grading generously also makes it fabricate
+instruction when the tracker misfires. Prompting harder is not the fix; the
+worker is asked to explain *why* a slot is unfilled, and Python never told it
+why, because Python does not know. Narrowing that brief is chunk A2.
 
 **The mirror-image failure is worse.** A tracker that credits `price` when the
 vendor volunteered it turns every session into a pass. Both directions are

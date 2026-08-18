@@ -25,7 +25,8 @@ decides pass/fail. The verdict worker only explains.
 
 Design *why*: [`docs/DESIGN.md`](docs/DESIGN.md),
 [`docs/SCENARIOS.md`](docs/SCENARIOS.md),
-[`docs/CURRICULUM.md`](docs/CURRICULUM.md).
+[`docs/CURRICULUM.md`](docs/CURRICULUM.md),
+[`docs/ACCESSIBILITY.md`](docs/ACCESSIBILITY.md).
 Those files still contain target-state prose. Trust the **Status** sections
 and the code over any sentence that still talks as if M2 is unbuilt.
 
@@ -56,6 +57,8 @@ Limits of the running app (not a backlog, just what is missing today):
 - No in-session coaching. The only feedback card is the verdict.
 - No per-turn redo. "New" starts a fresh session.
 - The topic catalog is read-only. The learner does not pick.
+- **A stuck learner has no next move.** No translation, no way to ask for
+  the words, no way to end early. Guess, or say goodbye twice.
 
 The last product work on `main` is polish after M2: #58 (keep one machine
 warm), #59 (session-start retry), #60 (score the transcript in place),
@@ -65,8 +68,8 @@ warm), #59 (session-start retry), #60 (score the transcript in place),
 
 ## What's next
 
-Two tracks. Both are open. Neither blocks the other. The issue list is
-the detail; this is the split.
+Three tracks. All open. None blocks the others. The issue list is the
+detail; this is the split.
 
 ### Grow the surface — more topics, scenarios, languages
 
@@ -110,6 +113,29 @@ it is the first thing that makes a ceiling bump mean anything.
 Leftover loop polish from the bug bash sits beside this track, not
 instead of it: #63 (fetch timeouts, speech tunables, dead
 `SessionState.topic_id`).
+
+### Make it survivable when the learner is stuck
+
+The first real session by the learner it was built for (2026-08-16) found
+the loop works and the learner drowns. Being stumped has no exit but
+guessing or quitting, and one turn was graded wrong and then explained
+with a rule nobody wrote.
+
+That is the accessibility track
+([`docs/ACCESSIBILITY.md`](docs/ACCESSIBILITY.md)):
+
+| Chunk | What it changes for the learner |
+|---|---|
+| A1 | "I'm stuck, end it" ends the session into the verdict. Pick or re-roll the scenario. Buttons say words, not emoji. |
+| A2 | The tracker credits what they meant. The verdict stops inventing criteria. |
+| A3 | Translation and "give me the words" — free in the moment, counted in the verdict. |
+| A4 | One number that moves: slots filled without help. A clean run. |
+
+A1 and A2 are independent. A3 waits on A2 — a ledger over a tracker that
+withholds credit counts help the learner never needed. A4 needs A3 to
+count and the Phase 7 store to persist, so it meets the curriculum track
+coming the other way. Difficulty is *not* here: the band ceiling is C0
+(#51).
 
 ---
 

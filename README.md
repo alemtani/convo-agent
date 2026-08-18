@@ -324,3 +324,9 @@ The walking-skeleton phases live in
 
 In-session coaching every N turns (the original Phase 4 feedback worker)
 did not ship. The only coaching card is the end-of-session verdict.
+
+The first real session by the learner it was built for (2026-08-16) found
+the loop works and the learner drowns: being stumped has no exit but
+guessing or saying goodbye twice. The plan for that is
+[`docs/ACCESSIBILITY.md`](docs/ACCESSIBILITY.md) — a next move that always
+exists, priced instead of hidden.
