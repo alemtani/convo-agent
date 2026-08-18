@@ -126,16 +126,24 @@ That is the accessibility track
 
 | Chunk | What it changes for the learner |
 |---|---|
-| A1 | "I'm stuck, end it" ends the session into the verdict. Pick or re-roll the scenario. Buttons say words, not emoji. |
-| A2 | The tracker credits what they meant. The verdict stops inventing criteria. |
-| A3 | Translation and "give me the words" — free in the moment, counted in the verdict. |
-| A4 | One number that moves: slots filled without help. A clean run. |
+| A1 | "I'm stuck, end it" ends the session into the verdict. "Try this again." Buttons say words, not emoji. |
+| A2 | The card becomes true: a Python floor under the slot tracker, a verdict that names facts without inventing causes, the progress HUD on. |
+| A3 | Only if a session after A2 still drowns for words: translate on tap, word-level hints. |
 
-A1 and A2 are independent. A3 waits on A2 — a ledger over a tracker that
-withholds credit counts help the learner never needed. A4 needs A3 to
-count and the Phase 7 store to persist, so it meets the curriculum track
-coming the other way. Difficulty is *not* here: the band ceiling is C0
-(#51).
+A1 and A2 are independent. **A3 is gated on evidence, not scheduled** —
+decide it after one more phone session by the same learner.
+
+Two things deliberately *not* here. Difficulty is C0 (#51): the partner
+is pinned to band 2 by a literal in `prompts.py` while
+`HSK_BAND_CEILING` is loaded and never read. The topic catalog is C8
+(#53): five topics and one learner make re-roll enough, and note 8 is
+agency, not stuckness.
+
+The A2 floor is the load-bearing decision. `SCENARIOS.md` predicted a
+strict extractor and prescribed extractor prompting — and that is the
+mitigation that failed, because the partner is asked in one call to
+withhold answers *and* to annotate slots. Deterministic logic gets a
+failing test first; a `live` eval set is a weather report, not a gate.
 
 ---
 

@@ -283,9 +283,21 @@ indicator, or naming the outstanding goal on the scenario card. A HUD sits outsi
 the story; an out-of-character vendor sits inside it and damages it.
 
 Default for now: withhold **on**, situational pressure **on**, progress HUD
-**off**. Rationale for off — the verdict card already teaches the missed phrase,
-so failing is cheap and instructive, and a HUD is a one-line frontend addition
-later. You can never discover you needed it if it was always there.
+**~~off~~ on** (revised 2026-08-17). The original rationale for off was that
+*"the verdict card already teaches the missed phrase, so failing is cheap and
+instructive."*
+
+**The first real session falsified that clause.** Failing is not cheap when the
+card cannot be trusted — that session withheld a slot the learner had plainly
+established and then explained the miss with an invented rule. "You can never
+discover you needed it if it was always there" assumes the learner comes back to
+discover anything.
+
+The scaffold was right and the default was wrong. It is still the honest kind of
+scaffold — outside the story, made of already-authored English — and it is still
+the one-line frontend addition this section called it. Chunk A2 in
+[`ACCESSIBILITY.md`](ACCESSIBILITY.md); it is also the whole of the learner's
+"no sense of progress" note.
 
 When a difficulty setting does arrive it is the same shape as `forgiveness_level`:
 a session constant **baked into the frozen prompt as a literal** by
@@ -686,9 +698,20 @@ This risk is now **observed, not predicted.** In the first session run by the
 learner (2026-08-16) the extractor withheld `wellbeing` in `greetings` from a
 turn that plainly asked 你最近怎么样, and withheld credit for pinyin typed
 `zui jian` that it granted to the same word typed `zuijian` — despite the system
-prompt telling it to accept pinyin "spaced or run together." The fix is the one
-named above: extractor prompting, held by a `live` eval set. Tracked in
-[`ACCESSIBILITY.md`](ACCESSIBILITY.md), chunk A2.
+prompt telling it to accept pinyin "spaced or run together."
+
+**And the mitigation named above is what failed.** The prompt already said judge
+meaning not wording; it already accepted spaced pinyin; it already credited
+你呢？. More of it is not the fix, because the cause is structural: the partner
+is asked in one call to stay in character and withhold the request answer, *and*
+to decide whether a slot just filled. A partner tuned to withhold
+under-annotates.
+
+So the fix is a **deterministic floor under the model**, not better instructions
+to it — one-directional, so it can only add credit, and gated on the learner's
+own `user_reading`, so it can never cause the mirror-image failure below.
+`expressible_with` stays a hint for the model and becomes a matcher only for the
+floor. Chunk A2 in [`ACCESSIBILITY.md`](ACCESSIBILITY.md).
 
 **A withheld slot does not stay contained — the verdict rationalizes it.** This
 one was not predicted, and it is the more damaging half. The verdict worker is

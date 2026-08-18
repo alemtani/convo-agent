@@ -1,60 +1,58 @@
-# Accessibility — giving the learner a next move
+# Accessibility — a session the learner can finish and believe
 
 Companion to [`DESIGN.md`](DESIGN.md) and [`SCENARIOS.md`](SCENARIOS.md). Those
-documents specify the turn loop and how a session is graded. This one specifies
-**what the learner does when they are stuck**, which the running app has no
-answer for.
+documents specify the turn loop and how a session is graded. This one is about
+the first session run by the learner it was built for, on 2026-08-16, and what
+has to be true before they open another one.
 
-Status: **not built.** This is the plan, written from the first real session
-run by the learner it was built for (2026-08-16). Nothing here has shipped.
+Status: **not built.** Revised 2026-08-17 after review; the first draft is
+answered at the end.
 
 ---
 
 ## The evidence
 
-The app was demoed, then used. The demo went fine. The session did not. The
-learner's own words: *"I was just so stumped. It felt like I was graded on
-saying exactly the right words rather than my intention."*
+The demo went fine. The session after it did not. The learner's own words:
 
-Ten notes came out of that session. They are not ten problems.
+> *"I was just so stumped. It felt like I was graded on saying exactly the right
+> words rather than my intention."*
+
+Ten notes came out of it.
 
 | # | Note | Where it lands |
 |---|---|---|
-| 1 | Closing should be judged, not hardcoded to 再见 | Already true — see below |
-| 2 | When stumped, end the session now and read the feedback | A1 — bail out |
-| 3 | Translate the partner's line inline | A3 — support ledger |
-| 4 | 👁/🙈 should say "Show text" / "Hide text" | A3 — support ledger |
-| 5 | Asking for a hint should mean something | A3 — support ledger |
-| 6 | The scenario doesn't change on refresh | A1 — agency |
-| 7 | Gender pronouns are handled badly | A2 — reader fidelity |
-| 8 | Redo this scenario; pick a scenario | A1 — agency |
-| 9 | There is no sense of progress | A4 — progression |
-| 10 | `zui jian` was not credited; `zuijian` was | A2 — reader fidelity |
+| 1 | Closing should be judged, not hardcoded to 再见 | Already true. Not reopening — see below |
+| 2 | When stumped, end now and read the feedback | A1 |
+| 4 | 👁/🙈 should say "Show text" / "Hide text" | A1 — it is copy |
+| 6 | The scenario doesn't change on refresh | A1 |
+| 7 | Gender pronouns are handled badly | A2, but as a reading-echo bug, not a tracker bug |
+| 10 | `zui jian` was not credited; `zuijian` was | A2 |
+| 9 | There is no sense of progress | A2 — the HUD `SCENARIOS.md` already specified |
+| 8 | Pick a scenario from a list | Not this track. C8 (#53) |
+| 3 | Translate the partner's line inline | A3, only if a later session still needs it |
+| 5 | Asking for a hint should mean something | A3, and smaller than the first draft made it |
 
 ## The diagnosis
 
-**When the learner is stuck, the app has two moves: guess, or say 再见 twice.**
+Two things failed, and only one of them is "the learner was stuck."
 
-Both end the session badly, and neither teaches the words that were missing at
-the moment they were missing. Everything the learner can reach mid-session is
-either hidden behind an emoji (👁), unavailable (translation), or terminal
-(goodbye).
+**No exit.** Being stumped had two moves: guess, or say 再见 twice. Both end the
+session badly.
 
-That is what "accessible" means here, and it is one sentence:
+**No trust.** The session graded a turn wrong and then explained the wrong grade
+with a rule nobody wrote. That is the half that stops someone coming back. An
+exit button does not repair it.
 
-> There is always a next move, and taking it costs something legible — instead
-> of costing nothing, or costing the session.
+So the sentence for this app, this month, is not about pricing help:
 
-The last clause matters. The learner asked for translation (#3) and in the same
-breath said a hint is *"a sign of weakness"* (#5). Both are right. Hiding help
-does not make help meaningful. **Recording it does.**
+> **Let them leave a drowning session, and make the card they land on true.**
+
+Order matters and it is not negotiable: an exit into a verdict that invents rules
+just delivers the bad teaching faster.
 
 ---
 
-## Two failures of fidelity, found in one turn
-
-Before any of that: the session graded a turn wrong, and then explained the
-wrong grade with a rule nobody wrote.
+## The two stacked bugs
 
 The learner asked 你最近怎么样 — *how have you been lately* — which is the
 `wellbeing` slot in `greetings`, authored as *"Find out how they have been
@@ -63,223 +61,210 @@ lately."* The verdict said:
 > *"you actually asked ni zui jin zen me yang at one point, but then your reply
 > didn't confirm you understood her answer…"*
 
-**No such requirement exists.** Read `kb/zh/greetings/topic.md`: the slot is
-`kind: request`, and `prompts.py` fills a request slot when *"the learner drove
-it, and your reply answers it."* Comprehension is not a criterion. Neither the
-KB nor `termination.py` has any notion of confirming that you understood.
+**No such requirement exists.** The slot is `kind: request`, and `prompts.py`
+fills one when *"the learner drove it, and your reply answers it."* Comprehension
+is not a criterion in the KB, in `termination.py`, or anywhere else.
 
-Two distinct bugs stack here, and they need separating.
+### 1. The tracker withheld a slot it should have granted
 
-### 1. The tracker is too strict
+Note #10 is the same failure with a different trigger: `zui jian` spaced was not
+credited where `zuijian` run together was — though `prompts.py` explicitly
+accepts pinyin *"spaced or run together."* The alignment code is not at fault;
+`typed_pinyin.py` skips separators.
 
-[`SCENARIOS.md`](SCENARIOS.md) predicted this exact failure under "Known
-risks": *"A learner who reaches the goal by an unanticipated but valid route
-might not trip the slot… If real use shows the extractor being too strict, the
-fix is extractor prompting, not more vocabulary in the seed."*
+[`SCENARIOS.md`](SCENARIOS.md#known-risks) predicted a strict extractor and named
+the fix: *"extractor prompting, not more vocabulary in the seed."*
 
-Real use has now shown it. Note #10 is the same failure with a different
-trigger: `zui jian` spaced was not credited where `zuijian` run together was —
-even though `prompts.py` explicitly tells the worker to accept pinyin *"spaced
-or run together."* Note #7 is a third: 他 and 她 are both `ta`, the prompt says
-to *"pick from context,"* and nothing in the scene ever fixes the partner's
-gender for the worker to pick from.
+**That mitigation is what just failed.** The prompt already said judge meaning
+not wording, already accepted spaced pinyin, already credited 你呢？. Real use
+missed anyway. Repeating the mitigation because it is written down is how a
+design document stops being evidence.
 
-The alignment code is not at fault. `typed_pinyin.py` skips separators when it
-walks typed pinyin against the expected syllables. The worker read the turn and
-still withheld the slot. This is prompt and eval work, not a patch.
+The reason it fails is structural. The partner does two jobs in one call:
 
-### 2. The verdict rationalizes a tracker miss
+- Stay in character. Withhold the request answer. One short sentence.
+- Also decide whether a named slot just filled.
 
-This is the new one, and it is worse.
+A partner tuned to withhold under-annotates. More prompt does not resolve a
+conflict of objectives; it just moves which one loses. And a
+`@pytest.mark.live` eval set is not a gate — it is a weather report, excluded
+from the default run by design.
 
-`workers/feedback.py` is built so the model cannot re-grade: the outcome is
-computed in Python and stated to the worker as fact. `prompts.py` says it
-outright — *"Do not re-grade it, soften it, or argue with it. If you are told
-the learner did not establish a fact, they did not establish it, no matter how
-well the conversation reads."*
+**So A2 puts a Python floor under the model** (below). This repo's own rule is
+that deterministic logic gets a failing test first, and "did the learner's own
+words cover this slot" is deterministic.
 
-That instruction does its job and then keeps going. Handed a transcript where
-the learner plainly asked, and a verdict saying they did not, the model does the
-only thing left: **it invents a criterion that reconciles them.** The guardrail
-against generous grading became a generator of fake rules.
+### 2. The verdict rationalized the miss
 
-The learner is then taught a rule that does not exist, cannot be satisfied, and
-will not appear in any KB. That is worse than a missed slot. A missed slot is a
-bad grade; a fabricated rule is bad instruction.
+Not predicted, and the more damaging half. `workers/feedback.py` states the
+computed outcome as fact and forbids re-grading — *"no matter how well the
+conversation reads."* Handed a transcript that contradicts the outcome, the model
+reconciles them the only way left: **it invents a criterion.**
 
-**The fix is not more prompt.** The worker needs a way to say *"the outcome and
-the transcript disagree"* rather than being required to explain the outcome no
-matter what. Two candidate shapes, to be decided in A2:
+A missed slot is a bad grade. A fabricated rule is bad teaching.
 
-- Let the verdict report a `disagreement` flag. It still does not change the
-  outcome — it surfaces the conflict to the learner and to our logs.
-- Or narrow the worker's brief: explain **what the learner did**, and name the
-  missing facts, without asserting *why* each one is missing.
-
-The second is smaller and probably right. The worker was never told *why* a slot
-is unfilled, because Python does not know either — so it should not be writing
-that sentence at all.
+The fix is not more prompt. The worker is asked to explain *why* a slot is
+unfilled, and Python never told it why, because Python does not know. **Cut that
+from the brief.** Name what the learner did and which facts are still open;
+never assert a cause.
 
 ### Note #1 is already done
 
-`learner_closed` is a model judgment (*"a goodbye, 再见 and the like"*), not a
-string match. `termination.py` needs two in a row (`CLOSES_TO_END`), and a close
-carrying real content resets the counter — so a topic that *teaches* 再见 does
-not end itself. Nothing to hardcode away. Keep it.
+`learner_closed` is a model judgment, not a string match. `termination.py`
+requires two in a row, and a close carrying real content resets the counter.
+Nothing to fix. Not reopening it.
 
 ---
 
-## The core idea: a support ledger
+## A1 — let them leave
 
-> Help is **free in the moment and recorded in the verdict.**
+Three small things, one PR. This is the week's work.
 
-Three tiers, available on every turn, each logged against the turn it was used
-on:
+- [ ] **"I'm stuck — end it."** A new `end_reason` into the existing verdict
+      path. Everything the verdict needs is already client-held.
+- [ ] **"Try this again"** — restart with the same `topic_id`.
+- [ ] **"Show text" / "Hide text"** in words. This is copy. The learner asked for
+      words; it does not wait for anything.
 
-| Tier | What the learner gets | Cost today |
-|---|---|---|
-| 1 — Show text | The 汉字 + pinyin already behind 👁 | Free and invisible |
-| 2 — Translate | An English gloss of the partner's line | Does not exist |
-| 3 — Give me the words | The phrase that would establish the outstanding slot: 汉字, pinyin, gloss | Does not exist |
+Note 6 ("scenario doesn't change on refresh") is working as designed —
+restore-on-load protects a phone that locks mid-conversation. What is missing is
+a way to *decline* the restore, and **`↺ New` already re-rolls**. So this is
+labelling, not a feature: `End this` / `Try this again` / `Different one`.
 
-Nothing is locked. Nothing is punished mid-session. The verdict gains one
-sentence: *"You met the goal. You used help twice, both times on asking the
-price."*
+**Not in A1: the topic catalog.** The first draft put a picker here as a down
+payment on C8 (#53). That delays the bail-out to pay a deposit on someone else's
+issue. Five topics, one learner — re-roll is enough. Note 8 is agency, not
+stuckness.
 
-This resolves the contradiction in notes #3 and #5. The learner wanted help
-available and wanted help to mean something. Under a ledger it means something
-without ever being withheld — the outcome stops being pass/fail and becomes
-pass/fail **plus how much scaffolding you leaned on**, which is the honest
-measure and the only one that can improve.
+## A2 — make the card true
 
-Tier 3 is the direct answer to being stumped. It converts a dead end into a turn
-the learner actually speaks, using words that are in band by construction. Tier 2
-is cheaper than it looks: the verdict worker already writes English glosses for
-in-band lines, so this is an existing capability moved earlier in the session.
+- [ ] **Cut the causal claim from the verdict brief.** What they did, what is
+      open. No *why*.
+- [ ] **A Python floor under the extractor**, with fixtures for `zui jian`,
+      `zuijian`, 你最近怎么样, and 你呢？.
+- [ ] **Pin the partner's gender in the sketch** (note 7).
+- [ ] **The progress HUD** — see below.
+- [ ] One more phone session by the same learner, before anything else ships.
 
-Tier 1 gets the rename from note #4 at the same time. "Show text" and "Hide
-text", in words. The emoji were never the affordance they looked like.
+### The floor, precisely
 
-### What this costs
+The worker already returns `user_reading` — the learner's turn in 汉字, as it
+understood them. Normalize it the way `typed_pinyin.py` already walks input, and
+compare against the slot's `expressible_with`.
 
-The reply gains an English gloss and the turn response gains a support count.
-The frontend gains two buttons and the localStorage record to survive a reload.
-`termination.py` stays pure — support is counted, never a termination condition.
+Two properties make this safe, and both need stating:
 
-### The risk worth naming
+**It runs one way. It can only add credit, never withhold it.** `expressible_with`
+is documented everywhere as *"a hint to the extractor, never a string matcher,"*
+and that contract survives: the model can still credit an unanticipated route the
+floor would miss. The floor exists solely to stop a false negative we have
+already seen.
 
-Translation on tap can turn a Mandarin session into English reading. Two
-mitigations, both cheap: translation is **per line, on demand**, never a global
-toggle; and the count is visible in the verdict, so the learner sees their own
-drift. If the ledger shows tier 2 on every single turn, that is a finding about
-band ceiling — not a reason to take the button away.
+**It is gated on the learner's own words**, so it cannot cause the failure
+`SCENARIOS.md` calls worse — a slot credited because the *partner* volunteered
+the fact. The floor cannot fire on anything the learner did not say.
+
+One decision A2 has to make rather than assume. A `request` slot is authored as
+*learner asked* **and** *partner answered*. Python can check the first half from
+the reading; it cannot check the second without judging. Recommendation: **floor
+on the ask alone.** The partner is instructed to answer, so a partner that
+deflects is our bug, and the learner should not eat it. Log when the model and
+the floor disagree — that log is what tells us whether the semantic tracker is
+worth keeping as the primary.
+
+### Note 7 is not a tracker bug
+
+None of the `greetings` slots need a third-person pronoun — they are `self_name`,
+`partner_name`, `wellbeing`. 他 and 她 are both `ta`, the prompt says *"pick from
+context,"* and the sketch never fixes the partner's gender, so there is no
+context to pick from. That is a reading-echo bug with a one-line fix. It does not
+belong inside extractor evals.
+
+### Progress is note 9, and it was already designed
+
+[`SCENARIOS.md`](SCENARIOS.md) already specified the honest scaffold: *"a '2 of
+3' indicator, or naming the outstanding goal on the scenario card,"* explicitly
+because a HUD sits outside the story where an out-of-character partner sits
+inside it and damages it.
+
+It was defaulted **off**, with this rationale: *"the verdict card already teaches
+the missed phrase, so failing is cheap and instructive."*
+
+**The first session falsified that clause.** Failing is not cheap when you cannot
+reach a true verdict. Flip the default. The slots are authored English and the
+doc calls it a one-line frontend addition.
+
+This is also the whole of note 9. Progress the learner can see *during* the
+session, which is when they asked for it — not a badge afterwards.
+
+## A3 — only if a later session still drowns for words
+
+Gated on evidence, not scheduled. If the phone session after A2 shows the learner
+stuck for vocabulary rather than for trust:
+
+| Need | Ship |
+|---|---|
+| I cannot hear it | Show text — already renamed in A1 |
+| I cannot understand it | Translate this line, **on tap** |
+| I cannot produce it | The outstanding slot's `expressible_with` plus its English description |
+
+**Words, not a winning sentence.** Handing over the line that fills the slot
+turns the conversation into a prompted production drill — the pattern
+`SCENARIOS.md` was written against, where the learner is meant to get *"stuck at
+the point where they need the words."* Recording the tap does not make retrieval
+happen.
+
+**Translation is a request beside the loop, like TTS** — not a field on every
+reply. The partner is told to speak only Mandarin and the page is audio-first; a
+per-turn gloss is a new per-turn job and English on every turn, not "the verdict's
+gloss, earlier."
+
+**Count taps on a pass only.** A fail already has missing slots; adding *"and you
+used help"* to it is piling on.
+
+## Not on this track
+
+- **The topic catalog.** C8 (#53).
+- **Difficulty.** The partner is pinned to band 2 by a literal in `prompts.py`
+  while `HSK_BAND_CEILING` is loaded and never read — C0 (#51).
+- **Phase 7.** "Unassisted slots filled" is a good number and it does **not**
+  need `db.py`. One phone, one learner: `localStorage` holds a clean-run flag
+  fine. Pulling the store forward so a badge can persist is curriculum work
+  wearing a different hat, and it would stall both tracks.
+- **Support counts feeding the band ceiling.** Heavy translate use might mean the
+  partner is out of band. It might mean they were tired, or the audio failed.
+  Do not wire a shame signal into C3 before C0 reads the ceiling at all.
+- **More scenarios per topic.** One scenario per topic is the variety ceiling and
+  it is a content problem. Re-roll is enough until someone authors a second scene.
+
+## Open threads, answered
+
+**How much help is too much?** Do not decide it in verdict copy. A goal met with
+help is a pass — they said the thing. Revisit after there are counts.
+
+**Is the semantic tracker still the primary?** A2's disagreement log answers it.
+If Python's floor catches most of what the model misses and the model rarely adds
+anything the floor did not, the honest conclusion is that extraction should be
+deterministic and the model should stop being asked.
 
 ---
 
-## Progression falls out of the ledger
+## What changed from the first draft
 
-Note #9 asks for what Duolingo does right: the sense that you are getting
-somewhere. The instinct is to reach for streaks and XP. The app does not need
-them. It needs **one number that moves**, and the ledger produces one for free:
+The first draft made a **support ledger** — help free in the moment, priced in
+the verdict — the load-bearing idea, and organized four chunks around it.
 
-> **Unassisted slots filled.**
+That was the wrong shape for this fire.
 
-- Same scenario, second attempt, less help → visible improvement.
-- **Clean run** = goal met, zero support used. That is the badge, and it is
-  earned against a fixed scenario, so it is real rather than decorative.
-- Across topics, the covered-set and proficiency store (`db.py`, `profile.py`,
-  Phase 7 — still unbuilt) turn it into *"3 of 5 topics cleared clean."*
+- The ledger is a later product. It answers "help should mean something," which
+  is a real note, but not the one that ends sessions.
+- A ledger on top of a grader that still withholds credit is actively worse: the
+  learner used help *and* still failed.
+- Tier 3 as a composed sentence fought `SCENARIOS.md`'s own obstacle design.
+- Progress got routed through Phase 7 and a badge, when the HUD was specified
+  two documents ago and defaulted off for a reason the session disproved.
+- A1 was a bag: notes 2, 4, 6, and 8 in one chunk, and note 4 appearing in two
+  chunks at once — a contradiction that was the tell.
 
-This is why the ledger ships before the progression work. Progression needs
-something to count, and today nothing is counted.
-
-It also preserves the thing the learner said was good: *"it's good this is a
-harsh reality check."* A clean run is hard. Nothing here makes the goal easier —
-it makes the road to it passable, and prices the help.
-
----
-
-## Agency over what you practice
-
-Notes #6 and #8 are one gap: the learner cannot choose, and cannot re-roll.
-
-**#6 is working as designed, and the design is wrong.** The session lives in
-`localStorage` and is restored on load — deliberately, because a phone that locks
-mid-conversation must not lose the thread. What is missing is a way to
-*decline* the restore. There is a reset control, but nothing next to the
-scenario card that says "a different one."
-
-**#8 is nearly free on the server.** `GET /api/topics` already exists (#54).
-`POST /api/session` takes no body only because the frontend was given no business
-knowing the catalog. Adding an optional `topic_id` is additive.
-
-One constraint to be honest about: **there is one scenario per topic.** Redoing
-the exact scenario is therefore the easy half, and it is the half that matters
-for a clean run. Genuine *variety* means authoring more scenarios per topic,
-which is content work on the curriculum track, not a feature here.
-
-This is a deliberate down payment on **C8 (#53)**, not a competitor to it. C8 is
-the curriculum-aware topic list — covered, weak, stale, weighted. What ships here
-is the dumb version: a list, and a tap. When the profile store lands, C8 replaces
-the ordering without touching the surface.
-
----
-
-## Staging
-
-Four chunks. A1 and A2 are independent and can share a session.
-
-| | Chunk | Notes covered | Shape |
-|---|---|---|---|
-| **A1** | Bail out and agency | 2, 4, 6, 8 | Frontend, plus an optional `topic_id` on session start |
-| **A2** | Reader fidelity | 7, 10, and the rationalized verdict | Prompt work and `live` evals |
-| **A3** | Support ledger | 3, 5, and the #4 rename | Reply fields, two controls, verdict change |
-| **A4** | Progression | 9 | Needs A3 to count and Phase 7 to persist |
-
-**A1 — bail out and agency.** *"I'm stuck, end it"* is a new `end_reason` into
-the existing verdict path; everything the verdict needs is already client-held.
-This is the smallest change that removes the worst dead end, and it should not
-wait for the rest.
-
-**A2 — reader fidelity.** Before scaffolding the learner, make sure the thing
-being scaffolded reads them correctly. A `live` eval set of sloppy pinyin —
-spaced, unspaced, mistoned, misspelled — asserting the expected reading and the
-expected `slots_filled`. Plus the verdict-brief narrowing above, and a scene fact
-that fixes the partner's gender so 他/她 has context to resolve against.
-
-**A3 — support ledger.** The big one. Do not start it before A2: a ledger built
-on a tracker that withholds credit will record help the learner did not need.
-
-**A4 — progression.** Pulls Phase 7 (`db.py`, `profile.py`) forward, and meets
-the curriculum track coming the other way.
-
-Every chunk changes what the learner experiences, so every chunk earns a tunnel
-and a real phone check before its PR — including A2, which touches no frontend
-file. The suite asserts the request we build. It cannot see that the partner now
-reads spaced pinyin correctly.
-
----
-
-## What this does not do
-
-- **It does not lower the goal.** Slots stay authored, binary, and checked in
-  Python. The verdict stays a computed outcome.
-- **It does not add gamification.** No streaks, no XP, no daily goal. One
-  number, derived from work the learner actually did.
-- **It does not fix difficulty.** The partner is pinned to band 2 because
-  `prompts.py` hardcodes it — `HSK_BAND_CEILING` is loaded and never read
-  (**C0, #51**). That is the real difficulty knob and it belongs to the
-  curriculum track. Accessibility is about the learner who is stuck at the right
-  level, not about picking the level.
-
-## Open threads
-
-- **How much help is too much?** The ledger records; it does not judge. Whether
-  a goal met with tier-3 help on every slot should read as a pass is a product
-  decision, and it should be made after watching real counts, not before.
-- **Should support feed the band ceiling?** Heavy tier-2 use is evidence the
-  partner is out of band. That is a signal C3 (#46) would want, and a reason to
-  keep the ledger durable rather than per-session.
-- **One scenario per topic is the variety ceiling.** Re-rolling gives a new
-  opening line and flavour, not a new obstacle. At some point that stops feeling
-  like a fresh session.
+Kept from it: the bail-out as the first ship, A2 before A3, difficulty staying on
+C0, note #1 already done, and the cut to the verdict's causal claim.
