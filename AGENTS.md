@@ -25,7 +25,9 @@ decides pass/fail. The verdict worker only explains.
 
 Design *why*: [`docs/DESIGN.md`](docs/DESIGN.md),
 [`docs/SCENARIOS.md`](docs/SCENARIOS.md),
-[`docs/CURRICULUM.md`](docs/CURRICULUM.md).
+[`docs/CURRICULUM.md`](docs/CURRICULUM.md),
+[`docs/ACCESSIBILITY.md`](docs/ACCESSIBILITY.md),
+[`docs/VALIDITY.md`](docs/VALIDITY.md).
 Those files still contain target-state prose. Trust the **Status** sections
 and the code over any sentence that still talks as if M2 is unbuilt.
 
@@ -56,6 +58,11 @@ Limits of the running app (not a backlog, just what is missing today):
 - No in-session coaching. The only feedback card is the verdict.
 - No per-turn redo. "New" starts a fresh session.
 - The topic catalog is read-only. The learner does not pick.
+- **A stuck learner has no next move.** No translation, no way to ask for
+  the words, no way to end early. Guess, or say goodbye twice.
+- **The partner holds the rubric.** One call both converses and annotates
+  slots, so a non-sequitur that lands on a slot gets credited and played
+  along with. `coherence` is computed every turn and read by nothing.
 
 The last product work on `main` is polish after M2: #58 (keep one machine
 warm), #59 (session-start retry), #60 (score the transcript in place),
@@ -65,8 +72,9 @@ warm), #59 (session-start retry), #60 (score the transcript in place),
 
 ## What's next
 
-Two tracks. Both are open. Neither blocks the other. The issue list is
-the detail; this is the split.
+Three tracks. All open. Growing the surface and fitting the session are
+independent; **validity depends on accessibility** and cannot lead it.
+The issue list is the detail; this is the split.
 
 ### Grow the surface — more topics, scenarios, languages
 
@@ -110,6 +118,92 @@ it is the first thing that makes a ceiling bump mean anything.
 Leftover loop polish from the bug bash sits beside this track, not
 instead of it: #63 (fetch timeouts, speech tunables, dead
 `SessionState.topic_id`).
+
+### Make it survivable when the learner is stuck
+
+The first real session by the learner it was built for (2026-08-16) found
+the loop works and the learner drowns. Being stumped has no exit but
+guessing or quitting, and one turn was graded wrong and then explained
+with a rule nobody wrote.
+
+That is the accessibility track
+([`docs/ACCESSIBILITY.md`](docs/ACCESSIBILITY.md)):
+
+| Chunk | What it changes for the learner |
+|---|---|
+| A1 | "I'm stuck, end it" ends the session into the verdict. "Try this again." Buttons say words, not emoji. |
+| A2 | The card becomes true: a Python floor under the slot tracker, a verdict that names facts without inventing causes, the progress HUD on. |
+| A3 | Only if a session after A2 still drowns for words: translate on tap, word-level hints. |
+
+A1 and A2 are independent. **A3 is gated on evidence, not scheduled** —
+decide it after one more phone session by the same learner.
+
+Two things deliberately *not* here. Difficulty is C0 (#51): the partner
+is pinned to band 2 by a literal in `prompts.py` while
+`HSK_BAND_CEILING` is loaded and never read. The topic catalog is C8
+(#53): five topics and one learner make re-roll enough, and note 8 is
+agency, not stuckness.
+
+### Make the grade mean what it says
+
+Accessibility fixes a grade that withheld credit the learner earned.
+The other direction is credit they did not: the partner holds the
+rubric, so a non-sequitur that happens to land on a slot is both
+credited *and* cooperated with. A person would have said "…I asked if
+you wanted a drink."
+
+That is the validity track ([`docs/VALIDITY.md`](docs/VALIDITY.md)):
+
+| Chunk | What it changes |
+|---|---|
+| V0 | A recorded-transcript set, and the first evaluation of `coherence`. Yields the thresholds V1 needs. |
+| V1 | The floor is gated at that threshold. A session-level coherence fact on `VerdictCard`. |
+| V2 | The converser goes goal-blind; the grader runs **after** the reply. Withholding becomes persona, `pressure_hint` retires into authored scene design. |
+| V3 | Re-open A2's floor-on-ask compromise if the grader evaluates ask-AND-answer reliably. |
+
+**V0 first, and it ships no gate.** `coherence` has been computed on
+every turn since the conversation worker shipped and read by no code
+path, and `tests/fixtures/` has no session transcripts to judge it
+with. V0 measures it and reports what it can carry — possibly nothing.
+Gating on an unmeasured signal manufactures the false negative A2
+exists to remove.
+
+**V1 does not close the gaming case; V2 does.** Even gated, the floor
+only stops itself from adding credit. The model tracker still grants
+the slot while the partner still holds the rubric.
+
+**The grader reads the *previous* partner turn, not the new one.** That
+is the pair the judgment needs — did the learner answer what was
+actually said — so the grader joins the `PA ∥ converser` fan-out instead
+of waiting on the reply. The wire shape is unchanged and the reply gets
+*faster*, since the annotation leaves the converser's output schema. A
+`request` slot's "partner answered" half then resolves one turn late,
+which costs nothing while A2 credits on the ask alone.
+
+**V2 also splits the model.** Sonnet 5 converses; **Opus 5 grades** —
+judgment is where capability pays, and it is off the reply path. Today
+`CONVERSATION_MODEL` serves the conversation, sketch, *and* verdict
+workers alike. The grader wants thinking **on**, so it needs `max_tokens`
+headroom the current workers deliberately avoid.
+
+**It depends on the accessibility track and cannot lead it** — but the
+dependency is **authored scene design**, not A2's HUD. A2 ships a count
+("2 of 3"), which says something is outstanding, not which fact it is.
+
+The A2 floor is the load-bearing decision. `SCENARIOS.md` predicted a
+strict extractor and prescribed extractor prompting — and that is the
+mitigation that failed, because the partner is asked in one call to
+withhold answers *and* to annotate slots. Deterministic logic gets a
+failing test first; a `live` eval set is a weather report, not a gate.
+
+Three things about that floor are decided, not open. It reads
+`user_reading` on the text path and the **STT transcript** on the spoken
+path — `SpokenConversationResult` drops `user_reading` deliberately, so a
+floor gated on it would not run where the learner actually is. It matches
+**content tokens** from `expressible_with`, since all-tokens fails
+`我叫小明` and any-token fires on a bare `我`. And it runs on the turn
+path **before `termination.advance`**, never on the verdict path, or the
+HUD and the verdict can disagree.
 
 ---
 

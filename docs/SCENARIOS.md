@@ -9,6 +9,10 @@ and #29 (closed 2026-08-12 / 2026-08-13). This document is the spec the
 code implements. If a sentence below still talks as if M2 is future work,
 the code and [`AGENTS.md`](../AGENTS.md) win.
 
+What the first real session then found — a tracker too strict, and a verdict
+that invents rules to explain it — is in [`Known risks`](#known-risks) and
+planned in [`ACCESSIBILITY.md`](ACCESSIBILITY.md).
+
 ---
 
 ## The problem
@@ -17,9 +21,12 @@ A session should put the learner in a situation with an obstacle — *"buy three
 pieces of fruit and find out what they cost"* — and grade whether they got through
 it. Two things block that:
 
-1. **A scenario can have no real obstacle.** `greetings` has none; its stated goal
-   is essentially the whole topic. Nothing in the KB format stops an author writing
-   a goal that one utterance satisfies.
+1. **A scenario can have no real obstacle.** `greetings` had none when this was
+   written; its stated goal was essentially the whole topic. Nothing in the KB
+   format stops an author writing a goal that one utterance satisfies. (It has
+   one now — `topic.md` authors two `request` slots, and no amount of packing
+   lets a learner know a name they were never told. The format problem this
+   describes is what the slot design fixed.)
 2. **Nothing can tell exactly when the goal is met.** A prose "hidden success
    criteria" section gives a model an opinion to render, not a fact to check.
 
@@ -98,6 +105,14 @@ scenario:
 extractor decides semantically whether the fact was established; the seed only
 constrains *which facts count*. Rigid about **what**, flexible about **how**.
 
+**One exception, added 2026-08-17.** The deterministic floor under the extractor
+(see [Known risks](#known-risks)) *does* match on these tokens — on content
+tokens only, and **one-directionally**: the floor can add credit the model
+withheld, never withhold credit the model gave. So the sentence above still holds
+where it matters. A learner who fills a slot by a route the seed never listed is
+credited by the model exactly as before; the floor simply cannot be the thing
+that fails them.
+
 ### The rule that makes a request slot mean something
 
 **A `request` slot is filled only when the learner asks and the partner answers.**
@@ -107,6 +122,16 @@ the slot must not be credited.
 This is not a difficulty setting. It is what makes the scenario gradeable at all,
 so it is on in every mode, permanently. It is also the one piece of realism we
 knowingly give up: a real vendor might well announce the price unasked.
+
+**The floor is the one exception, decided 2026-08-17.** The AND rule stays the
+authored rule and the model's rule. The deterministic floor fires on the *ask*
+alone, because Python cannot check whether a reply answered without judging it.
+The cost is real and belongs here rather than only in
+[`ACCESSIBILITY.md`](ACCESSIBILITY.md): a partner that counter-questions instead
+of answering can leave a learner credited for a fact they never obtained. We take
+it because the partner is instructed to answer — a deflection is our bug, not the
+learner's — and because the floor only ever fires on the learner's own words, so
+it can never cause the volunteered-price failure this rule exists to prevent.
 
 ---
 
@@ -279,9 +304,21 @@ indicator, or naming the outstanding goal on the scenario card. A HUD sits outsi
 the story; an out-of-character vendor sits inside it and damages it.
 
 Default for now: withhold **on**, situational pressure **on**, progress HUD
-**off**. Rationale for off — the verdict card already teaches the missed phrase,
-so failing is cheap and instructive, and a HUD is a one-line frontend addition
-later. You can never discover you needed it if it was always there.
+**~~off~~ on** (revised 2026-08-17). The original rationale for off was that
+*"the verdict card already teaches the missed phrase, so failing is cheap and
+instructive."*
+
+**The first real session falsified that clause.** Failing is not cheap when the
+card cannot be trusted — that session withheld a slot the learner had plainly
+established and then explained the miss with an invented rule. "You can never
+discover you needed it if it was always there" assumes the learner comes back to
+discover anything.
+
+The scaffold was right and the default was wrong. It is still the honest kind of
+scaffold — outside the story, made of already-authored English — and it is still
+the one-line frontend addition this section called it. Chunk A2 in
+[`ACCESSIBILITY.md`](ACCESSIBILITY.md); it is also the whole of the learner's
+"no sense of progress" note.
 
 When a difficulty setting does arrive it is the same shape as `forgiveness_level`:
 a session constant **baked into the frozen prompt as a literal** by
@@ -329,6 +366,13 @@ Fruit stall, as authored above. 3 slots, 1 request → **`max_turns` 6**. No min
 
 The slots are not shown. The learner sees the goal in English; the
 machine-checkable form stays hidden.
+
+**Amended 2026-08-17.** Still true of the slots themselves, but the card now
+also carries `n_slots`, so the learner sees a **"0 of 3"** counter here that
+advances as facts land. The count is not the slots — no id, no description, no
+`expressible_with` — and it is what turns "the verdict teaches the missed phrase"
+from the *only* feedback into the *last* feedback. See
+[Difficulty, deferred](#difficulty-deferred).
 
 **Opening line** (partner; does not consume budget):
 
@@ -672,12 +716,44 @@ work (C8, #53), not leftover M2.
 
 ## Known risks
 
-**Authored slots make scenarios rigid.** A learner who reaches the goal by an
-unanticipated but valid route might not trip the slot. The
-`expressible_with`-is-a-hint rule is the mitigation: the extractor judges
+**Authored slots make scenarios rigid — and real use confirmed it.** A learner
+who reaches the goal by an unanticipated but valid route might not trip the slot.
+The `expressible_with`-is-a-hint rule is the mitigation: the extractor judges
 semantically whether the fact was established, and only the *set of facts that
-count* is fixed. If real use shows the extractor being too strict, the fix is
-extractor prompting, not more vocabulary in the seed.
+count* is fixed.
+
+This risk is now **observed, not predicted.** In the first session run by the
+learner (2026-08-16) the extractor withheld `wellbeing` in `greetings` from a
+turn that plainly asked 你最近怎么样, and withheld credit for pinyin typed
+`zui jian` that it granted to the same word typed `zuijian` — despite the system
+prompt telling it to accept pinyin "spaced or run together."
+
+**And the mitigation named above is what failed.** The prompt already said judge
+meaning not wording; it already accepted spaced pinyin; it already credited
+你呢？. More of it is not the fix, because the cause is structural: the partner
+is asked in one call to stay in character and withhold the request answer, *and*
+to decide whether a slot just filled. A partner tuned to withhold
+under-annotates.
+
+So the fix is a **deterministic floor under the model**, not better instructions
+to it — one-directional, so it can only add credit, and gated on the learner's
+own `user_reading`, so it can never cause the mirror-image failure below.
+`expressible_with` stays a hint for the model and becomes a matcher only for the
+floor. Chunk A2 in [`ACCESSIBILITY.md`](ACCESSIBILITY.md).
+
+**A withheld slot does not stay contained — the verdict rationalizes it.** This
+one was not predicted, and it is the more damaging half. The verdict worker is
+told the computed outcome as fact and instructed not to re-grade it. Handed a
+transcript where the learner clearly asked and an outcome saying they did not,
+the model reconciles the two the only way left to it: it **invents a criterion**.
+The session above told the learner their reply "didn't confirm you understood her
+answer" — a rule that appears in no KB, no slot, and no line of
+`termination.py`.
+
+So the guardrail that stops a judge grading generously also makes it fabricate
+instruction when the tracker misfires. Prompting harder is not the fix; the
+worker is asked to explain *why* a slot is unfilled, and Python never told it
+why, because Python does not know. Narrowing that brief is chunk A2.
 
 **The mirror-image failure is worse.** A tracker that credits `price` when the
 vendor volunteered it turns every session into a pass. Both directions are
