@@ -196,47 +196,6 @@ addressing them, push fixes and **reply on each review thread**. Steps: branch
 from `main` → commit (conventional) → `git push -u` → `gh pr create` with a body
 explaining the *why*. This is the standing workflow, not just for large changes.
 
-## Adversarial review — always, after planning and after code
-
-**Claude Code only.** This rule is not in `AGENTS.md` on purpose: the reviewer
-there is the other agent, and a rule telling Grok to run a Grok review is a
-circle.
-
-Run `../adversarial-review` after **any** planning decision and after **any**
-code implementation — not only before a PR. Sync it to `main` first, or you are
-reviewing against whatever was checked out last:
-
-```bash
-git -C ../adversarial-review checkout main && git -C ../adversarial-review pull
-```
-
-Then, from that repo:
-
-```bash
-# a plan or spec — a temp file is fine, it does not have to be committed
-./adversarial_review.sh --no-timeout --writer claude --reviewer grok     --kind spec ~/projects/convo-agent --files <doc.md> [<doc.md> ...]
-
-# code — the uncommitted diff is the default input
-./adversarial_review.sh --no-timeout --writer claude --reviewer grok     ~/projects/convo-agent
-```
-
-Two flags this machine needs. **`--files`** whenever the work is already
-committed: the default input is the *uncommitted* diff vs `HEAD`, so a pushed
-branch reviews as an empty change. **`--no-timeout`** because neither `timeout`
-nor `gtimeout` is installed; do not `brew install coreutils` without asking.
-
-Never pass `--apply`. Read the findings, verify each against the code, and fix
-them yourself — the tool is accurate about file facts and loose about line
-numbers, and it cannot tell a wrong claim from a wrong design.
-
-Three phases take ~12 minutes, so background it. A prior `--dry-run` leaves its
-stub in `artifacts/iter1_1_*_review.md` and a real run does not overwrite it;
-read the Phase 3 meta-review for the findings.
-
-Then **sync the PR** — push the fixes and comment with what was accepted, what
-was verified, and what the review got wrong. A review that only exists in the
-terminal did not happen.
-
 ## Knowledge-base authoring (separate from the service)
 
 Authoring/updating topic KBs is a **dev-time workflow you invoke directly** (the
