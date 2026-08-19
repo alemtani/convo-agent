@@ -155,13 +155,27 @@ That is the validity track ([`docs/VALIDITY.md`](docs/VALIDITY.md)):
 
 | Chunk | What it changes |
 |---|---|
-| V1 | The floor fires only when the turn is not `off_track`. The verdict records coherence. |
-| V2 | The converser goes goal-blind; the grader becomes a third fan-out branch. Withholding becomes persona, `pressure_hint` retires. |
+| V0 | A recorded-transcript set, and the first evaluation of `coherence`. Yields the thresholds V1 needs. |
+| V1 | The floor is gated at that threshold. A session-level coherence fact on `VerdictCard`. |
+| V2 | The converser goes goal-blind; the grader runs **after** the reply. Withholding becomes persona, `pressure_hint` retires into authored scene design. |
 | V3 | Re-open A2's floor-on-ask compromise if the grader evaluates ask-AND-answer reliably. |
 
-**It depends on the accessibility track and cannot lead it.** Removing
-`pressure_hint` without A2's HUD takes away the only thing pointing at
-the gap. V1 ships inside A2, since it closes a hole A2 opens.
+**V0 first.** `coherence` has been computed on every turn since the
+conversation worker shipped and read by no code path, and
+`tests/fixtures/` has no session transcripts to judge it with. Gating
+anything on an unevaluated signal manufactures the false negative A2
+exists to remove.
+
+**V2 changes the turn's wire shape.** The grader needs the partner's
+reply, so it cannot join the `PA ∥ converser` fan-out — it starts when
+the converser returns. `state` stops riding `ReplyEvent` and lands on a
+later event, which contradicts the invariant in `CLAUDE.md` and changes
+it. The reply gets *faster* (annotation leaves its schema); the next
+turn gets *slower*. `/api/turn/text` becomes two serial Claude calls.
+
+**It depends on the accessibility track and cannot lead it** — but the
+dependency is **authored scene design**, not A2's HUD. A2 ships a count
+("2 of 3"), which says something is outstanding, not which fact it is.
 
 The A2 floor is the load-bearing decision. `SCENARIOS.md` predicted a
 strict extractor and prescribed extractor prompting — and that is the
