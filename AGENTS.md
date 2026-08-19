@@ -26,7 +26,8 @@ decides pass/fail. The verdict worker only explains.
 Design *why*: [`docs/DESIGN.md`](docs/DESIGN.md),
 [`docs/SCENARIOS.md`](docs/SCENARIOS.md),
 [`docs/CURRICULUM.md`](docs/CURRICULUM.md),
-[`docs/ACCESSIBILITY.md`](docs/ACCESSIBILITY.md).
+[`docs/ACCESSIBILITY.md`](docs/ACCESSIBILITY.md),
+[`docs/VALIDITY.md`](docs/VALIDITY.md).
 Those files still contain target-state prose. Trust the **Status** sections
 and the code over any sentence that still talks as if M2 is unbuilt.
 
@@ -59,6 +60,9 @@ Limits of the running app (not a backlog, just what is missing today):
 - The topic catalog is read-only. The learner does not pick.
 - **A stuck learner has no next move.** No translation, no way to ask for
   the words, no way to end early. Guess, or say goodbye twice.
+- **The partner holds the rubric.** One call both converses and annotates
+  slots, so a non-sequitur that lands on a slot gets credited and played
+  along with. `coherence` is computed every turn and read by nothing.
 
 The last product work on `main` is polish after M2: #58 (keep one machine
 warm), #59 (session-start retry), #60 (score the transcript in place),
@@ -138,6 +142,26 @@ is pinned to band 2 by a literal in `prompts.py` while
 `HSK_BAND_CEILING` is loaded and never read. The topic catalog is C8
 (#53): five topics and one learner make re-roll enough, and note 8 is
 agency, not stuckness.
+
+### Make the grade mean what it says
+
+Accessibility fixes a grade that withheld credit the learner earned.
+The other direction is credit they did not: the partner holds the
+rubric, so a non-sequitur that happens to land on a slot is both
+credited *and* cooperated with. A person would have said "…I asked if
+you wanted a drink."
+
+That is the validity track ([`docs/VALIDITY.md`](docs/VALIDITY.md)):
+
+| Chunk | What it changes |
+|---|---|
+| V1 | The floor fires only when the turn is not `off_track`. The verdict records coherence. |
+| V2 | The converser goes goal-blind; the grader becomes a third fan-out branch. Withholding becomes persona, `pressure_hint` retires. |
+| V3 | Re-open A2's floor-on-ask compromise if the grader evaluates ask-AND-answer reliably. |
+
+**It depends on the accessibility track and cannot lead it.** Removing
+`pressure_hint` without A2's HUD takes away the only thing pointing at
+the gap. V1 ships inside A2, since it closes a hole A2 opens.
 
 The A2 floor is the load-bearing decision. `SCENARIOS.md` predicted a
 strict extractor and prescribed extractor prompting — and that is the
