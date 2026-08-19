@@ -72,8 +72,9 @@ warm), #59 (session-start retry), #60 (score the transcript in place),
 
 ## What's next
 
-Three tracks. All open. None blocks the others. The issue list is the
-detail; this is the split.
+Three tracks. All open. Growing the surface and fitting the session are
+independent; **validity depends on accessibility** and cannot lead it.
+The issue list is the detail; this is the split.
 
 ### Grow the surface — more topics, scenarios, languages
 
@@ -160,11 +161,16 @@ That is the validity track ([`docs/VALIDITY.md`](docs/VALIDITY.md)):
 | V2 | The converser goes goal-blind; the grader runs **after** the reply. Withholding becomes persona, `pressure_hint` retires into authored scene design. |
 | V3 | Re-open A2's floor-on-ask compromise if the grader evaluates ask-AND-answer reliably. |
 
-**V0 first.** `coherence` has been computed on every turn since the
-conversation worker shipped and read by no code path, and
-`tests/fixtures/` has no session transcripts to judge it with. Gating
-anything on an unevaluated signal manufactures the false negative A2
+**V0 first, and it ships no gate.** `coherence` has been computed on
+every turn since the conversation worker shipped and read by no code
+path, and `tests/fixtures/` has no session transcripts to judge it
+with. V0 measures it and reports what it can carry — possibly nothing.
+Gating on an unmeasured signal manufactures the false negative A2
 exists to remove.
+
+**V1 does not close the gaming case; V2 does.** Even gated, the floor
+only stops itself from adding credit. The model tracker still grants
+the slot while the partner still holds the rubric.
 
 **V2 changes the turn's wire shape.** The grader needs the partner's
 reply, so it cannot join the `PA ∥ converser` fan-out — it starts when
