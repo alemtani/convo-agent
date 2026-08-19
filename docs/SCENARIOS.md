@@ -21,9 +21,12 @@ A session should put the learner in a situation with an obstacle — *"buy three
 pieces of fruit and find out what they cost"* — and grade whether they got through
 it. Two things block that:
 
-1. **A scenario can have no real obstacle.** `greetings` has none; its stated goal
-   is essentially the whole topic. Nothing in the KB format stops an author writing
-   a goal that one utterance satisfies.
+1. **A scenario can have no real obstacle.** `greetings` had none when this was
+   written; its stated goal was essentially the whole topic. Nothing in the KB
+   format stops an author writing a goal that one utterance satisfies. (It has
+   one now — `topic.md` authors two `request` slots, and no amount of packing
+   lets a learner know a name they were never told. The format problem this
+   describes is what the slot design fixed.)
 2. **Nothing can tell exactly when the goal is met.** A prose "hidden success
    criteria" section gives a model an opinion to render, not a fact to check.
 
@@ -102,6 +105,14 @@ scenario:
 extractor decides semantically whether the fact was established; the seed only
 constrains *which facts count*. Rigid about **what**, flexible about **how**.
 
+**One exception, added 2026-08-17.** The deterministic floor under the extractor
+(see [Known risks](#known-risks)) *does* match on these tokens — on content
+tokens only, and **one-directionally**: the floor can add credit the model
+withheld, never withhold credit the model gave. So the sentence above still holds
+where it matters. A learner who fills a slot by a route the seed never listed is
+credited by the model exactly as before; the floor simply cannot be the thing
+that fails them.
+
 ### The rule that makes a request slot mean something
 
 **A `request` slot is filled only when the learner asks and the partner answers.**
@@ -111,6 +122,16 @@ the slot must not be credited.
 This is not a difficulty setting. It is what makes the scenario gradeable at all,
 so it is on in every mode, permanently. It is also the one piece of realism we
 knowingly give up: a real vendor might well announce the price unasked.
+
+**The floor is the one exception, decided 2026-08-17.** The AND rule stays the
+authored rule and the model's rule. The deterministic floor fires on the *ask*
+alone, because Python cannot check whether a reply answered without judging it.
+The cost is real and belongs here rather than only in
+[`ACCESSIBILITY.md`](ACCESSIBILITY.md): a partner that counter-questions instead
+of answering can leave a learner credited for a fact they never obtained. We take
+it because the partner is instructed to answer — a deflection is our bug, not the
+learner's — and because the floor only ever fires on the learner's own words, so
+it can never cause the volunteered-price failure this rule exists to prevent.
 
 ---
 
@@ -345,6 +366,13 @@ Fruit stall, as authored above. 3 slots, 1 request → **`max_turns` 6**. No min
 
 The slots are not shown. The learner sees the goal in English; the
 machine-checkable form stays hidden.
+
+**Amended 2026-08-17.** Still true of the slots themselves, but the card now
+also carries `n_slots`, so the learner sees a **"0 of 3"** counter here that
+advances as facts land. The count is not the slots — no id, no description, no
+`expressible_with` — and it is what turns "the verdict teaches the missed phrase"
+from the *only* feedback into the *last* feedback. See
+[Difficulty, deferred](#difficulty-deferred).
 
 **Opening line** (partner; does not consume budget):
 

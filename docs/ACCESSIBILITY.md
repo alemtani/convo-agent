@@ -47,7 +47,9 @@ So the sentence for this app, this month, is not about pricing help:
 
 > **Let them leave a drowning session, and make the card they land on true.**
 
-Order matters and it is not negotiable: an exit into a verdict that invents rules
+Both halves matter, and the order is about *shipping*, not about blocking: **A1
+and A2 are independent and can land in either order.** What must not happen is
+calling the fire out after A1 alone — an exit into a verdict that invents rules
 just delivers the bad teaching faster.
 
 ---
@@ -103,10 +105,26 @@ reconciles them the only way left: **it invents a criterion.**
 
 A missed slot is a bad grade. A fabricated rule is bad teaching.
 
-The fix is not more prompt. The worker is asked to explain *why* a slot is
-unfilled, and Python never told it why, because Python does not know. **Cut that
-from the brief.** Name what the learner did and which facts are still open;
-never assert a cause.
+**Correction (2026-08-17).** An earlier draft of this document said the worker
+*"is asked to explain why a slot is unfilled"* and prescribed cutting that from
+the brief. **That was false about the file it cited.** `prompts.py` asks it to
+*"name what they did establish and what they didn't."* It never asks why.
+
+So there is nothing to cut, and the mechanism is worth stating exactly, because
+it is not a bad instruction — it is three good ones interacting:
+
+1. The outcome is stated as fact.
+2. Re-grading is forbidden, *"no matter how well the conversation reads."*
+3. The transcript contradicts the outcome.
+
+Under those three, explaining the outcome at all requires reconciling it with
+what the model can see. The rule is the only free variable, so the model
+supplies one.
+
+The fix is therefore an **addition**, not a cut: *do not assert a cause for a
+missing fact, and do not introduce a criterion that is not in the brief.* Name
+what they did, name what is open, stop. This is a smaller change than the
+earlier draft claimed and a better-understood one.
 
 ### Note #1 is already done
 
@@ -120,11 +138,35 @@ Nothing to fix. Not reopening it.
 
 Three small things, one PR. This is the week's work.
 
-- [ ] **"I'm stuck — end it."** A new `end_reason` into the existing verdict
-      path. Everything the verdict needs is already client-held.
-- [ ] **"Try this again"** — restart with the same `topic_id`.
+- [ ] **"End this"** — a new `end_reason` into the existing verdict path.
+      Everything the verdict needs is already client-held.
+- [ ] **"Try this again"** — restart on the same `topic_id`.
 - [ ] **"Show text" / "Hide text"** in words. This is copy. The learner asked for
       words; it does not wait for anything.
+
+Two contracts this chunk must write down, because neither is a bullet's worth of
+work:
+
+**The new `end_reason` needs a value and a sentence.** It is
+`Literal["goal", "cap", "closed"]` in two places (`models.py:409`, `:543`), and
+`render_verdict_prompt` has copy for `cap` and `closed` only. A reason with no
+copy produces a card that does not say why the session ended — on the one exit
+built for the learner who most needs to know.
+
+**"Try this again" must clear the terminal state.** Both A1 buttons write
+`status: "complete"`, and `main.py` 409s any turn against a complete session. The
+load-time guard only drops state when the topic *changes*, so a same-topic
+restart sails past it. The retry must clear `filled_at`, `status`,
+`consecutive_closes`, and `end_reason` — the existing `reset` handler already
+does exactly this, and its comment documents the failure verbatim: *"every turn
+409s, and the only recovery affordance is the button that just did this."* Reuse
+that path rather than writing a second one.
+
+An optional `topic_id` on `POST /api/session` is **not** a thin version of C8.
+The client already holds `session.topic_id` and echoes it on every turn as an
+opaque server-issued string; echoing it once more to restart is the same pattern
+one step earlier. C8 is the client learning what the catalog *contains* so it can
+choose. Echoing is not choosing.
 
 Note 6 ("scenario doesn't change on refresh") is working as designed —
 restore-on-load protects a phone that locks mid-conversation. What is missing is
@@ -144,13 +186,48 @@ stuckness.
       `zuijian`, 你最近怎么样, and 你呢？.
 - [ ] **Pin the partner's gender in the sketch** (note 7).
 - [ ] **The progress HUD** — see below.
-- [ ] One more phone session by the same learner, before anything else ships.
+- [ ] One more phone session by the same learner. **This gates A3 only** — it is
+      not a hold on the curriculum or content tracks.
 
 ### The floor, precisely
 
-The worker already returns `user_reading` — the learner's turn in 汉字, as it
-understood them. Normalize it the way `typed_pinyin.py` already walks input, and
-compare against the slot's `expressible_with`.
+**The floor takes a different input on each path, and the earlier draft named
+neither correctly.**
+
+| Path | Input | Why |
+|---|---|---|
+| Text (`/api/turn/text`) | `user_reading` | The worker resolves typed pinyin to 汉字; it is the only component that can |
+| Spoken (`/api/turn`) | the STT transcript | Already 汉字. `SpokenConversationResult` **drops `user_reading` on purpose** (`models.py:360`) — ~40 output tokens on the branch the reply waits behind |
+
+The first draft said "normalize `user_reading`" full stop. On the spoken path
+that field does not exist, and the spoken path is the product — text mode is the
+mic-free harness. A floor gated on `user_reading` alone would not run where the
+learner actually is.
+
+It also cited `typed_pinyin.py` as the normalizer. **It is not one.**
+`align_typed_tones` walks typed pinyin against an already-known 汉字 reading to
+recover *tones*; it never touched the `zui jian` failure. Both inputs above are
+already 汉字 by the time the floor sees them, so the normalization the floor
+needs is punctuation and whitespace stripping, not pinyin segmentation.
+
+### The matcher
+
+`expressible_with` is a token list, and **neither obvious reading works**:
+
+- **All tokens** — `self_name` is `[我, 叫, 姓]`, so `我叫小明` fails for want of
+  姓, though it is the canonical way to fill the slot.
+- **Any token** — the same list fires on a bare 我, which appears in nearly every
+  beginner utterance.
+
+So the floor matches on **content tokens**: `expressible_with` minus a small
+closed list of ubiquitous function words (我, 你, 的, 是), at least one of which
+must appear. `self_name` reduces to {叫, 姓} and `我叫小明` fires. `wellbeing` is
+`[最近, 怎么样]`, both content, so 你最近怎么样 fires — the turn that started all
+of this.
+
+The stoplist is authored once and must be validated against every slot in all
+five topics before A2 ships. If any slot reduces to the empty set, that slot
+cannot have a floor and says so out loud rather than silently matching nothing.
 
 Two properties make this safe, and both need stating:
 
@@ -164,13 +241,55 @@ already seen.
 `SCENARIOS.md` calls worse — a slot credited because the *partner* volunteered
 the fact. The floor cannot fire on anything the learner did not say.
 
-One decision A2 has to make rather than assume. A `request` slot is authored as
-*learner asked* **and** *partner answered*. Python can check the first half from
-the reading; it cannot check the second without judging. Recommendation: **floor
-on the ask alone.** The partner is instructed to answer, so a partner that
-deflects is our bug, and the learner should not eat it. Log when the model and
-the floor disagree — that log is what tells us whether the semantic tracker is
-worth keeping as the primary.
+### The request-slot rule — decided, not recommended
+
+A `request` slot is authored as *learner asked* **and** *partner answered*.
+Python can check the first half from the reading; it cannot check the second
+without judging. And this is not merely a prompt line to weigh against:
+[`SCENARIOS.md`](SCENARIOS.md) states the AND rule is *"on in every mode,
+permanently."* An earlier draft left this as a recommendation, which put two of
+our own documents in conflict and left the next writer to break the tie.
+
+**Decision: the floor fires on the ask alone. The AND rule stays the authored
+rule for the model.**
+
+The cost, stated plainly: a partner that asks a counter-question instead of
+answering can leave the learner credited for a fact they never obtained, and
+`goal_met` can go true on it.
+
+Three reasons that cost is worth paying:
+
+- It is bounded by our own instructions. The partner is told to answer, and
+  `pressure_hint` withholds only the answers to questions the learner has **not**
+  asked. A deflection is our bug, and the learner should not eat our bug.
+- It cannot produce the failure `SCENARIOS.md` calls worse. That failure is a
+  slot credited because the *partner* volunteered the fact. The floor never fires
+  on anything the learner did not say.
+- The observed failure is the other direction, and it is the one that ended a
+  session.
+
+This decision must be written in `ACCESSIBILITY.md`, `SCENARIOS.md`, and the
+system prompt before A2 ships, so no file still implies the floor honours AND.
+
+### Where the floor runs
+
+**On the turn path, writing into `slots_filled` before `termination.advance`.**
+
+Not on the verdict path. `workers/feedback.py` recomputes `missing` and
+`goal_met` from the client-held `filled_at`, so a floor that ran there instead
+would need a second copy — and a floor that ran in only one of the two places
+would let the HUD show three of three while the verdict says a fact is missing.
+That contradiction is exactly the failure A2 exists to kill.
+
+### The disagreement log
+
+Where the model and the floor disagree, log it. `termination.py` already writes
+one INFO line per turn and is the natural site: **server stderr, read by hand
+(`fly logs`) on a single-user deploy.** There is no store and this does not ask
+for one.
+
+Naming the site matters because an open thread below leans on this log. A log
+with no reader answers nothing.
 
 ### Note 7 is not a tracker bug
 
@@ -191,8 +310,25 @@ It was defaulted **off**, with this rationale: *"the verdict card already teache
 the missed phrase, so failing is cheap and instructive."*
 
 **The first session falsified that clause.** Failing is not cheap when you cannot
-reach a true verdict. Flip the default. The slots are authored English and the
-doc calls it a one-line frontend addition.
+reach a true verdict. Flip the default.
+
+**It is not, however, "a one-line frontend addition" — that phrase is wrong and
+this document repeated it without checking.** `ScenarioCard` is `situation` +
+`goal`, and its docstring says slots *"are never shown here"*
+(`models.py:420`). There is no count, no denominator, and no description on the
+wire.
+
+So the HUD needs a decision and a field. **Ship the count, not the names.**
+
+The client already holds `state.filled_at`, so it can compute the numerator
+itself. All it lacks is the denominator: **add `n_slots` to `ScenarioCard`.**
+That gives "2 of 3" with no per-turn wire change and no new endpoint, and it
+keeps the existing promise intact — a count is not the slots. Naming the
+outstanding facts needs their descriptions on the wire, which is a real
+disclosure decision and a bigger one; it can follow if a count proves too thin.
+
+Amend worked example 1 in [`SCENARIOS.md`](SCENARIOS.md), which still narrates a
+session where the slots are not shown.
 
 This is also the whole of note 9. Progress the learner can see *during* the
 session, which is when they asked for it — not a badge afterwards.
@@ -242,10 +378,11 @@ used help"* to it is piling on.
 **How much help is too much?** Do not decide it in verdict copy. A goal met with
 help is a pass — they said the thing. Revisit after there are counts.
 
-**Is the semantic tracker still the primary?** A2's disagreement log answers it.
-If Python's floor catches most of what the model misses and the model rarely adds
-anything the floor did not, the honest conclusion is that extraction should be
-deterministic and the model should stop being asked.
+**Is the semantic tracker still the primary?** A2's disagreement log answers it —
+the one written to server stderr and read by hand, as sited above. If the floor
+catches most of what the model misses and the model rarely adds anything the
+floor did not, the honest conclusion is that extraction should be deterministic
+and the model should stop being asked.
 
 ---
 

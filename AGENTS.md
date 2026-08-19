@@ -145,6 +145,15 @@ mitigation that failed, because the partner is asked in one call to
 withhold answers *and* to annotate slots. Deterministic logic gets a
 failing test first; a `live` eval set is a weather report, not a gate.
 
+Three things about that floor are decided, not open. It reads
+`user_reading` on the text path and the **STT transcript** on the spoken
+path — `SpokenConversationResult` drops `user_reading` deliberately, so a
+floor gated on it would not run where the learner actually is. It matches
+**content tokens** from `expressible_with`, since all-tokens fails
+`我叫小明` and any-token fires on a bare `我`. And it runs on the turn
+path **before `termination.advance`**, never on the verdict path, or the
+HUD and the verdict can disagree.
+
 ---
 
 ## How a turn runs
