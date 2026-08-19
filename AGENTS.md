@@ -172,12 +172,19 @@ exists to remove.
 only stops itself from adding credit. The model tracker still grants
 the slot while the partner still holds the rubric.
 
-**V2 changes the turn's wire shape.** The grader needs the partner's
-reply, so it cannot join the `PA ∥ converser` fan-out — it starts when
-the converser returns. `state` stops riding `ReplyEvent` and lands on a
-later event, which contradicts the invariant in `CLAUDE.md` and changes
-it. The reply gets *faster* (annotation leaves its schema); the next
-turn gets *slower*. `/api/turn/text` becomes two serial Claude calls.
+**The grader reads the *previous* partner turn, not the new one.** That
+is the pair the judgment needs — did the learner answer what was
+actually said — so the grader joins the `PA ∥ converser` fan-out instead
+of waiting on the reply. The wire shape is unchanged and the reply gets
+*faster*, since the annotation leaves the converser's output schema. A
+`request` slot's "partner answered" half then resolves one turn late,
+which costs nothing while A2 credits on the ask alone.
+
+**V2 also splits the model.** Sonnet 5 converses; **Opus 5 grades** —
+judgment is where capability pays, and it is off the reply path. Today
+`CONVERSATION_MODEL` serves the conversation, sketch, *and* verdict
+workers alike. The grader wants thinking **on**, so it needs `max_tokens`
+headroom the current workers deliberately avoid.
 
 **It depends on the accessibility track and cannot lead it** — but the
 dependency is **authored scene design**, not A2's HUD. A2 ships a count

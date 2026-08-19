@@ -63,7 +63,29 @@ cannot be the thing that fixes this one.
 else. **Grader.** The transcript including the partner's new reply, plus the
 slots. No character to hold, no reply to write, no reason to be generous.
 
-### What each one sees
+### What the grader reads
+
+**The grader does not need the partner's new reply.** It reads the *previous*
+partner turn plus the learner's turn — exactly the pair that answers both
+questions it is asked:
+
+| Question | Input it needs |
+|---|---|
+| Did the learner respond to what was actually said? | the partner's **previous** turn + the learner's turn |
+| Did the learner establish a fact, or ask for one? | the learner's turn + history |
+
+That pairing is the whole judgment. *"You asked which dish is best when I asked
+what you wanted to drink"* is legible from the previous turn and this one; the
+reply the partner is composing right now adds nothing to it.
+
+The learner's turn arrives as 汉字 by the same per-path split A2's floor uses:
+the **STT transcript** on the spoken path, the converser's `user_reading` in
+text mode. Taking `user_reading` from the converser rather than re-resolving
+pinyin matters — two independent resolutions of `wo jiao xiao ming` could
+disagree, and then the learner's own bubble and their grade would describe
+different sentences.
+
+### What each side sees
 
 | | Converser | Grader |
 |---|---|---|
@@ -72,67 +94,94 @@ slots. No character to hold, no reply to write, no reason to be generous.
 | System-prompt slot / withhold paragraphs | ❌ (they move) | ✅ |
 | Persona from the sketch | ✅ | ❌ |
 | Conversation history | ✅ | ✅ |
-| The partner's new reply | writes it | reads it |
+| The partner's new reply | writes it | does not need it |
 
 The sketch prompt currently forbids leaking the goal and restricts itself to
 flavour. V2 **widens** it: persona may now carry withholding (below), which is
 character, not criteria. That amendment is part of this work.
 
-**What the grader reads as 汉字** follows the same per-path split as A2's floor:
-the STT transcript on the spoken path, the converser's `user_reading` on the text
-path. Taking `user_reading` from the converser rather than re-resolving pinyin in
-the grader matters — two independent resolutions of `wo jiao xiao ming` could
-disagree, and then the learner's own bubble and their grade would describe
-different sentences.
-
-**What moves:** `slots_filled`, `learner_closed`, and `coherence`. **What
-stays:** `grammar_notes`, which is a live verdict input about the learner's
-Chinese rather than about the rubric, plus the unused fields, which moving buys
-nothing.
+**What moves to the grader:** `slots_filled`, `learner_closed`, `coherence`.
+**What stays on the converser:** `grammar_notes` — a live verdict input about
+the learner's Chinese rather than about the rubric — plus the unused fields,
+which moving buys nothing.
 
 ### The sequence
 
-The grader needs the partner's reply, so it **cannot** join the existing
-`PA ∥ converser` fan-out — that reply does not exist when those two start.
+Because the grader needs nothing the turn does not already have, **it joins the
+existing fan-out** rather than waiting on the converser:
 
 ```
 mic → STT → yield transcript
-         ├─ Azure PA ──────────────────────→ yield score
-         └─ converser → yield reply ─→ grader → yield state
-                                       (may overlap leftover PA)
-            all done                        → yield done
+         ├─ Azure PA ──────────────→ yield score
+         ├─ converser ─────────────→ yield reply
+         └─ grader ────────────────→ yield state
+            all done               → yield done
 ```
 
-Consequences the implementation has to honour:
+Everything the current shape guarantees survives: `state` still lands as soon as
+the grader returns, `termination.advance` still runs once per turn, and
+`/api/turn/text` runs two calls **concurrently** rather than in series.
 
-- `ReplyEvent` carries the partner's line as soon as the converser returns, and
-  **no longer carries `state`.** A new event does. `CLAUDE.md` states that state
-  rides `ReplyEvent`; that line changes with this work.
-- `termination.advance` runs only on the grader's annotation.
-- The client must not submit the next turn, or treat the session as complete,
-  until that state arrives.
-- **If the grader fails:** the reply stands, the turn returns normally, and the
-  previous `SessionState` is echoed unchanged. No slot is credited — and no close
-  is counted either, so a learner saying goodbye through a grader outage falls
-  back on the turn cap.
-- `/api/turn/text` gets the same contract, as **two serial Claude calls** where
-  today there is one.
+**The AND rule resolves one turn late, and that is already fine.** A `request`
+slot is authored as *learner asked* **and** *partner answered*; the answer to a
+turn-N ask lands in the turn-N reply, which the turn-N grader has not seen — the
+turn-N+1 grader does. This costs nothing today, because
+[`ACCESSIBILITY.md`](ACCESSIBILITY.md)'s A2 **already decided to credit on the
+ask alone**. Only V3, which re-opens strict AND, has to choose between the
+one-turn lag and one final grader pass at session end.
+
+**If the grader fails:** the reply stands, the turn returns normally, and the
+previous `SessionState` is echoed unchanged. No slot is credited and no close is
+counted — so a learner saying goodbye through a grader outage falls back on the
+turn cap.
+
+### Model: a stronger grader, a faster converser
+
+The two roles want different models, and today they share one:
+`CONVERSATION_MODEL` (`config.py:38`) is used by the conversation worker, the
+sketch worker, and the verdict worker alike.
+
+| Role | Model | Why |
+|---|---|---|
+| Converser | `claude-sonnet-5` | HSK band-2 dialogue is not a reasoning problem. Fast and cheap is the right trade on the branch the learner waits behind. |
+| Grader | `claude-opus-5` | Judgment is where capability pays, and it is off the reply path. |
+
+Standard practice, and small at one learner: Opus 5 is $5/$25 per Mtok against
+Sonnet 5's $3/$15 — 1.67×, on a call that runs once per turn against a short
+prefix. Caches are per-model, so the grader gets its own entry either way; Opus 5
+caches from 512 tokens where Sonnet 5 needs 1024, which suits the smaller
+grader prefix.
+
+**Thinking is the catch.** All three workers today set
+`thinking: {"type": "disabled"}` deliberately, because `max_tokens` caps
+thinking *plus* output and an overrun returns `stop_reason: max_tokens` with
+nothing parsed. A grader wants thinking **on** — it is the judgment — so it
+needs real `max_tokens` headroom, not the conversation worker's 1024. On Opus 5
+thinking is on by default and disabling it is rejected above `high` effort, so
+the grader must decide this explicitly rather than inherit it.
+
+**The verdict worker is the cheapest place to test the split.** It is already a
+judgment role, already one call per session, already off the turn path — and
+already on Sonnet 5 with thinking disabled. Moving it to Opus 5 needs no
+architecture change and none of V2.
 
 ### What it costs
 
-**Time to the partner's line: better.** The annotation leaves the converser's
-output schema; the spoken path already splits its schema to keep ~40 output
-tokens off this branch.
+**Latency improves.** The annotation leaves the converser's output schema
+entirely, on a path that already splits its schema to keep ~40 output tokens off
+the branch the reply waits behind (`SpokenConversationResult`). Nothing waits on
+the grader that did not already wait on the converser.
 
-**Time to the next turn: worse.** State waits on a second model call that starts
-after the first finishes. The learner reads the reply while the grader runs,
-which is what makes the trade defensible — but it is a trade, not a free win. If
-it measures badly the fallback is a smaller grader model, not a re-merge.
+**Caching: one more prefix per session.** The converser's prefix *shrinks* — the
+scenario block leaves it — and the grader gets its own. `SCENARIOS.md`'s
+"Caching" section says the slots live in the conversation worker's frozen
+prefix; **V2 inverts that and amends it.**
 
-**Caching: one more prefix per session.** The converser's prefix shrinks — the
-scenario block leaves it — and the grader gets its own. `SCENARIOS.md` "Caching"
-says the slots live in the conversation worker's frozen prefix; V2 inverts that
-and amends it.
+**It may retire A2's compromise.** A2 floors on the ask alone because Python
+cannot judge whether a reply answered. A grader that holds no character can
+evaluate the authored AND rule properly — with the one-turn lag above, or a
+final pass at session end. If it does so reliably, the cost A2 accepted stops
+being necessary. That is V3.
 
 ### What breaks, and how it is fixed
 
@@ -203,7 +252,7 @@ The verdict record then describes what went wrong rather than punishing it.
 |---|---|---|
 | **V0** | A recorded-transcript fixture set and the first measurement of `coherence` against gold labels. Reports thresholds, or reports that none is safe. **Ships no gate.** | nothing |
 | **V1** | Gate the floor at whatever V0 supports. Session-level coherence fact on `VerdictCard`. | V0, and A2's floor |
-| **V2** | Goal-blind converser; grader after the reply; withholding as persona; scene design replacing `pressure_hint`. | a rewritten situation that proves the gap survives |
+| **V2** | Goal-blind converser; grader as a third fan-out branch reading the *previous* partner turn; withholding as persona; scene design replacing `pressure_hint`. Splits the model: Sonnet 5 converses, Opus 5 grades. | a rewritten situation that proves the gap survives |
 | **V3** | Re-open A2's floor-on-ask compromise if the grader evaluates ask-AND-answer reliably. | V2 |
 
 **V2 does not flip all five topics at once.** It runs where the request slots are
@@ -212,8 +261,15 @@ field. `food-ordering` is the rewrite target. `validate.py` cannot judge whether
 a situation creates an opening — that is prose — so the guardrail is an authored
 field, not a linter rule.
 
-**V0 measures `coherence` on the converser; V2 moves it to the grader.** The
-matrix has to be re-run after V2 before the same gate is trusted.
+**V0 measures `coherence` on the converser; V2 moves it to the grader** — and
+onto a stronger model. The matrix has to be re-run after V2 before the same gate
+is trusted.
+
+**The model split is separable from V2.** The verdict worker is already a
+judgment role on the conversation model, off the turn path, one call per
+session. Moving it to `claude-opus-5` is a config change that needs none of the
+blindness work, and it is the cheapest way to find out whether a stronger judge
+actually reads these sessions better.
 
 ## Risks
 
