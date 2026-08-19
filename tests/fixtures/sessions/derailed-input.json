@@ -1,0 +1,28 @@
+{
+  "id": "derailed-input",
+  "topic_id": "food-ordering",
+  "sketch": "The server is brisk and a little busy — short answers, no small talk. It is lunchtime and most tables are full. A pot of tea sits on the counter.",
+  "dialogue": [
+    {
+      "role": "partner",
+      "zh": "你好！这是菜单。",
+      "pinyin": "nǐ hǎo! zhè shì càidān."
+    },
+    {
+      "role": "user",
+      "zh": "谢谢。",
+      "pinyin": "xièxie."
+    },
+    {
+      "role": "partner",
+      "zh": "你要喝什么？",
+      "pinyin": "nǐ yào hē shénme?"
+    }
+  ],
+  "learner_turn": "wo bu zhi dao zen me shuo zhe ge dong xi um sorry",
+  "state": {
+    "filled_at": {},
+    "consecutive_closes": 0
+  },
+  "notes": "The learner is stuck and says so, half in English. Nothing to credit."
+}

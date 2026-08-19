@@ -3,7 +3,16 @@
 Companion to [`SCENARIOS.md`](SCENARIOS.md), which specifies *how* a session is
 graded. This one asks whether the grade is **earned**.
 
-Status: **not built.** Depends on [`ACCESSIBILITY.md`](ACCESSIBILITY.md)'s A2.
+Status: **V0 measured; V1 does not ship.** The rest depends on
+[`ACCESSIBILITY.md`](ACCESSIBILITY.md)'s A2.
+
+> **V0's answer: `coherence` cannot carry a gate.** Across 21 runs over 7
+> recorded cases, the partner tagged the gaming turn `on_track` every time and
+> credited the slot every time — the tag does not notice the failure, so no
+> threshold over it separates gaming from earned credit. No gate suppressed an
+> earned turn either, so V1 would not have broken A2; it would simply never have
+> fired. Evidence and method: [`evals/coherence/`](../evals/coherence/README.md).
+> The motivating turn stays V2's to fix.
 
 ---
 
@@ -250,8 +259,8 @@ The verdict record then describes what went wrong rather than punishing it.
 
 | | What | Blocked on |
 |---|---|---|
-| **V0** | A recorded-transcript fixture set and the first measurement of `coherence` against gold labels. Reports thresholds, or reports that none is safe. **Ships no gate.** | nothing |
-| **V1** | Gate the floor at whatever V0 supports. Session-level coherence fact on `VerdictCard`. | V0, and A2's floor |
+| **V0** | ✅ **Done.** A recorded-transcript fixture set and the first measurement of `coherence` against gold labels. Reported that **no threshold is safe** — every candidate gate never fires. Shipped no gate. | nothing |
+| **V1** | ❌ **Not shipping the gate.** V0 found nothing for it to gate on. The session-level coherence fact on `VerdictCard` is separable and still open — but it is describing a signal we now know is silent on the failure that matters, so it waits for V2's grader to produce a tag worth recording. | V0 said no |
 | **V2** | Goal-blind converser; grader as a third fan-out branch reading the *previous* partner turn; withholding as persona; scene design replacing `pressure_hint`. Splits the model: Sonnet 5 converses, Opus 5 grades. | a rewritten situation that proves the gap survives |
 | **V3** | Re-open A2's floor-on-ask compromise if the grader evaluates ask-AND-answer reliably. | V2 |
 

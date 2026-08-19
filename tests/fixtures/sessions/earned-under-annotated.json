@@ -1,0 +1,18 @@
+{
+  "id": "earned-under-annotated",
+  "topic_id": "greetings",
+  "sketch": "The classmate is cheerful and unhurried, walking to their first class. It is a bright morning and the path is full of students.",
+  "dialogue": [
+    {
+      "role": "partner",
+      "zh": "早上好！",
+      "pinyin": "zǎoshang hǎo!"
+    }
+  ],
+  "learner_turn": "zao shang hao wo jiao xiao ming ni jiao shen me ming zi",
+  "state": {
+    "filled_at": {},
+    "consecutive_closes": 0
+  },
+  "notes": "The A2 rescue case: two slots established at once, in untoned run-together pinyin. Messy input is exactly when the tracker under-annotates and a coherence tag is most likely to be harsh."
+}
