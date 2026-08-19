@@ -54,11 +54,27 @@ def render(
 
     lines += ["", "## Recommendation", ""]
     if best is None:
-        # Two different failures wear the same verdict, and they say different
-        # things about the signal. A gate that never fires means `coherence`
-        # did not notice the gaming at all; a gate that misjudges means it
-        # noticed something, but not reliably enough to act on.
-        if all(report.safe for report in reports):
+        # Three different failures wear the same verdict, and they say different
+        # things about the signal. Branch on what the reports actually show, not
+        # on a proxy: a signal that is silent, a signal that only catches gaming
+        # by punishing earned turns, and a signal that manages both faults at
+        # once are three separate findings, and V2 reads this line.
+        useful = [report for report in reports if report.useful]
+        if useful and not any(report.safe for report in useful):
+            lines.append(
+                "**No safe gate.** Every gate that blocks any wrongly credited run "
+                "also suppresses a turn the learner earned — the false negative "
+                "`ACCESSIBILITY.md` A2 exists to remove. V1 does not ship a gate on "
+                "this evidence; the fix stays with V2."
+            )
+        elif not useful and any(not report.safe for report in reports):
+            lines.append(
+                "**No safe gate, and the signal is harmful as well as silent.** No "
+                "candidate blocks a single wrongly credited run, and some would "
+                "suppress turns the learner earned. That is worse than no gate in "
+                "both directions. V1 does not ship one; the fix stays with V2."
+            )
+        elif all(report.safe for report in reports):
             lines.append(
                 "**No safe gate: every candidate never fires.** `coherence` tagged "
                 "the wrongly credited runs the same way it tagged the earned ones, "
@@ -68,10 +84,8 @@ def render(
             )
         else:
             lines.append(
-                "**No safe gate.** Every gate that blocks any wrongly credited run "
-                "also suppresses a turn the learner earned — the false negative "
-                "`ACCESSIBILITY.md` A2 exists to remove. V1 does not ship a gate on "
-                "this evidence; the fix stays with V2."
+                "**No safe gate.** No candidate is both safe and useful. V1 does "
+                "not ship a gate on this evidence; the fix stays with V2."
             )
     else:
         lines.append(

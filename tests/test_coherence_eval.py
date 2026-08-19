@@ -436,3 +436,126 @@ def test_report_distinguishes_a_gate_that_never_fires_from_one_that_misjudges():
 
     assert "never fires" in render(never_fires, gold, model="m")
     assert "never fires" not in render(misjudges, gold, model="m")
+
+
+# --- the real corpus ---------------------------------------------------------
+
+CASES_DIR = "tests/fixtures/sessions"
+
+
+def test_the_shipped_corpus_pairs_with_its_gold_labels():
+    """Guard the real fixtures, not just tmp_path copies of their shape."""
+    cases = load_cases(CASES_DIR)
+
+    assert len(cases) >= 6
+    paired(cases, load_gold(f"{CASES_DIR}/gold.json"))
+
+
+def test_every_case_carries_the_dialogue_shape_the_client_actually_sends():
+    """The measurement is worthless if it replays a history no client submits.
+
+    The live client sends `[]` on turn 1 and strict `user`/`partner` pairs after
+    it — the opening line lives in the sketch and is never part of `dialogue`.
+    A fixture with a leading partner turn builds a different `messages` array
+    than production and shifts the pressure hint with it.
+    """
+    for case in load_cases(CASES_DIR):
+        roles = [turn["role"] for turn in case.dialogue]
+        assert len(roles) % 2 == 0, f"{case.id}: dangling turn in {roles}"
+        assert roles == ["user", "partner"] * (len(roles) // 2), f"{case.id}: {roles}"
+
+
+def test_no_case_claims_a_slot_was_filled_on_a_turn_not_yet_taken():
+    """Prior state must be reachable from prior history, or the hint is a fiction."""
+    from evals.coherence.replay import _turn_index
+
+    for case in load_cases(CASES_DIR):
+        turn = _turn_index(case.dialogue)
+        for slot_id, filled_turn in case.state.get("filled_at", {}).items():
+            assert filled_turn < turn, (
+                f"{case.id}: {slot_id} filled on turn {filled_turn}, "
+                f"but the turn under test is {turn}"
+            )
+
+
+def test_the_second_opinion_labels_the_same_cases():
+    """A second labeller's pass is only comparable if it covers the same set."""
+    cases = load_cases(CASES_DIR)
+
+    paired(cases, load_gold(f"{CASES_DIR}/gold.second-opinion.json"))
+
+
+def test_replay_derives_the_turn_index_the_orchestrator_does():
+    """A third copy of the rule is a third thing that can drift."""
+    from backend.orchestrator import _turn_index as shipped
+    from evals.coherence.replay import _turn_index as replayed
+
+    for case in load_cases(CASES_DIR):
+        assert replayed(case.dialogue) == shipped(case.dialogue), case.id
+
+
+# --- what a failed measurement is allowed to claim ---------------------------
+
+
+def test_load_gold_rejects_a_credit_decision_that_is_not_a_boolean(tmp_path):
+    """`bool("false")` is `True`. A coerced label is a yes nobody wrote."""
+    _write_gold(tmp_path, {"bad": {"coherence": "on_track", "credit_ok": "false"}})
+
+    with pytest.raises(CaseError, match="credit_ok"):
+        load_gold(str(tmp_path / "gold.json"))
+
+
+def test_load_observations_rejects_an_unknown_tag(tmp_path):
+    """An unknown tag falls outside every gate, including the open one."""
+    from evals.coherence.matrix import load_observations
+
+    path = tmp_path / "observations.json"
+    path.write_text(
+        json.dumps(
+            {
+                "model": "m",
+                "observations": [{"case_id": "a", "coherence": "on-track"}],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(CaseError, match="on-track"):
+        load_observations(str(path))
+
+
+def test_report_says_the_signal_is_both_silent_and_harsh_when_it_is():
+    """Silent on gaming *and* harsh on earned turns is its own finding."""
+    from evals.coherence.report import render
+
+    gold = {
+        "earned": _gold("earned", "on_track", True),
+        "gaming": _gold("gaming", "drifting", False),
+    }
+    observations = [
+        Observation(case_id="earned", coherence="off_track", slots_filled=()),
+        Observation(case_id="gaming", coherence="on_track", slots_filled=("order",)),
+    ]
+
+    text = render(observations, gold, model="m")
+
+    assert "harmful as well as silent" in text
+    assert "never fires" not in text
+
+
+def test_report_blames_suppression_only_when_a_gate_actually_blocks_gaming():
+    """The 'blocks gaming only by punishing rescues' sentence needs a useful gate."""
+    from evals.coherence.report import render
+
+    gold = {
+        "earned": _gold("earned", "on_track", True),
+        "gaming": _gold("gaming", "off_track", False),
+    }
+    observations = [
+        Observation(case_id="earned", coherence="off_track", slots_filled=()),
+        Observation(case_id="gaming", coherence="off_track", slots_filled=("order",)),
+    ]
+
+    text = render(observations, gold, model="m")
+
+    assert "also suppresses a turn the learner earned" in text

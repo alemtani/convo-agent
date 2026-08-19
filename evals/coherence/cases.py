@@ -114,10 +114,18 @@ def load_gold(path: str) -> Dict[str, Gold]:
                 f"{case_id}: no credit_ok — a label must say whether the turn may "
                 "earn credit, which is the question a gate actually decides"
             )
+        # A real boolean, not anything truthy. `bool("false")` is `True`, so
+        # coercing here would hand a labeller who wrote a string the silent yes
+        # this check exists to prevent.
+        if not isinstance(entry["credit_ok"], bool):
+            raise CaseError(
+                f"{case_id}: credit_ok is {entry['credit_ok']!r} — it must be a "
+                "JSON boolean; anything else coerces to a yes nobody wrote"
+            )
         gold[case_id] = Gold(
             case_id=case_id,
             coherence=tag,
-            credit_ok=bool(entry["credit_ok"]),
+            credit_ok=entry["credit_ok"],
             slots_established=tuple(entry.get("slots_established", [])),
             rationale=entry.get("rationale", ""),
         )

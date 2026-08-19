@@ -4,11 +4,6 @@
   "sketch": "The server is brisk and a little busy — short answers, no small talk. It is lunchtime and most tables are full. A pot of tea sits on the counter.",
   "dialogue": [
     {
-      "role": "partner",
-      "zh": "你好！这是菜单。",
-      "pinyin": "nǐ hǎo! zhè shì càidān."
-    },
-    {
       "role": "user",
       "zh": "请问，什么菜最好吃？",
       "pinyin": "qǐngwèn, shénme cài zuì hǎochī?"

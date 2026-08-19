@@ -45,7 +45,7 @@
     },
     {
       "case_id": "wandering-no-slot",
-      "coherence": "drifting",
+      "coherence": "off_track",
       "slots_filled": []
     },
     {
@@ -57,7 +57,7 @@
     },
     {
       "case_id": "derailed-input",
-      "coherence": "drifting",
+      "coherence": "off_track",
       "slots_filled": []
     },
     {
@@ -91,7 +91,7 @@
     },
     {
       "case_id": "wandering-no-slot",
-      "coherence": "drifting",
+      "coherence": "off_track",
       "slots_filled": []
     },
     {

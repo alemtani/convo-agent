@@ -4,11 +4,6 @@
   "sketch": "The classmate is cheerful and unhurried, walking to their first class. It is a bright morning and the path is full of students.",
   "dialogue": [
     {
-      "role": "partner",
-      "zh": "早上好！",
-      "pinyin": "zǎoshang hǎo!"
-    },
-    {
       "role": "user",
       "zh": "你好，我叫小明。",
       "pinyin": "nǐ hǎo, wǒ jiào Xiǎomíng."
@@ -22,8 +17,7 @@
   "learner_turn": "我很好，你呢？",
   "state": {
     "filled_at": {
-      "self_name": 1,
-      "partner_name": 2
+      "self_name": 1
     },
     "consecutive_closes": 0
   },

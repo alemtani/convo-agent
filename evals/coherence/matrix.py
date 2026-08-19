@@ -25,7 +25,7 @@ wrong side of that run cannot tell it happened.
 from dataclasses import dataclass
 from typing import Dict, FrozenSet, Iterable, List, Optional, Tuple
 
-from evals.coherence.cases import COHERENCE_TAGS, Gold
+from evals.coherence.cases import COHERENCE_TAGS, CaseError, Gold
 
 # Strictest first. `recommend` walks this order and takes the first safe one, so
 # the ordering is the preference: block as much as can be blocked for free.
@@ -150,6 +150,15 @@ def load_observations(path: str) -> Run:
 
     with open(path, encoding="utf-8") as handle:
         payload = json.load(handle)
+    for entry in payload["observations"]:
+        # The open gate is the whole tag set, so an unknown tag falls outside
+        # *every* gate — including the one defined never to stop anything. A
+        # typo here would make "no gate at all" look useful, or unsafe.
+        if entry["coherence"] not in COHERENCE_TAGS:
+            raise CaseError(
+                f"{entry['case_id']}: observed coherence {entry['coherence']!r} is "
+                f"not one of {COHERENCE_TAGS}"
+            )
     return Run(
         model=payload["model"],
         repeat=payload.get("repeat", 1),

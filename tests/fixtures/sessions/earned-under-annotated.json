@@ -2,13 +2,7 @@
   "id": "earned-under-annotated",
   "topic_id": "greetings",
   "sketch": "The classmate is cheerful and unhurried, walking to their first class. It is a bright morning and the path is full of students.",
-  "dialogue": [
-    {
-      "role": "partner",
-      "zh": "早上好！",
-      "pinyin": "zǎoshang hǎo!"
-    }
-  ],
+  "dialogue": [],
   "learner_turn": "zao shang hao wo jiao xiao ming ni jiao shen me ming zi",
   "state": {
     "filled_at": {},

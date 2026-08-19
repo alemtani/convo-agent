@@ -15,6 +15,13 @@ tagged the gaming turn `on_track` **every time** and credited `recommendation`
 every time. No threshold over `coherence` separates that turn from the ones the
 learner earned, because the tag does not notice it at all.
 
+The corpus was rebuilt once mid-measurement, after review found the fixtures
+carried the session's opening line inside `dialogue` — a shape the live client
+never sends, which shifts both the `messages` array and the pressure hint. The
+headline survived the rebuild unchanged; the numbers here are from the corrected
+corpus, and `test_every_case_carries_the_dialogue_shape_the_client_actually_sends`
+now holds the wire shape in place.
+
 That is the second of the two failures V0 could have found, and the milder one:
 the signal is not *wrong*, it is silent. No gate suppressed an earned turn
 either. So V1's gate would not have broken A2 — it simply would never have
