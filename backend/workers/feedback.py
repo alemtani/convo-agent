@@ -130,21 +130,19 @@ def build_request(*, kb_block: str, dialogue, prompt: str) -> dict:
         for turn in dialogue
     )
     return {
-        "model": config.CONVERSATION_MODEL,
-        # Room for a paragraph of English plus a four-line exchange, with the
-        # 汉字 and pinyin that carries. 1024 was not enough and failed *silently*
-        # — as a truncated string, not an error.
-        "max_tokens": 2048,
-        # Thinking off, for the reason `workers/conversation.py` spells out and
-        # this worker had to learn twice: Sonnet 5 thinks whenever the field is
-        # omitted, and `max_tokens` caps thinking *plus* output. An earlier
-        # version left it on deliberately — this call is off the hot path, and
-        # composing an in-band exchange seemed worth deliberation — and the
-        # reasoning ate the budget, so the JSON ended mid-string and the card
-        # showed the learner "Internal Server Error". If deliberation turns out
-        # to be worth buying here, buy it explicitly with a thinking budget
-        # inside a larger cap, not by leaving the field off.
-        "thinking": {"type": "disabled"},
+        "model": config.VERDICT_MODEL,
+        # Room for the paragraph of English plus a four-line exchange this
+        # worker always produced, *and* the thinking that now precedes it —
+        # `max_tokens` caps thinking plus output together. 2048 was sized for
+        # the output alone and left no headroom; this is that budget plus
+        # explicit room for deliberation.
+        "max_tokens": 4096,
+        # Opus 5 thinks by default (unlike the Sonnet 5 trap
+        # `workers/conversation.py` documents, and this worker's own history
+        # with `{"type": "disabled"}` below). Adaptive, explicit, so the choice
+        # reads at the call site rather than depending on omission.
+        "thinking": {"type": "adaptive"},
+        "output_config": {"effort": config.VERDICT_EFFORT},
         "system": [{"type": "text", "text": prompt}],
         "messages": [
             {

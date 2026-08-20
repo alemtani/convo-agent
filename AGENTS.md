@@ -43,7 +43,9 @@ Shipped, in the order a learner hits it:
 - Text loop: `POST /api/turn/text` (pinyin or 汉字).
 - Session start: `POST /api/session` draws a topic, returns opening line +
   flavour sketch + English scenario card.
-- Slot tracker + `termination.py` + end-of-session `POST /api/verdict`.
+- Slot tracker + `termination.py` + end-of-session `POST /api/verdict`, now on
+  `claude-opus-5` with thinking on — V2's model split (docs/VALIDITY.md),
+  tested here first since this worker needed no architecture change to try it.
 - On-demand `POST /api/tts` (slowed, cached by line). Beside the loop.
 - Five topics, all scenario-ready: `greetings`, `self-intro`, `family`,
   `numbers-money`, `food-ordering`. Catalog: `GET /api/topics`.
@@ -156,17 +158,10 @@ That is the validity track ([`docs/VALIDITY.md`](docs/VALIDITY.md)):
 
 | Chunk | What it changes |
 |---|---|
-| V0 | A recorded-transcript set, and the first evaluation of `coherence`. Yields the thresholds V1 needs. |
-| V1 | The floor is gated at that threshold. A session-level coherence fact on `VerdictCard`. |
-| V2 | The converser goes goal-blind; the grader runs **after** the reply. Withholding becomes persona, `pressure_hint` retires into authored scene design. |
+| V0 | **Done (#72).** A recorded-transcript set and the first evaluation of `coherence`. No threshold separates gaming from earned credit — 0/3 gaming runs blocked, 0/12 rescues suppressed at every gate tried. |
+| V1 | **Punted.** A gate on `coherence` would never have fired — no benefit, and issue #71 records why. The gaming case stays V2's to fix. |
+| V2 | **In progress.** The converser goes goal-blind; the grader joins the fan-out reading the *previous* partner turn. Withholding becomes persona, `pressure_hint` retires into authored scene design. Staged: (1) verdict worker → Opus 5 with thinking on, done as a standalone model-split test — no architecture change needed since it's already a judgment role off the turn path; (2) rewrite `food-ordering`'s situation for a structural gap; (3) the converser/grader split itself. |
 | V3 | Re-open A2's floor-on-ask compromise if the grader evaluates ask-AND-answer reliably. |
-
-**V0 first, and it ships no gate.** `coherence` has been computed on
-every turn since the conversation worker shipped and read by no code
-path, and `tests/fixtures/` has no session transcripts to judge it
-with. V0 measures it and reports what it can carry — possibly nothing.
-Gating on an unmeasured signal manufactures the false negative A2
-exists to remove.
 
 **V1 does not close the gaming case; V2 does.** Even gated, the floor
 only stops itself from adding credit. The model tracker still grants
@@ -181,14 +176,19 @@ of waiting on the reply. The wire shape is unchanged and the reply gets
 which costs nothing while A2 credits on the ask alone.
 
 **V2 also splits the model.** Sonnet 5 converses; **Opus 5 grades** —
-judgment is where capability pays, and it is off the reply path. Today
-`CONVERSATION_MODEL` serves the conversation, sketch, *and* verdict
-workers alike. The grader wants thinking **on**, so it needs `max_tokens`
-headroom the current workers deliberately avoid.
+judgment is where capability pays, and it is off the reply path. The
+verdict worker made this move first (`VERDICT_MODEL`, separate from
+`CONVERSATION_MODEL`, which still serves the conversation and sketch
+workers) — thinking on, `max_tokens` headroom the hot-path workers
+deliberately avoid. The grader worker still to come wants the same
+treatment.
 
-**It depends on the accessibility track and cannot lead it** — but the
-dependency is **authored scene design**, not A2's HUD. A2 ships a count
-("2 of 3"), which says something is outstanding, not which fact it is.
+**Does not wait on the accessibility track.** `docs/VALIDITY.md`
+narrows the original framing in issue #71: the real dependency is
+**authored scene design**, not A2's HUD. A2 ships a count ("2 of 3"),
+which says something is outstanding, not which fact it is — V2 needs a
+situation with a structural gap instead, which is content work
+independent of #67 merging.
 
 The A2 floor is the load-bearing decision. `SCENARIOS.md` predicted a
 strict extractor and prescribed extractor prompting — and that is the
