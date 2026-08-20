@@ -6,10 +6,13 @@ plumbing are covered in `test_azure.py`; here we only check what `stt` adds on
 top — joining the segments into one transcript. We never hit Azure and never
 assert real recognition text (that's a manual/live check).
 """
+import io
 import types
+import wave
 
 import pytest
 
+from backend import config
 from backend.speech import _azure, stt
 from tests.fakes_speech import canceled_event, make_recognizer_class, recognized_event
 
@@ -276,3 +279,44 @@ async def test_live_speech_on_both_sides_of_a_pause_is_transcribed(gap_s):
 
     assert "咖啡" in text, f"first half missing from {text!r}"
     assert "老师" in text, f"second half was discarded from {text!r}"
+
+
+def _silent_wav(*, seconds: float, rate: int = 16000) -> bytes:
+    """A WAV header with `seconds` of silence behind it — only the duration
+    matters to `deadline_for`."""
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(rate)
+        w.writeframes(b"\x00\x00" * int(rate * seconds))
+    return buf.getvalue()
+
+# --- The deadline has to fit the recording (#63) ----------------------------
+
+
+def test_the_deadline_grows_with_the_audio():
+    """A flat budget fails the learner who hesitates most.
+
+    Push-to-talk holds the button *through* a pause, so a turn spent thinking
+    uploads a longer WAV — and each pause becomes its own segment to decode.
+    A fixed 5s covered the fluent turns and timed out the hesitant ones, which
+    is precisely backwards: the learner who needs time is the one it cut off.
+    """
+    short = stt.deadline_for(_silent_wav(seconds=2))
+    long = stt.deadline_for(_silent_wav(seconds=20))
+
+    assert long > short
+    assert short >= config.STT_TIMEOUT_S
+
+
+def test_the_deadline_is_capped():
+    """Bounded above: a wedged session must not hold a request open forever,
+    and no real turn approaches this."""
+    assert stt.deadline_for(_silent_wav(seconds=600)) == config.STT_TIMEOUT_MAX_S
+
+
+def test_unreadable_audio_falls_back_to_the_base_deadline():
+    """Azure decides whether the bytes are a WAV; this must not be a second
+    place that rejects them."""
+    assert stt.deadline_for(b"not a wav at all") == config.STT_TIMEOUT_S
