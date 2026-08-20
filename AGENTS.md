@@ -156,15 +156,18 @@ That is the validity track ([`docs/VALIDITY.md`](docs/VALIDITY.md)):
 
 | Chunk | What it changes |
 |---|---|
-| V0 | A recorded-transcript set, and the first evaluation of `coherence`. Yields the thresholds V1 needs. |
-| V1 | The floor is gated at that threshold. A session-level coherence fact on `VerdictCard`. |
-| V2 | The converser goes goal-blind; the grader runs **after** the reply. Withholding becomes persona, `pressure_hint` retires into authored scene design. |
+| V0 | ✅ Done. A recorded-transcript set and the first evaluation of `coherence`. Answer: **no safe threshold** — the tag never notices the gaming turn. `evals/coherence/`. |
+| V1 | ❌ The gate does not ship; V0 found nothing to gate on. The verdict-card coherence fact waits for V2's grader. |
+| V2 | The converser goes goal-blind; the grader **joins the fan-out**, reading the *previous* partner turn. Withholding becomes persona, `pressure_hint` retires into authored scene design. |
 | V3 | Re-open A2's floor-on-ask compromise if the grader evaluates ask-AND-answer reliably. |
 
-**V0 first, and it ships no gate.** `coherence` has been computed on
+**V0 ran, and it reported nothing.** `coherence` had been computed on
 every turn since the conversation worker shipped and read by no code
-path, and `tests/fixtures/` has no session transcripts to judge it
-with. V0 measures it and reports what it can carry — possibly nothing.
+path. It now has a fixture set (`tests/fixtures/sessions/`) and a
+measurement (`evals/coherence/RESULTS.md`): over 21 runs the partner
+tagged the gaming turn `on_track` every time and credited the slot every
+time. The tag is not wrong about that turn — it is silent. So there is
+no threshold for V1 to use, and the gate does not ship.
 Gating on an unmeasured signal manufactures the false negative A2
 exists to remove.
 
