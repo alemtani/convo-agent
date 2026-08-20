@@ -22,6 +22,21 @@ Model: `claude-sonnet-5`. 21 runs over 7 cases.
 
 **No safe gate: every candidate never fires.** `coherence` tagged the wrongly credited runs the same way it tagged the earned ones, so no threshold over it separates them. A gate that never fires is risk bought with no benefit. V1 does not ship one on this evidence; the fix stays with V2.
 
+## Slot accuracy
+
+Does the tracker credit the facts the learner actually established? **Spurious** is credit they did not earn — the failure this track exists to remove. **Missed** is credit they earned and did not get — the failure A2's floor exists to rescue. This is the metric V2's grader has to beat, and these numbers are its baseline.
+
+| case | exact | spurious | missed |
+|---|---|---|---|
+| clean-slot-fill | 3/3 | — | — |
+| derailed-input | 3/3 | — | — |
+| earned-under-annotated | 3/3 | — | — |
+| elliptical-ni-ne | 3/3 | — | — |
+| nonsequitur-slot-fill | 0/3 | `recommendation` ×3 | — |
+| order-after-answers | 3/3 | — | — |
+| wandering-no-slot | 3/3 | — | — |
+| **total** | **18/21** | **3** | **0** |
+
 ## Per-case runs
 
 | case | gold | observed | slots filled |

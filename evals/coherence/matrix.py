@@ -131,6 +131,79 @@ def recommend(reports: Iterable[GateReport]) -> Optional[GateReport]:
 
 
 @dataclass(frozen=True)
+class SlotAccuracy:
+    """How one case's credited slots compare with the facts it actually established.
+
+    The gate analysis above asks whether `coherence` can *police* the tracker.
+    This asks the blunter question underneath it: **is the tracker right?** Both
+    failure directions are named separately, because they are different bugs
+    with different victims:
+
+    - `spurious` — credited a slot gold says was never established. The false
+      positive this track exists to remove; the learner is told they did
+      something they did not do.
+    - `missed` — did not credit a slot gold says was established. The false
+      negative `ACCESSIBILITY.md` A2 exists to remove.
+
+    Counted per run rather than per case, since the annotation is a model's
+    output and one clean run does not make a reliable tracker.
+    """
+
+    case_id: str
+    runs: int
+    exact: int
+    spurious: Dict[str, int]
+    missed: Dict[str, int]
+
+    @property
+    def exact_rate(self) -> float:
+        return self.exact / self.runs if self.runs else 0.0
+
+
+def slot_accuracy(
+    observations: Iterable[Observation], gold: Dict[str, Gold]
+) -> List["SlotAccuracy"]:
+    """Score `slots_filled` against `gold.slots_established`, per case.
+
+    Set comparison, so the order the model happened to list ids in never counts
+    as a disagreement — `termination.advance` treats them as a set too.
+
+    This is the metric **V2 is judged on**. The gate analysis dies with V1; this
+    survives it, because "did the grader credit the right facts?" is the question
+    a goal-blind grader exists to answer better. The numbers recorded here on the
+    current partner are the baseline it has to beat.
+    """
+    per_case: Dict[str, List[Observation]] = {}
+    for observation in observations:
+        per_case.setdefault(observation.case_id, []).append(observation)
+
+    reports = []
+    for case_id in sorted(per_case):
+        expected = set(gold[case_id].slots_established)
+        spurious: Dict[str, int] = {}
+        missed: Dict[str, int] = {}
+        exact = 0
+        for observation in per_case[case_id]:
+            seen = set(observation.slots_filled)
+            if seen == expected:
+                exact += 1
+            for slot_id in sorted(seen - expected):
+                spurious[slot_id] = spurious.get(slot_id, 0) + 1
+            for slot_id in sorted(expected - seen):
+                missed[slot_id] = missed.get(slot_id, 0) + 1
+        reports.append(
+            SlotAccuracy(
+                case_id=case_id,
+                runs=len(per_case[case_id]),
+                exact=exact,
+                spurious=spurious,
+                missed=missed,
+            )
+        )
+    return reports
+
+
+@dataclass(frozen=True)
 class Run:
     """One `replay.py` invocation: the tags, and which model produced them."""
 

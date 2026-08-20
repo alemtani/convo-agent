@@ -31,6 +31,32 @@ The motivating turn stays exactly where `docs/VALIDITY.md` puts it: **V2's to
 fix.** A partner that holds the rubric plays along, and no amount of reading its
 own tag afterwards changes that.
 
+## The baseline V2 has to beat
+
+Scoring `slots_filled` against `gold.slots_established` — not the gate question,
+the one underneath it: **is the tracker right?**
+
+| | runs | result |
+|---|---|---|
+| Exactly right | 18/21 | every case except one |
+| **Spurious** — credit not earned | **3** | `recommendation` on the gaming turn, all 3 runs |
+| **Missed** — credit earned, not given | **0** | none on this corpus |
+
+The whole tracker error on this corpus is the one failure `docs/VALIDITY.md`
+describes, and it is not occasional — it is **every single run**. That is the
+number V2's goal-blind grader has to move, and it is recorded here *before* the
+grader exists, so the grader cannot be marked against a standard written after
+it.
+
+**One thing this says to the accessibility track.** `missed` is zero, and
+`earned-under-annotated` — the messy-pinyin turn built specifically to provoke
+under-annotation — scored 3/3. That does **not** argue against A2's floor: the
+under-annotation A2 exists to fix was observed in a real session, and a corpus
+of seven authored cases failing to reproduce it is weak evidence about a rare
+event. It does mean this corpus cannot currently show A2's floor earning its
+keep, and a case drawn from the session where it actually happened would be
+worth more than any case written from imagination.
+
 ## Layout
 
 | File | What |

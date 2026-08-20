@@ -559,3 +559,97 @@ def test_report_blames_suppression_only_when_a_gate_actually_blocks_gaming():
     text = render(observations, gold, model="m")
 
     assert "also suppresses a turn the learner earned" in text
+
+
+# --- slot accuracy: the metric V2 is judged on -------------------------------
+
+
+def test_slot_accuracy_counts_exact_agreement_per_case():
+    from evals.coherence.matrix import slot_accuracy
+
+    gold = {"a": _gold_with_slots("a", ("self_name",))}
+    observations = [
+        Observation(case_id="a", coherence="on_track", slots_filled=("self_name",)),
+        Observation(case_id="a", coherence="on_track", slots_filled=()),
+    ]
+
+    (report,) = slot_accuracy(observations, gold)
+
+    assert report.case_id == "a"
+    assert report.runs == 2
+    assert report.exact == 1
+
+
+def test_slot_accuracy_names_credit_the_learner_never_earned():
+    """The gaming failure: a slot credited that gold says was not established."""
+    from evals.coherence.matrix import slot_accuracy
+
+    gold = {"gaming": _gold_with_slots("gaming", ())}
+    observations = [
+        Observation(
+            case_id="gaming", coherence="on_track", slots_filled=("recommendation",)
+        ),
+        Observation(
+            case_id="gaming", coherence="on_track", slots_filled=("recommendation",)
+        ),
+    ]
+
+    (report,) = slot_accuracy(observations, gold)
+
+    assert report.spurious == {"recommendation": 2}
+    assert report.missed == {}
+    assert report.exact == 0
+
+
+def test_slot_accuracy_names_credit_the_learner_earned_and_did_not_get():
+    """The under-annotation failure A2's floor exists to rescue."""
+    from evals.coherence.matrix import slot_accuracy
+
+    gold = {"earned": _gold_with_slots("earned", ("self_name", "partner_name"))}
+    observations = [
+        Observation(case_id="earned", coherence="on_track", slots_filled=("self_name",)),
+    ]
+
+    (report,) = slot_accuracy(observations, gold)
+
+    assert report.missed == {"partner_name": 1}
+    assert report.spurious == {}
+
+
+def test_slot_accuracy_ignores_the_order_slots_were_reported_in():
+    from evals.coherence.matrix import slot_accuracy
+
+    gold = {"a": _gold_with_slots("a", ("partner_name", "self_name"))}
+    observations = [
+        Observation(
+            case_id="a", coherence="on_track", slots_filled=("self_name", "partner_name")
+        ),
+    ]
+
+    assert slot_accuracy(observations, gold)[0].exact == 1
+
+
+def test_report_scores_slots_against_gold_not_only_coherence():
+    from evals.coherence.report import render
+
+    gold = {"gaming": _gold_with_slots("gaming", (), credit_ok=False)}
+    observations = [
+        Observation(
+            case_id="gaming", coherence="on_track", slots_filled=("recommendation",)
+        ),
+    ]
+
+    text = render(observations, gold, model="m")
+
+    assert "Slot accuracy" in text
+    assert "recommendation" in text
+
+
+def _gold_with_slots(case_id, slots, credit_ok=True):
+    return Gold(
+        case_id=case_id,
+        coherence="on_track",
+        credit_ok=credit_ok,
+        slots_established=slots,
+        rationale="",
+    )
