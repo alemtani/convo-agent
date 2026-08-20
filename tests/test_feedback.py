@@ -19,7 +19,7 @@ import httpx
 import pytest
 from pydantic import ValidationError
 
-from backend import config, kb
+from backend import config, kb, prompts
 from backend.models import (
     DialogueTurn,
     ModelLine,
@@ -374,3 +374,38 @@ async def test_hitting_the_token_cap_becomes_a_feedback_error():
     client, _ = _fake_client(None, stop_reason="max_tokens")
     with pytest.raises(feedback.FeedbackError, match="too long"):
         await feedback.verdict(_req(), client=client)
+
+
+# --- A1: the learner's own exit (#66) ---------------------------------------
+
+
+async def test_stuck_survives_the_consistency_check():
+    """It is a claim about the learner, not about the transcript.
+
+    `goal` and `cap` have implications the server can check and find false.
+    "I stopped because I was stuck" has none — the server keeps nothing that
+    could contradict it — so it passes through the way `closed` does.
+    """
+    client, _ = _fake_client(_recorded())
+    card = await feedback.verdict(_req(end_reason="stuck"), client=client)
+    assert card.end_reason == "stuck"
+
+
+async def test_the_stuck_brief_forbids_the_told_you_so():
+    """The failure mode is the neighbouring `closed` copy's tone.
+
+    `closed` is deliberately gently corrective — the learner left early and the
+    card says so. A model reading `stuck` the same way would tell someone who
+    asked for help that they should have pushed on, which is the reading A1
+    exists to prevent.
+    """
+    prompt = prompts.render_verdict_prompt(
+        goal_met=False, missing=[], turns_taken=4, end_reason="stuck"
+    )
+    assert "stopped and asked for feedback" in prompt
+    assert "Do not treat it as giving up" in prompt
+    # And the neighbours are untouched.
+    closed = prompts.render_verdict_prompt(
+        goal_met=False, missing=[], turns_taken=4, end_reason="closed"
+    )
+    assert "said goodbye twice" in closed

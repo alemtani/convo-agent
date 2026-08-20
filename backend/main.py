@@ -2,6 +2,7 @@ import contextlib
 import json
 import logging
 import os
+from typing import Optional
 
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -15,6 +16,7 @@ from backend.models import (
     DialogueTurn,
     PasscodeRequest,
     SessionState,
+    SessionStartRequest,
     SessionStartResponse,
     TextTurnRequest,
     TopicListing,
@@ -163,12 +165,17 @@ async def topics() -> TopicListResponse:
 
 
 @app.post("/api/session", response_model=SessionStartResponse)
-async def session_start() -> SessionStartResponse:
+async def session_start(
+    body: Optional[SessionStartRequest] = None,
+) -> SessionStartResponse:
     """Start a session: pick a topic, generate its opening line + flavour.
 
-    No request body — the topic is the server's choice, not the caller's.
-    The frontend has no business knowing which topics exist; it gets
-    `topic_id` back on the response and echoes it on every turn after, the
+    The body is optional and defaults to `None`, because the bodyless POST is
+    what every client sends for a fresh session and a required model would 422
+    it. Supplied, its `topic_id` must be one this endpoint issued earlier: that
+    replays the same scenario for A1's "Try this again"
+    (`docs/ACCESSIBILITY.md`). The frontend still has no business knowing which
+    topics exist — it gets `topic_id` back on the response and echoes it, the
     same opaque way it already echoes `sketch`. One `sketch` worker call, from
     the topic KB (`docs/SCENARIOS.md`, `backend/workers/sketch.py`). The
     client freezes the response and resubmits `sketch` byte-identical on
@@ -178,7 +185,9 @@ async def session_start() -> SessionStartResponse:
     the authored seed, in English; slots are never shown.
     """
     try:
-        return await orchestrator.start_session()
+        return await orchestrator.start_session(
+            topic_id=body.topic_id if body else None
+        )
     except kb.KbError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except sketch_worker.SketchError as exc:

@@ -438,6 +438,8 @@ def test_new_conversation_clears_the_card_and_fetches_a_fresh_session(page):
     seed(page, dialogue=HISTORY)
     expect(bubbles(page)).to_have_count(len(HISTORY))
 
+    # "Try something else" moved into the ⋯ menu (A1, #66).
+    page.click("#more > summary")
     page.click("#reset")
 
     expect(bubbles(page)).to_have_count(0)
@@ -506,3 +508,43 @@ def test_a_transcript_does_not_leak_across_topics(page):
     expect(bubbles(page)).to_have_count(0)
     assert page.evaluate("localStorage.getItem('convo.dialogue')") is None
     assert page.evaluate("localStorage.getItem('convo.state')") is None
+
+
+# --- A1: the overflow menu (#66) -------------------------------------------
+
+
+def test_the_menu_holds_the_session_controls_and_dismisses(page):
+    """What the learner needs while drowning stays on the surface; what manages
+    the session sits one tap down.
+
+    `<details>` has no dismiss behaviour of its own, so the outside-tap close is
+    ours and has to be pinned — a menu that stays open over the thread reads as
+    stuck, on a page whose whole subject is being stuck.
+    """
+    seed(page, mode="text")
+
+    expect(page.locator("#mode")).to_be_hidden()
+    expect(page.locator("#reset")).to_be_hidden()
+    # The two that matter mid-session are never behind the tap.
+    expect(page.locator("#stuck-btn")).to_be_visible()
+    expect(page.locator("#show-text")).to_be_visible()
+
+    page.click("#more > summary")
+    expect(page.locator("#mode")).to_be_visible()
+    expect(page.locator("#reset")).to_be_visible()
+
+    page.click("#thread")
+    expect(page.locator("#mode")).to_be_hidden()
+
+
+def test_the_mode_control_says_which_way_it_goes(page):
+    """The emoji named the *destination*, and whether an icon means "what you
+    are" or "what you'll get" is a coin flip — note 4's complaint about 👁, on
+    the control note 4 missed."""
+    seed(page, mode="speak")
+    page.click("#more > summary")
+
+    expect(page.locator("#mode")).to_have_text("Type instead")
+    page.click("#mode")
+    page.click("#more > summary")
+    expect(page.locator("#mode")).to_have_text("Speak instead")

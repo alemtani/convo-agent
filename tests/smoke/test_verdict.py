@@ -253,3 +253,143 @@ def test_state_is_stamped_with_its_topic(page):
     page.wait_for_function("localStorage.getItem('convo.state') !== null")
     stored = json.loads(page.evaluate("localStorage.getItem('convo.state')"))
     assert stored["topic_id"] == "greetings"
+
+
+# --- A1: the learner's own exit (#66) -------------------------------------
+#
+# The session the app was built for ended with the learner stumped, and the
+# only two moves available were to guess or to say goodbye twice. These pin the
+# third one: stop now, and read what you were missing.
+
+
+STUCK_CARD = {
+    "goal_met": False,
+    "end_reason": "stuck",
+    "missing": [{"id": "partner_name", "description": "Find out their name"}],
+    "explanation": "You got your own name across.",
+    "model_exchange": [],
+    "turns_taken": 2,
+}
+
+
+def stuck_btn(page):
+    return page.locator("#stuck-btn")
+
+
+def open_more(page):
+    """"Try something else" lives one tap down, in the overflow menu."""
+    page.click("#more > summary")
+
+
+def test_the_bail_out_is_dead_before_the_learner_has_said_anything(page):
+    """A verdict over a transcript with no learner turn in it teaches nothing.
+
+    The opening partner line is on screen at this point, so this also pins that
+    the gate reads `dialogue` — which holds only real turns — rather than what
+    the thread happens to be showing.
+    """
+    seed(page, state=ACTIVE)
+
+    expect(stuck_btn(page)).to_be_disabled()
+
+
+def test_the_bail_out_is_dead_while_a_turn_is_in_flight(page):
+    """The other false condition, and the one that is easy to miss.
+
+    `adoptState` replaces the whole state object when the reply lands, so a
+    bail-out pressed mid-turn would be silently overwritten: the learner taps
+    it, the partner answers, and the exit they asked for disappears.
+    """
+    seed(page, state=ACTIVE)
+    page.evaluate("window.__stub.manual = true")
+    stub_turn(page, state=ACTIVE)
+
+    send(page)
+    expect(stuck_btn(page)).to_be_disabled()
+
+    page.evaluate("window.__stub.release()")
+    expect(stuck_btn(page)).to_be_enabled()
+
+
+def test_the_bail_out_ends_the_session_and_says_why(page):
+    seed(page, state=ACTIVE)
+    stub_turn(page, state=ACTIVE, card=STUCK_CARD)
+
+    send(page)
+    expect(stuck_btn(page)).to_be_enabled()
+    stuck_btn(page).click()
+
+    expect(card(page)).to_be_visible()
+    # The reason rides the request the learner never sees: `POST /api/verdict`
+    # is what carries it, because there is no turn to carry it on.
+    sent = page.evaluate(
+        "window.__stub.sent.filter((r) => r.path === '/api/verdict')"
+    )
+    assert sent[0]["body"]["state"]["end_reason"] == "stuck"
+    # And the mic closes behind it, like any other ending.
+    expect(page.locator("#text-input")).to_be_disabled()
+
+
+def test_try_this_again_replays_the_same_scenario(page):
+    """The 409 regression this chunk exists to avoid.
+
+    Both buttons write `status: complete`, and the server refuses a turn against
+    a completed session. The load-time guard only drops state when the *topic*
+    changes, so a same-topic restart that skipped the clear would sail past it
+    and 409 on its first turn — with the only recovery being the button that
+    just did it.
+    """
+    seed(page, state=ACTIVE)
+    stub_turn(page, state=ACTIVE, card=STUCK_CARD)
+    send(page)
+    stuck_btn(page).click()
+    expect(card(page)).to_be_visible()
+
+    page.click("[data-action='retry-topic']")
+
+    # The same scenario, asked for by the id the server issued us.
+    sent = page.evaluate(
+        "window.__stub.sent.filter((r) => r.path === '/api/session')"
+    )
+    assert sent[-1]["body"] == {"topic_id": "greetings"}
+    # And the session is live again: cleared state, no card, controls open.
+    expect(card(page)).to_have_count(0)
+    expect(page.locator("#text-input")).to_be_enabled()
+    # Nothing terminal survives the restart. The store is cleared outright and
+    # only rewritten when the next turn reports state, so "no stored state" and
+    # "stored state says active" are both fine; a stored `complete` is the 409.
+    stored = page.evaluate("localStorage.getItem('convo.state')")
+    assert stored is None or json.loads(stored)["status"] == "active"
+
+
+def test_try_something_else_lets_the_server_draw(page):
+    seed(page, state=ACTIVE)
+    stub_turn(page, state=ACTIVE, card=STUCK_CARD)
+    send(page)
+    stuck_btn(page).click()
+    expect(card(page)).to_be_visible()
+
+    page.click("[data-action='new-session']")
+
+    sent = page.evaluate(
+        "window.__stub.sent.filter((r) => r.path === '/api/session')"
+    )
+    assert sent[-1]["body"] is None
+
+
+def test_a_late_verdict_cannot_land_on_the_next_session(page):
+    """The card is fetched for the session that ended, not for the thread that
+    happens to be on screen when it arrives."""
+    seed(page, state=ACTIVE)
+    stub_turn(page, state=ACTIVE, card=STUCK_CARD)
+    send(page)
+
+    page.evaluate("window.__stub.manual = true")
+    stuck_btn(page).click()
+    # The verdict is in flight. Leave for a different scenario, then let it land.
+    open_more(page)
+    page.click("#reset")
+    page.evaluate("window.__stub.release()")
+
+    expect(card(page)).to_have_count(0)
+    assert page.evaluate("localStorage.getItem('convo.verdict')") is None

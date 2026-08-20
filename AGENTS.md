@@ -42,24 +42,32 @@ Shipped, in the order a learner hits it:
   (`transcript` → `score` ∥ `reply` → `done`).
 - Text loop: `POST /api/turn/text` (pinyin or 汉字).
 - Session start: `POST /api/session` draws a topic, returns opening line +
-  flavour sketch + English scenario card.
+  flavour sketch + English scenario card. An optional `topic_id` in the body
+  replays a scenario the server issued earlier ("Try this again").
 - Slot tracker + `termination.py` + end-of-session `POST /api/verdict`.
 - On-demand `POST /api/tts` (slowed, cached by line). Beside the loop.
 - Five topics, all scenario-ready: `greetings`, `self-intro`, `family`,
   `numbers-money`, `food-ordering`. Catalog: `GET /api/topics`.
 - Mobile-first PWA (`frontend/index.html`). Transcript and session state
   live in `localStorage`.
+- A1 of the accessibility track (#66): "I'm stuck" ends a session the learner
+  cannot finish (`end_reason: "stuck"`, written by the client), the verdict card
+  offers "Try this again" / "Try something else", and the controls say what they
+  do in words — session management sits under a ⋯ menu.
 
 Limits of the running app (not a backlog, just what is missing today):
 
 - No `backend/db.py` / `backend/profile.py`. No covered-set, no proficiency
   store, no weighted draw. Session start is uniform random.
   `schema.sql` exists; nothing reads it. No Fly volume.
-- No in-session coaching. The only feedback card is the verdict.
-- No per-turn redo. "New" starts a fresh session.
+- No in-session coaching. The only feedback card is the verdict — reachable
+  early with "I'm stuck", but still only at the end of a session.
+- No per-turn redo. "Try something else" starts a fresh session.
 - The topic catalog is read-only. The learner does not pick.
-- **A stuck learner has no next move.** No translation, no way to ask for
-  the words, no way to end early. Guess, or say goodbye twice.
+- **A stuck learner can leave, but not get unstuck in place.** "I'm stuck"
+  ends the session into the verdict (A1, #66). What is still missing is help
+  *during* a turn: no translation, no way to ask for the words. A3 (#68) is
+  gated on whether a session after A2 still drowns for vocabulary.
 - **The partner holds the rubric.** One call both converses and annotates
   slots, so a non-sequitur that lands on a slot gets credited and played
   along with. `coherence` is computed every turn and read by nothing.

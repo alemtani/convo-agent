@@ -406,7 +406,7 @@ class SessionState(BaseModel):
     consecutive_closes: int = Field(default=0, ge=0)
     status: Literal["active", "complete"] = "active"
     goal_met: bool = False
-    end_reason: Optional[Literal["goal", "cap", "closed"]] = None
+    end_reason: Optional[Literal["goal", "cap", "closed", "stuck"]] = None
     # Which topic this state belongs to, stamped by the client at write time so
     # a restored store can be checked against the session it was written under
     # (#29 puts more than one topic on disk). Absent on a fresh state.
@@ -443,15 +443,36 @@ class SketchResult(BaseModel):
     sketch: str
 
 
-class SessionStartResponse(BaseModel):
-    """Response body for `POST /api/session` — a request with no body.
+class SessionStartRequest(BaseModel):
+    """Request body for `POST /api/session` — optional, and only ever an echo.
 
-    The server picks the topic; the frontend has no business knowing which
-    topics exist, so there is nothing for it to send. `topic_id` rides back
-    here instead, and the client echoes it — an opaque value it was handed,
-    not one it looked up — on every turn (`TextTurnRequest.topic_id`, the
-    `topic_id` form field on `POST /api/turn`), the same way it already
-    echoes `sketch`.
+    Omitted (the ordinary case), the server draws a topic and the client is
+    told which one it got. Supplied, it is any catalog topic id with an
+    authored scenario — in practice the one this endpoint handed back on an
+    earlier `SessionStartResponse`, which is what A1's "Try this again" replays
+    (`docs/ACCESSIBILITY.md`). Nothing *enforces* that it was issued: the
+    server is a stateless proxy and records no ids, and `GET /api/topics`
+    already lists the catalog. An id with no scenario is a 404, which is the
+    only check there is.
+
+    That is echoing, not choosing, and the distinction is the whole reason this
+    is not a thin C8 (#53): the client hands back an opaque string it was
+    given. Learning what the catalog *contains* so it can pick is a different
+    feature and still isn't here.
+    """
+
+    topic_id: Optional[str] = None
+
+
+class SessionStartResponse(BaseModel):
+    """Response body for `POST /api/session`.
+
+    The server picks the topic unless it is handed one it issued earlier
+    (`SessionStartRequest`); the frontend has no business knowing which topics
+    exist, so it has nothing of its own to send. `topic_id` rides back here,
+    and the client echoes it — an opaque value it was handed, not one it looked
+    up — on every turn (`TextTurnRequest.topic_id`, the `topic_id` form field
+    on `POST /api/turn`), the same way it already echoes `sketch`.
 
     This is the one point in a session where flavour is *generated* rather
     than reused: the client freezes `sketch` here and resubmits it
@@ -540,7 +561,7 @@ class VerdictCard(BaseModel):
     """
 
     goal_met: bool
-    end_reason: Optional[Literal["goal", "cap", "closed"]] = None
+    end_reason: Optional[Literal["goal", "cap", "closed", "stuck"]] = None
     missing: List[MissingSlot] = []
     explanation: str
     model_exchange: List[ModelLine] = []

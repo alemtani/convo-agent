@@ -139,7 +139,8 @@
     .verdict .line .zh { font-size: 1.05rem; }
     .verdict .line .py { opacity: 0.75; font-size: 0.8rem; }
     .verdict .line .en { opacity: 0.6; font-size: 0.8rem; }
-    .verdict .actions { margin-top: 0.75rem; display: flex; gap: 0.5rem; }
+    .verdict .ask { margin-top: 0.85rem; font-size: 0.85rem; opacity: 0.7; }
+    .verdict .actions { margin-top: 0.4rem; display: flex; flex-wrap: wrap; gap: 0.5rem; }
     .verdict button {
       font: inherit; padding: 0.35rem 0.7rem; border-radius: 0.6rem;
       border: 1px solid rgba(127, 127, 127, 0.4); background: transparent;
@@ -186,6 +187,7 @@
     .bubble.partner .controls { display: flex; gap: 0.5rem; }
     .bubble.partner .controls button {
       font-size: 1.1rem;
+      white-space: nowrap;
       line-height: 1;
       padding: 0.25rem 0.4rem;
       border: 0;
@@ -194,6 +196,10 @@
       color: inherit;
       cursor: pointer;
     }
+    /* The reveal control says what it does in words, so it cannot ride the
+       emoji size — 1.1rem of "Show text" wraps a bubble on a phone. */
+    .bubble.partner .controls .reveal { font-size: 0.85rem; padding: 0.35rem 0.5rem; }
+
     /* Text on: the controls step back so the reply reads as the message. */
     .bubble.partner:not(.unread) .controls { opacity: 0.55; margin-bottom: 0.35rem; }
     /* A reply with no audio form: the controls stay, visibly inert. */
@@ -311,19 +317,17 @@
     }
     #text-input:disabled, #send:disabled { opacity: 0.5; cursor: default; }
 
-    #controls { display: flex; gap: 0.5rem; align-items: center; }
-    #mode {
-      font-size: 0.85rem;
-      padding: 0.25rem 0.6rem;
-      border-radius: 1rem;
-      border: 1px solid rgba(127, 127, 127, 0.4);
-      background: transparent;
-      color: inherit;
-      opacity: 0.7;
-      cursor: pointer;
+    #controls {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.5rem;
+      align-items: center;
     }
-    #reset {
-      font-size: 0.75rem;
+    /* Every control in the dock and in its menu is the same outlined ghost.
+       The one exception is `#stuck-btn` below. */
+    #controls button, #more > summary {
+      font-size: 0.8rem;
       padding: 0.25rem 0.7rem;
       border-radius: 1rem;
       border: 1px solid rgba(127, 127, 127, 0.4);
@@ -331,7 +335,48 @@
       color: inherit;
       opacity: 0.7;
       cursor: pointer;
+      white-space: nowrap;
     }
+    /* The bail-out is the one *solid* button in a row of ghosts.
+       Deliberately not amber or red: this UI already spends green/amber/red on
+       tone scores, and red would tell a learner that asking for help is a
+       failure — the exact reading A1 exists to prevent. Fill is the
+       differentiator the tone palette does not own, and the label carries the
+       meaning too, so nothing rests on colour alone. */
+    #stuck-btn {
+      background: rgba(127, 127, 127, 0.28);
+      border-color: transparent;
+      opacity: 1;
+      font-weight: 600;
+    }
+    #stuck-btn:disabled {
+      opacity: 0.35;
+      cursor: default;
+      font-weight: 400;
+    }
+
+    /* The overflow menu. `⋯` rather than `☰`: a hamburger reads as site
+       navigation, an ellipsis reads as "the rest of the controls". */
+    #more { position: relative; }
+    #more > summary { list-style: none; display: inline-block; }
+    #more > summary::-webkit-details-marker { display: none; }
+    #more[open] > summary { opacity: 1; }
+    #more-menu {
+      position: absolute;
+      /* Opens upward: the dock is pinned to the bottom of the screen. */
+      bottom: calc(100% + 0.4rem);
+      right: 0;
+      z-index: 5;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      padding: 0.5rem;
+      border-radius: 0.75rem;
+      border: 1px solid rgba(127, 127, 127, 0.35);
+      background: Canvas;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+    }
+    #more-menu button { width: 100%; text-align: left; }
     #status { font-size: 0.8rem; opacity: 0.7; min-height: 1rem; }
 
     /* Live mic-level meter — visible only while recording (see #meter.active). */
@@ -406,7 +451,7 @@
 
   <div id="info-panel" hidden>
     <div id="info-panel-content">
-      <p class="muted">Speak or type Mandarin (greetings). A real partner replies and remembers the conversation; spoken words come back with per-syllable tone scores (green good / amber ok / red off). The partner <strong>speaks its reply</strong> instead of writing it — that's the listening practice. Tap 🔊 to hear a line again, 👁 to see the words when you're stuck, or <strong>👁 All</strong> below to show every reply at once. Tap ⌨️ to type in <strong>pinyin</strong> instead — your words come back as 汉字. Add tone numbers (<code>ni3hao3</code>) and your tones get checked too.</p>
+      <p class="muted">Speak or type Mandarin (greetings). A real partner replies and remembers the conversation; spoken words come back with per-syllable tone scores (green good / amber ok / red off). The partner <strong>speaks its reply</strong> instead of writing it — that's the listening practice. Tap 🔊 to hear a line again, <strong>👁 Show text</strong> to see the words when you're stuck, or <strong>👁 Show all text</strong> below to reveal every reply at once. If you're stuck for good, <strong>I'm stuck</strong> ends the session and writes your feedback — that is a fine way to finish one. Under <strong>⋯ More</strong>: <strong>Type instead</strong> lets you type <strong>pinyin</strong> — your words come back as 汉字 — and <strong>Try something else</strong> starts a different scenario. Add tone numbers (<code>ni3hao3</code>) and your tones get checked too.</p>
       <button id="info-close" type="button">Close</button>
     </div>
   </div>
@@ -430,9 +475,19 @@
     </div>
     <button id="talk">🎙️ Hold to talk</button>
     <div id="controls">
-      <button id="mode" title="Switch to typing">⌨️</button>
-      <button id="show-text" title="Show every reply's text">👁 All</button>
-      <button id="reset" title="Start a new conversation">↺ New</button>
+      <button id="stuck-btn" title="End this session and read your feedback">I'm stuck</button>
+      <button id="show-text" title="Show every reply's text">👁 Show all text</button>
+      <!-- Session management, one tap down. What the learner needs *while
+           drowning* stays on the surface above; what manages the session
+           lives here. `<details>` rather than hand-rolled JS: it is keyboard
+           and screen-reader accessible without a focus trap of our own. -->
+      <details id="more">
+        <summary title="More">⋯ More</summary>
+        <div id="more-menu">
+          <button id="mode" title="Switch to typing">Type instead</button>
+          <button id="reset" title="Start a different scenario">Try something else</button>
+        </div>
+      </details>
     </div>
     <div id="meter"><div id="meter-fill"></div></div>
     <div id="status"></div>
@@ -441,6 +496,8 @@
   <script>
     const talk = document.getElementById("talk");
     const reset = document.getElementById("reset");
+    const stuckBtn = document.getElementById("stuck-btn");
+    const moreMenu = document.getElementById("more");
     const thread = document.getElementById("thread");
     const scenarioCard = document.getElementById("scenario-card");
     const scenarioTopic = document.getElementById("scenario-topic");
@@ -847,6 +904,15 @@
       const off = busy || isComplete();
       talk.disabled = off;
       textInput.disabled = send.disabled = off;
+      // Three false conditions, and `busy` is the one that is easy to miss.
+      // `adoptState` replaces the whole state object when a reply lands, so a
+      // bail-out pressed mid-turn would be silently overwritten: the learner
+      // taps it, the partner answers, and their exit disappears. The other two
+      // are ordinary — a finished session has already produced its card, and a
+      // verdict over a transcript with no learner turn in it teaches nothing
+      // and spends an uncached call to say so. The opening partner line is not
+      // a learner turn, hence `dialogue`, which holds only real turns.
+      stuckBtn.disabled = off || dialogue.length === 0;
     }
 
     function setSessionLoading(loading) {
@@ -896,7 +962,18 @@
       if (sessionErrorShown) setSessionStatus("");
     }
 
-    function startSession() {
+    // `topicId` is an argument, never a field: it applies to this one start
+    // and nothing else. `retrySessionIfMissing`, `ensureSession` and the online
+    // listener all call bare, and a sticky topic would silently turn every one
+    // of those into a replay of a scenario the learner already left.
+    function startSession(topicId) {
+      topicId = topicId || null;
+      // One start at a time, whatever topic it is for. A bare caller
+      // (`ensureSession`, the visibility/online retry) that arrives during a
+      // replay wants *a session*, and the replay is about to produce one —
+      // there is nothing for it to wait for separately. The thing that had to
+      // be prevented is the opposite direction, and an argument rather than a
+      // field is what prevents it: no bare call can ever inherit a topic.
       if (sessionStarting) return sessionStarting;
       renderScenarioLoading();
       setSessionLoading(true);
@@ -905,9 +982,26 @@
           let resp = null;
           for (let attempt = 0; ; attempt += 1) {
             try {
-              // No body: the server picks the topic, not the client — the whole
-              // point of this endpoint is that the frontend has no topic to send.
-              resp = await fetch("/api/session", { method: "POST" });
+              // Bodyless unless we are replaying a scenario: the server picks
+              // the topic, and the only id we can send is one it issued us.
+              resp = await fetch("/api/session", topicId
+                ? {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ topic_id: topicId }),
+                  }
+                : { method: "POST" });
+              // A 404 on an echoed id means the scenario is gone — the KB is
+              // authored, so a topic can lose its scenario between one session
+              // and the next. Drop the id and fall back to a bodyless POST
+              // rather than leaving the learner on "you can still talk", which
+              // would be a lie: `ensureSession` would retry the same dead id
+              // on every attempt to speak.
+              if (resp.status === 404 && topicId) {
+                topicId = null;
+                setSessionStatus("that scenario is gone — here's a different one");
+                continue;
+              }
               if (resp.ok || !retryableStatus(resp.status)) break;
             } catch (err) {
               resp = null;                        // dropped connection, offline
@@ -979,6 +1073,9 @@
     // blank finished app, and not a second uncached Sonnet call rewording the
     // feedback under someone who was re-reading it.
     let verdictFetching = null;
+    // Bumped by `newConversation`. A fetch that started under an older
+    // generation may not render or cache what it gets back.
+    let verdictGeneration = 0;
 
     function verdictNode() {
       const el = document.createElement("div");
@@ -1031,9 +1128,20 @@
         }
       }
 
+      el.appendChild(verdictPrompt());
       el.appendChild(verdictActions());
       scrollToBottom("auto");
       return el;
+    }
+
+    // One line of scaffolding over the two restarts. The question mark lives
+    // here rather than on a button: a button label says what happens when you
+    // press it, not what it wants to know.
+    function verdictPrompt() {
+      const ask = document.createElement("div");
+      ask.className = "ask";
+      ask.textContent = "What next?";
+      return ask;
     }
 
     function verdictActions(retry) {
@@ -1041,7 +1149,9 @@
       actions.className = "actions";
       if (retry) {
         const again = document.createElement("button");
-        again.textContent = "Try again";
+        // "Retry", not "Try again": it retries the *fetch*, and it now sits a
+        // word away from "Try this again", which replays the scenario.
+        again.textContent = "Retry";
         again.dataset.action = "retry-verdict";
         // Every input is client-held, so a failed verdict is retryable without
         // replaying anything. Without this, one blip at the moment a session
@@ -1049,10 +1159,20 @@
         again.addEventListener("click", () => { clearVerdictNodes(); showVerdict(); });
         actions.appendChild(again);
       }
+      // Same scenario. The learner just read what they missed, and the whole
+      // point of the card is that they get to go back and use it.
+      const replay = document.createElement("button");
+      replay.textContent = "Try this again";
+      replay.dataset.action = "retry-topic";
+      const topicId = session ? session.topic_id : null;
+      replay.addEventListener("click", () => newConversation(topicId));
+      actions.appendChild(replay);
+
       const fresh = document.createElement("button");
-      fresh.textContent = "Start a new session";
+      fresh.textContent = "Try something else";
+      fresh.title = "A different scenario";
       fresh.dataset.action = "new-session";
-      fresh.addEventListener("click", () => reset.click());
+      fresh.addEventListener("click", () => newConversation());
       actions.appendChild(fresh);
       return actions;
     }
@@ -1091,6 +1211,8 @@
       if (verdictFetching) return verdictFetching;
 
       renderVerdictPending();
+      const generation = verdictGeneration;
+      const stale = () => generation !== verdictGeneration;
       verdictFetching = (async () => {
         try {
           const resp = await fetch("/api/verdict", {
@@ -1103,6 +1225,7 @@
               notes: notesForVerdict(),
             }),
           });
+          if (stale()) return null;
           clearVerdictNodes();
           if (!resp.ok) {
             const detail = gateIfUnauthorized(resp)
@@ -1112,15 +1235,19 @@
             return null;
           }
           const card = await resp.json();
+          if (stale()) return null;
           localStorage.setItem(VERDICT_KEY, JSON.stringify(card));
           renderVerdict(card);
           return card;
         } catch (err) {
+          if (stale()) return null;
           clearVerdictNodes();
           renderVerdictFailed(String(err));
           return null;
         } finally {
-          verdictFetching = null;
+          // Only if nothing newer has claimed the slot — `newConversation`
+          // nulls it too, and a stale `finally` must not clear a live fetch.
+          if (!stale()) verdictFetching = null;
         }
       })();
       return verdictFetching;
@@ -1349,7 +1476,7 @@
 
       const reveal = document.createElement("button");
       reveal.className = "reveal";
-      reveal.textContent = visible ? "🙈" : "👁";
+      reveal.textContent = visible ? "🙈 Hide text" : "👁 Show text";
       reveal.disabled = !!reply.unspeakable;
       reveal.title = reply.unspeakable
         ? "There is no audio for this one, so the text stays"
@@ -1394,11 +1521,11 @@
 
     function applyShowText() {
       localStorage.setItem(SHOW_TEXT_KEY, showText ? "1" : "0");
-      // "All" is not decoration: without it this button carries the same two
-      // emoji as the one inside every bubble, and a global 👁 sitting next to a
-      // bubble whose text is already visible reads as the two controls
-      // disagreeing. The word is what makes it a statement about the thread.
-      showTextBtn.textContent = (showText ? "🙈" : "👁") + " All";
+      // Words, not an eye alone (note 4). An eye does not say whether it
+      // shows or hides, and the emoji is kept only as the shared anchor
+      // between this button and the one inside every bubble — "all" is what
+      // makes this one a statement about the thread rather than about a line.
+      showTextBtn.textContent = showText ? "🙈 Hide all text" : "👁 Show all text";
       showTextBtn.title = showText
         ? "Hide every reply's text"
         : "Show every reply's text";
@@ -1835,12 +1962,16 @@
     }
 
     async function sendTurn(wavBlob) {
-      talk.disabled = true;
+      // Through `applyControls`, never `talk.disabled = true`: it is not the
+      // only control a turn in flight has to close any more. Setting the flag
+      // directly here left "I'm stuck" live for the length of a spoken reply,
+      // which is exactly the `adoptState` race `applyControls` documents.
+      applyControls(true);
       // `topic_id` is the server's choice, echoed back — there is nothing
       // valid to send without it, so wait for it here rather than guessing.
       await ensureSession();
       if (!session) {
-        talk.disabled = false;
+        applyControls(false);
         setStatus("couldn't start a session — try again in a moment");
         return;
       }
@@ -2077,8 +2208,11 @@
 
     function applyMode() {
       dock.dataset.mode = mode;
-      modeBtn.textContent = mode === "text" ? "🎙️" : "⌨️";
-      modeBtn.title = mode === "text" ? "Switch to speaking" : "Switch to typing";
+      // Words, not a glyph. The emoji named the *destination*, and whether an
+      // icon means "what you are" or "what you'll get" is a coin flip for the
+      // reader — note 4's complaint about 👁, on the control note 4 missed.
+      modeBtn.textContent = mode === "text" ? "Speak instead" : "Type instead";
+      modeBtn.title = modeBtn.textContent;
       setStatus("");
       // Holding the mic open while someone types would leave the browser's
       // recording indicator lit for no reason; warm it back up on the way in.
@@ -2086,6 +2220,7 @@
     }
 
     modeBtn.addEventListener("click", () => {
+      closeMore();
       mode = mode === "text" ? "speak" : "text";
       localStorage.setItem(MODE_KEY, mode);
       applyMode();
@@ -2205,7 +2340,13 @@
     // New conversation: clear memory and the thread so the partner starts
     // fresh, then fetch a new session — a new scene needs its own opening
     // line and flavour, not the one still sitting in localStorage.
-    reset.addEventListener("click", () => {
+    // Both restarts run through here. "Try this again" passes the session's own
+    // `topic_id` to replay the scenario; "Try something else" passes nothing and
+    // the server draws. A second hand-written clear is how the two drift apart
+    // — and the drift has a known cost, because the load-time guard only drops
+    // state when the topic *changes*, so a same-topic restart that skipped any
+    // of this would sail past it and 409 on its first turn.
+    function newConversation(topicId) {
       dialogue = [];
       localStorage.removeItem(STORE_KEY);
       session = null;
@@ -2223,6 +2364,12 @@
       // the learner was told to memorise — in practice it just crowds the top
       // of a fresh conversation with the previous one's result.
       localStorage.removeItem(VERDICT_KEY);
+      // And the *in-flight* verdict, which the store cannot see. Without this,
+      // a card requested for the session the learner just ended can land after
+      // the new thread is on screen — painting the old session's feedback over
+      // a scene it never describes, and caching it under the new one.
+      verdictGeneration += 1;
+      verdictFetching = null;
       thread.replaceChildren();
       // The bubbles are gone, so their reveal state and decoded audio are dead
       // weight — and the Map is the one thing here that grows without bound.
@@ -2232,7 +2379,44 @@
       stuck = true;
       setStatus("new conversation");
       applyControls(false);
-      startSession();
+      startSession(topicId);
+    }
+
+    reset.addEventListener("click", () => {
+      closeMore();
+      newConversation();
+    });
+
+    // --- The overflow menu ---------------------------------------------------
+
+    function closeMore() { moreMenu.removeAttribute("open"); }
+
+    // A tap anywhere else closes it. `<details>` has no dismiss behaviour of
+    // its own, and a menu that stays open over the thread reads as stuck.
+    document.addEventListener("click", (event) => {
+      if (moreMenu.hasAttribute("open") && !moreMenu.contains(event.target)) closeMore();
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") closeMore();
+    });
+
+    // --- "I'm stuck": the learner's own exit (A1, #66) ------------------------
+    //
+    // No server call. The state is client-held and resubmitted, so ending a
+    // session is a local transition plus the verdict fetch that `adoptState`
+    // would have made anyway — `POST /api/verdict` carries `end_reason` with
+    // it. `termination.py` cannot compute this: it derives state from slot and
+    // close counts, and "the learner pressed a button" is neither. There is no
+    // turn here to derive it on.
+    stuckBtn.addEventListener("click", () => {
+      if (stuckBtn.disabled) return;
+      state = Object.assign({}, state, {
+        status: "complete",
+        end_reason: "stuck",
+      });
+      saveState();
+      applyControls(false);
+      showVerdict();
     });
 
     showTextBtn.addEventListener("click", () => {
