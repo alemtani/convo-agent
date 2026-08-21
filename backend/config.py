@@ -143,6 +143,22 @@ CLAUDE_MAX_RETRIES = int(os.getenv("CLAUDE_MAX_RETRIES", "0"))
 # default, which would be a spinner with no end.
 VERDICT_TIMEOUT_S = float(os.getenv("VERDICT_TIMEOUT_S", "20"))
 
+# V2's model split (docs/VALIDITY.md), tested here first: judgment is where
+# capability pays, and the verdict worker is already a judgment role, already
+# one call per session, already off the turn path — so moving it to Opus 5
+# needs no architecture change and none of V2's blindness work. Separate knob
+# from `CONVERSATION_MODEL`: the two roles want different models on purpose,
+# and env-overridable for the same reason as that one — the right choice is a
+# measured question, not a settled one.
+VERDICT_MODEL = os.getenv("VERDICT_MODEL", "claude-opus-5")
+
+# Opus 5 thinks by default (unlike Opus 4.8/4.7), and a judgment call wants
+# that on — explaining a computed outcome is the one place on this worker's
+# path where deliberation is worth buying. `high` per docs/VALIDITY.md:
+# "judgment is where capability pays." Env-overridable, same reasoning as
+# `CONVERSATION_EFFORT`.
+VERDICT_EFFORT = os.getenv("VERDICT_EFFORT", "high")
+
 
 def _load_band_ceiling(default: int = 2) -> int:
     """The learner's HSK ceiling is *owned by the KB authoring workflow*
