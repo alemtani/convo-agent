@@ -669,3 +669,49 @@ def test_the_mode_control_says_which_way_it_goes(page):
     page.click("#mode")
     page.click("#more > summary")
     expect(page.locator("#mode")).to_have_text("🎙️ Speak instead")
+
+
+# --- V2: the turn is not over when the partner has answered ---------------
+
+
+def test_the_mic_stays_shut_until_the_grade_lands(page):
+    """The learner is waiting to find out whether they got their point across,
+    so they must not be able to speak over the answer.
+
+    This holds today only because the controls reopen in the stream's `finally`,
+    which is a fact about where a line sits rather than a rule anyone stated.
+    Pinning it: a refactor that reopens them in the `reply` branch would let a
+    learner start the next turn before the current one had been judged, and the
+    grade would land against a session that had already moved on.
+    """
+    seed(page)
+    page.evaluate("window.__stub.manual = true")
+    _speak(page)
+
+    for _ in range(3):   # transcript, score, reply
+        page.evaluate("window.__stub.releaseNext()")
+
+    # The partner has answered — and the mic is still shut.
+    expect(bubbles(page, ".bubble.partner:not([data-opening]) .controls")).to_have_count(1)
+    expect(page.locator("#talk")).to_be_disabled()
+
+    page.evaluate("window.__stub.releaseNext()")   # state
+    page.evaluate("window.__stub.releaseNext()")   # done
+    expect(page.locator("#talk")).to_be_enabled()
+
+
+def test_the_wait_for_the_grade_says_what_it_is_waiting_for(page):
+    """The grader is the slow branch by construction — a bigger model, thinking
+    on. Without this the learner reads the reply and then faces a dead
+    microphone and an empty status line, which reads as a hang rather than as
+    care. It is upfront that the turn is being graded."""
+    seed(page)
+    page.evaluate("window.__stub.manual = true")
+    _speak(page)
+
+    for _ in range(3):   # transcript, score, reply
+        page.evaluate("window.__stub.releaseNext()")
+    expect(page.locator("#status")).to_have_text("checking what you got across…")
+
+    page.evaluate("window.__stub.releaseNext()")   # state
+    expect(page.locator("#status")).to_have_text("")

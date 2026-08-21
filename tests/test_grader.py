@@ -216,3 +216,65 @@ def test_the_grader_reads_the_scene_because_it_is_the_evidence():
     """"The partner volunteered this unasked" cannot be judged without knowing
     what the scene hands over unprompted."""
     assert SCENARIO.situation in _system_text(_build())
+
+
+# --- the window: settling turns whose grade never landed ------------------
+
+
+def test_a_healthy_turn_spends_no_tokens_on_the_window():
+    """Window 1 is every turn where the previous grade landed. There is nothing
+    to say, so nothing is said."""
+    assert "never judged" not in str(_build(window=1)["messages"])
+
+
+def test_an_owed_turn_is_named_in_the_message_not_the_cached_prefix():
+    """Which grades failed is volatile, so it must not touch the frozen prefix —
+    the grader's cache has to keep hitting whether or not a turn is settling."""
+    healthy = _build(window=1)
+    settling = _build(window=3)
+    assert _system_text(healthy) == _system_text(settling)
+    assert "never judged" in str(settling["messages"])
+
+
+def test_the_window_asks_for_the_two_lists_kept_apart():
+    """Unioning them would let a slot credited late reset the close counter, and
+    swallow a goodbye the learner actually said."""
+    note = str(_build(window=2)["messages"])
+    assert "slots_filled_previously" in note
+    assert "do not merge" in note
+
+
+def test_a_longer_dialogue_reaches_the_grader_in_order():
+    """Requested in review of PR #76. The history is what makes the previous
+    partner turn legible, so its order and roles are the contract."""
+    dialogue = [
+        DialogueTurn(role="partner", zh="你好！"),
+        DialogueTurn(role="user", zh="你好，我叫小明。"),
+        DialogueTurn(role="partner", zh="我也很高兴认识你。"),
+        DialogueTurn(role="user", zh="你叫什么名字？"),
+        DialogueTurn(role="partner", zh="我叫小王。"),
+    ]
+    req = _build(dialogue=dialogue, user_text="你最近怎么样？")
+
+    assert [m["role"] for m in req["messages"]] == [
+        "assistant", "user", "assistant", "user", "assistant", "user",
+    ]
+    assert [m["content"] for m in req["messages"]] == [
+        "你好！", "你好，我叫小明。", "我也很高兴认识你。", "你叫什么名字？",
+        "我叫小王。", "你最近怎么样？",
+    ]
+    # The learner's turn is last, and the partner's previous line is the one
+    # before it — the pair the gaming check reads.
+    assert req["messages"][-1]["content"] == "你最近怎么样？"
+    assert req["messages"][-2]["content"] == "我叫小王。"
+
+
+def test_the_opening_line_is_not_prefixed_once_history_exists():
+    """It is already in `dialogue` from turn 2 on. Prefixing it again would show
+    the model the same line twice and invite reading the second as a new turn."""
+    dialogue = [
+        DialogueTurn(role="partner", zh="你好！"),
+        DialogueTurn(role="user", zh="你好。"),
+    ]
+    req = _build(dialogue=dialogue, opening_line="你好！")
+    assert "[The partner opened" not in str(req["messages"])

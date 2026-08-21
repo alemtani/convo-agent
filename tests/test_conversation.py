@@ -501,7 +501,7 @@ def test_the_tracker_fields_default_to_a_no_op():
     """A turn that establishes nothing must parse, not fail — most turns do."""
     grade = GraderResult(coherence="on_track")
     assert grade.slots_filled == []
-    assert grade.learner_closed is False
+    assert grade.slots_filled_previously == []
 
 
 def test_neither_conversation_schema_carries_the_grade():

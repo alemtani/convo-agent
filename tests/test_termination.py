@@ -244,3 +244,112 @@ def test_the_cap_hint_holds_past_the_cap():
     """A session can run a turn beyond its cap when state says so; the close
     must not vanish because the index went one further."""
     assert termination.closing_hint(scenario=FRUIT, turn=FRUIT.max_turns + 1)
+
+
+# --- V2: a turn is graded or it is owed -----------------------------------
+#
+# `UNGRADED_TURNS_SPEC.md`. A grade can fail — a timeout, a 5xx, a dropped
+# `state` event — and the learner did the work either way. The window carries it
+# forward instead of dropping it.
+
+
+def _advanced(state, *, slots=(), previously=(), closed=False, turn, graded=True):
+    return termination.advance(
+        state,
+        scenario=FRUIT,
+        slots_filled=list(slots),
+        slots_filled_previously=list(previously),
+        learner_closed=closed,
+        turn=turn,
+        graded=graded,
+    )
+
+
+def test_a_graded_turn_moves_the_watermark():
+    after = _advanced(SessionState(), slots=["item"], turn=1)
+    assert after.last_graded_turn == 1
+
+
+def test_an_ungraded_turn_leaves_the_watermark_behind():
+    after = _advanced(SessionState(), turn=1, graded=False)
+    assert after.last_graded_turn == 0
+    assert after.filled_at == {}
+
+
+def test_the_window_covers_every_turn_the_grader_missed():
+    state = SessionState()
+    for turn in (1, 2, 3):
+        state = _advanced(state, turn=turn, graded=False)
+    # Three turns taken, none graded: the next grade owes all three plus itself.
+    assert termination.grading_window(state, turn=4) == 4
+
+
+def test_the_window_is_one_on_a_healthy_turn():
+    state = _advanced(SessionState(), slots=["item"], turn=1)
+    assert termination.grading_window(state, turn=2) == 1
+
+
+def test_a_window_never_grades_nothing():
+    """A client echoing a watermark ahead of the turn index is confused or
+    lying; grading zero turns would silently stop scoring the session."""
+    assert termination.grading_window(SessionState(last_graded_turn=9), turn=2) == 1
+
+
+def test_late_credit_fills_the_slot_and_counts_toward_the_goal():
+    state = _advanced(SessionState(), turn=1, graded=False)
+    after = _advanced(state, slots=["price"], previously=["item"], turn=2)
+    assert set(after.filled_at) == {"item", "price"}
+    assert after.last_graded_turn == 2
+
+
+def test_late_credit_does_not_reset_the_close_counter():
+    """`advance` resets closes on a turn that carried content, so a topic
+    teaching 再见 does not have its own vocabulary end the session. A slot
+    credited late is not content *this* turn carried — and swallowing the
+    learner's goodbye because an old grade finally landed is the bug the
+    attributed window exists to prevent."""
+    # Turn 1: the learner says goodbye and the grade never lands.
+    state = _advanced(SessionState(), closed=True, turn=1, graded=False)
+    assert state.consecutive_closes == 1
+    # Turn 2: they say goodbye again, and turn 1's slot finally lands with it.
+    after = _advanced(state, previously=["item"], closed=True, turn=2)
+    assert after.consecutive_closes == 2
+    assert "item" in after.filled_at
+    assert after.end_reason == "closed"
+
+
+def test_current_turn_credit_still_resets_the_close_counter():
+    """The original rule is untouched for the turn actually being graded."""
+    state = SessionState(consecutive_closes=1)
+    after = _advanced(state, slots=["item"], closed=True, turn=2)
+    assert after.consecutive_closes == 0
+
+
+def test_a_close_is_counted_even_when_the_grade_never_landed():
+    """`learner_closed` is the converser's, and the converser cannot fail
+    independently of the reply — so a goodbye lands on time through a total
+    grader outage."""
+    after = _advanced(SessionState(consecutive_closes=1), closed=True, turn=1,
+                      graded=False)
+    assert after.consecutive_closes == 2
+    assert after.status == "complete"
+    assert after.end_reason == "closed"
+
+
+def test_the_session_ends_when_the_grader_falls_too_far_behind():
+    """Not a debt to keep servicing: three failures running is an outage, and
+    spending the learner's remaining turns on a session that cannot grade them
+    is worse than stopping."""
+    state = SessionState()
+    for turn in (1, 2, 3):
+        state = _advanced(state, turn=turn, graded=False)
+    assert state.status == "complete"
+    assert state.end_reason == "ungraded"
+    assert state.goal_met is False
+
+
+def test_a_healthy_session_never_trips_the_ungraded_end():
+    state = SessionState()
+    for turn in (1, 2, 3):
+        state = _advanced(state, turn=turn)
+    assert state.status == "active"

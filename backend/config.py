@@ -199,12 +199,18 @@ HSK_BAND_CEILING = _load_band_ceiling()
 # computed from what it returns.
 GRADER_MODEL = os.getenv("GRADER_MODEL", "claude-opus-5")
 
-# Judgment is where capability pays, and this call is off the reply path. Opus 5
-# is $5/$25 per Mtok against Sonnet 5's $3/$15 — 1.67x, on a call that runs once
-# per turn against a short prefix. Caches are per-model, so the grader gets its
-# own entry either way; Opus 5 caches from 512 tokens where Sonnet 5 needs 1024,
-# which suits the smaller grader prefix.
-GRADER_EFFORT = os.getenv("GRADER_EFFORT", "high")
+# Judgment is where capability pays. Opus 5 is $5/$25 per Mtok against Sonnet 5's
+# $3/$15 — 1.67x, on a call that runs once per turn against a short prefix.
+# Caches are per-model, so the grader gets its own entry either way; Opus 5
+# caches from 512 tokens where Sonnet 5 needs 1024, which suits the smaller
+# grader prefix.
+#
+# `medium`, not `high`. This call is off the *reply* path but not off the turn:
+# the learner cannot speak again until the grade lands, because they are waiting
+# to find out whether they got their point across. So the grader is the branch
+# the turn's wall clock now runs on, and effort here is latency the learner sits
+# in — not a free upgrade paid for in tokens alone.
+GRADER_EFFORT = os.getenv("GRADER_EFFORT", "medium")
 
 # **Thinking is on here, and that is the reason for a separate token budget.**
 # The conversation, sketch and verdict workers all set `thinking: disabled`
@@ -216,8 +222,9 @@ GRADER_EFFORT = os.getenv("GRADER_EFFORT", "high")
 # to decide it explicitly rather than inherit the hot path's posture.
 GRADER_MAX_TOKENS = int(os.getenv("GRADER_MAX_TOKENS", "4096"))
 
-# Shorter than the verdict's 20s and longer than nothing: no turn *blocks* on
-# the grader — a failure echoes the previous state and the reply still stands —
-# but a session that has ended cannot find out until this returns, so an
-# unbounded call is a learner stuck on a live mic.
+# The learner waits on this: the controls stay shut until the grade lands, so
+# this timeout is the longest they can be left looking at an answered reply and
+# a dead microphone. A failure is survivable — the reply stands, the credit is
+# owed and settled by the next turn — which is what makes a bound of this size
+# affordable rather than reckless.
 GRADER_TIMEOUT_S = float(os.getenv("GRADER_TIMEOUT_S", "15"))

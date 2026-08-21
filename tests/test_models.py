@@ -170,7 +170,7 @@ def test_the_converser_is_never_asked_what_the_grader_judges():
     """V2's split (`docs/VALIDITY.md`). A partner holding the rubric plays along
     with anything that looks like scoring, so the converser's schema must not
     offer it anywhere to say so — not as an ignored field, not as a default."""
-    for field in ("slots_filled", "learner_closed", "coherence"):
+    for field in ("slots_filled", "slots_filled_previously", "coherence"):
         assert field not in ConverserAnnotation.model_fields
         assert field not in TurnAnnotation.model_fields
 
@@ -182,8 +182,11 @@ def test_the_grader_judges_the_learner_and_nothing_else():
     assert set(GraderResult.model_fields) == {
         "coherence",
         "slots_filled",
-        "learner_closed",
+        "slots_filled_previously",
     }
+    # Noticing a goodbye needs no rubric, so it is the converser's — which is
+    # what keeps `consecutive_closes` exact through a grader outage.
+    assert "learner_said_goodbye" in ConverserAnnotation.model_fields
 
 
 def test_grader_defaults_credit_nothing():
@@ -192,7 +195,7 @@ def test_grader_defaults_credit_nothing():
     indistinguishable from `the learner established nothing this turn`."""
     result = GraderResult(coherence="on_track")
     assert result.slots_filled == []
-    assert result.learner_closed is False
+    assert result.slots_filled_previously == []
 
 
 def test_tone_error_shape():
@@ -273,6 +276,7 @@ def test_conversation_turn_response_shape():
             "tone_errors": [],
             "topic_tags": ["greetings"],
             "should_give_feedback": False,
+            "learner_said_goodbye": False,
         },
         "timings": None,
         "usage": None,

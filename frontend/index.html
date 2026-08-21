@@ -2113,6 +2113,13 @@
             recordNote(turnIndex, { tone_errors: event.tone_errors || [] });
           } else if (event.stage === "reply") {
             renderReply(replyBubble(), event.reply);
+            // The partner has answered, but the turn is not finished: the grade
+            // runs on a slower, more careful model and the controls stay shut
+            // until it lands. Say so, and say it plainly — the partner is a
+            // person in a scene, but the app is not pretending the session is
+            // ungraded, and a learner who knows a judgment is happening reads
+            // the pause as care rather than as a hang.
+            setStatus("checking what you got across…");
             // Only record a real exchange: an empty transcript means nothing was
             // recognized (the reply was a re-prompt), so it isn't part of history.
             if (transcript && transcript.zh) {
@@ -2124,6 +2131,10 @@
               });
             }
           } else if (event.stage === "state") {
+            // The grade has landed, so the wait is over. Cleared here rather
+            // than on `done`: `done` also waits on pronunciation scoring, and
+            // the learner is waiting to know about their *answer*.
+            setStatus("");
             // Its own branch since V2: the grade comes from a separate call that
             // races the reply, so it lands whenever it lands. A silent turn (and
             // a failed grade) echoes the submitted state back unchanged, so this

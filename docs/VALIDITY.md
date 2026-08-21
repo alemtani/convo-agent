@@ -166,13 +166,47 @@ This is a stronger argument than the one in
 [`SCENARIOS.md`](SCENARIOS.md#a-request-slot-needs-both-halves), which credits on
 the ask only because Python cannot judge whether a reply answered. The answer was
 never the interesting half, regardless of who can check it. So: one call, one
-turn, no lag and no session-end pass — and **V3 closes as decided rather than
-built**.
+turn, and no lag — and **V3 closes as decided rather than built**.
 
-**If the grader fails:** the reply stands, the turn returns normally, and the
-previous `SessionState` is echoed unchanged. No slot is credited and no close is
-counted — so a learner saying goodbye through a grader outage falls back on the
-turn cap.
+**This is not contradicted by the recovery pass below.** There *is* a session-end
+grader pass, but it exists to judge turns that were never judged, never to
+re-audit turns that were. The rule stays one grade per turn, credited on the ask;
+what the recovery pass recovers is a grade that failed to happen, not a verdict
+that was already reached.
+
+**If the grader fails: the turn is owed, not lost.** The reply stands and no slot
+is credited *yet* — but the turn is not forgotten either. `SessionState` carries
+`last_graded_turn`, a watermark; a turn whose grade never landed leaves it
+behind, and the next turn's grader judges the outstanding turn as well as the
+current one. Grading is a pure function of (history, learner turn) and the client
+resubmits the history every turn, so an ungraded turn is deferred work, not lost
+information.
+
+A watermark rather than a count of ungraded turns, because a count has to be
+incremented *by the client* when a grade does not arrive — and not receiving the
+`state` event is the entire failure mode.
+
+The grader returns the window **attributed**, not unioned: `slots_filled` for the
+current turn, `slots_filled_previously` for the owed ones.
+`termination.advance` resets the close counter on a turn that carried content, so
+a slot credited late must not count as content this turn carried — otherwise an
+old grade landing swallows a goodbye the learner actually said.
+
+`learner_closed` is not in the window at all. **It moved to the converser**:
+noticing that someone is leaving needs no rubric, and the converser cannot fail
+independently of the reply, so a close is applied on time even through a total
+grader outage.
+
+**Three ungraded turns ends the session** (`end_reason: "ungraded"`). That is an
+outage, not a backlog, and spending the learner's remaining turns on a session
+that cannot grade them is worse than stopping.
+
+**A session that ends still owing grades gets one final pass** before the
+verdict. The card is computed from state, so an unsettled debt would tell the
+learner they missed something they established — the A2 false negative at the
+moment it is most visible. If that pass completes the goal it supersedes the
+recorded `end_reason`: someone who established everything did not leave
+unfinished, `stuck` least of all.
 
 ### Model: a stronger grader, a faster converser
 
@@ -183,7 +217,7 @@ sketch worker, and the verdict worker alike.
 | Role | Model | Why |
 |---|---|---|
 | Converser | `claude-sonnet-5` | HSK band-2 dialogue is not a reasoning problem. Fast and cheap is the right trade on the branch the learner waits behind. |
-| Grader | `claude-opus-5` | Judgment is where capability pays, and it is off the reply path. |
+| Grader | `claude-opus-5`, `effort: medium` | Judgment is where capability pays. Off the *reply* path but **not off the turn**: the learner cannot speak again until the grade lands, because they are waiting to find out whether they got their point across. So effort here is latency they sit in, and `medium` is the trade. |
 
 Standard practice, and small at one learner: Opus 5 is $5/$25 per Mtok against
 Sonnet 5's $3/$15 — 1.67×, on a call that runs once per turn against a short

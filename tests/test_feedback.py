@@ -21,13 +21,14 @@ from pydantic import ValidationError
 
 from backend import config, kb, prompts
 from backend.models import (
+    GraderResult,
     DialogueTurn,
     ModelLine,
     SessionState,
     VerdictRequest,
     VerdictResult,
 )
-from backend.workers import feedback
+from backend.workers import feedback, grader
 
 DIALOGUE = [
     DialogueTurn(role="user", zh="我叫小明"),
@@ -415,3 +416,108 @@ async def test_the_stuck_brief_forbids_the_told_you_so():
         goal_met=False, missing=[], turns_taken=4, end_reason="closed"
     )
     assert "said goodbye twice" in closed
+
+
+# --- V2: settling a debt before the card ----------------------------------
+
+
+def _dialogue(pairs=2):
+    turns = []
+    for _ in range(pairs):
+        turns.append(DialogueTurn(role="user", zh="我叫小明"))
+        turns.append(DialogueTurn(role="partner", zh="你好"))
+    return turns
+
+
+async def test_a_session_with_no_debt_spends_no_grader_call(monkeypatch):
+    """Every healthy session takes this path, so it must cost nothing."""
+    called = False
+
+    async def never(**kwargs):
+        nonlocal called
+        called = True
+        raise AssertionError("graded a session that owed nothing")
+
+    monkeypatch.setattr(grader, "grade", never)
+    req = VerdictRequest(
+        topic_id="greetings",
+        dialogue=_dialogue(2),
+        state=SessionState(status="complete", last_graded_turn=2),
+    )
+    state = await feedback.settle_outstanding_grades(
+        req, scenario=kb.load_scenario("greetings")
+    )
+    assert state is req.state
+    assert called is False
+
+
+async def test_a_client_reporting_no_watermark_is_not_in_debt(monkeypatch):
+    """`None` says nothing about its grades. Reading it as `0` would fire a
+    recovery pass on every session an older client ever finished."""
+    async def never(**kwargs):
+        raise AssertionError("graded a session that reported no watermark")
+
+    monkeypatch.setattr(grader, "grade", never)
+    req = VerdictRequest(
+        topic_id="greetings", dialogue=_dialogue(3),
+        state=SessionState(status="complete"),
+    )
+    assert req.state.last_graded_turn is None
+    state = await feedback.settle_outstanding_grades(
+        req, scenario=kb.load_scenario("greetings")
+    )
+    assert state is req.state
+
+
+async def test_an_outstanding_debt_is_settled_before_the_card(monkeypatch):
+    """The card is computed from state, so an unsettled debt tells the learner
+    they missed something they established — at the moment it is most visible."""
+    async def late(**kwargs):
+        assert kwargs["window"] == 2
+        return (
+            GraderResult(
+                coherence="on_track",
+                slots_filled=["wellbeing"],
+                slots_filled_previously=["self_name", "partner_name"],
+            ),
+            None,
+        )
+
+    monkeypatch.setattr(grader, "grade", late)
+    req = VerdictRequest(
+        topic_id="greetings", dialogue=_dialogue(3),
+        state=SessionState(status="complete", last_graded_turn=1),
+    )
+    state = await feedback.settle_outstanding_grades(
+        req, scenario=kb.load_scenario("greetings")
+    )
+    assert set(state.filled_at) == {"self_name", "partner_name", "wellbeing"}
+
+
+async def test_a_failed_final_pass_leaves_the_state_alone(monkeypatch):
+    """A broken grader at the end of a broken session is not a reason to invent
+    a grade."""
+    async def boom(**kwargs):
+        raise grader.GraderError("still down")
+
+    monkeypatch.setattr(grader, "grade", boom)
+    req = VerdictRequest(
+        topic_id="greetings", dialogue=_dialogue(3),
+        state=SessionState(status="complete", last_graded_turn=1),
+    )
+    state = await feedback.settle_outstanding_grades(
+        req, scenario=kb.load_scenario("greetings")
+    )
+    assert state is req.state
+
+
+def test_a_late_pass_that_completes_the_goal_supersedes_the_end_reason():
+    """A learner who established everything did not leave unfinished, whatever
+    button they pressed. `stuck` least of all (A1)."""
+    reason = feedback._consistent_end_reason(
+        SessionState(status="complete", end_reason="stuck"),
+        scenario=kb.load_scenario("greetings"),
+        missing=[],
+        turns_taken=3,
+    )
+    assert reason == "goal"

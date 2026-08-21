@@ -102,12 +102,14 @@ async def run_text_turn(
         grade, grader_usage = await _grade_or_degrade(
             scenario=scenario, dialogue=req.dialogue, user_text=reading.zh,
             opening_line=req.opening_line.zh if req.opening_line else None,
+            window=termination.grading_window(req.state, turn=turn),
             client=client,
         )
 
     tone_errors = typed_pinyin.tone_errors_from_typed(req.text, reading.zh)
     state = _advance_or_echo(
-        req.state, scenario=scenario, grade=grade, turn=turn
+        req.state, scenario=scenario, grade=grade,
+        learner_closed=annotation.learner_said_goodbye, turn=turn,
     )
     annotation = TurnAnnotation.from_worker(annotation, tone_errors)
 
@@ -338,6 +340,7 @@ async def stream_audio_turn(
                 # only true on the spoken path; text mode has to serialize.
                 user_text=transcript.zh,
                 opening_line=opening_line,
+                window=termination.grading_window(state, turn=turn),
                 client=client,
             )
 
@@ -408,6 +411,7 @@ async def stream_audio_turn(
                         yield StateEvent(
                             state=_advance_or_echo(
                                 state, scenario=scenario, grade=pending_grade,
+                                learner_closed=annotation.learner_said_goodbye,
                                 turn=turn,
                             ),
                             coherence=(
@@ -429,13 +433,17 @@ async def stream_audio_turn(
                         pending_grader_usage = grader_usage
                         continue
                     yield StateEvent(
-                        # A failed grade echoes the submitted state unchanged —
-                        # no slot credited, no close counted. The event still
-                        # goes out: "nothing changed" and "the grader never ran"
-                        # look identical to a client that gets no event at all,
-                        # and only one of them is safe to treat as progress.
+                        # A failed grade credits no slot and leaves the
+                        # watermark where it was, so the next turn's window
+                        # settles this one. The close still applies — it is the
+                        # converser's observation, not the grader's. The event
+                        # goes out either way: "nothing was established" and "no
+                        # event arrived" look identical to a client that gets
+                        # neither, and only one is safe to treat as progress.
                         state=_advance_or_echo(
-                            state, scenario=scenario, grade=grade, turn=turn
+                            state, scenario=scenario, grade=grade,
+                            learner_closed=annotation.learner_said_goodbye,
+                            turn=turn,
                         ),
                         coherence=grade.coherence if grade else None,
                         **_at_emit(timer),
@@ -508,7 +516,7 @@ def _at_emit(timer: timing.Timer) -> dict:
 
 
 async def _grade_or_degrade(
-    *, scenario, dialogue, user_text, opening_line=None, client=None
+    *, scenario, dialogue, user_text, opening_line=None, window=1, client=None
 ):
     """Run the grader, degrading a failure to `None` rather than failing the turn.
 
@@ -527,31 +535,34 @@ async def _grade_or_degrade(
     try:
         return await grader_worker.grade(
             scenario=scenario, dialogue=dialogue, user_text=user_text,
-            opening_line=opening_line, client=client,
+            opening_line=opening_line, window=window, client=client,
         )
     except grader_worker.GraderError as exc:
         logger.warning("grader failed: %s", exc)
         return None, None
 
 
-def _advance_or_echo(state, *, scenario, grade, turn):
-    """Advance the session on a grade, or echo the submitted state unchanged.
+def _advance_or_echo(state, *, scenario, grade, learner_closed, turn):
+    """Advance the session, whether or not a grade landed.
 
-    A missing grade must never look like a graded turn that established nothing:
-    the second credits no slot *and counts a turn*, and a learner saying goodbye
-    through a grader outage would otherwise have their close counted on no
-    evidence. So a failed grade advances nothing at all and the session falls
-    back on the turn cap — the same conservative direction the retry path takes
-    when STT hears silence.
+    A missing grade is **not** a graded turn that established nothing. It leaves
+    the watermark where it was, so the next turn's window covers this one and the
+    credit the learner earned arrives late rather than never. Slots are the only
+    thing owed.
+
+    `learner_closed` comes from the converser, which cannot fail independently of
+    the reply — no reply, no turn, no state event — so a close is applied on time
+    even through a total grader outage, and `consecutive_closes` stays exact
+    while slots are outstanding.
     """
-    if grade is None:
-        return state
     return termination.advance(
         state,
         scenario=scenario,
-        slots_filled=grade.slots_filled,
-        learner_closed=grade.learner_closed,
+        slots_filled=grade.slots_filled if grade else [],
+        slots_filled_previously=grade.slots_filled_previously if grade else [],
+        learner_closed=learner_closed,
         turn=turn,
+        graded=grade is not None,
     )
 
 

@@ -12,6 +12,8 @@ per-turn hot path, so it has no cache-stability constraint of its own. What it
 into the client-held session state and rides the cached prefix for every turn
 after that (M2-B; replaces the old hardcoded `OPENING_LINE` / `SKETCH_STUB`).
 """
+from typing import Optional
+
 from backend.kb import Scenario
 
 _SYSTEM_PROMPT_TEMPLATE = """\
@@ -70,6 +72,8 @@ For every turn, also return a `turn_annotation`:
 - `topic_tags`: the topics this turn touched (e.g. ["greetings"]).
 - `should_give_feedback`: true only if enough slips have accrued to warrant a \
 coaching pause; otherwise false.
+- `learner_said_goodbye`: true if the learner's turn was a goodbye (再见 and the \
+like), false otherwise. You would notice this about anyone you were talking to.
 
 Annotations are logged silently — never mention them or correct the learner \
 inline; just keep the conversation going."""
@@ -152,8 +156,8 @@ It is made of these named facts — the slots:
 
 Return, as structured output:
 
-- `slots_filled`: the ids of the slots **this turn** established, and only \
-those. One utterance may fill several. Report nothing when this turn \
+- `slots_filled`: the ids of the slots **the learner's final turn** \
+established, and only those. One utterance may fill several. Report nothing when this turn \
 established none; a slot established on an earlier turn is not new.
 
   Judge by **meaning, not wording**. `expressible_with` lists words that *can* \
@@ -171,6 +175,9 @@ wrong party. A fact the partner volunteered unasked is never filled, however \
 the conversation got there — that is about the learner too, since they did not \
 ask for it.
 
+- `slots_filled_previously`: normally empty — leave it so. It is used only when \
+you are told below that earlier turns still need judging.
+
 - `coherence`: `on_track` if the learner's turn answered or followed from what \
 the partner actually just said; `drifting` if it wandered off that thread; \
 `off_track` if it was unintelligible or derailed.
@@ -181,10 +188,30 @@ do not have that reason. If the partner asked what the learner wanted to drink \
 and the learner asked which dish is best, that is `drifting` — a slot may still \
 be filled by it, and it is still not an answer to the question.
 
-- `learner_closed`: true if the learner's turn was a goodbye (再见 and the \
-like), false otherwise.
+Grade the learner's final turn. The history is context for reading it."""
 
-Grade only the learner's final turn. The history is context for reading it."""
+
+def render_window_note(window: int) -> Optional[str]:
+    """The per-turn instruction for settling **owed** turns, or `None`.
+
+    Volatile — it depends on how many earlier grades failed — so the caller puts
+    it in `messages`, after the `cache_control` breakpoint. The frozen prefix
+    stays byte-identical whether or not a turn is settling a debt.
+
+    `None` on a healthy turn, which is every turn where the previous grade
+    landed. There is nothing to say and no tokens to spend saying it.
+    """
+    if window <= 1:
+        return None
+    earlier = window - 1
+    return (
+        f"[The last {earlier} of the learner's earlier turns were never judged — "
+        "a grading failure, nothing the learner did. Judge them too. Put what "
+        "the learner's final turn established in `slots_filled`, and what those "
+        f"{earlier} earlier turn(s) established in `slots_filled_previously`. "
+        "Keep them separate; do not merge the two lists. `coherence` is about "
+        "the final turn only.]"
+    )
 
 
 def render_grader_prompt(scenario: Scenario) -> str:

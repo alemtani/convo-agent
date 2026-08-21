@@ -31,6 +31,12 @@ logger = logging.getLogger(__name__)
 # budget is worse than letting them fail and read the verdict.
 CLOSES_TO_END = 2
 
+# How far the grader may fall behind before the session is called broken. Three
+# consecutive failures is not a backlog to work through; it is an outage, and
+# continuing would spend the learner's remaining turns on a session that cannot
+# grade them.
+MAX_UNGRADED_TURNS = 3
+
 
 def advance(
     state: SessionState,
@@ -39,13 +45,24 @@ def advance(
     slots_filled: List[str],
     learner_closed: bool,
     turn: int,
+    slots_filled_previously: Optional[List[str]] = None,
+    graded: bool = True,
 ) -> SessionState:
     """Fold one turn's observations into the session state.
 
     `turn` is the 1-based index of the turn just taken, derived by the caller
     from the submitted history length — there is no server-side counter to
-    desync. `slots_filled` and `learner_closed` come from the worker's
-    annotation; everything else here is arithmetic.
+    desync. `slots_filled` comes from the grader, `learner_closed` from the
+    converser; everything else here is arithmetic.
+
+    `slots_filled_previously` is credit for **owed** turns — turns whose grade
+    never landed, being settled by this one. It fills slots and counts toward the
+    goal, but takes no part in `newly`, because the close rule below asks whether
+    *this* turn carried content and a slot credited late did not.
+
+    `graded` says whether a grade landed at all. It moves the watermark, and a
+    turn that was not graded leaves it where it was so the next turn's window
+    covers this one.
 
     Returns a new state; never mutates the one passed in. A topic with no
     authored scenario (topics can land before their scenario does, #29) returns
@@ -58,20 +75,48 @@ def advance(
     filled_at = _validated(state.filled_at, known)
     newly = [sid for sid in _validated_ids(slots_filled, known) if sid not in filled_at]
     filled_at.update({sid: turn for sid in newly})
+    # Recorded at the settling turn rather than the turn that earned it. That is
+    # cosmetic: `filled_at` orders the verdict's narration, it does not decide
+    # the pass, which is a set comparison.
+    late = [
+        sid
+        for sid in _validated_ids(slots_filled_previously or [], known)
+        if sid not in filled_at
+    ]
+    filled_at.update({sid: turn for sid in late})
 
-    _check_guards(scenario, filled_at, newly, turn)
+    _check_guards(scenario, filled_at, newly + late, turn)
 
     # A close that carries real content is a learner still working, not one
     # disengaging — so it takes the reset branch. Otherwise, on a topic that
     # teaches 再见, the taught utterance would double as the terminating one.
     closes = state.consecutive_closes + 1 if learner_closed and not newly else 0
 
+    # An ungraded turn pins the watermark where it was. When there is none yet —
+    # the client never reported one — it is pinned *behind this turn*, so the
+    # debt starts being counted from the first failure rather than from the
+    # first success.
+    if graded:
+        watermark = turn
+    elif state.last_graded_turn is not None:
+        watermark = state.last_graded_turn
+    else:
+        watermark = turn - 1
     missing = {slot.id for slot in scenario.slots} - set(filled_at)
     status, goal_met, end_reason = "active", False, None
     if not missing:
         status, goal_met, end_reason = "complete", True, "goal"
     elif turn >= scenario.max_turns:
         status, end_reason = "complete", "cap"
+    elif watermark is not None and turn - watermark >= MAX_UNGRADED_TURNS:
+        # Not a debt to keep servicing. The grader has failed this many turns
+        # running, so the session is broken rather than behind — stop it and let
+        # the verdict's recovery pass settle what it can.
+        logger.error(
+            "ending session: %d turns ungraded (last graded %d, now %d)",
+            turn - watermark, watermark, turn,
+        )
+        status, end_reason = "complete", "ungraded"
     elif closes >= CLOSES_TO_END:
         status, end_reason = "complete", "closed"
 
@@ -96,8 +141,28 @@ def advance(
             "status": status,
             "goal_met": goal_met,
             "end_reason": end_reason,
+            "last_graded_turn": watermark,
         }
     )
+
+
+def grading_window(state: SessionState, *, turn: int) -> int:
+    """How many of the learner's most recent turns this grade must judge.
+
+    `1` on a healthy turn. More when earlier grades never landed: the watermark
+    stayed where it was, so the arithmetic carries the gap forward without the
+    client having to notice anything or count anything.
+
+    Never less than 1 — a client echoing a watermark ahead of the turn index is
+    confused or lying, and grading zero turns would silently stop scoring the
+    session.
+
+    A client reporting no watermark at all is saying nothing about its grades,
+    not that every turn is owed, so it grades the current turn and no more.
+    """
+    if state.last_graded_turn is None:
+        return 1
+    return max(1, turn - state.last_graded_turn)
 
 
 def closing_hint(*, scenario: Optional[Scenario], turn: int) -> Optional[str]:

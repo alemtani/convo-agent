@@ -339,6 +339,7 @@ class ConverserAnnotation(BaseModel):
     grammar_notes: List[str] = []
     topic_tags: List[str] = []
     should_give_feedback: bool = False
+    learner_said_goodbye: bool = False
 
 
 class GraderResult(BaseModel):
@@ -362,16 +363,27 @@ class GraderResult(BaseModel):
     Python cannot check a reply — and it is why the grader needs one turn rather
     than a lag or a session-end pass.
 
-    `slots_filled` and `learner_closed` default to crediting nothing, so a
-    partial grade cannot advance a session by accident. `coherence` deliberately
-    has **no default**: it is the judgment, and a grader that omitted it should
-    fail validation and degrade to an unchanged state rather than have an opinion
-    invented for it.
+    `slots_filled` is what the *current* turn established;
+    `slots_filled_previously` is what any **owed** turns established — turns
+    whose grade never landed, which this call is settling. They are attributed
+    rather than unioned because `termination.advance` resets the close counter on
+    a turn that carried content, and a slot credited late is not content this
+    turn carried. Empty by construction whenever the window is one turn, which is
+    every healthy turn.
+
+    Both default to crediting nothing, so a partial grade cannot advance a
+    session by accident. `coherence` deliberately has **no default**: it is the
+    judgment, and a grader that omitted it should fail validation and degrade to
+    an unchanged state rather than have an opinion invented for it.
+
+    **`learner_closed` is not here.** Noticing that someone is leaving needs no
+    rubric, so it is the converser's observation (`ConverserAnnotation`), which
+    means a close is applied on time even through a total grader outage.
     """
 
     coherence: Literal["on_track", "drifting", "off_track"]
     slots_filled: List[str] = []
-    learner_closed: bool = False
+    slots_filled_previously: List[str] = []
 
 
 class TurnAnnotation(ConverserAnnotation):
@@ -481,9 +493,23 @@ class SessionState(BaseModel):
 
     filled_at: Dict[str, PositiveInt] = Field(default_factory=dict, max_length=32)
     consecutive_closes: int = Field(default=0, ge=0)
+    # The highest turn a grade has landed for. The window a grader must judge is
+    # `turn - last_graded_turn`, so a turn whose grade never arrived is settled
+    # by the next one.
+    #
+    # A watermark rather than a count of ungraded turns, because a count has to
+    # be *incremented by the client* when a grade does not arrive — and not
+    # receiving the `state` event is the entire failure mode. A watermark only
+    # goes stale, and the arithmetic covers the gap on its own.
+    #
+    # `None`, not `0`, when absent. A client that does not report a watermark is
+    # saying nothing about its grades, and `0` would say the opposite — that
+    # every turn so far is owed. That reading would fire a recovery pass on every
+    # session a client too old to send the field ever finished.
+    last_graded_turn: Optional[int] = Field(default=None, ge=0)
     status: Literal["active", "complete"] = "active"
     goal_met: bool = False
-    end_reason: Optional[Literal["goal", "cap", "closed", "stuck"]] = None
+    end_reason: Optional[Literal["goal", "cap", "closed", "stuck", "ungraded"]] = None
     # Which topic this state belongs to, stamped by the client at write time so
     # a restored store can be checked against the session it was written under
     # (#29 puts more than one topic on disk). Absent on a fresh state.
@@ -638,7 +664,7 @@ class VerdictCard(BaseModel):
     """
 
     goal_met: bool
-    end_reason: Optional[Literal["goal", "cap", "closed", "stuck"]] = None
+    end_reason: Optional[Literal["goal", "cap", "closed", "stuck", "ungraded"]] = None
     missing: List[MissingSlot] = []
     explanation: str
     model_exchange: List[ModelLine] = []

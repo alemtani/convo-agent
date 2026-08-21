@@ -16,7 +16,7 @@ from types import SimpleNamespace
 import pytest
 from fastapi.testclient import TestClient
 
-from backend import kb, orchestrator
+from backend import kb, termination, orchestrator
 from backend.main import app
 from backend.models import (
     GraderResult,
@@ -944,10 +944,11 @@ async def test_the_grade_rides_the_state_event_not_the_annotation(monkeypatch):
     assert not hasattr(events["reply"].annotation, "coherence")
 
 
-async def test_a_failed_grade_leaves_the_session_exactly_where_it_was(monkeypatch):
-    """The reply still stands. No slot is credited and no close is counted, so a
-    learner saying goodbye through a grader outage falls back on the turn cap —
-    never on a close nobody judged."""
+async def test_a_failed_grade_credits_nothing_and_records_the_debt(monkeypatch):
+    """The reply still stands and no slot is credited — but the turn is not
+    silently forgotten either. The watermark stays behind this turn, so the next
+    grade's window covers it and the credit the learner earned arrives late
+    rather than never."""
     submitted = SessionState(filled_at={"self_name": 1})
 
     async def fake_respond(**kwargs):
@@ -967,9 +968,12 @@ async def test_a_failed_grade_leaves_the_session_exactly_where_it_was(monkeypatc
         events[event.stage] = event
 
     assert events["reply"].reply.zh == "好。"
-    assert events["state"].state == submitted
+    assert events["state"].state.filled_at == submitted.filled_at
     assert events["state"].coherence is None
     assert "error" not in events
+    # Turn 1 went ungraded, so the watermark sits behind it and turn 2 owes two.
+    assert events["state"].state.last_graded_turn == 0
+    assert termination.grading_window(events["state"].state, turn=2) == 2
 
 
 async def test_a_completed_session_says_so_on_the_reply(monkeypatch):

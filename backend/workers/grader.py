@@ -27,7 +27,7 @@ from pydantic import ValidationError
 from backend import config
 from backend.kb import Scenario
 from backend.models import DialogueTurn, GraderResult
-from backend.prompts import render_grader_prompt
+from backend.prompts import render_grader_prompt, render_window_note
 
 _ROLE_MAP = {"user": "user", "partner": "assistant"}
 
@@ -60,6 +60,7 @@ def build_request(
     dialogue: List,
     user_text: str,
     opening_line: Optional[str] = None,
+    window: int = 1,
 ) -> Dict:
     """Assemble the exact `messages.parse` kwargs for one grade.
 
@@ -80,6 +81,19 @@ def build_request(
     ]
     messages.append({"role": "user", "content": user_text})
 
+    # Volatile, so it rides the final user message rather than the frozen prefix:
+    # whether earlier turns are owed depends on which grades failed, and the
+    # cached system block must stay byte-identical across the session.
+    window_note = render_window_note(window)
+    if window_note:
+        messages[-1] = {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": window_note},
+                {"type": "text", "text": messages[-1]["content"]},
+            ],
+        }
+
     # On turn 1 `dialogue` is empty, because the partner's opening line costs the
     # learner none of their budget and so is never part of it. The learner's
     # first words are a response to that line and to nothing else, so without it
@@ -89,11 +103,14 @@ def build_request(
     # assistant turn of its own: the Messages API requires `messages[0]` to be
     # `user`, and a lone leading assistant message reads as prefill.
     if opening_line and not dialogue:
+        opener = f"[The partner opened the conversation with: {opening_line}]"
+        first = messages[0]["content"]
         messages[0] = {
             "role": "user",
             "content": (
-                f"[The partner opened the conversation with: {opening_line}]\n"
-                f"{user_text}"
+                [{"type": "text", "text": opener}] + first
+                if isinstance(first, list)
+                else f"{opener}\n{first}"
             ),
         }
 
@@ -123,6 +140,7 @@ async def grade(
     dialogue: List,
     user_text: str,
     opening_line: Optional[str] = None,
+    window: int = 1,
     client: Optional[AsyncAnthropic] = None,
 ) -> Tuple[GraderResult, object]:
     """Judge one learner turn; return `(grade, usage)`.
@@ -139,7 +157,7 @@ async def grade(
     client = client or _get_client()
     request = build_request(
         scenario=scenario, dialogue=dialogue, user_text=user_text,
-        opening_line=opening_line,
+        opening_line=opening_line, window=window,
     )
 
     try:
