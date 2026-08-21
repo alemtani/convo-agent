@@ -17,6 +17,7 @@ from fastapi.testclient import TestClient
 from backend import kb, orchestrator
 from backend.main import app
 from backend.models import (
+    GraderResult,
     PronunciationScore,
     SessionState,
     SyllableScore,
@@ -64,7 +65,8 @@ def stub_worker_and_pa(monkeypatch):
                            want_reading=True, hint=None, client=None):
         return (
             Utterance(zh="你好！你叫什么名字？", pinyin="nǐ hǎo! nǐ jiào shénme míngzi?"),
-            TurnAnnotation(coherence="on_track", topic_tags=["greetings"]),
+            TurnAnnotation(topic_tags=["greetings"]),
+            GraderResult(coherence="on_track"),
             Utterance(zh="你好", pinyin="nǐ hǎo"),
             object(),
         )
@@ -145,7 +147,8 @@ async def test_transcript_is_yielded_before_the_worker_finishes(monkeypatch):
         await worker_may_finish.wait()
         return (
             Utterance(zh="你好！", pinyin="nǐ hǎo!"),
-            TurnAnnotation(coherence="on_track"),
+            TurnAnnotation(),
+            GraderResult(coherence="on_track"),
             Utterance(zh="你好", pinyin="nǐ hǎo"),
             object(),
         )
@@ -319,7 +322,8 @@ def test_dialogue_defaults_to_empty(monkeypatch):
         captured["dialogue"] = dialogue
         return (
             Utterance(zh="你好", pinyin="nǐ hǎo"),
-            TurnAnnotation(coherence="on_track"),
+            TurnAnnotation(),
+            GraderResult(coherence="on_track"),
             Utterance(zh="你好", pinyin="nǐ hǎo"),
             object(),
         )
@@ -360,7 +364,8 @@ def test_route_threads_dialogue_history_into_the_stream(monkeypatch):
         captured["dialogue"] = dialogue
         return (
             Utterance(zh="认识你很高兴", pinyin="rènshi nǐ hěn gāoxìng"),
-            TurnAnnotation(coherence="on_track"),
+            TurnAnnotation(),
+            GraderResult(coherence="on_track"),
             Utterance(zh="你好", pinyin="nǐ hǎo"),
             object(),
         )
@@ -503,7 +508,8 @@ async def test_concurrent_branches_are_timed_separately(monkeypatch):
         await asyncio.sleep(0.05)
         return (
             Utterance(zh="你好", pinyin="nǐ hǎo"),
-            TurnAnnotation(coherence="on_track"),
+            TurnAnnotation(),
+            GraderResult(coherence="on_track"),
             Utterance(zh="你好", pinyin="nǐ hǎo"),
             _FakeUsage(),
         )
@@ -543,7 +549,8 @@ async def test_done_surfaces_the_anthropic_usage_block(monkeypatch):
     async def fake_respond(**kwargs):
         return (
             Utterance(zh="你好", pinyin="nǐ hǎo"),
-            TurnAnnotation(coherence="on_track"),
+            TurnAnnotation(),
+            GraderResult(coherence="on_track"),
             Utterance(zh="你好", pinyin="nǐ hǎo"),
             _FakeUsage(),
         )
@@ -587,7 +594,8 @@ async def test_score_is_yielded_before_the_worker_finishes(monkeypatch):
         await worker_may_finish.wait()
         return (
             Utterance(zh="你好！", pinyin="nǐ hǎo!"),
-            TurnAnnotation(coherence="on_track"),
+            TurnAnnotation(),
+            GraderResult(coherence="on_track"),
             Utterance(zh="你好", pinyin="nǐ hǎo"),
             object(),
         )
@@ -707,7 +715,8 @@ async def test_the_spoken_turn_does_not_buy_a_reading_it_throws_away(monkeypatch
         asked["want_reading"] = want_reading
         return (
             Utterance(zh="你好", pinyin="nǐ hǎo"),
-            TurnAnnotation(coherence="on_track"),
+            TurnAnnotation(),
+            GraderResult(coherence="on_track"),
             None,
             None,
         )
@@ -818,7 +827,8 @@ def test_route_threads_the_sessions_sketch_through_to_the_worker(monkeypatch):
         captured["sketch"] = sketch
         return (
             Utterance(zh="你好", pinyin="nǐ hǎo"),
-            TurnAnnotation(coherence="on_track"),
+            TurnAnnotation(),
+            GraderResult(coherence="on_track"),
             Utterance(zh="你好", pinyin="nǐ hǎo"),
             object(),
         )
@@ -837,7 +847,8 @@ def test_route_sketch_defaults_to_empty(monkeypatch):
         assert sketch == ""
         return (
             Utterance(zh="你好", pinyin="nǐ hǎo"),
-            TurnAnnotation(coherence="on_track"),
+            TurnAnnotation(),
+            GraderResult(coherence="on_track"),
             Utterance(zh="你好", pinyin="nǐ hǎo"),
             object(),
         )
@@ -875,11 +886,8 @@ async def _stream(monkeypatch, *, slots_filled=(), learner_closed=False,
             capture["hint"] = hint
         return (
             Utterance(zh="好。", pinyin="hǎo."),
-            TurnAnnotation(
-                coherence="on_track",
-                slots_filled=list(slots_filled),
-                learner_closed=learner_closed,
-            ),
+            TurnAnnotation(),
+            GraderResult(coherence="on_track", slots_filled=list(slots_filled), learner_closed=learner_closed),
             None,
             _FakeUsage(),
         )
@@ -977,7 +985,8 @@ def test_state_round_trips_through_the_route(monkeypatch):
     async def fake_respond(**kwargs):
         return (
             Utterance(zh="好。", pinyin="hǎo."),
-            TurnAnnotation(coherence="on_track", slots_filled=["partner_name"]),
+            TurnAnnotation(),
+            GraderResult(coherence="on_track", slots_filled=["partner_name"]),
             None,
             _FakeUsage(),
         )

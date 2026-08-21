@@ -79,7 +79,7 @@ async def run_text_turn(
     turn = _turn_index(req.dialogue)
 
     with timer.stage("claude"):
-        reply, annotation, reading, usage = await conversation.respond(
+        reply, annotation, grade, reading, usage = await conversation.respond(
             kb_block=kb_block,
             sketch=req.sketch,
             dialogue=req.dialogue,
@@ -93,8 +93,8 @@ async def run_text_turn(
     state = termination.advance(
         req.state,
         scenario=scenario,
-        slots_filled=annotation.slots_filled,
-        learner_closed=annotation.learner_closed,
+        slots_filled=grade.slots_filled,
+        learner_closed=grade.learner_closed,
         turn=turn,
     )
     annotation = TurnAnnotation.from_worker(annotation, tone_errors)
@@ -358,7 +358,7 @@ async def stream_audio_turn(
                         **_at_emit(timer),
                     )
                 else:
-                    reply, annotation, _reading, usage = task.result()
+                    reply, annotation, grade, _reading, usage = task.result()
 
                     yield ReplyEvent(
                         reply=reply,
@@ -373,8 +373,8 @@ async def stream_audio_turn(
                         state=termination.advance(
                             state,
                             scenario=scenario,
-                            slots_filled=annotation.slots_filled,
-                            learner_closed=annotation.learner_closed,
+                            slots_filled=grade.slots_filled,
+                            learner_closed=grade.learner_closed,
                             turn=turn,
                         ),
                         **_at_emit(timer),

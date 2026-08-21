@@ -277,8 +277,8 @@ class ToneError(BaseModel):
     index: Optional[int] = None
 
 
-class WorkerAnnotation(BaseModel):
-    """The annotation *as the model produces it* — no `tone_errors`.
+class ConverserAnnotation(BaseModel):
+    """What the *converser* observes — no rubric, and no `tone_errors`.
 
     Tone is never the model's judgment: the server fills it deterministically,
     from Azure PA accuracy on the spoken path or from the tone digits the learner
@@ -289,39 +289,76 @@ class WorkerAnnotation(BaseModel):
 
     `TurnAnnotation` is still what goes on the wire — see `from_worker`.
 
-    `slots_filled` and `learner_closed` are M2-C's tracker, folded in here rather
-    than bought with a second call: both are observations about the learner's
-    utterance, which is what an annotation is, and living on the shared shape
-    means the spoken schema gets them for free. The model's job with
-    `slots_filled` is narrow — *which of these named facts did this turn
-    establish?* — structured extraction, not judgment. What the ids then *mean*
-    is decided in `termination.py`, in Python.
+    **This shape carries no scoring fields, deliberately** (V2,
+    `docs/VALIDITY.md`). `slots_filled`, `learner_closed` and `coherence` used to
+    live here, folded in to avoid a second call. The cost was epistemic: a
+    partner that can see the checkbox behind a question stops being a person in
+    a scene and becomes a proctor who wants you to pass — it steers, it accepts
+    near-misses, and it answers an irrelevant question as though it were
+    relevant. Those three fields are `GraderResult`'s now, and the converser is
+    given no place to say them.
+
+    `grammar_notes` stays. It is a live verdict input about the learner's
+    Chinese rather than about the rubric, and the converser is the call that
+    already read their sentence in order to answer it.
     """
 
-    coherence: Literal["on_track", "drifting", "off_track"]
     grammar_notes: List[str] = []
     topic_tags: List[str] = []
     should_give_feedback: bool = False
+
+
+class GraderResult(BaseModel):
+    """What the *grader* judges — the scoring half, on its own call (V2).
+
+    Produced by a goal-blind converser's counterpart: a call that holds no
+    character, writes no reply, and has no reason to be generous. It reads the
+    previous partner turn plus the learner's turn — exactly the pair that answers
+    both questions it is asked (`docs/VALIDITY.md`, "What the grader reads").
+
+    `slots_filled` is narrow — *which of these named facts did this turn
+    establish?* — structured extraction, not judgment. What the ids then *mean*
+    is decided in `termination.py`, in Python.
+
+    **A `request` slot is credited on the learner's ask alone.** The authored
+    rule reads *asked* AND *partner answered*, and the grader deliberately does
+    not wait for the second half: the slot is a claim about the learner's
+    Chinese, and whether the partner answered is the partner's performance.
+    Grading the learner on it grades the wrong party. That is a stronger reason
+    than the one in `docs/SCENARIOS.md`, which credits on the ask only because
+    Python cannot check a reply — and it is why the grader needs one turn rather
+    than a lag or a session-end pass.
+
+    Every field defaults to a judgment that credits nothing, so a grader that
+    returns an empty result cannot advance a session by accident.
+    """
+
+    coherence: Literal["on_track", "drifting", "off_track"]
     slots_filled: List[str] = []
     learner_closed: bool = False
 
 
-class TurnAnnotation(WorkerAnnotation):
-    """The worker's read on one learner turn — logged silently, surfaced later.
+class TurnAnnotation(ConverserAnnotation):
+    """The converser's read on one learner turn — logged silently, surfaced later.
 
-    `coherence` is whether the turn stayed on the conversation's arc;
     `grammar_notes`/`tone_errors`/`topic_tags` accumulate the per-turn signal the
     (Phase 4) feedback worker consumes. `should_give_feedback` is the worker's
     hint that enough has accrued to interrupt for a coaching round.
 
     Extends the model-facing shape with the one field the server owns.
+
+    It carries **no `coherence`**, and that is a wire fact rather than an
+    oversight: coherence is the grader's judgment now, and this annotation ships
+    on the `reply` event, which fires the moment the converser lands. There is no
+    grade to merge in yet. The grader's output rides `state` instead, so each
+    event carries what its own branch produced.
     """
 
     tone_errors: List[ToneError] = []
 
     @classmethod
     def from_worker(
-        cls, annotation: WorkerAnnotation, tone_errors: List[ToneError]
+        cls, annotation: ConverserAnnotation, tone_errors: List[ToneError]
     ) -> "TurnAnnotation":
         """Wire annotation = what the model said + what the server measured.
 
@@ -333,7 +370,7 @@ class TurnAnnotation(WorkerAnnotation):
         return cls(
             **{
                 name: getattr(annotation, name)
-                for name in WorkerAnnotation.model_fields
+                for name in ConverserAnnotation.model_fields
             },
             tone_errors=tone_errors,
         )
@@ -350,10 +387,17 @@ class ConversationResult(BaseModel):
     turn rendered as 汉字 + correct pinyin. It carries text mode: a beginner types
     `wo jiao xiao ming` and the worker resolves it in context (including 他/她 and
     words outside the topic vocab), and it is the only component that can.
+
+    `grade` is a **temporary seam**, not the design. V2 splits the scoring
+    judgment onto its own goal-blind call; this commit splits the *shapes* so
+    the converser's annotation can be proved rubric-free, and the call follows.
+    When `workers/grader.py` lands, this field leaves both result models and the
+    converser stops being asked for it at all.
     """
 
     partner_response: Utterance
-    turn_annotation: WorkerAnnotation
+    turn_annotation: ConverserAnnotation
+    grade: GraderResult
     user_reading: Utterance
 
 
@@ -374,7 +418,8 @@ class SpokenConversationResult(BaseModel):
     """
 
     partner_response: Utterance
-    turn_annotation: WorkerAnnotation
+    turn_annotation: ConverserAnnotation
+    grade: GraderResult
 
 
 class SessionState(BaseModel):

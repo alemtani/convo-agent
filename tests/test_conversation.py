@@ -16,10 +16,11 @@ import pytest
 
 from backend import config, kb
 from backend.models import (
+    GraderResult,
     ConversationResult,
     SpokenConversationResult,
     Utterance,
-    WorkerAnnotation,
+    ConverserAnnotation,
 )
 from backend.workers import conversation
 
@@ -228,7 +229,8 @@ def test_effort_is_omitted_rather_than_defaulted_when_unset(monkeypatch):
 def _recorded_result():
     return ConversationResult(
         partner_response=Utterance(zh="你好！你叫什么名字？", pinyin="nǐ hǎo! nǐ jiào shénme míngzi?"),
-        turn_annotation=WorkerAnnotation(coherence="on_track", topic_tags=["greetings"]),
+        turn_annotation=ConverserAnnotation(topic_tags=["greetings"]),
+        grade=GraderResult(coherence="on_track"),
         # Text mode: the learner typed pinyin, the worker reports what it read.
         user_reading=Utterance(zh="我叫小明", pinyin="wǒ jiào xiǎo míng"),
     )
@@ -249,7 +251,7 @@ def _fake_client(parsed_output, *, stop_reason="end_turn"):
 async def test_respond_sends_built_request_and_parses_recorded_response():
     client, parse = _fake_client(_recorded_result())
 
-    reply, annotation, reading, usage = await conversation.respond(
+    reply, annotation, grade, reading, usage = await conversation.respond(
         kb_block=KB,
         sketch=SKETCH,
         dialogue=[{"role": "user", "zh": "你好"}],
@@ -260,8 +262,9 @@ async def test_respond_sends_built_request_and_parses_recorded_response():
 
     # We parsed the recorded response into our models.
     assert reply == Utterance(zh="你好！你叫什么名字？", pinyin="nǐ hǎo! nǐ jiào shénme míngzi?")
-    assert annotation.coherence == "on_track"
     assert annotation.topic_tags == ["greetings"]
+    # The scoring half parses off the same response, into its own shape.
+    assert grade.coherence == "on_track"
     # The reading is surfaced separately from the reply — it's the learner's turn.
     assert reading == Utterance(zh="我叫小明", pinyin="wǒ jiào xiǎo míng")
     assert usage.cache_creation_input_tokens == 123
@@ -449,14 +452,11 @@ async def test_the_tracker_signal_is_parsed_off_a_recorded_response():
     Claude (`docs/SCENARIOS.md`, "Runtime: three tiers").
     """
     result = _recorded_result()
-    result.turn_annotation = WorkerAnnotation(
-        coherence="on_track",
-        slots_filled=["item", "quantity"],
-        learner_closed=False,
-    )
+    result.turn_annotation = ConverserAnnotation()
+    result.grade = GraderResult(coherence="on_track", slots_filled=["item", "quantity"], learner_closed=False)
     client, _ = _fake_client(result)
 
-    _reply, annotation, _reading, _usage = await conversation.respond(
+    _reply, _annotation, grade, _reading, _usage = await conversation.respond(
         kb_block=KB,
         sketch=SKETCH,
         dialogue=[],
@@ -465,33 +465,34 @@ async def test_the_tracker_signal_is_parsed_off_a_recorded_response():
         client=client,
     )
 
-    assert annotation.slots_filled == ["item", "quantity"]
-    assert annotation.learner_closed is False
+    assert grade.slots_filled == ["item", "quantity"]
+    assert grade.learner_closed is False
 
 
 async def test_a_close_is_reported_on_the_annotation():
     result = _recorded_result()
-    result.turn_annotation = WorkerAnnotation(coherence="on_track", learner_closed=True)
+    result.turn_annotation = ConverserAnnotation()
+    result.grade = GraderResult(coherence="on_track", learner_closed=True)
     client, _ = _fake_client(result)
 
-    _reply, annotation, _reading, _usage = await conversation.respond(
+    _reply, _annotation, grade, _reading, _usage = await conversation.respond(
         kb_block=KB, sketch=SKETCH, dialogue=[], user_text="再见",
         forgiveness_level=0.8, client=client,
     )
-    assert annotation.learner_closed is True
+    assert grade.learner_closed is True
 
 
 def test_the_tracker_fields_default_to_a_no_op():
     """A turn that establishes nothing must parse, not fail — most turns do."""
-    annotation = WorkerAnnotation(coherence="on_track")
-    assert annotation.slots_filled == []
-    assert annotation.learner_closed is False
+    grade = GraderResult(coherence="on_track")
+    assert grade.slots_filled == []
+    assert grade.learner_closed is False
 
 
 def test_the_spoken_schema_carries_the_tracker_too():
-    """Both paths get it free by living on the shared annotation."""
+    """Both paths carry the grade, so neither loses the tracker in the split."""
     for schema in (ConversationResult, SpokenConversationResult):
-        fields = schema.model_fields["turn_annotation"].annotation.model_fields
+        fields = schema.model_fields["grade"].annotation.model_fields
         assert "slots_filled" in fields
         assert "learner_closed" in fields
 

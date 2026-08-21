@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 
 from backend import kb, orchestrator
 from backend.main import app
-from backend.models import ConversationTurnResponse, TurnAnnotation, Utterance
+from backend.models import GraderResult, ConversationTurnResponse, TurnAnnotation, Utterance
 from backend.workers import conversation
 
 client = TestClient(app)
@@ -19,7 +19,7 @@ def _reply():
     return ConversationTurnResponse(
         transcript=Utterance(zh="我叫小明", pinyin="wǒ jiào xiǎo míng"),
         reply=Utterance(zh="你好！你叫什么名字？", pinyin="nǐ hǎo! nǐ jiào shénme míngzi?"),
-        annotation=TurnAnnotation(coherence="on_track", topic_tags=["greetings"]),
+        annotation=TurnAnnotation(topic_tags=["greetings"]),
     )
 
 
@@ -49,7 +49,6 @@ def test_turn_text_returns_reply_and_annotation(monkeypatch):
     # a typed turn exactly like a spoken one.
     assert body["transcript"] == {"zh": "我叫小明", "pinyin": "wǒ jiào xiǎo míng"}
     assert body["reply"] == {"zh": "你好！你叫什么名字？", "pinyin": "nǐ hǎo! nǐ jiào shénme míngzi?"}
-    assert body["annotation"]["coherence"] == "on_track"
     assert body["annotation"]["topic_tags"] == ["greetings"]
     # The route forwarded the client-held transcript to the orchestrator.
     assert captured["topic_id"] == "greetings"
@@ -129,7 +128,8 @@ def test_turn_text_threads_the_sessions_sketch_through_to_the_worker(monkeypatch
         captured["sketch"] = sketch
         return (
             Utterance(zh="你好", pinyin="nǐ hǎo"),
-            TurnAnnotation(coherence="on_track"),
+            TurnAnnotation(),
+            GraderResult(coherence="on_track"),
             Utterance(zh="你好", pinyin="nǐ hǎo"),
             None,
         )
@@ -154,7 +154,8 @@ def test_turn_text_sketch_defaults_to_empty(monkeypatch):
         assert sketch == ""
         return (
             Utterance(zh="你好", pinyin="nǐ hǎo"),
-            TurnAnnotation(coherence="on_track"),
+            TurnAnnotation(),
+            GraderResult(coherence="on_track"),
             Utterance(zh="你好", pinyin="nǐ hǎo"),
             None,
         )
@@ -176,7 +177,8 @@ def test_text_turn_response_carries_stage_timings(monkeypatch):
     async def fake_respond(**kwargs):
         return (
             Utterance(zh="你好", pinyin="nǐ hǎo"),
-            TurnAnnotation(coherence="on_track"),
+            TurnAnnotation(),
+            GraderResult(coherence="on_track"),
             Utterance(zh="你好", pinyin="nǐ hǎo"),
             None,
         )
@@ -200,7 +202,8 @@ def test_state_round_trips_through_the_text_route(monkeypatch):
     async def fake_respond(**kwargs):
         return (
             Utterance(zh="好。", pinyin="hǎo."),
-            TurnAnnotation(coherence="on_track", slots_filled=["self_name"]),
+            TurnAnnotation(),
+            GraderResult(coherence="on_track", slots_filled=["self_name"]),
             Utterance(zh="我叫小明", pinyin="wǒ jiào xiǎo míng"),
             object(),
         )

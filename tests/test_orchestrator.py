@@ -15,6 +15,7 @@ import pytest
 
 from backend import config, kb, orchestrator
 from backend.models import (
+    GraderResult,
     ConversationTurnResponse,
     SessionStartResponse,
     SessionState,
@@ -38,7 +39,8 @@ async def test_run_text_turn_loads_kb_and_calls_worker(monkeypatch):
         )
         return (
             Utterance(zh="你好！你叫什么名字？", pinyin="nǐ hǎo! nǐ jiào shénme míngzi?"),
-            TurnAnnotation(coherence="on_track", topic_tags=["greetings"]),
+            TurnAnnotation(topic_tags=["greetings"]),
+            GraderResult(coherence="on_track"),
             Utterance(zh="我叫小明", pinyin="wǒ jiào xiǎo míng"),
             object(),
         )
@@ -55,7 +57,7 @@ async def test_run_text_turn_loads_kb_and_calls_worker(monkeypatch):
 
     assert isinstance(resp, ConversationTurnResponse)
     assert resp.reply.zh == "你好！你叫什么名字？"
-    assert resp.annotation.coherence == "on_track"
+    assert resp.annotation.topic_tags == ["greetings"]
 
     # The orchestrator passes the client-held sketch straight through and owns
     # only the forgiveness default; it loads the real KB.
@@ -74,7 +76,8 @@ async def test_run_text_turn_defaults_sketch_to_empty_before_a_session_starts(mo
         captured["sketch"] = sketch
         return (
             Utterance(zh="你好", pinyin="nǐ hǎo"),
-            TurnAnnotation(coherence="on_track"),
+            TurnAnnotation(),
+            GraderResult(coherence="on_track"),
             Utterance(zh="你好", pinyin="nǐ hǎo"),
             object(),
         )
@@ -113,7 +116,8 @@ async def test_run_text_turn_passes_the_stripped_text_to_the_worker(monkeypatch)
         captured["user_text"] = user_text
         return (
             Utterance(zh="你好", pinyin="nǐ hǎo"),
-            TurnAnnotation(coherence="on_track"),
+            TurnAnnotation(),
+            GraderResult(coherence="on_track"),
             Utterance(zh="你好", pinyin="nǐ hǎo"),
             object(),
         )
@@ -197,7 +201,8 @@ def _worker_reply(annotation=None, reading=None):
                            want_reading=True, hint=None, client=None):
         return (
             Utterance(zh="你好！你叫什么名字？", pinyin="nǐ hǎo! nǐ jiào shénme míngzi?"),
-            annotation or TurnAnnotation(coherence="on_track", topic_tags=["greetings"]),
+            annotation or TurnAnnotation(topic_tags=["greetings"]),
+            GraderResult(coherence="on_track"),
             reading or Utterance(zh="你好", pinyin="nǐ hǎo"),
             object(),
         )
@@ -212,7 +217,8 @@ async def test_run_text_turn_reports_claude_and_total_only(monkeypatch):
     async def fake_respond(**kwargs):
         return (
             Utterance(zh="你好", pinyin="nǐ hǎo"),
-            TurnAnnotation(coherence="on_track"),
+            TurnAnnotation(),
+            GraderResult(coherence="on_track"),
             Utterance(zh="你好", pinyin="nǐ hǎo"),
             _FakeUsage(),
         )
@@ -409,11 +415,8 @@ def _tracker_worker(monkeypatch, slots_filled=(), learner_closed=False, capture=
             capture.update(hint=hint, dialogue=dialogue)
         return (
             Utterance(zh="好。", pinyin="hǎo."),
-            TurnAnnotation(
-                coherence="on_track",
-                slots_filled=list(slots_filled),
-                learner_closed=learner_closed,
-            ),
+            TurnAnnotation(),
+            GraderResult(coherence="on_track", slots_filled=list(slots_filled), learner_closed=learner_closed),
             Utterance(zh="我叫小明", pinyin="wǒ jiào xiǎo míng"),
             object(),
         )

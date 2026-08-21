@@ -10,9 +10,11 @@ from pydantic import ValidationError
 
 from backend.models import (
     ConversationResult,
+    ConverserAnnotation,
     ConversationTurnResponse,
     DialogueTurn,
     DoneEvent,
+    GraderResult,
     PronunciationScore,
     ReplyEvent,
     ScoreEvent,
@@ -28,7 +30,6 @@ from backend.models import (
     TurnUsage,
     Utterance,
     VerdictCard,
-    WorkerAnnotation,
 )
 
 
@@ -53,10 +54,7 @@ def test_transcript_event_serializes_with_its_stage_tag():
 def test_reply_event_carries_the_annotation():
     event = ReplyEvent(
         reply=Utterance(zh="你好", pinyin="nǐ hǎo"),
-        annotation=TurnAnnotation(
-            coherence="on_track",
-            tone_errors=[ToneError(syllable="你", expected=3, said=0)],
-        ),
+        annotation=TurnAnnotation(tone_errors=[ToneError(syllable="你", expected=3, said=0)]),
     )
     dumped = event.model_dump()
     assert dumped["stage"] == "reply"
@@ -156,16 +154,45 @@ def test_dialogue_turn_rejects_unknown_role():
 
 
 def test_turn_annotation_defaults_are_empty():
-    ann = TurnAnnotation(coherence="on_track")
+    ann = TurnAnnotation()
     assert ann.grammar_notes == []
     assert ann.tone_errors == []
     assert ann.topic_tags == []
     assert ann.should_give_feedback is False
 
 
-def test_turn_annotation_rejects_unknown_coherence():
+def test_grader_result_rejects_unknown_coherence():
     with pytest.raises(ValidationError):
-        TurnAnnotation(coherence="vibes")
+        GraderResult(coherence="vibes")
+
+
+def test_the_converser_is_never_asked_what_the_grader_judges():
+    """V2's split (`docs/VALIDITY.md`). A partner holding the rubric plays along
+    with anything that looks like scoring, so the converser's schema must not
+    offer it anywhere to say so — not as an ignored field, not as a default."""
+    for field in ("slots_filled", "learner_closed", "coherence"):
+        assert field not in ConverserAnnotation.model_fields
+        assert field not in TurnAnnotation.model_fields
+
+
+def test_the_grader_judges_the_learner_and_nothing_else():
+    """The mirror. `grammar_notes` stays on the converser — it is a verdict
+    input about the learner's Chinese, not about the rubric — and the grader has
+    no reply to write, so it carries none of the converser's fields."""
+    assert set(GraderResult.model_fields) == {
+        "coherence",
+        "slots_filled",
+        "learner_closed",
+    }
+
+
+def test_grader_defaults_credit_nothing():
+    """A grader that returns an empty judgment must not advance the session.
+    This is the shape a failed-then-defaulted grade would take, and it has to be
+    indistinguishable from `the learner established nothing this turn`."""
+    result = GraderResult(coherence="on_track")
+    assert result.slots_filled == []
+    assert result.learner_closed is False
 
 
 def test_tone_error_shape():
@@ -178,11 +205,11 @@ def test_conversation_result_nests_reply_and_annotation():
         {
             "partner_response": {"zh": "你今天怎么样？", "pinyin": "nǐ jīntiān zěnmeyàng?"},
             "turn_annotation": {
-                "coherence": "on_track",
                 "grammar_notes": [],
                 "topic_tags": ["greetings"],
                 "should_give_feedback": False,
             },
+            "grade": {"coherence": "on_track"},
             "user_reading": {"zh": "我很好", "pinyin": "wǒ hěn hǎo"},
         }
     )
@@ -197,7 +224,7 @@ def test_the_model_is_never_asked_for_tone_errors():
     field used to be in the schema with the prompt insisting it stay empty —
     output tokens spent every turn to render `[]` and have it overwritten."""
     assert "tone_errors" not in ConversationResult.model_json_schema()["$defs"][
-        "WorkerAnnotation"
+        "ConverserAnnotation"
     ]["properties"]
 
 
@@ -214,10 +241,9 @@ def test_the_spoken_schema_drops_the_reading_the_audio_path_throws_away():
 
 def test_wire_annotation_takes_tone_errors_from_the_server_not_the_model():
     annotation = TurnAnnotation.from_worker(
-        WorkerAnnotation(coherence="on_track", topic_tags=["greetings"]),
+        ConverserAnnotation(topic_tags=["greetings"]),
         [ToneError(syllable="ma", expected=3, said=1)],
     )
-    assert annotation.coherence == "on_track"
     assert annotation.topic_tags == ["greetings"]
     assert annotation.tone_errors[0].expected == 3
 
@@ -226,7 +252,7 @@ def test_wire_annotation_replaces_tone_errors_rather_than_colliding():
     """Handed an annotation that already carries scores, the server's are the
     ones that survive — the field is not the model's to fill."""
     stale = TurnAnnotation(
-        coherence="on_track", tone_errors=[ToneError(syllable="你", expected=3, said=1)]
+        tone_errors=[ToneError(syllable="你", expected=3, said=1)]
     )
     assert TurnAnnotation.from_worker(stale, []).tone_errors == []
 
@@ -235,20 +261,18 @@ def test_conversation_turn_response_shape():
     resp = ConversationTurnResponse(
         transcript=Utterance(zh="我叫小明", pinyin="wǒ jiào xiǎo míng"),
         reply=Utterance(zh="你好", pinyin="nǐ hǎo"),
-        annotation=TurnAnnotation(coherence="on_track", topic_tags=["greetings"]),
+        annotation=TurnAnnotation(topic_tags=["greetings"]),
     )
     assert resp.model_dump() == {
         "transcript": {"zh": "我叫小明", "pinyin": "wǒ jiào xiǎo míng"},
         "reply": {"zh": "你好", "pinyin": "nǐ hǎo"},
+        # No `coherence`, no `slots_filled`, no `learner_closed`: the scoring
+        # half is the grader's and travels with `state`, not here (V2).
         "annotation": {
-            "coherence": "on_track",
             "grammar_notes": [],
             "tone_errors": [],
             "topic_tags": ["greetings"],
             "should_give_feedback": False,
-            # M2-C's tracker rides the annotation both paths already carry.
-            "slots_filled": [],
-            "learner_closed": False,
         },
         "timings": None,
         "usage": None,

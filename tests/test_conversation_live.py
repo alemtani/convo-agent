@@ -37,7 +37,7 @@ async def test_live_cache_read_on_second_turn():
     client = _client()
     kb_block = kb.load_kb_block("greetings")
 
-    _r1, _a1, _rd1, usage1 = await conversation.respond(
+    _r1, _a1, _g1, _rd1, usage1 = await conversation.respond(
         kb_block=kb_block, sketch=SKETCH_STUB, dialogue=[], user_text="你好",
         forgiveness_level=config.FORGIVENESS_LEVEL_DEFAULT, client=client,
     )
@@ -51,7 +51,7 @@ async def test_live_cache_read_on_second_turn():
         or usage1.cache_read_input_tokens > 0
     ), "prefix did not cache — too small?"
 
-    _r2, _a2, _rd2, usage2 = await conversation.respond(
+    _r2, _a2, _g2, _rd2, usage2 = await conversation.respond(
         kb_block=kb_block, sketch=SKETCH_STUB,
         dialogue=[
             {"role": "user", "zh": "你好"},
@@ -70,7 +70,7 @@ async def test_live_reply_is_valid_structured_output():
     hard char ceiling on a live reply is brittle. We assert structure only.
     """
     client = _client()
-    reply, annotation, _reading, _usage = await conversation.respond(
+    reply, annotation, grade, _reading, _usage = await conversation.respond(
         kb_block=kb.load_kb_block("greetings"), sketch=SKETCH_STUB, dialogue=[],
         user_text="你好", forgiveness_level=config.FORGIVENESS_LEVEL_DEFAULT,
         client=client,
@@ -99,7 +99,7 @@ async def test_live_each_output_shape_caches_on_its_own_prefix():
     kb_block = kb.load_kb_block("greetings")
 
     async def turn(want_reading):
-        _reply, _ann, _reading, usage = await conversation.respond(
+        _reply, _ann, _grade, _reading, usage = await conversation.respond(
             kb_block=kb_block, sketch=SKETCH_STUB, dialogue=[], user_text="你好",
             forgiveness_level=config.FORGIVENESS_LEVEL_DEFAULT,
             want_reading=want_reading, client=client,
@@ -137,7 +137,7 @@ async def test_live_a_request_slot_fills_when_asked_and_answered():
     has to run against the real model — a recorded fixture would only prove we
     can write a fixture.
     """
-    _reply, annotation, _reading, _usage = await conversation.respond(
+    _reply, annotation, grade, _reading, _usage = await conversation.respond(
         kb_block=kb.load_kb_block("greetings"),
         sketch=SKETCH_STUB,
         dialogue=[{"role": "partner", "zh": "早上好！"}],
@@ -162,7 +162,7 @@ async def test_live_an_elliptical_question_fills_its_slot():
     invariant rather than fixing a bug: the loosening above must not later be
     tightened in a way that starts demanding the canonical 你最近怎么样.
     """
-    _reply, annotation, _reading, _usage = await conversation.respond(
+    _reply, annotation, grade, _reading, _usage = await conversation.respond(
         kb_block=kb.load_kb_block("greetings"),
         sketch=SKETCH_STUB,
         dialogue=[
@@ -189,7 +189,7 @@ async def test_live_a_volunteered_fact_is_still_never_credited():
     `SCENARIOS.md` calls the worse one, because it turns every session into a
     pass. The learner here asks nothing.
     """
-    _reply, annotation, _reading, _usage = await conversation.respond(
+    _reply, annotation, grade, _reading, _usage = await conversation.respond(
         kb_block=kb.load_kb_block("greetings"),
         sketch=SKETCH_STUB,
         dialogue=[{"role": "partner", "zh": "你好！"}],
