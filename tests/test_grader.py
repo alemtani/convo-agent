@@ -278,3 +278,20 @@ def test_the_opening_line_is_not_prefixed_once_history_exists():
     ]
     req = _build(dialogue=dialogue, opening_line="你好！")
     assert "[The partner opened" not in str(req["messages"])
+
+
+async def test_a_response_cut_off_mid_json_is_a_grader_error():
+    """A truncated body is validated *inside* `messages.parse`, so it arrives as
+    an exception rather than as `parsed_output is None` — a different path from
+    the unparseable case above, and uncaught it escapes a committed stream."""
+    client = SimpleNamespace(
+        messages=SimpleNamespace(
+            parse=AsyncMock(
+                side_effect=ValidationError.from_exception_data("GraderResult", [])
+            )
+        )
+    )
+    with pytest.raises(grader.GraderError):
+        await grader.grade(
+            scenario=SCENARIO, dialogue=[], user_text="你好", client=client
+        )

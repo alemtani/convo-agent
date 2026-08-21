@@ -122,6 +122,36 @@ def test_a_close_that_also_fills_a_slot_resets_the_counter():
     assert state.status == "active"
 
 
+def test_a_second_close_that_fills_the_last_slot_still_passes():
+    """The learner says goodbye twice, and the second goodbye completes the goal.
+
+    They pass — and by a route worth pinning, because it is not the obvious one.
+    The second close *resets* `consecutive_closes` to 0, since a close carrying
+    real content is a learner still working. What makes this a pass is the order
+    of the checks: goal completion is evaluated **before** the close counter, so
+    the session ends `goal`, not `closed`.
+
+    Reordering those two checks would fail a learner who established everything
+    on the way out — a false negative at the last possible moment, with no turn
+    left to correct it.
+    """
+    state = advance(SessionState(consecutive_closes=1), closed=True, turn=2)
+    assert state.consecutive_closes == 2 and state.status == "complete"
+
+    # The same second close, but this time it fills the outstanding slot.
+    state = advance(
+        SessionState(filled_at={"item": 1, "quantity": 1}, consecutive_closes=1),
+        filled=["price"],
+        closed=True,
+        turn=3,
+    )
+    assert state.status == "complete"
+    assert state.goal_met is True
+    assert state.end_reason == "goal"
+    # Reset, not incremented — and irrelevant, because the goal check ran first.
+    assert state.consecutive_closes == 0
+
+
 def test_one_turn_clear_completes_cleanly():
     """A learner who packs every slot into one utterance passes; nothing raises."""
     state = advance(filled=["item", "quantity", "price"], turn=1)

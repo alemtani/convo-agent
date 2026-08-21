@@ -594,3 +594,27 @@ def test_a_card_over_unchecked_turns_never_blames_the_learner():
 def test_a_healthy_card_says_nothing_about_grading():
     prompt = render_verdict_prompt(goal_met=True, missing=[], turns_taken=4)
     assert "could not be checked" not in prompt
+
+
+async def test_a_debt_with_no_learner_turn_to_grade_is_left_alone(monkeypatch):
+    """A session whose history holds no learner turn has nothing for the grader
+    to judge — spending a call to discover that is worse than not making it."""
+    async def never(**kwargs):
+        raise AssertionError("graded a history with no learner turn")
+
+    monkeypatch.setattr(grader, "grade", never)
+    req = VerdictRequest(
+        topic_id="greetings",
+        # Two partner lines and no learner turn: `turns_taken` is 1, so the
+        # debt guard passes and the *no learner turn* guard is the one that has
+        # to catch it.
+        dialogue=[
+            DialogueTurn(role="partner", zh="你好"),
+            DialogueTurn(role="partner", zh="再见"),
+        ],
+        state=SessionState(status="complete", last_graded_turn=0),
+    )
+    state = await feedback.settle_outstanding_grades(
+        req, scenario=kb.load_scenario("greetings")
+    )
+    assert state is req.state
