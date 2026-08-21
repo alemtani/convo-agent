@@ -132,6 +132,80 @@ def render_sketch_prompt(scenario: Scenario) -> str:
     )
 
 
+_GRADER_PROMPT_TEMPLATE = """\
+You are grading one turn of a Mandarin conversation practice session for a \
+beginner learner (HSK 3.0, bands 1–2). You are not the conversation partner. \
+You have no character to play and no reply to write. Judge what the learner \
+did, and nothing else.
+
+You are shown the conversation so far, ending with the partner's most recent \
+line and then the learner's turn. That pair is the whole of what you need.
+
+The learner is working toward this goal:
+{goal}
+
+It is made of these named facts — the slots:
+{slots_block}
+
+Return, as structured output:
+
+- `slots_filled`: the ids of the slots **this turn** established, and only \
+those. One utterance may fill several. Report nothing when this turn \
+established none; a slot established on an earlier turn is not new.
+
+  Judge by **meaning, not wording**. `expressible_with` lists words that *can* \
+express a slot; it is a hint, never a pattern to match, and a learner who gets \
+there by another route has still got there. A short or elliptical question \
+counts: if the partner asks 你最近怎么样？ and the learner answers and turns it \
+back with 你呢？, they have asked how the partner has been. Bouncing a question \
+back is real skill, not a shortcut.
+
+  **A `request` slot is filled when the learner asks. Do not wait to see \
+whether the partner answered.** The slot is a claim about the learner's \
+Chinese: they either formed the question or they did not. Whether the partner \
+answered is the partner's performance, and grading the learner on it grades the \
+wrong party. A fact the partner volunteered unasked is never filled, however \
+the conversation got there — that is about the learner too, since they did not \
+ask for it.
+
+- `coherence`: `on_track` if the learner's turn answered or followed from what \
+the partner actually just said; `drifting` if it wandered off that thread; \
+`off_track` if it was unintelligible or derailed.
+
+  This is the question the partner could never answer honestly, because it \
+knew what was being scored and would take anything scoreable as relevant. You \
+do not have that reason. If the partner asked what the learner wanted to drink \
+and the learner asked which dish is best, that is `drifting` — a slot may still \
+be filled by it, and it is still not an answer to the question.
+
+- `learner_closed`: true if the learner's turn was a goodbye (再见 and the \
+like), false otherwise.
+
+Grade only the learner's final turn. The history is context for reading it."""
+
+
+def render_grader_prompt(scenario: Scenario) -> str:
+    """The grader's frozen prefix (V2, `docs/VALIDITY.md`).
+
+    Everything here is authored per topic, so it is byte-stable within a session
+    and caches like the converser's. What varies per turn — the history and the
+    learner's words — goes in `messages`, after the breakpoint.
+
+    Deliberately carries no persona and no sketch. The grader is not playing
+    anyone, and a judge given a character has something to be loyal to.
+    """
+    slots = "\n".join(
+        f"- {slot.id} [{slot.kind}] {slot.description}"
+        + (
+            f" (often expressed with: {', '.join(slot.expressible_with)})"
+            if slot.expressible_with
+            else ""
+        )
+        for slot in scenario.slots
+    )
+    return _GRADER_PROMPT_TEMPLATE.format(goal=scenario.goal, slots_block=slots)
+
+
 _VERDICT_PROMPT_TEMPLATE = """\
 You are a warm, plain-spoken Mandarin tutor writing the end-of-session card for \
 one beginner learner (HSK 3.0, bands 1–2). The session is over. Your job is to \

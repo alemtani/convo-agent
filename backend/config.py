@@ -189,3 +189,35 @@ def _load_band_ceiling(default: int = 2) -> int:
 
 
 HSK_BAND_CEILING = _load_band_ceiling()
+
+
+# --- V2: the grader (docs/VALIDITY.md) ------------------------------------
+#
+# The scoring judgment, split off the converser and onto its own goal-blind
+# call. It joins the turn's fan-out rather than waiting on the reply, so the
+# learner never waits behind it — but the *session* does, since termination is
+# computed from what it returns.
+GRADER_MODEL = os.getenv("GRADER_MODEL", "claude-opus-5")
+
+# Judgment is where capability pays, and this call is off the reply path. Opus 5
+# is $5/$25 per Mtok against Sonnet 5's $3/$15 — 1.67x, on a call that runs once
+# per turn against a short prefix. Caches are per-model, so the grader gets its
+# own entry either way; Opus 5 caches from 512 tokens where Sonnet 5 needs 1024,
+# which suits the smaller grader prefix.
+GRADER_EFFORT = os.getenv("GRADER_EFFORT", "high")
+
+# **Thinking is on here, and that is the reason for a separate token budget.**
+# The conversation, sketch and verdict workers all set `thinking: disabled`
+# because `max_tokens` caps thinking *plus* output: a budget sized for the JSON
+# alone gets eaten by reasoning and the call dies with `stop_reason: max_tokens`
+# and nothing parsed. A grader wants the deliberation — it *is* the judgment —
+# so it gets headroom instead of a prohibition. On Opus 5 thinking is on by
+# default and disabling it is rejected above `high` effort, so this worker has
+# to decide it explicitly rather than inherit the hot path's posture.
+GRADER_MAX_TOKENS = int(os.getenv("GRADER_MAX_TOKENS", "4096"))
+
+# Shorter than the verdict's 20s and longer than nothing: no turn *blocks* on
+# the grader — a failure echoes the previous state and the reply still stands —
+# but a session that has ended cannot find out until this returns, so an
+# unbounded call is a learner stuck on a live mic.
+GRADER_TIMEOUT_S = float(os.getenv("GRADER_TIMEOUT_S", "15"))
