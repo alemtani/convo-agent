@@ -116,6 +116,10 @@ def build_request(
 
     return {
         "model": config.GRADER_MODEL,
+        # `thinking` is deliberately *omitted*, which on Opus 5 means adaptive
+        # thinking is on — the opposite of the hot path's explicit `disabled`.
+        # `max_tokens` below is sized to service it: the budget caps thinking
+        # plus output together.
         # Real headroom, because thinking is on. `max_tokens` caps thinking plus
         # output, so the conversation worker's 1024 would return
         # `stop_reason: max_tokens` with nothing parsed exactly when the
@@ -141,6 +145,7 @@ async def grade(
     user_text: str,
     opening_line: Optional[str] = None,
     window: int = 1,
+    timeout: Optional[float] = None,
     client: Optional[AsyncAnthropic] = None,
 ) -> Tuple[GraderResult, object]:
     """Judge one learner turn; return `(grade, usage)`.
@@ -161,13 +166,10 @@ async def grade(
     )
 
     try:
-        response = await client.messages.parse(
-            **request, timeout=config.GRADER_TIMEOUT_S
-        )
+        deadline = config.GRADER_TIMEOUT_S if timeout is None else timeout
+        response = await client.messages.parse(**request, timeout=deadline)
     except anthropic.APITimeoutError as exc:
-        raise GraderError(
-            f"grader timed out after {config.GRADER_TIMEOUT_S:g}s"
-        ) from exc
+        raise GraderError(f"grader timed out after {deadline:g}s") from exc
     except anthropic.APIError as exc:
         # Everything else the SDK raises — rate limits, 5xx, a dropped
         # connection. `CLAUDE_MAX_RETRIES` is 0, so there is no retry layer

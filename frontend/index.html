@@ -809,7 +809,13 @@
     // dialogue it belongs to (see the `reply` handlers), because a turn whose
     // exchange was saved and whose consequences were not is a session that has
     // silently lost progress it can never recompute.
-    let state = readJson(STATE_KEY, null) || { filled_at: {}, status: "active" };
+    // `last_graded_turn: 0` from the start, not left absent. Absent means "this
+    // client is not reporting its grades", which the server correctly reads as
+    // no debt — so a first turn whose grade was lost would never be settled.
+    // Starting the watermark at 0 says "nothing graded yet", which is true, and
+    // makes turn 1 recoverable like every other turn.
+    let state = readJson(STATE_KEY, null)
+      || { filled_at: {}, status: "active", last_graded_turn: 0 };
     // Per-turn tone/grammar notes, keyed by turn index, for the verdict roll-up.
     let notes = readJson(NOTES_KEY, {});
 
@@ -862,7 +868,7 @@
     // topic in the first place.
     if (session && state && state.topic_id && state.topic_id !== session.topic_id) {
       dialogue = [];
-      state = { filled_at: {}, status: "active" };
+      state = { filled_at: {}, status: "active", last_graded_turn: 0 };
       notes = {};
       for (const key of [STORE_KEY, STATE_KEY, NOTES_KEY, VERDICT_KEY]) {
         localStorage.removeItem(key);
@@ -2425,7 +2431,7 @@
       // survives into the new scene: `applyControls` disables the mic on a
       // scenario the learner has not spoken into, every turn 409s, and the
       // only recovery affordance is the button that just did this.
-      state = { filled_at: {}, status: "active" };
+      state = { filled_at: {}, status: "active", last_graded_turn: 0 };
       notes = {};
       localStorage.removeItem(STATE_KEY);
       localStorage.removeItem(NOTES_KEY);

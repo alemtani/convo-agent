@@ -28,6 +28,7 @@ from backend.models import (
     VerdictRequest,
     VerdictResult,
 )
+from backend.prompts import render_verdict_prompt
 from backend.workers import feedback, grader
 
 DIALOGUE = [
@@ -521,3 +522,75 @@ def test_a_late_pass_that_completes_the_goal_supersedes_the_end_reason():
         turns_taken=3,
     )
     assert reason == "goal"
+
+
+async def test_the_recovery_pass_hands_the_grader_a_live_turns_shape(monkeypatch):
+    """At verdict time `dialogue` holds everything, including the partner's
+    final reply — but a live turn hands the grader the history *up to* the
+    learner's turn plus that turn separately. Splitting at the end instead of at
+    the last `user` entry showed the learner's turn twice, after a partner line
+    it actually preceded."""
+    captured = {}
+
+    async def capture(**kwargs):
+        captured.update(kwargs)
+        return GraderResult(coherence="on_track"), None
+
+    monkeypatch.setattr(grader, "grade", capture)
+    dialogue = [
+        DialogueTurn(role="user", zh="u1"),
+        DialogueTurn(role="partner", zh="p1"),
+        DialogueTurn(role="user", zh="u2"),
+        DialogueTurn(role="partner", zh="p2"),
+    ]
+    req = VerdictRequest(
+        topic_id="greetings", dialogue=dialogue,
+        state=SessionState(status="complete", last_graded_turn=0),
+    )
+    await feedback.settle_outstanding_grades(
+        req, scenario=kb.load_scenario("greetings")
+    )
+
+    assert [t.zh for t in captured["dialogue"]] == ["u1", "p1"]
+    assert captured["user_text"] == "u2"
+    # The partner's final reply is not shown, exactly as on a live turn.
+    assert "p2" not in [t.zh for t in captured["dialogue"]]
+
+
+async def test_the_recovery_pass_does_not_rewrite_how_the_session_ended(monkeypatch):
+    """The session is over. `termination.advance` recomputes `status` and
+    `end_reason` from scratch, so running it here would overwrite the real
+    ending — `stuck`, `closed`, `ungraded` — with a fresh evaluation of a
+    finished session. Only the credit is new."""
+    async def late(**kwargs):
+        return GraderResult(coherence="on_track", slots_filled=["self_name"]), None
+
+    monkeypatch.setattr(grader, "grade", late)
+    req = VerdictRequest(
+        topic_id="greetings", dialogue=_dialogue(3),
+        state=SessionState(
+            status="complete", end_reason="stuck", last_graded_turn=1
+        ),
+    )
+    state = await feedback.settle_outstanding_grades(
+        req, scenario=kb.load_scenario("greetings")
+    )
+
+    assert state.end_reason == "stuck"
+    assert state.status == "complete"
+    assert "self_name" in state.filled_at
+
+
+def test_a_card_over_unchecked_turns_never_blames_the_learner():
+    """A turn nobody graded is not a turn the learner failed — and unlike a live
+    turn there is no next one to correct it."""
+    prompt = render_verdict_prompt(
+        goal_met=False, missing=[], turns_taken=4, unchecked_turns=2
+    )
+    assert "could not be checked" in prompt
+    assert "our fault and not theirs" in prompt
+
+
+def test_a_healthy_card_says_nothing_about_grading():
+    prompt = render_verdict_prompt(goal_met=True, missing=[], turns_taken=4)
+    assert "could not be checked" not in prompt

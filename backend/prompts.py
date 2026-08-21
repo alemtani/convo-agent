@@ -256,7 +256,7 @@ matter how well the conversation reads.
 
 Outcome: {outcome}
 {missing_block}
-Turns taken: {turns_taken}{reason_block}
+Turns taken: {turns_taken}{unchecked_block}{reason_block}
 
 Write, as structured output:
 
@@ -286,7 +286,8 @@ had. Start from where the conversation actually was."""
 
 
 def render_verdict_prompt(
-    *, goal_met, missing, turns_taken, end_reason=None, notes=None
+    *, goal_met, missing, turns_taken, end_reason=None, notes=None,
+    unchecked_turns=0,
 ) -> str:
     """The one-off prompt for a session's verdict card (M2-D).
 
@@ -297,6 +298,20 @@ def render_verdict_prompt(
     (`docs/SCENARIOS.md`). What is left is what models are good at: explaining
     in English, and writing a short in-band exchange.
     """
+    # A turn nobody graded is not a turn the learner failed. Saying "you never
+    # asked" about a turn we could not check is the false negative
+    # `ACCESSIBILITY.md` exists to prevent, at the moment it is most visible —
+    # and unlike a live turn, there is no next turn to correct it.
+    unchecked_block = (
+        f"\n\n**{unchecked_turns} of the learner's turns could not be checked** "
+        "— our grader failed, which is our fault and not theirs. Do not say or "
+        "imply that they failed to do anything in those turns. If something "
+        "below is listed as not established, say plainly that you could not "
+        "check part of the conversation, and keep the rest of the card warm and "
+        "concrete about what you *can* see."
+        if unchecked_turns
+        else ""
+    )
     missing_block = (
         "The learner never established:\n"
         + "\n".join(f"- {slot.description}" for slot in missing)
@@ -312,6 +327,14 @@ def render_verdict_prompt(
         )
     elif end_reason == "cap":
         reason_block = "\nThe session ran out of turns."
+    elif end_reason == "ungraded":
+        # The session was stopped by *us*, not by the learner and not by the
+        # budget. Never narrate this as something they did.
+        reason_block = (
+            "\nThe session ended because our grading failed repeatedly. That is "
+            "our fault. Tell them the session was cut short on our side, do not "
+            "apportion any of it to them, and do not tell them to try harder."
+        )
     elif end_reason == "stuck":
         # Written against the block above it. `closed` is deliberately gently
         # corrective — the learner left early and the card says so — and a
@@ -337,6 +360,7 @@ def render_verdict_prompt(
         ),
         missing_block=missing_block,
         turns_taken=turns_taken,
+        unchecked_block=unchecked_block,
         reason_block=reason_block,
         exchange_instruction=_EXCHANGE_WHEN_MET if goal_met else _EXCHANGE_WHEN_MISSED,
     )

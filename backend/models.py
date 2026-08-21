@@ -688,6 +688,10 @@ class VerdictRequest(BaseModel):
     dialogue: List[DialogueTurn] = Field(default_factory=list, max_length=40)
     state: SessionState = Field(default_factory=SessionState)
     notes: List[str] = Field(default_factory=list, max_length=60)
+    # Only read by the recovery pass, and only when the debt reaches back to the
+    # first turn — where the opening line is the sole thing the learner's words
+    # answer, and it is never in `dialogue`. Optional everywhere else.
+    opening_line: Optional[Utterance] = None
 
     @field_validator("notes")
     @classmethod
