@@ -3,8 +3,7 @@
 Companion to [`SCENARIOS.md`](SCENARIOS.md), which specifies *how* a session is
 graded. This one asks whether the grade is **earned**.
 
-Status: **V0 measured; V1 does not ship.** The rest depends on
-[`ACCESSIBILITY.md`](ACCESSIBILITY.md)'s A2.
+Status: **V0 measured; V1 does not ship; V2 built; V3 closed as decided.**
 
 > **V0's answer: `coherence` cannot carry a gate.** Across 21 runs over 7
 > recorded cases, the partner tagged the gaming turn `on_track` every time and
@@ -68,9 +67,10 @@ cannot be the thing that fixes this one.
 
 ## The design: a goal-blind converser and a separate grader
 
-**Converser.** Situation, persona, topic KB, conversation history — and nothing
-else. **Grader.** The transcript including the partner's new reply, plus the
-slots. No character to hold, no reply to write, no reason to be generous.
+**Converser.** Situation, what the scene withholds, persona, topic KB,
+conversation history — and nothing else. **Grader.** The conversation history,
+the learner's turn, and the slots. No character to hold, no reply to write, no
+reason to be generous.
 
 ### What the grader reads
 
@@ -100,14 +100,18 @@ different sentences.
 |---|---|---|
 | Authored `situation` | ✅ | ✅ |
 | Authored `goal`, slot ids, `expressible_with` | ❌ | ✅ |
+| Authored `withholding` prose | ✅ (verbatim) | ❌ (it is not a criterion) |
 | System-prompt slot / withhold paragraphs | ❌ (they move) | ✅ |
 | Persona from the sketch | ✅ | ❌ |
 | Conversation history | ✅ | ✅ |
 | The partner's new reply | writes it | does not need it |
 
-The sketch prompt currently forbids leaking the goal and restricts itself to
-flavour. V2 **widens** it: persona may now carry withholding (below), which is
-character, not criteria. That amendment is part of this work.
+The sketch prompt forbids leaking the goal and restricts itself to flavour. V2
+widens it only so far: it is *shown* what the scene withholds, and told the
+persona must not contradict it. **The withholding itself does not travel through
+the sketch model** — the authored prose reaches the converser verbatim, in
+`kb.render_scene_block`. A generated persona is softer than an instruction, and
+this is the one place where that softness would cost credit.
 
 **What moves to the grader:** `slots_filled`, `learner_closed`, `coherence`.
 **What stays on the converser:** `grammar_notes` — a live verdict input about
@@ -127,17 +131,34 @@ mic → STT → yield transcript
             all done               → yield done
 ```
 
-Everything the current shape guarantees survives: `state` still lands as soon as
-the grader returns, `termination.advance` still runs once per turn, and
-`/api/turn/text` runs two calls **concurrently** rather than in series.
+`state` lands as soon as the grader returns and `termination.advance` still runs
+once per turn — but it lands on **its own event** rather than on `reply`, which
+is a wire change the client had to take. Reply and state used to commit
+together; now a client that loses the connection between them records the turn
+without its consequences. That is survivable (the client resubmits state every
+turn) where holding the reply would be paid on every turn of every session.
 
-**The AND rule resolves one turn late, and that is already fine.** A `request`
-slot is authored as *learner asked* **and** *partner answered*; the answer to a
-turn-N ask lands in the turn-N reply, which the turn-N grader has not seen — the
-turn-N+1 grader does. This costs nothing today, because
-[`ACCESSIBILITY.md`](ACCESSIBILITY.md)'s A2 **already decided to credit on the
-ask alone**. Only V3, which re-opens strict AND, has to choose between the
-one-turn lag and one final grader pass at session end.
+**`/api/turn/text` serializes, and cannot do otherwise.** An earlier draft of
+this section claimed it runs its two calls concurrently. It cannot: in text mode
+the learner's 汉字 comes from the converser's `user_reading`, by the very rule
+stated above, so the grader has nothing to read until the converser returns.
+That is the one place the two paths differ, and it is the mic-free harness
+rather than the learner's path.
+
+**There is no lag: the grader credits on the ask.** An earlier draft had the AND
+rule (*learner asked* **and** *partner answered*) resolving one turn late, since
+the answer to a turn-N ask lands in the turn-N reply the turn-N grader has not
+seen. **That premise was rejected on 2026-08-20.** A `request` slot is a claim
+about the *learner's* Chinese: they either formed the question or they did not.
+Whether the partner answered is the partner's performance, and grading the
+learner on it grades the wrong party.
+
+This is a stronger argument than the one in
+[`SCENARIOS.md`](SCENARIOS.md#a-request-slot-needs-both-halves), which credits on
+the ask only because Python cannot judge whether a reply answered. The answer was
+never the interesting half, regardless of who can check it. So: one call, one
+turn, no lag and no session-end pass — and **V3 closes as decided rather than
+built**.
 
 **If the grader fails:** the reply stands, the turn returns normally, and the
 previous `SessionState` is echoed unchanged. No slot is credited and no close is
@@ -186,11 +207,12 @@ scenario block leaves it — and the grader gets its own. `SCENARIOS.md`'s
 "Caching" section says the slots live in the conversation worker's frozen
 prefix; **V2 inverts that and amends it.**
 
-**It may retire A2's compromise.** A2 floors on the ask alone because Python
-cannot judge whether a reply answered. A grader that holds no character can
-evaluate the authored AND rule properly — with the one-turn lag above, or a
-final pass at session end. If it does so reliably, the cost A2 accepted stops
-being necessary. That is V3.
+**It vindicates A2's compromise rather than retiring it.** A2 floors on the ask
+alone because Python cannot judge whether a reply answered. The grader credits on
+the ask because the answer is not the learner's to be graded on. The two now
+implement the *same rule* — one cheaply, one with judgment — so the floor stops
+being a knowing divergence from the model's rule and becomes a cheaper
+implementation of it. That is why V3 closes.
 
 ### What breaks, and how it is fixed
 
@@ -261,8 +283,8 @@ The verdict record then describes what went wrong rather than punishing it.
 |---|---|---|
 | **V0** | ✅ **Done.** A recorded-transcript fixture set and the first measurement of `coherence` against gold labels. Reported that **no threshold is safe** — every candidate gate never fires. Shipped no gate. | nothing |
 | **V1** | ❌ **Not shipping the gate.** V0 found nothing for it to gate on. The session-level coherence fact on `VerdictCard` is separable and still open — but it is describing a signal we now know is silent on the failure that matters, so it waits for V2's grader to produce a tag worth recording. | V0 said no |
-| **V2** | Goal-blind converser; grader as a third fan-out branch reading the *previous* partner turn; withholding as persona; scene design replacing `pressure_hint`. Splits the model: Sonnet 5 converses, Opus 5 grades. Staged: (1) ✅ verdict worker → Opus 5, the model split tested alone; (2) ✅ the authoring rule + all five situations rewritten; (3) the converser/grader change. | (2), now done |
-| **V3** | Re-open A2's floor-on-ask compromise if the grader evaluates ask-AND-answer reliably. | V2 |
+| **V2** | ✅ **Built.** Goal-blind converser; grader as a third fan-out branch reading the *previous* partner turn; withholding as authored scene prose; `closing_hint` replacing `pressure_hint`. Splits the model: Sonnet 5 converses, Opus 5 grades. Staged: (1) ✅ verdict worker → Opus 5; (2) ✅ the authoring rule + all five situations rewritten; (3) ✅ the converser/grader change. | done |
+| **V3** | ❌ **Closed as decided, not built.** It asked whether to re-open A2's floor-on-ask compromise once a grader could evaluate ask-AND-answer. The grader can, and we do not want it to: the partner's answer is the partner's performance. | decided |
 
 **V2 flips all five topics at once — revised 2026-08-20.** The earlier plan
 staged it per topic, with `food-ordering` as the one rewrite target and the rest
@@ -298,10 +320,13 @@ opening `pressure_hint` used to manufacture, and authored situations have never
 carried that weight. The check is a phone session; if it fails, the answer is
 better scenes, not a partner that peeks at the rubric.
 
-**Persona-as-withholding may drift.** A generated persona is softer than an
-instruction, and a server told to be brisk may still helpfully recommend a dish.
-Checkable with recorded transcripts, and the one place blindness genuinely costs
-reliability.
+**Persona-as-withholding may drift** — which is why the built version does not
+rely on it. A generated persona is softer than an instruction, and a server told
+to be brisk may still helpfully recommend a dish. So the authored `withholding`
+prose reaches the converser **verbatim**, through `kb.render_scene_block`, and
+the sketch prompt gets it only as a constraint so the persona cannot describe a
+different person. The residual risk is that the authored prose itself is not
+strong enough, which is a phone session's question, not a code one.
 
 **V1 can re-break what A2 fixed.** The floor exists to rescue a turn the model
 under-annotated, and a confused turn is exactly when both a bad coherence tag and

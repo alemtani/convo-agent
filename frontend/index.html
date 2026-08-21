@@ -920,7 +920,7 @@
       talk.disabled = off;
       textInput.disabled = send.disabled = off;
       // Three false conditions, and `busy` is the one that is easy to miss.
-      // `adoptState` replaces the whole state object when a reply lands, so a
+      // `adoptState` replaces the whole state object when the grade lands, so a
       // bail-out pressed mid-turn would be silently overwritten: the learner
       // taps it, the partner answers, and their exit disappears. The other two
       // are ordinary — a finished session has already produced its card, and a
@@ -2086,9 +2086,9 @@
         }
 
         // Dispatch on `stage`, never on position: only `transcript` has a fixed
-        // place. `score` and `reply` are concurrent branches emitted in whichever
-        // order they resolve, and a slow Azure call legitimately puts the reply
-        // first.
+        // place. `score`, `reply` and `state` are concurrent branches emitted in
+        // whichever order they resolve — a slow Azure call legitimately puts the
+        // reply first, and the grader usually beats both.
         for await (const event of ndjson(resp)) {
           if (event.stage === "transcript") {
             transcript = event.transcript;
@@ -2116,10 +2116,11 @@
                 grammar_notes: (event.annotation && event.annotation.grammar_notes) || [],
               });
             }
-            // Written here, in the same block as the dialogue it belongs to —
-            // a turn saved without its consequences is progress that cannot be
-            // recomputed. (A silent turn echoes the state back unchanged, so
-            // this is safe on the re-prompt path too.)
+          } else if (event.stage === "state") {
+            // Its own branch since V2: the grade comes from a separate call that
+            // races the reply, so it lands whenever it lands. A silent turn (and
+            // a failed grade) echoes the submitted state back unchanged, so this
+            // is safe on the re-prompt path too — it just doesn't move.
             adoptState(event.state);
           } else if (event.stage === "done") {
             // The terminal event, so the timings line is appended last in the

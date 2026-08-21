@@ -270,7 +270,7 @@ def test_timings_line_waits_for_the_done_event(page):
     page.evaluate("window.__stub.manual = true")
     _speak(page)
 
-    for _ in range(3):   # transcript, score, reply
+    for _ in range(4):   # transcript, score, reply, state
         page.evaluate("window.__stub.releaseNext()")
 
     # The seeded opening line also renders through `renderReply` (M4), so it

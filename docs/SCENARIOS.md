@@ -125,8 +125,16 @@ This is not a difficulty setting. It is what makes the scenario gradeable at all
 so it is on in every mode, permanently. It is also the one piece of realism we
 knowingly give up: a real vendor might well announce the price unasked.
 
-**The floor is the one exception, decided 2026-08-17.** The AND rule stays the
-authored rule and the model's rule. The deterministic floor fires on the *ask*
+**The AND rule was dropped, not merely floored — decided 2026-08-20.** It stays
+the *authored* rule, because `kind: request` still means the learner has to ask.
+It is no longer the *grader's* rule. A `request` slot is a claim about the
+learner's Chinese: they either formed the question or they did not. Whether the
+partner answered is the partner's performance, and grading the learner on it
+grades the wrong party. That reasoning is independent of who can check what, and
+so it supersedes the narrower argument below rather than sitting beside it.
+
+**The floor was the first exception, decided 2026-08-17.** The AND rule was then
+still the model's rule. The deterministic floor fires on the *ask*
 alone, because Python cannot check whether a reply answered without judging it.
 The cost is real and belongs here rather than only in
 [`ACCESSIBILITY.md`](ACCESSIBILITY.md): a partner that counter-questions instead
@@ -398,6 +406,14 @@ numeric request slot like `price`, assert the partner's reply actually contained
 number. Not built; noted as the hook.
 
 ### Caching
+
+> **Inverted by V2 (2026-08-20).** What follows described the design in which the
+> conversation worker held the slots. It no longer does — the converser reads the
+> *scene* and the grader reads the rubric, each behind its own `cache_control`
+> breakpoint, on its own model. The converser's prefix **shrank**; the grader's
+> is new. See [`VALIDITY.md`](VALIDITY.md). The paragraph below is kept because
+> the reasoning about *authored* material still holds: it is authored either way,
+> so it caches either way.
 
 Slots are authored, so they already sit in the KB block behind the `cache_control`
 breakpoint. **This adds no new cache surface.** The volatile per-turn addition is

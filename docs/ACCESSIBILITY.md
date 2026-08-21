@@ -7,6 +7,14 @@ before they open another one.
 
 Status: **A1 built** (#66). A2 and A3 not built.
 
+> **A2's floor is no longer a compromise — updated 2026-08-20.** It credits a
+> `request` slot on the learner's ask because Python cannot judge whether a
+> reply answered. [`VALIDITY.md`](VALIDITY.md)'s V2 grader now credits on the ask
+> too, for a stronger reason: the partner's answer is the partner's performance,
+> not the learner's. The two implement the same rule, so the floor is a cheaper
+> implementation of the model's rule rather than a knowing divergence from it —
+> and V3, which existed to re-open that question, is closed as decided.
+
 ---
 
 ## The evidence

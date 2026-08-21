@@ -40,14 +40,24 @@ two both sit *beside* the loop rather than inside it, for the same reason: one
 speaks a line, one explains a finished session, and neither is something a turn
 should wait on. Live modules: `main.py`, `orchestrator.py`, `termination.py`,
 `kb.py`, `pinyin.py`, `tones.py`, `models.py`, `config.py`, `prompts.py`,
-`workers/{conversation,sketch,feedback}.py`,
+`workers/{conversation,grader,sketch,feedback}.py`,
 `speech/{stt,pronunciation,tts,_azure}.py`. Still planned: `db.py`,
 `profile.py` (Phases 7–8).
 
 Session state is client-held, like `sketch`: `termination.py` computes it from
-the tracker fields on the worker's annotation and the client resubmits it every
-turn. It rides `ReplyEvent`, never `DoneEvent` — state is ready when the reply
-is, and `done` waits on the PA branch too.
+the **grader's** judgment and the client resubmits it every turn. It rides its
+own `StateEvent` — not `ReplyEvent`, because the grader is a separate branch of
+the fan-out and holding the reply for it would spend the latency that split
+exists to protect; and not `DoneEvent`, which waits on the PA branch too. A
+failed grade echoes the submitted state unchanged rather than advancing it.
+
+The conversation worker is **goal-blind**: it reads the scene, never the goal or
+the slots (V2, `docs/VALIDITY.md`). A partner that can see what is being scored
+plays along with anything that looks scoreable. `kb.load_converser_block` is what
+enforces that, and the blindness invariant is asserted on the assembled request
+rather than on any one component — including the authoring notes at the foot of
+`dialogues.md`, which are written in rubric terms and go to the sketch worker
+only.
 
 ```
 backend/
