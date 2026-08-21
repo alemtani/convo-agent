@@ -58,6 +58,7 @@ scenario:
       description: "Find out what they cost"
       expressible_with: [多少, 钱]
       depends_on: [item]
+  withholding: "Nothing at the stall carries a price tag. The vendor is busy and says little: they name a price only when a customer asks for one."
 ```
 
 Authoring rules, all enforced by `validate.py`:
@@ -68,15 +69,35 @@ Authoring rules, all enforced by `validate.py`:
    the price before the vendor says it.
 2. **`situation` and `goal` are English.** A band-1 learner cannot read a Chinese
    task description.
-3. **Every `expressible_with` word is in `target_vocab` and in band.** This is the
+3. **The scene must leave every `request` slot unanswered — write `withholding`.**
+   The partner is goal-blind: it is never told which facts are scored, so it
+   cannot be told to hold them back. Write the situation so an ordinary, helpful
+   partner *still* has nothing to volunteer, and say how in `withholding` —
+   English prose, partner-facing, never shown to the learner.
+
+   The trap is politeness, not gaming. A friendly classmate introduces
+   themselves, and a `partner_name` slot is gone before the learner speaks.
+   Ask of every request slot: *what would a nice person do here?* If the answer
+   is "tell them," the scene needs changing — no menu, no posted prices, a
+   partner who is shy about themselves.
+
+   Describe the **world**, never the rubric: "the kitchen prints no menu" is a
+   restaurant; "do not reveal the recommendation slot" is a test, and a partner
+   told that starts playing along with anything that looks like scoring. One
+   block of prose for the whole scene — never one line per slot, which is the
+   same rubric with the labels filed off.
+
+   This bans *answering* unasked, not asking. The partner may ask the learner
+   anything; a bounced 你呢？ is skill the prompt already rewards.
+4. **Every `expressible_with` word is in `target_vocab` and in band.** This is the
    achievability check: "buy three 苹果" is rejected because 苹果 is band 3. It is a
    hint to the extractor, *not* a string matcher — never write it as a phrase to
    match.
-4. **Author no turn counts.** The cap derives as
+5. **Author no turn counts.** The cap derives as
    `n_slots + n_request_slots + 2`, with the coefficients in `kb/zh/pacing.json`
    — retune pacing there, never per topic. An override needs `max_turns` **and**
    `max_turns_reason`, and may only ever raise the cap.
-5. `depends_on` is optional and feeds one consumer: the tracker's sanity guard
+6. `depends_on` is optional and feeds one consumer: the tracker's sanity guard
    (a price credited before the item was named is a hallucination signal).
 
 ## Add a new topic

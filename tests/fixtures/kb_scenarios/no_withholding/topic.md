@@ -1,22 +1,22 @@
 ---
-id: duplicate_ids
-display_name: "Fixture duplicate_ids"
+id: no_withholding
+display_name: "Fixture no_withholding"
 target_vocab: [水果, 要, 多少, 钱, 三, 个]
 scenario:
-  situation: "You are at a fruit stall."
+  situation: "You are at a fruit stall. The vendor has priced every basket in large numbers."
   goal: "Buy fruit and find out the price."
-  withholding: "No prices are posted, and the vendor names one only if asked."
   slots:
     - id: item
       kind: inform
       description: "Say you want fruit"
       expressible_with: [水果, 要]
-    - id: item
+    - id: price
       kind: request
       description: "Find out what they cost"
       expressible_with: [多少, 钱]
+      depends_on: [item]
 ---
 
-# Fixture duplicate_ids
+# Fixture no_withholding
 
 Deliberately invalid — a `validate.py` rule fixture. See tests/test_kb_validate.py.

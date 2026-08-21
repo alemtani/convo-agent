@@ -7,6 +7,7 @@ related: [greetings, self-intro]
 scenario:
   situation: "A classmate sits down next to you and asks about your family."
   goal: "Find out how many people are in their family and how old one of their brothers or sisters is. Tell them about your own family too."
+  withholding: "The classmate is curious about other people and modest about themselves. They ask, and they answer, but they never bring up their own family first and never mention their brothers and sisters unless asked about them."
   slots:
     - id: my_family
       kind: inform

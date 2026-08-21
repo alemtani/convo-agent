@@ -154,3 +154,30 @@ def test_unparsable_frontmatter_is_reported_as_an_error_not_a_traceback(tmp_path
     )
     errors, _ = validate.validate_topic(str(tmp_path), hsk, ceiling, "- broken\n")
     assert any("kind" in e for e in errors)
+
+
+# --- rule 7: a request slot the scene already answers (V2) ----------------
+#
+# `docs/VALIDITY.md`: the converser goes goal-blind, so it can no longer be
+# told to withhold a slot's answer — it does not know the slot is there. The
+# situation has to create the gap instead. The validator cannot read prose to
+# check that it does, so what it enforces is that the author answered the
+# question at all.
+
+
+def test_a_request_slot_without_authored_withholding_is_rejected(hsk, ceiling):
+    errors, _ = _run("no_withholding", hsk, ceiling)
+    assert len(errors) == 1, errors
+    assert "withholding" in errors[0]
+
+
+def test_an_inform_only_scenario_needs_no_withholding(hsk, ceiling):
+    """The rule is scoped to the failure it exists for.
+
+    Nothing is withheld when nothing has to be extracted, so an inform-only
+    scenario must fail on the obstacle rule *alone* — the withholding rule
+    piling on would make one authoring mistake report as two.
+    """
+    errors, _ = _run("inform_only", hsk, ceiling)
+    assert len(errors) == 1, errors
+    assert "request slots" in errors[0]

@@ -450,3 +450,44 @@ def test_list_topics_falls_back_to_frontmatter_when_row_is_missing(tmp_path):
     assert [(t.id, t.display_name, t.summary) for t in topics] == [
         ("orphan", "Orphan (孤)", "")
     ]
+
+
+# --- authored withholding (V2) --------------------------------------------
+#
+# `docs/VALIDITY.md`: a goal-blind converser cannot withhold a `request` slot's
+# answer, because it does not know the slot exists. The scene has to do that
+# work instead, so the withholding becomes an authored field — prose about what
+# the situation does not offer, never a per-slot list, which would be the rubric
+# under another name.
+
+
+def test_parse_scenario_reads_the_withholding_field():
+    md = SCENARIO_MD.replace(
+        "  goal:",
+        '  withholding: "No prices are posted, and the vendor does not name one'
+        ' unless asked."\n  goal:',
+    )
+    scenario = kb.parse_topic_frontmatter(md).scenario
+    assert scenario.withholding == (
+        "No prices are posted, and the vendor does not name one unless asked."
+    )
+
+
+def test_withholding_defaults_to_none_so_topics_can_land_before_it():
+    assert kb.parse_topic_frontmatter(SCENARIO_MD).scenario.withholding is None
+
+
+def test_render_scenario_block_never_carries_the_withholding_prose():
+    """The converser's cached prefix must not receive it.
+
+    Withholding reaches the partner as *scene*, through the sketch worker's
+    persona — never through the slot block, whose whole problem is that it tells
+    the partner what is being scored. Rendering it here would put the two
+    channels back in one place and hand a blind converser the rubric it is meant
+    to have lost.
+    """
+    md = SCENARIO_MD.replace(
+        "  goal:", '  withholding: "No prices are posted."\n  goal:'
+    )
+    scenario = kb.parse_topic_frontmatter(md).scenario
+    assert "No prices are posted" not in kb.render_scenario_block(scenario)

@@ -7,6 +7,7 @@ scenario:
   goal: "Buy fruit and find out the price."
   max_turns: 3
   max_turns_reason: "Should be quick."
+  withholding: "No prices are posted, and the vendor names one only if asked."
   slots:
     - id: item
       kind: inform

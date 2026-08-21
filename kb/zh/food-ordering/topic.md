@@ -5,8 +5,9 @@ target_vocab: [吃, 喝, 菜, 米饭, 面包, 包子, 饺子, 鸡蛋, 肉, 鱼, 
 proper_names: []
 related: [greetings, shopping]
 scenario:
-  situation: "You sit down in a small restaurant. A server comes over with the menu."
+  situation: "You sit down in a small restaurant. There are no menus. A server comes over and waits to take your order."
   goal: "Find out which dish is best here and what there is to drink, then order a dish and a drink."
+  withholding: "The kitchen prints no menu. The server keeps the day's dishes in their head and names a good one only when a customer asks; what there is to drink is not written down anywhere either. They are brisk and do not make suggestions unasked."
   slots:
     - id: recommendation
       kind: request

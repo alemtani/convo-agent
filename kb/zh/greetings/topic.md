@@ -5,8 +5,9 @@ target_vocab: [你, 您, 好, 我, 他, 她, 们, 老师, 同学, 朋友, 谢谢
 proper_names: [小明, 小王, 小李, 李]
 related: [self-intro, family]
 scenario:
-  situation: "You meet a classmate on campus in the morning. They greet you first."
+  situation: "You meet a classmate on campus in the morning. You have seen each other around but have never exchanged names. They greet you first."
   goal: "Introduce yourself, find out their name, and ask how they have been lately."
+  withholding: "The classmate is friendly but shy about themselves. They answer readily and are happy to ask about you, but they never volunteer their own name, and they never bring up how they have been lately. Someone has to ask them first."
   slots:
     - id: self_name
       kind: inform

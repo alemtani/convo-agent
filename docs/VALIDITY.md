@@ -261,14 +261,25 @@ The verdict record then describes what went wrong rather than punishing it.
 |---|---|---|
 | **V0** | ✅ **Done.** A recorded-transcript fixture set and the first measurement of `coherence` against gold labels. Reported that **no threshold is safe** — every candidate gate never fires. Shipped no gate. | nothing |
 | **V1** | ❌ **Not shipping the gate.** V0 found nothing for it to gate on. The session-level coherence fact on `VerdictCard` is separable and still open — but it is describing a signal we now know is silent on the failure that matters, so it waits for V2's grader to produce a tag worth recording. | V0 said no |
-| **V2** | Goal-blind converser; grader as a third fan-out branch reading the *previous* partner turn; withholding as persona; scene design replacing `pressure_hint`. Splits the model: Sonnet 5 converses, Opus 5 grades. | a rewritten situation that proves the gap survives |
+| **V2** | Goal-blind converser; grader as a third fan-out branch reading the *previous* partner turn; withholding as persona; scene design replacing `pressure_hint`. Splits the model: Sonnet 5 converses, Opus 5 grades. Staged: (1) ✅ verdict worker → Opus 5, the model split tested alone; (2) ✅ the authoring rule + all five situations rewritten; (3) the converser/grader change. | (2), now done |
 | **V3** | Re-open A2's floor-on-ask compromise if the grader evaluates ask-AND-answer reliably. | V2 |
 
-**V2 does not flip all five topics at once.** It runs where the request slots are
-the partner's own facts, or where the topic carries an authored withholding
-field. `food-ordering` is the rewrite target. `validate.py` cannot judge whether
-a situation creates an opening — that is prose — so the guardrail is an authored
-field, not a linter rule.
+**V2 flips all five topics at once — revised 2026-08-20.** The earlier plan
+staged it per topic, with `food-ordering` as the one rewrite target and the rest
+following. Reading the other four scenarios killed that: **every one of them has
+the same bug**, and `greetings` has it worst. The partner's own name is a
+`request` slot there, and the first thing a friendly classmate does is introduce
+themselves. `food-ordering` was not the exception, it was the example.
+
+Politeness, not gaming, is what deletes those slots — so there is no subset of
+topics where a blind converser is safe today, and a per-topic condition would
+only be a flag over a rule that has to hold everywhere. Every situation is
+rewritten and every scenario carries `withholding`, enforced by `validate.py`.
+The rule is specified in [`SCENARIOS.md`](SCENARIOS.md#the-scene-has-to-create-the-gap).
+
+`validate.py` still cannot judge whether a situation creates an opening — that is
+prose. It checks that the author answered the question, which is the same bargain
+`max_turns_reason` strikes.
 
 **V0 measures `coherence` on the converser; V2 moves it to the grader** — and
 onto a stronger model. The matrix has to be re-run after V2 before the same gate

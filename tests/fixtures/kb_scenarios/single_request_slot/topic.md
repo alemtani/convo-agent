@@ -5,6 +5,7 @@ target_vocab: [明天, 下雨]
 scenario:
   situation: "You are outside with a friend."
   goal: "Find out if it will rain tomorrow."
+  withholding: "No prices are posted, and the vendor names one only if asked."
   slots:
     - id: rain
       kind: request
