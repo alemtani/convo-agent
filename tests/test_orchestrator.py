@@ -11,13 +11,17 @@ staged events are the contract and there is no second code path that could
 disagree with them.
 """
 import dataclasses
+from types import SimpleNamespace
+
 import pytest
 
 from tests.helpers import grade_stub
 
 from backend import config, kb, orchestrator
 from backend.models import (
+    ConversationResult,
     GraderResult,
+    ConverserAnnotation,
     ConversationTurnResponse,
     SessionStartResponse,
     SessionState,
@@ -28,6 +32,11 @@ from backend.models import (
 )
 from backend.workers import conversation, grader
 from backend.workers import sketch as sketch_worker
+
+
+# Captured before the autouse stub replaces it, for the one test that wants the
+# real worker (`..._runs_the_real_workers_against_a_faked_sdk`).
+_REAL_GRADE = grader.grade
 
 
 @pytest.fixture(autouse=True)
@@ -576,3 +585,57 @@ async def test_start_session_rejects_a_topic_with_no_scenario(monkeypatch):
 
     with pytest.raises(kb.KbError):
         await orchestrator.start_session(topic_id="greetings")
+
+
+# --- the seam the stubs cannot see ---------------------------------------
+
+
+async def test_a_text_turn_runs_the_real_workers_against_a_faked_sdk():
+    """Drive `run_text_turn` through the *real* `respond` and `grade`, faking
+    only the SDK client underneath them.
+
+    Every other test here stubs the workers, which means the suite asserts both
+    sides of a contract that need not meet. It did not meet: `respond` returned
+    five values while the orchestrator unpacked four, and the suite stayed green
+    because `tests/test_conversation.py` asserted the five-tuple and every
+    orchestrator stub returned four. Two green files, one `ValueError` on every
+    live turn.
+
+    So this one crosses the seam. It asserts nothing about wording — only that
+    the pieces still fit together.
+    """
+    conversation_reply = ConversationResult(
+        partner_response=Utterance(zh="你好！", pinyin="nǐ hǎo!"),
+        turn_annotation=ConverserAnnotation(topic_tags=["greetings"]),
+        user_reading=Utterance(zh="我叫小明", pinyin="wǒ jiào xiǎo míng"),
+    )
+    grade = GraderResult(coherence="on_track", slots_filled=["self_name"])
+
+    def _message(parsed):
+        return SimpleNamespace(
+            parsed_output=parsed,
+            stop_reason="end_turn",
+            usage=SimpleNamespace(
+                cache_read_input_tokens=0, cache_creation_input_tokens=0,
+                input_tokens=10, output_tokens=5,
+            ),
+        )
+
+    async def parse(**kwargs):
+        # One fake client serves both workers; the output schema says which is
+        # calling, exactly as it does in production.
+        is_grader = kwargs["output_format"] is GraderResult
+        return _message(grade if is_grader else conversation_reply)
+
+    client = SimpleNamespace(messages=SimpleNamespace(parse=parse))
+
+    # Step back out of the autouse stub: the real worker is what is on trial.
+    grader.grade = _REAL_GRADE
+    try:
+        resp = await orchestrator.run_text_turn(_req(), client=client)
+    finally:
+        grader.grade = grade_stub()
+
+    assert resp.reply.zh == "你好！"
+    assert resp.transcript.zh == "我叫小明"
+    assert resp.state.filled_at == {"self_name": 1}

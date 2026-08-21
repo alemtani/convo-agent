@@ -24,7 +24,6 @@ from backend.models import (
     SpokenConversationResult,
     Utterance,
     ConverserAnnotation,
-    GraderResult,
 )
 from backend.prompts import render_system_prompt
 
@@ -165,8 +164,8 @@ async def respond(
     want_reading: bool = True,
     hint: Optional[str] = None,
     client: Optional[AsyncAnthropic] = None,
-) -> Tuple[Utterance, ConverserAnnotation, GraderResult, Optional[Utterance], object]:
-    """Run one turn; return (reply, annotation, grade, reading, usage).
+) -> Tuple[Utterance, ConverserAnnotation, Optional[Utterance], object]:
+    """Run one conversation turn; return (reply, annotation, reading, usage).
 
     `reading` is the worker's rendering of the learner's own turn as 汉字 + pinyin
     — the seam that lets a beginner type pinyin — and is `None` when the caller
@@ -222,7 +221,6 @@ async def respond(
     return (
         result.partner_response,
         result.turn_annotation,
-        result.grade,
         getattr(result, "user_reading", None),
         response.usage,
     )

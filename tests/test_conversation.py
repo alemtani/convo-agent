@@ -12,6 +12,8 @@ import anthropic
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
+import json
+
 import pytest
 
 from backend import config
@@ -130,6 +132,16 @@ def test_no_part_of_the_request_tells_the_partner_what_is_scored():
         m["content"] if isinstance(m["content"], str)
         else "".join(b["text"] for b in m["content"])
         for m in req["messages"]
+    )
+    # **The output schema is part of the request.** `messages.parse` renders it
+    # into the call — field names, and the model docstrings Pydantic emits as
+    # schema `description`. An earlier version of this test joined `system` and
+    # `messages` only, and passed while `ConversationResult` still nested
+    # `GraderResult`: the partner was handed `slots_filled`, `learner_closed`,
+    # `coherence` and a docstring spelling out the credit rule, in its cached
+    # prefix, by the one component the assertion skipped.
+    everything += json.dumps(
+        req["output_format"].model_json_schema(), ensure_ascii=False
     )
     assert scenario.goal not in everything
     for slot in scenario.slots:
@@ -269,7 +281,6 @@ def _recorded_result():
     return ConversationResult(
         partner_response=Utterance(zh="你好！你叫什么名字？", pinyin="nǐ hǎo! nǐ jiào shénme míngzi?"),
         turn_annotation=ConverserAnnotation(topic_tags=["greetings"]),
-        grade=GraderResult(coherence="on_track"),
         # Text mode: the learner typed pinyin, the worker reports what it read.
         user_reading=Utterance(zh="我叫小明", pinyin="wǒ jiào xiǎo míng"),
     )
@@ -290,7 +301,7 @@ def _fake_client(parsed_output, *, stop_reason="end_turn"):
 async def test_respond_sends_built_request_and_parses_recorded_response():
     client, parse = _fake_client(_recorded_result())
 
-    reply, annotation, grade, reading, usage = await conversation.respond(
+    reply, annotation, reading, usage = await conversation.respond(
         kb_block=KB,
         sketch=SKETCH,
         dialogue=[{"role": "user", "zh": "你好"}],
@@ -302,8 +313,6 @@ async def test_respond_sends_built_request_and_parses_recorded_response():
     # We parsed the recorded response into our models.
     assert reply == Utterance(zh="你好！你叫什么名字？", pinyin="nǐ hǎo! nǐ jiào shénme míngzi?")
     assert annotation.topic_tags == ["greetings"]
-    # The scoring half parses off the same response, into its own shape.
-    assert grade.coherence == "on_track"
     # The reading is surfaced separately from the reply — it's the learner's turn.
     assert reading == Utterance(zh="我叫小明", pinyin="wǒ jiào xiǎo míng")
     assert usage.cache_creation_input_tokens == 123
@@ -480,45 +489,12 @@ def test_prior_dialogue_turns_never_carry_a_hint():
     assert isinstance(req["messages"][2]["content"], list)
 
 
-# --- M2-C: the tracker, folded into the annotation -----------------------
-
-
-async def test_the_tracker_signal_is_parsed_off_a_recorded_response():
-    """Contract test: assert the id *set*, never the model's wording.
-
-    The tracker is folded into the annotation the worker already returns, so it
-    costs no extra call and no extra latency on a hot path that is already 73%
-    Claude (`docs/SCENARIOS.md`, "Runtime: three tiers").
-    """
-    result = _recorded_result()
-    result.turn_annotation = ConverserAnnotation()
-    result.grade = GraderResult(coherence="on_track", slots_filled=["item", "quantity"], learner_closed=False)
-    client, _ = _fake_client(result)
-
-    _reply, _annotation, grade, _reading, _usage = await conversation.respond(
-        kb_block=KB,
-        sketch=SKETCH,
-        dialogue=[],
-        user_text="我要三个水果",
-        forgiveness_level=0.8,
-        client=client,
-    )
-
-    assert grade.slots_filled == ["item", "quantity"]
-    assert grade.learner_closed is False
-
-
-async def test_a_close_is_reported_on_the_annotation():
-    result = _recorded_result()
-    result.turn_annotation = ConverserAnnotation()
-    result.grade = GraderResult(coherence="on_track", learner_closed=True)
-    client, _ = _fake_client(result)
-
-    _reply, _annotation, grade, _reading, _usage = await conversation.respond(
-        kb_block=KB, sketch=SKETCH, dialogue=[], user_text="再见",
-        forgiveness_level=0.8, client=client,
-    )
-    assert grade.learner_closed is True
+# --- V2: the tracker is not the converser's to report ----------------------
+#
+# It used to be folded into the annotation to avoid a second call. Those tests
+# lived here and now live in `tests/test_grader.py`, against the call that
+# actually makes the judgment. What is left here is the invariant that replaced
+# them: the converser is not asked, in any component of the request.
 
 
 def test_the_tracker_fields_default_to_a_no_op():
@@ -528,12 +504,13 @@ def test_the_tracker_fields_default_to_a_no_op():
     assert grade.learner_closed is False
 
 
-def test_the_spoken_schema_carries_the_tracker_too():
-    """Both paths carry the grade, so neither loses the tracker in the split."""
+def test_neither_conversation_schema_carries_the_grade():
+    """The schema is rendered into the request, so a `GraderResult` nested in
+    either result model would hand the partner the rubric in its cached prefix —
+    the exact route stripping the system prompt was meant to close."""
     for schema in (ConversationResult, SpokenConversationResult):
-        fields = schema.model_fields["grade"].annotation.model_fields
-        assert "slots_filled" in fields
-        assert "learner_closed" in fields
+        assert "grade" not in schema.model_fields
+        assert "GraderResult" not in json.dumps(schema.model_json_schema())
 
 
 async def test_a_truncated_response_becomes_a_conversation_error():

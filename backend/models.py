@@ -301,31 +301,30 @@ class ToneError(BaseModel):
     index: Optional[int] = None
 
 
+# `ConverserAnnotation`'s docstring is deliberately short, and the reasoning for
+# its shape lives out here in comments. Pydantic emits a model's docstring as the
+# JSON-schema `description`, and `messages.parse` renders that schema into the
+# request — so anything written inside the class is text the conversation worker
+# reads. A docstring explaining which rubric fields moved to the grader, and why,
+# would teach the partner the rubric in the act of documenting its removal.
+#
+# What moved (V2, `docs/VALIDITY.md`): `slots_filled`, `learner_closed` and
+# `coherence` were folded in here to avoid a second call. The cost was
+# epistemic — a partner that can see the checkbox behind a question stops being
+# a person in a scene and becomes a proctor who wants you to pass. They are
+# `GraderResult`'s now and the converser is given no place to say them.
+#
+# What stayed: `grammar_notes`, a verdict input about the learner's Chinese
+# rather than about the rubric, produced by the call that already read their
+# sentence in order to answer it.
+#
+# `tone_errors` is absent for a different reason: tone is never the model's
+# judgment. The server fills it from Azure PA accuracy or from typed tone digits.
+# It used to be in the schema with the prompt insisting it stay empty, so every
+# turn spent output tokens rendering `"tone_errors":[]` and then had it
+# overwritten. `TurnAnnotation` is the wire shape that carries it.
 class ConverserAnnotation(BaseModel):
-    """What the *converser* observes — no rubric, and no `tone_errors`.
-
-    Tone is never the model's judgment: the server fills it deterministically,
-    from Azure PA accuracy on the spoken path or from the tone digits the learner
-    typed. The field used to be in the schema with the prompt insisting it stay
-    empty, so every turn spent output tokens rendering `"tone_errors":[]` and
-    then had it overwritten. Leaving it out is the same contract enforced by
-    construction instead of by instruction.
-
-    `TurnAnnotation` is still what goes on the wire — see `from_worker`.
-
-    **This shape carries no scoring fields, deliberately** (V2,
-    `docs/VALIDITY.md`). `slots_filled`, `learner_closed` and `coherence` used to
-    live here, folded in to avoid a second call. The cost was epistemic: a
-    partner that can see the checkbox behind a question stops being a person in
-    a scene and becomes a proctor who wants you to pass — it steers, it accepts
-    near-misses, and it answers an irrelevant question as though it were
-    relevant. Those three fields are `GraderResult`'s now, and the converser is
-    given no place to say them.
-
-    `grammar_notes` stays. It is a live verdict input about the learner's
-    Chinese rather than about the rubric, and the converser is the call that
-    already read their sentence in order to answer it.
-    """
+    """Notes on one learner turn, alongside the partner's reply."""
 
     grammar_notes: List[str] = []
     topic_tags: List[str] = []
@@ -353,8 +352,11 @@ class GraderResult(BaseModel):
     Python cannot check a reply — and it is why the grader needs one turn rather
     than a lag or a session-end pass.
 
-    Every field defaults to a judgment that credits nothing, so a grader that
-    returns an empty result cannot advance a session by accident.
+    `slots_filled` and `learner_closed` default to crediting nothing, so a
+    partial grade cannot advance a session by accident. `coherence` deliberately
+    has **no default**: it is the judgment, and a grader that omitted it should
+    fail validation and degrade to an unchanged state rather than have an opinion
+    invented for it.
     """
 
     coherence: Literal["on_track", "drifting", "off_track"]
@@ -400,50 +402,46 @@ class TurnAnnotation(ConverserAnnotation):
         )
 
 
+# Same rule as `ConverserAnnotation` above, and this is the class that proves it:
+# every word of a model's docstring is rendered into the request as the schema
+# `description`, so design notes written here are prompt.
+#
+# `user_reading` carries text mode. A beginner types `wo jiao xiao ming` and the
+# worker resolves it in context — 他 or 她 from context, words outside the topic
+# vocab — and it is the only component that can. The short instruction below is
+# addressed to the model on purpose; the rest of the reasoning is out here.
+#
+# **There is no `grade` field**, and its absence is the point rather than an
+# omission. A `GraderResult` nested here would be rendered into the request by
+# `messages.parse` — field names, and the rubric docstring with it — handing the
+# partner the criteria in its cached prefix by exactly the route the system
+# prompt was stripped to close (V2, `docs/VALIDITY.md`).
 class ConversationResult(BaseModel):
-    """Structured output the conversation worker constrains Claude to (text).
-
-    Mirrors `DESIGN.md`'s per-turn JSON: the partner's reply plus the turn
-    annotation. The model is forced to this shape via `messages.parse`, so the
-    worker never parses free text.
-
-    `user_reading` is what the worker understood the learner to have *said* — the
-    turn rendered as 汉字 + correct pinyin. It carries text mode: a beginner types
-    `wo jiao xiao ming` and the worker resolves it in context (including 他/她 and
-    words outside the topic vocab), and it is the only component that can.
-
-    `grade` is a **temporary seam**, not the design. V2 splits the scoring
-    judgment onto its own goal-blind call; this commit splits the *shapes* so
-    the converser's annotation can be proved rubric-free, and the call follows.
-    When `workers/grader.py` lands, this field leaves both result models and the
-    converser stops being asked for it at all.
-    """
+    """The partner's reply, notes on the turn, and the learner's own words as
+    you understood them."""
 
     partner_response: Utterance
     turn_annotation: ConverserAnnotation
-    grade: GraderResult
     user_reading: Utterance
 
 
+# The spoken path's schema. STT already produced the learner's 汉字, so the
+# worker's reading of them is an echo the orchestrator drops — and asking for it
+# cost ~40 output tokens on the one branch the reply waits behind, measured at
+# ~0.8s of the turn. That is why this is a second schema rather than one shared
+# shape.
+#
+# The cost of the split is one extra prompt-cache entry per session: the output
+# schema is rendered *into* the cached prefix, so a variant changes
+# `cache_creation_input_tokens` for byte-identical system blocks. One extra write
+# per session, not per turn — and each path still reads its own prefix on every
+# turn after the first. That same rendering is why neither schema may carry the
+# rubric; see `ConversationResult`.
 class SpokenConversationResult(BaseModel):
-    """The same turn without `user_reading` — the spoken path's schema.
-
-    On the audio path the learner's words already arrived as 汉字 from STT, so
-    the worker's reading of them is an echo the orchestrator drops on the floor.
-    Asking for it anyway cost ~40 output tokens on the one branch the reply waits
-    behind — measured at ~0.8s of the turn, which is why this is a second schema
-    rather than one shared shape.
-
-    The cost of the split is one extra prompt-cache entry per session: the
-    output schema is rendered *into* the cached prefix (a variant changes
-    `cache_creation_input_tokens` for byte-identical system blocks), so the two
-    paths cache separately. That is one extra write per session, not per turn,
-    and each path still reads its own prefix on every turn after the first.
-    """
+    """The partner's reply, and notes on the turn."""
 
     partner_response: Utterance
     turn_annotation: ConverserAnnotation
-    grade: GraderResult
 
 
 class SessionState(BaseModel):
