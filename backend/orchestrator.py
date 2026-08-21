@@ -74,7 +74,7 @@ async def run_text_turn(
     on a refusal / unparseable reply — the route maps these to 404 / 502.
     """
     timer = timing.Timer()
-    kb_block = kb.load_kb_block(req.topic_id)
+    kb_block = kb.load_converser_block(req.topic_id)
     scenario = kb.load_scenario(req.topic_id)
     turn = _turn_index(req.dialogue)
 
@@ -225,7 +225,7 @@ async def prepare_audio_turn(
     Raises `kb.KbError` and `stt.SttError`.
     """
     timer = timing.Timer()
-    kb_block = kb.load_kb_block(topic_id)
+    kb_block = kb.load_converser_block(topic_id)
     with timer.stage("stt"):
         recognized = await stt.transcribe(audio_bytes)
     return Utterance(zh=recognized, pinyin=to_pinyin(recognized)), kb_block, timer

@@ -14,7 +14,9 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from backend import config, kb
+from backend import config
+from backend import kb
+from backend.prompts import render_system_prompt
 from backend.models import (
     GraderResult,
     ConversationResult,
@@ -84,16 +86,15 @@ def test_forgiveness_literal_is_in_frozen_block_not_volatile():
         assert "我叫小明" not in block["text"]
 
 
-def test_scenario_rides_the_cached_prefix_not_the_per_turn_messages():
-    """M2: authored slots are frozen KB, so they cost cached tokens once.
+def test_the_scene_rides_the_cached_prefix_not_the_per_turn_messages():
+    """V2: the *scene* is authored, so it costs cached tokens once.
 
-    They are authored — they cannot change mid-session — so they belong inside
-    the KB block behind the breakpoint. (What is *volatile* is which slots are
-    still outstanding; that arrives with the tracker in #31 and must stay out of
-    this prefix.) Asserted on the real greetings block, because the point is that
-    the loader put it there.
+    It cannot change mid-session, so it belongs inside the KB block behind the
+    breakpoint. What is volatile — whether this is the final turn — arrives
+    after it, in `messages`. Asserted on the real greetings block, because the
+    point is that the loader put it there.
     """
-    real_kb = kb.load_kb_block("greetings")
+    real_kb = kb.load_converser_block("greetings")
     req = conversation.build_request(
         kb_block=real_kb,
         sketch=SKETCH,
@@ -102,13 +103,51 @@ def test_scenario_rides_the_cached_prefix_not_the_per_turn_messages():
         forgiveness_level=0.8,
         want_reading=True,
     )
-    assert "# SCENARIO" in req["system"][1]["text"]
-    assert "Find out their name" in req["system"][1]["text"]
+    assert "# SCENE" in req["system"][1]["text"]
+    assert "never volunteer their own name" in req["system"][1]["text"]
     # Still cached as one frozen unit: the breakpoint sits after the sketch.
     assert "cache_control" not in req["system"][1]
     assert req["system"][2]["cache_control"] == {"type": "ephemeral"}
     for message in req["messages"]:
-        assert "SCENARIO" not in message["content"]
+        assert "SCENE" not in message["content"]
+
+
+def test_no_part_of_the_request_tells_the_partner_what_is_scored():
+    """The invariant V2 exists for, asserted on the assembled request rather
+    than on any one component — a blind partner is only blind if *nothing* in
+    the turn carries the rubric, including the system prompt itself."""
+    scenario = kb.load_scenario("greetings")
+    req = conversation.build_request(
+        kb_block=kb.load_converser_block("greetings"),
+        sketch=SKETCH,
+        dialogue=[{"role": "user", "zh": "你好"}],
+        user_text="我叫小明",
+        forgiveness_level=0.8,
+        want_reading=True,
+    )
+    everything = "\n".join(block["text"] for block in req["system"])
+    everything += "\n".join(
+        m["content"] if isinstance(m["content"], str)
+        else "".join(b["text"] for b in m["content"])
+        for m in req["messages"]
+    )
+    assert scenario.goal not in everything
+    for slot in scenario.slots:
+        assert slot.id not in everything
+        assert slot.description not in everything
+    # The words the old prompt used to teach the rubric with.
+    for word in ("slot", "SCENARIO", "scenario", "criteri", "scored"):
+        assert word not in everything
+
+
+def test_the_converser_is_not_asked_to_annotate_what_it_cannot_see():
+    """The system prompt taught `slots_filled`, `learner_closed` and
+    `coherence`. All three are the grader's now, and a prompt that still asks
+    for them would have the partner reasoning about a rubric it was not given —
+    the worst of both designs."""
+    prompt = render_system_prompt(0.8)
+    for field in ("slots_filled", "learner_closed", "coherence"):
+        assert field not in prompt
 
 
 def test_empty_sketch_is_omitted_rather_than_sent_as_an_empty_block():

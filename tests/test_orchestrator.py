@@ -64,7 +64,8 @@ async def test_run_text_turn_loads_kb_and_calls_worker(monkeypatch):
     assert captured["sketch"] == "SKETCH bytes from this session's POST /api/session"
     assert captured["forgiveness_level"] == config.FORGIVENESS_LEVEL_DEFAULT
     assert captured["user_text"] == "我叫小明"
-    assert captured["kb_block"] == kb.load_kb_block("greetings")
+    # The converser's block, not the full KB: no goal and no slots reach it.
+    assert captured["kb_block"] == kb.load_converser_block("greetings")
 
 
 async def test_run_text_turn_defaults_sketch_to_empty_before_a_session_starts(monkeypatch):
