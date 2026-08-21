@@ -1,0 +1,53 @@
+{
+  "clean-slot-fill": {
+    "coherence": "on_track",
+    "credit_ok": true,
+    "slots_established": [
+      "recommendation"
+    ],
+    "rationale": "Answers the menu being handed over with the question the scene invites."
+  },
+  "nonsequitur-slot-fill": {
+    "coherence": "drifting",
+    "credit_ok": false,
+    "slots_established": [],
+    "rationale": "The partner asked what they wanted to drink. This answers nothing that was asked; it is a phrase that matches a criterion, not a question in a conversation."
+  },
+  "wandering-no-slot": {
+    "coherence": "drifting",
+    "credit_ok": false,
+    "slots_established": [],
+    "rationale": "In-band words, out-of-scene content. Nothing here establishes any authored fact."
+  },
+  "derailed-input": {
+    "coherence": "off_track",
+    "credit_ok": false,
+    "slots_established": [],
+    "rationale": "The learner is stuck and half in English. The right move is to ask them to repeat, not to credit anything."
+  },
+  "elliptical-ni-ne": {
+    "coherence": "on_track",
+    "credit_ok": true,
+    "slots_established": [
+      "wellbeing"
+    ],
+    "rationale": "Answers the question asked and turns it back. Bouncing a question back is asking it."
+  },
+  "earned-under-annotated": {
+    "coherence": "on_track",
+    "credit_ok": true,
+    "slots_established": [
+      "self_name",
+      "partner_name"
+    ],
+    "rationale": "Untoned run-together pinyin, but the learner greets, gives their name, and asks for the partner's. Two facts established in one turn."
+  },
+  "order-after-answers": {
+    "coherence": "on_track",
+    "credit_ok": true,
+    "slots_established": [
+      "order"
+    ],
+    "rationale": "Orders a dish and a drink after hearing both answers, so the dependency is genuinely satisfied."
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "id": "elliptical-ni-ne",
+  "topic_id": "greetings",
+  "sketch": "The classmate is cheerful and unhurried, walking to their first class. It is a bright morning and the path is full of students.",
+  "dialogue": [
+    {
+      "role": "user",
+      "zh": "你好，我叫小明。",
+      "pinyin": "nǐ hǎo, wǒ jiào Xiǎomíng."
+    },
+    {
+      "role": "partner",
+      "zh": "我叫小王。你最近怎么样？",
+      "pinyin": "wǒ jiào Xiǎowáng. nǐ zuìjìn zěnmeyàng?"
+    }
+  ],
+  "learner_turn": "我很好，你呢？",
+  "state": {
+    "filled_at": {
+      "self_name": 1
+    },
+    "consecutive_closes": 0
+  },
+  "notes": "The short elliptical turn that must count: bouncing the question back asks it."
+}

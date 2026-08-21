@@ -1,0 +1,12 @@
+{
+  "id": "clean-slot-fill",
+  "topic_id": "food-ordering",
+  "sketch": "The server is brisk and a little busy — short answers, no small talk. It is lunchtime and most tables are full. A pot of tea sits on the counter.",
+  "dialogue": [],
+  "learner_turn": "请问，什么菜最好吃？",
+  "state": {
+    "filled_at": {},
+    "consecutive_closes": 0
+  },
+  "notes": "The plain case. The partner hands over the menu, the learner asks what is good."
+}
