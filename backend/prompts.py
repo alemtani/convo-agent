@@ -141,6 +141,9 @@ did, and nothing else.
 You are shown the conversation so far, ending with the partner's most recent \
 line and then the learner's turn. That pair is the whole of what you need.
 
+The scene the two of them are in:
+{situation}
+
 The learner is working toward this goal:
 {goal}
 
@@ -193,6 +196,11 @@ def render_grader_prompt(scenario: Scenario) -> str:
 
     Deliberately carries no persona and no sketch. The grader is not playing
     anyone, and a judge given a character has something to be loyal to.
+
+    It *does* carry the authored `situation`, which is not a character but the
+    evidence: "the partner volunteered this unasked" cannot be judged without
+    knowing what the scene hands over unprompted. `docs/VALIDITY.md` marks it ✅
+    for both columns for that reason.
     """
     slots = "\n".join(
         f"- {slot.id} [{slot.kind}] {slot.description}"
@@ -203,7 +211,9 @@ def render_grader_prompt(scenario: Scenario) -> str:
         )
         for slot in scenario.slots
     )
-    return _GRADER_PROMPT_TEMPLATE.format(goal=scenario.goal, slots_block=slots)
+    return _GRADER_PROMPT_TEMPLATE.format(
+        situation=scenario.situation, goal=scenario.goal, slots_block=slots
+    )
 
 
 _VERDICT_PROMPT_TEMPLATE = """\

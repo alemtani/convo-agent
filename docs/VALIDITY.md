@@ -87,6 +87,15 @@ That pairing is the whole judgment. *"You asked which dish is best when I asked
 what you wanted to drink"* is legible from the previous turn and this one; the
 reply the partner is composing right now adds nothing to it.
 
+**Turn 1 is the exception, and it needs a wire field.** The partner's opening
+line is deliberately not part of `dialogue` — it costs the learner none of their
+turn budget ([`SCENARIOS.md`](SCENARIOS.md), "Definition of a turn") — so on the
+first turn the grader would otherwise have the learner's words and nothing they
+are a response to. That is the turn most likely to be answering a greeting. The
+client resubmits `opening_line` the way it resubmits `sketch`, and the grader
+carries it as a prefix on the first *user* message: the Messages API requires
+`messages[0]` to be `user`, and a lone leading assistant turn reads as prefill.
+
 The learner's turn arrives as 汉字 by the same per-path split A2's floor uses:
 the **STT transcript** on the spoken path, the converser's `user_reading` in
 text mode. Taking `user_reading` from the converser rather than re-resolving
@@ -98,7 +107,7 @@ different sentences.
 
 | | Converser | Grader |
 |---|---|---|
-| Authored `situation` | ✅ | ✅ |
+| Authored `situation` | ✅ | ✅ — it is the *evidence*: "volunteered unasked" cannot be judged without knowing what the scene hands over |
 | Authored `goal`, slot ids, `expressible_with` | ❌ | ✅ |
 | Authored `withholding` prose | ✅ (verbatim) | ❌ (it is not a criterion) |
 | System-prompt slot / withhold paragraphs | ❌ (they move) | ✅ |
@@ -201,6 +210,12 @@ architecture change and none of V2.
 entirely, on a path that already splits its schema to keep ~40 output tokens off
 the branch the reply waits behind (`SpokenConversationResult`). Nothing waits on
 the grader that did not already wait on the converser.
+
+**Cost is reported per call, not summed.** The turn buys a Sonnet 5 reply and an
+Opus 5 judgment at `effort: high` with thinking on. `TurnUsage.grader` carries
+the second separately, because one token count across two models describes a
+price nothing charges — and reporting only the converser's hides the more
+expensive half, on the branch whose cost was the reason for the split.
 
 **Caching: one more prefix per session.** The converser's prefix *shrinks* — the
 scenario block leaves it — and the grader gets its own. `SCENARIOS.md`'s

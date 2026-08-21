@@ -84,12 +84,21 @@ class TurnUsage(BaseModel):
     prefix is actually being reused — was invisible outside the live test. Every
     field is optional: the SDK omits the cache counters on some responses, and
     reading usage must never be able to fail a turn.
+
+    `grader` is the second call the turn now buys (V2). It is reported
+    separately rather than summed, because the two run on **different models at
+    different prices** — Sonnet 5 for the reply, Opus 5 at `effort: high` with
+    thinking on for the judgment — and a single token count across both would
+    describe a price that nothing charges. Reporting only the converser's, as
+    this did at first, hides the more expensive half on the branch whose cost was
+    the whole reason for a separate model.
     """
 
     input_tokens: Optional[int] = None
     output_tokens: Optional[int] = None
     cache_read_input_tokens: Optional[int] = None
     cache_creation_input_tokens: Optional[int] = None
+    grader: Optional["TurnUsage"] = None
 
     @classmethod
     def from_sdk(cls, usage) -> "Optional[TurnUsage]":
@@ -100,6 +109,7 @@ class TurnUsage(BaseModel):
             **{
                 field: getattr(usage, field, None)
                 for field in cls.model_fields
+                if field != "grader"
             }
         )
 
@@ -698,6 +708,14 @@ class TextTurnRequest(BaseModel):
     dialogue: List[DialogueTurn] = []
     state: SessionState = Field(default_factory=SessionState)
     sketch: str = ""
+    # The partner's first line, client-held like `sketch`. It is deliberately not
+    # in `dialogue` — it costs the learner none of their turn budget
+    # (`docs/SCENARIOS.md`, "Definition of a turn") — but the grader has to see
+    # it, because on turn 1 it is the *only* thing the learner's words are a
+    # response to. Without it, coherence on the turn most likely to be answering
+    # a greeting is judged against nothing at all. Optional: a session started
+    # before this field existed simply grades turn 1 without it.
+    opening_line: Optional[Utterance] = None
 
     @field_validator("text")
     @classmethod

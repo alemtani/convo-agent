@@ -2056,6 +2056,13 @@
       form.append("sketch", session.sketch);
       // This session's progress, held here because the server keeps none.
       form.append("state", JSON.stringify(state));
+      // The partner's first line. Deliberately not in `dialogue` — it costs the
+      // learner none of their turn budget — but on turn 1 it is the only thing
+      // their words are a response to, and the grader is judging exactly that.
+      form.append(
+        "opening_line",
+        (session.opening_line && session.opening_line.zh) || ""
+      );
       // Captured before the request, not read inside the handlers: `reply`
       // pushes two entries into `dialogue`, so a late `score` reading
       // `dialogue.length` would file its tone errors against the next turn.
@@ -2208,6 +2215,8 @@
             dialogue: dialogue.map((t) => ({ role: t.role, zh: t.zh })),
             sketch: session.sketch,
             state: state,
+            // See the spoken path: turn 1 has nothing else to be judged against.
+            opening_line: session.opening_line || null,
           }),
         });
         if (!resp.ok) {

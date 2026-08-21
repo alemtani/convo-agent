@@ -352,7 +352,25 @@ def test_turn_usage_reads_the_anthropic_usage_block():
         "output_tokens": 108,
         "cache_read_input_tokens": 3000,
         "cache_creation_input_tokens": 0,
+        # Filled in by the orchestrator when the grade lands, not read off the
+        # converser's usage block — they are two calls on two models.
+        "grader": None,
     }
+
+
+def test_turn_usage_keeps_the_two_calls_apart():
+    """Summing them would describe a price nothing charges: the reply is Sonnet
+    5, the judgment is Opus 5 at `effort: high` with thinking on."""
+    class FakeUsage:
+        input_tokens = 42
+        output_tokens = 108
+        cache_read_input_tokens = 3000
+        cache_creation_input_tokens = 0
+
+    usage = TurnUsage.from_sdk(FakeUsage())
+    usage.grader = TurnUsage.from_sdk(FakeUsage())
+    assert usage.grader.input_tokens == 42
+    assert usage.grader.grader is None
 
 
 def test_turn_usage_tolerates_a_usage_block_missing_cache_fields():

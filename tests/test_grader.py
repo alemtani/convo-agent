@@ -122,12 +122,15 @@ async def test_grade_parses_a_recorded_response():
     )
     client, parse = _fake_client(recorded)
 
-    grade = await grader.grade(
+    grade, usage = await grader.grade(
         scenario=SCENARIO, dialogue=[], user_text="你叫什么名字？", client=client
     )
 
     assert grade.slots_filled == ["partner_name"]
     assert parse.await_count == 1
+    # The judgment's cost comes back too: it runs on a different model at a
+    # different price, so a turn reporting only the reply's would hide it.
+    assert usage.cache_read_input_tokens == 0
 
 
 @pytest.mark.parametrize("stop_reason", ["refusal", "max_tokens"])
@@ -165,3 +168,51 @@ async def test_the_grader_is_given_the_timeout_that_bounds_it():
         scenario=SCENARIO, dialogue=[], user_text="你好", client=client
     )
     assert parse.await_args.kwargs["timeout"] == config.GRADER_TIMEOUT_S
+
+
+async def test_any_api_error_degrades_rather_than_escaping():
+    """`CLAUDE_MAX_RETRIES` is 0, so a rate limit or a 5xx arrives here with no
+    retry layer beneath it. Uncaught it escapes into a stream that has already
+    sent a 200, and the turn ends with no terminal event."""
+    client = SimpleNamespace(
+        messages=SimpleNamespace(
+            parse=AsyncMock(
+                side_effect=anthropic.APIConnectionError(request=None)
+            )
+        )
+    )
+    with pytest.raises(grader.GraderError):
+        await grader.grade(
+            scenario=SCENARIO, dialogue=[], user_text="你好", client=client
+        )
+
+
+# --- turn 1 has no partner line in `dialogue` -----------------------------
+
+
+def test_turn_one_still_shows_the_partner_what_the_learner_answered():
+    """The opening line costs the learner none of their turn budget, so it is
+    never in `dialogue`. On turn 1 that leaves the grader with the learner's
+    words and nothing they are a response to — and turn 1 is the turn most
+    likely to be answering a greeting."""
+    req = _build(dialogue=[], user_text="你好，我叫小明。", opening_line="你好！")
+    assert "你好！" in str(req["messages"])
+    # As a prefix on the first *user* message: the Messages API requires
+    # `messages[0]` to be `user`, and a lone leading assistant turn reads as
+    # prefill.
+    assert req["messages"][0]["role"] == "user"
+    assert len(req["messages"]) == 1
+
+
+def test_the_opening_line_is_not_repeated_once_it_is_in_the_history():
+    """From turn 2 the partner's lines are in `dialogue`, so prefixing it again
+    would show the model the same line twice and invite it to read the second as
+    a fresh turn."""
+    req = _build(opening_line="你好！")
+    assert "[The partner opened" not in str(req["messages"])
+
+
+def test_the_grader_reads_the_scene_because_it_is_the_evidence():
+    """"The partner volunteered this unasked" cannot be judged without knowing
+    what the scene hands over unprompted."""
+    assert SCENARIO.situation in _system_text(_build())

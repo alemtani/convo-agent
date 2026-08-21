@@ -11,6 +11,8 @@ Azure and the worker are mocked throughout; no tokens spent.
 import asyncio
 import json
 
+from types import SimpleNamespace
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -617,11 +619,13 @@ async def test_score_is_yielded_before_the_worker_finishes(monkeypatch):
     score = await _next(stream)
     assert score.stage == "score", "scores waited on the worker"
     assert score.pronunciation.overall == 80.0
-    assert (await _next(stream)).stage == "state", "the grade waited on the worker"
     assert not worker_may_finish.is_set()
 
+    # The grade resolved long ago and is deliberately held: a slot credited for
+    # a turn whose reply never arrives is progress the client cannot undo.
     worker_may_finish.set()
     assert (await _next(stream)).stage == "reply"
+    assert (await _next(stream)).stage == "state"
 
 
 def test_score_event_carries_the_tone_errors():
@@ -1088,3 +1092,86 @@ def test_an_absent_state_field_starts_a_fresh_session(monkeypatch):
     resp = client.post("/api/turn", files=_upload(), data={"topic_id": "greetings"})
     assert resp.status_code == 200
     assert by_stage(resp)["state"]["state"]["filled_at"] == {}
+
+
+async def test_a_grade_never_commits_for_a_turn_that_had_no_reply(monkeypatch):
+    """The grader usually wins the race. If it went out on its own and the
+    converser then failed, the client would adopt a credited slot — or a
+    `complete` session — for a turn that never entered `dialogue`, and the next
+    grade would read a history missing the turn it was credited for.
+
+    So the grade waits for the reply, and a failed turn ships no state at all.
+    """
+    async def boom(**kwargs):
+        raise conversation.ConversationError("nope")
+
+    monkeypatch.setattr(conversation, "respond", boom)
+    monkeypatch.setattr(grader, "grade", grade_stub(slots_filled=["self_name"]))
+
+    events = {}
+    async for event in orchestrator.stream_audio_turn(
+        b"FAKEWAV",
+        transcript=Utterance(zh="我叫小明", pinyin="wǒ jiào xiǎo míng"),
+        kb_block=kb.load_converser_block("greetings"),
+        scenario=kb.load_scenario("greetings"),
+        state=SessionState(),
+    ):
+        events[event.stage] = event
+
+    assert "reply" not in events
+    assert "state" not in events, "a grade committed for a turn with no reply"
+    assert events["error"].stage == "error"
+
+
+async def test_an_unexpected_failure_still_ends_the_turn(monkeypatch):
+    """After a 200 the status line is spent, so nothing may escape the stream.
+
+    A raw `APIError` — or any bug in the orchestrator — would otherwise truncate
+    the body, and a client that has seen neither `done` nor `error` cannot tell a
+    finished turn from a dropped connection.
+    """
+    async def boom(**kwargs):
+        raise RuntimeError("something nobody planned for")
+
+    monkeypatch.setattr(conversation, "respond", boom)
+
+    events = {}
+    async for event in orchestrator.stream_audio_turn(
+        b"FAKEWAV",
+        transcript=Utterance(zh="你好", pinyin="nǐ hǎo"),
+        kb_block=kb.load_converser_block("greetings"),
+        scenario=kb.load_scenario("greetings"),
+        state=SessionState(),
+    ):
+        events[event.stage] = event
+
+    assert events["error"].stage == "error"
+
+
+async def test_the_turn_reports_what_the_grade_cost(monkeypatch):
+    """The two calls run on different models at different prices, so the turn
+    reports them apart. Reporting only the converser's hid the Opus 5 call whose
+    cost was the entire reason for a separate model."""
+    async def graded(**kwargs):
+        return (
+            GraderResult(coherence="on_track"),
+            SimpleNamespace(
+                input_tokens=900, output_tokens=120,
+                cache_read_input_tokens=512, cache_creation_input_tokens=0,
+            ),
+        )
+
+    monkeypatch.setattr(grader, "grade", graded)
+
+    events = {}
+    async for event in orchestrator.stream_audio_turn(
+        b"FAKEWAV",
+        transcript=Utterance(zh="你好", pinyin="nǐ hǎo"),
+        kb_block=kb.load_converser_block("greetings"),
+        scenario=kb.load_scenario("greetings"),
+        state=SessionState(),
+    ):
+        events[event.stage] = event
+
+    assert events["done"].usage.grader.input_tokens == 900
+    assert events["done"].usage.grader.cache_read_input_tokens == 512

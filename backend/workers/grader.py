@@ -18,7 +18,7 @@ learner waits on waits on it.
 `grade` takes an optional `client` so contract tests can inject a fake; in
 production it lazily builds a shared `AsyncAnthropic`.
 """
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import anthropic
 from anthropic import AsyncAnthropic
@@ -55,7 +55,11 @@ def _as_dict(turn) -> dict:
 
 
 def build_request(
-    *, scenario: Scenario, dialogue: List, user_text: str
+    *,
+    scenario: Scenario,
+    dialogue: List,
+    user_text: str,
+    opening_line: Optional[str] = None,
 ) -> Dict:
     """Assemble the exact `messages.parse` kwargs for one grade.
 
@@ -75,6 +79,23 @@ def build_request(
         for t in dialogue
     ]
     messages.append({"role": "user", "content": user_text})
+
+    # On turn 1 `dialogue` is empty, because the partner's opening line costs the
+    # learner none of their budget and so is never part of it. The learner's
+    # first words are a response to that line and to nothing else, so without it
+    # coherence on turn 1 is judged against nothing.
+    #
+    # It rides as a prefix on the first *user* message rather than as an
+    # assistant turn of its own: the Messages API requires `messages[0]` to be
+    # `user`, and a lone leading assistant message reads as prefill.
+    if opening_line and not dialogue:
+        messages[0] = {
+            "role": "user",
+            "content": (
+                f"[The partner opened the conversation with: {opening_line}]\n"
+                f"{user_text}"
+            ),
+        }
 
     return {
         "model": config.GRADER_MODEL,
@@ -101,9 +122,14 @@ async def grade(
     scenario: Scenario,
     dialogue: List,
     user_text: str,
+    opening_line: Optional[str] = None,
     client: Optional[AsyncAnthropic] = None,
-) -> GraderResult:
-    """Judge one learner turn; return the grade.
+) -> Tuple[GraderResult, object]:
+    """Judge one learner turn; return `(grade, usage)`.
+
+    `usage` comes back so the turn can report what the *grade* cost. The two
+    calls run on different models at different prices, and a turn that reported
+    only the converser's would hide the more expensive half.
 
     Raises `GraderError` on a refusal, a timeout, or any response we cannot parse.
     The caller's job on that error is to echo the previous `SessionState`
@@ -112,7 +138,8 @@ async def grade(
     """
     client = client or _get_client()
     request = build_request(
-        scenario=scenario, dialogue=dialogue, user_text=user_text
+        scenario=scenario, dialogue=dialogue, user_text=user_text,
+        opening_line=opening_line,
     )
 
     try:
@@ -123,6 +150,13 @@ async def grade(
         raise GraderError(
             f"grader timed out after {config.GRADER_TIMEOUT_S:g}s"
         ) from exc
+    except anthropic.APIError as exc:
+        # Everything else the SDK raises — rate limits, 5xx, a dropped
+        # connection. `CLAUDE_MAX_RETRIES` is 0, so there is no retry layer
+        # absorbing a transient failure first, and an uncaught `APIError` escapes
+        # into a stream that has already sent a 200. Wrapped, it degrades the way
+        # a timeout does.
+        raise GraderError(f"grader call failed: {exc}") from exc
     except ValidationError as exc:
         # A response cut off mid-JSON is validated inside `messages.parse`, so
         # it arrives as an exception rather than as `parsed_output is None`.
@@ -138,4 +172,4 @@ async def grade(
     result = response.parsed_output
     if result is None:
         raise GraderError("grader returned unparseable output")
-    return result
+    return result, response.usage

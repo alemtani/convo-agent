@@ -99,8 +99,9 @@ async def run_text_turn(
     # different sentences. This is the mic-free harness, not the learner's path,
     # so a serialized second call is the cheaper of the two costs.
     with timer.stage("grader"):
-        grade = await _grade_or_degrade(
+        grade, grader_usage = await _grade_or_degrade(
             scenario=scenario, dialogue=req.dialogue, user_text=reading.zh,
+            opening_line=req.opening_line.zh if req.opening_line else None,
             client=client,
         )
 
@@ -114,8 +115,8 @@ async def run_text_turn(
         transcript=reading,
         reply=reply,
         annotation=annotation,
-        timings=_report(timer, usage, mode="text"),
-        usage=TurnUsage.from_sdk(usage),
+        timings=_report(timer, usage, mode="text", grader_usage=grader_usage),
+        usage=_turn_usage(usage, grader_usage),
         state=state,
     )
 
@@ -252,6 +253,7 @@ async def stream_audio_turn(
     sketch: str = "",
     scenario: Optional[kb.Scenario] = None,
     state: Optional[SessionState] = None,
+    opening_line: Optional[str] = None,
     client: Optional[AsyncAnthropic] = None,
 ) -> AsyncIterator[StagedEvent]:
     """Coordinate one spoken turn, emitting each stage as it resolves.
@@ -335,6 +337,7 @@ async def stream_audio_turn(
                 # nothing from the converser and starts alongside it. That is
                 # only true on the spoken path; text mode has to serialize.
                 user_text=transcript.zh,
+                opening_line=opening_line,
                 client=client,
             )
 
@@ -353,6 +356,9 @@ async def stream_audio_turn(
     grade_task = asyncio.ensure_future(grade_branch())
     pending = {pa_task, worker_task, grade_task}
     usage = None
+    reply_sent = False
+    have_grade, pending_grade = False, None
+    grader_usage = pending_grader_usage = None
 
     try:
         while pending:
@@ -385,6 +391,7 @@ async def stream_audio_turn(
                     )
                 elif task is worker_task:
                     reply, annotation, _reading, usage = task.result()
+                    reply_sent = True
 
                     yield ReplyEvent(
                         reply=reply,
@@ -394,8 +401,33 @@ async def stream_audio_turn(
                         annotation=TurnAnnotation.from_worker(annotation, []),
                         **_at_emit(timer),
                     )
+                    if have_grade:
+                        # It resolved first and waited for this. Release it now,
+                        # in the order the client needs rather than the order the
+                        # branches finished.
+                        yield StateEvent(
+                            state=_advance_or_echo(
+                                state, scenario=scenario, grade=pending_grade,
+                                turn=turn,
+                            ),
+                            coherence=(
+                                pending_grade.coherence if pending_grade else None
+                            ),
+                            **_at_emit(timer),
+                        )
                 else:
-                    grade = task.result()
+                    grade, grader_usage = task.result()
+                    # **Held until the reply lands.** The client commits the turn
+                    # to `dialogue` on `reply` and adopts state on `state`; if a
+                    # grade goes out and the converser then fails, the learner
+                    # keeps a credited slot — or a completed session — for a turn
+                    # that never entered the history the next grade will read.
+                    # The grader usually wins the race, so this is the common
+                    # order, not the exceptional one.
+                    if not reply_sent:
+                        pending_grade, have_grade = grade, True
+                        pending_grader_usage = grader_usage
+                        continue
                     yield StateEvent(
                         # A failed grade echoes the submitted state unchanged —
                         # no slot credited, no close counted. The event still
@@ -413,12 +445,23 @@ async def stream_audio_turn(
         # stage table and the token usage are complete.
         yield DoneEvent(
             timings=TurnTimings.from_stages(timer.as_dict()),
-            usage=TurnUsage.from_sdk(usage),
+            usage=_turn_usage(usage, grader_usage or pending_grader_usage),
             elapsed_ms=timer.total_ms,
         )
     except conversation.ConversationError as exc:
         logger.warning("conversation worker failed mid-turn: %s", exc)
         yield TurnErrorEvent(detail=str(exc), **_at_emit(timer))
+    except Exception:
+        # **The turn already committed to 200**, so its status line is spent and
+        # anything escaping here truncates the body: the client sees neither
+        # `done` nor `error` and cannot tell a finished turn from a dropped
+        # connection. `ConversationError` above is the *expected* failure with a
+        # message worth showing; this is everything else — a raw `APIError`, a
+        # rate limit, a bug in this function — reported in-band rather than
+        # silently. `CancelledError` derives from `BaseException`, so a client
+        # disconnect still propagates and is not swallowed here.
+        logger.exception("turn failed after the response committed to 200")
+        yield TurnErrorEvent(detail="turn failed", **_at_emit(timer))
     finally:
         # A failure in either branch leaves the other still running; without this
         # the losing branch outlives the request as an orphaned task.
@@ -428,7 +471,26 @@ async def stream_audio_turn(
         # One log line per turn, after both branches have settled — so it carries
         # the full picture (including `cache_read`) even though the events that
         # went out earlier could only report the stages finished at their moment.
-        _report(timer, usage, mode="audio")
+        _report(timer, usage, mode="audio",
+                grader_usage=grader_usage or pending_grader_usage)
+
+
+def _turn_usage(converser_usage, grader_usage):
+    """The turn's cost, with the two calls kept apart.
+
+    Not summed. The reply is Sonnet 5 and the judgment is Opus 5 at `effort:
+    high` with thinking on, so one number across both would describe a price
+    nothing charges — and reporting only the converser's hides the more expensive
+    half, on the branch whose cost was the reason for a separate model.
+    """
+    turn = TurnUsage.from_sdk(converser_usage)
+    grade = TurnUsage.from_sdk(grader_usage)
+    if turn is None:
+        # No converser usage but a graded turn still cost something; say so
+        # rather than dropping it.
+        return TurnUsage(grader=grade) if grade else None
+    turn.grader = grade
+    return turn
 
 
 def _at_emit(timer: timing.Timer) -> dict:
@@ -445,7 +507,9 @@ def _at_emit(timer: timing.Timer) -> dict:
     }
 
 
-async def _grade_or_degrade(*, scenario, dialogue, user_text, client=None):
+async def _grade_or_degrade(
+    *, scenario, dialogue, user_text, opening_line=None, client=None
+):
     """Run the grader, degrading a failure to `None` rather than failing the turn.
 
     The same posture as `_assess_or_degrade`, for the same reason: the reply
@@ -454,19 +518,20 @@ async def _grade_or_degrade(*, scenario, dialogue, user_text, client=None):
     conversation.
 
     `None` is not a grade. It is the absence of one, and `_advance_or_echo` is
-    the only thing allowed to interpret it.
+    the only thing allowed to interpret it. Returns `(grade, usage)` so the turn
+    can report what the judgment cost as well as what the reply did.
     """
     if scenario is None:
         # No scenario, nothing to grade — and no call to spend on finding out.
-        return None
+        return None, None
     try:
         return await grader_worker.grade(
             scenario=scenario, dialogue=dialogue, user_text=user_text,
-            client=client,
+            opening_line=opening_line, client=client,
         )
     except grader_worker.GraderError as exc:
         logger.warning("grader failed: %s", exc)
-        return None
+        return None, None
 
 
 def _advance_or_echo(state, *, scenario, grade, turn):
@@ -499,7 +564,7 @@ async def _assess_or_degrade(audio_bytes, reference_text):
         return None
 
 
-def _report(timer: timing.Timer, usage, *, mode: str) -> TurnTimings:
+def _report(timer: timing.Timer, usage, *, mode: str, grader_usage=None) -> TurnTimings:
     """Log the turn's cost and return it as the wire model (WS1 Stage 0).
 
     One line per turn, at INFO so it shows up under a plain `uvicorn` run without
@@ -510,7 +575,8 @@ def _report(timer: timing.Timer, usage, *, mode: str) -> TurnTimings:
     """
     stages = timer.as_dict()
     logger.info(
-        "turn timings mode=%s %s cache_read=%s cache_write=%s in=%s out=%s",
+        "turn timings mode=%s %s cache_read=%s cache_write=%s in=%s out=%s"
+        " grader_in=%s grader_out=%s grader_cache_read=%s",
         mode,
         " ".join(f"{name}={stages[name]:.0f}ms"
                  for name in timing.STAGE_ORDER if name in stages),
@@ -518,5 +584,8 @@ def _report(timer: timing.Timer, usage, *, mode: str) -> TurnTimings:
         getattr(usage, "cache_creation_input_tokens", None),
         getattr(usage, "input_tokens", None),
         getattr(usage, "output_tokens", None),
+        getattr(grader_usage, "input_tokens", None),
+        getattr(grader_usage, "output_tokens", None),
+        getattr(grader_usage, "cache_read_input_tokens", None),
     )
     return TurnTimings.from_stages(stages)
