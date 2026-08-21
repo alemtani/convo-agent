@@ -1,0 +1,144 @@
+"""Render the measurement as markdown: the matrix, the gates, the recommendation.
+
+Pure formatting over `matrix.py`'s numbers. It states the recommendation in
+words rather than leaving a reader to infer it from a table — including the
+recommendation V0 is most prepared to make, that no gate is safe to ship.
+"""
+from typing import Dict, Iterable, List
+
+from evals.coherence.cases import COHERENCE_TAGS, Gold
+from evals.coherence.matrix import (
+    Observation,
+    confusion,
+    evaluate_gates,
+    recommend,
+    slot_accuracy,
+)
+
+
+def _gate_name(allow) -> str:
+    return " | ".join(tag for tag in COHERENCE_TAGS if tag in allow)
+
+
+def _slot_counts(counts) -> str:
+    """`slot ×n` per id, or an em dash. A count matters: 3/3 is not 1/3."""
+    return ", ".join(f"`{slot}` ×{n}" for slot, n in sorted(counts.items())) or "—"
+
+
+def render(
+    observations: Iterable[Observation], gold: Dict[str, Gold], *, model: str
+) -> str:
+    observations = list(observations)
+    reports = evaluate_gates(observations, gold)
+    best = recommend(reports)
+    lines: List[str] = [
+        "# `coherence` against gold labels",
+        "",
+        f"Model: `{model}`. {len(observations)} runs over "
+        f"{len({o.case_id for o in observations})} cases.",
+        "",
+        "## Tag vs gold",
+        "",
+        "| gold \\ observed | " + " | ".join(COHERENCE_TAGS) + " |",
+        "|---" * (len(COHERENCE_TAGS) + 1) + "|",
+    ]
+    counts = confusion(observations, gold)
+    for expected in COHERENCE_TAGS:
+        row = " | ".join(str(counts[(expected, seen)]) for seen in COHERENCE_TAGS)
+        lines.append(f"| **{expected}** | {row} |")
+
+    lines += [
+        "",
+        "## Candidate gates",
+        "",
+        "| gate | gaming blocked | rescues suppressed | safe | useful |",
+        "|---|---|---|---|---|",
+    ]
+    for report in reports:
+        lines.append(
+            f"| `{_gate_name(report.allow)}` | "
+            f"{report.gaming_blocked}/{report.gaming_total} | "
+            f"{report.rescues_suppressed}/{report.rescues_total} | "
+            f"{'yes' if report.safe else 'no'} | "
+            f"{'yes' if report.useful else 'no'} |"
+        )
+
+    lines += ["", "## Recommendation", ""]
+    if best is None:
+        # Three different failures wear the same verdict, and they say different
+        # things about the signal. Branch on what the reports actually show, not
+        # on a proxy: a signal that is silent, a signal that only catches gaming
+        # by punishing earned turns, and a signal that manages both faults at
+        # once are three separate findings, and V2 reads this line.
+        useful = [report for report in reports if report.useful]
+        if useful and not any(report.safe for report in useful):
+            lines.append(
+                "**No safe gate.** Every gate that blocks any wrongly credited run "
+                "also suppresses a turn the learner earned — the false negative "
+                "`ACCESSIBILITY.md` A2 exists to remove. V1 does not ship a gate on "
+                "this evidence; the fix stays with V2."
+            )
+        elif not useful and any(not report.safe for report in reports):
+            lines.append(
+                "**No safe gate, and the signal is harmful as well as silent.** No "
+                "candidate blocks a single wrongly credited run, and some would "
+                "suppress turns the learner earned. That is worse than no gate in "
+                "both directions. V1 does not ship one; the fix stays with V2."
+            )
+        elif all(report.safe for report in reports):
+            lines.append(
+                "**No safe gate: every candidate never fires.** `coherence` tagged "
+                "the wrongly credited runs the same way it tagged the earned ones, "
+                "so no threshold over it separates them. A gate that never fires is "
+                "risk bought with no benefit. V1 does not ship one on this evidence; "
+                "the fix stays with V2."
+            )
+        else:
+            lines.append(
+                "**No safe gate.** No candidate is both safe and useful. V1 does "
+                "not ship a gate on this evidence; the fix stays with V2."
+            )
+    else:
+        lines.append(
+            f"**Recommended gate: `{_gate_name(best.allow)}`.** It blocks "
+            f"{best.gaming_blocked}/{best.gaming_total} wrongly credited runs and "
+            f"suppresses none of {best.rescues_total} earned ones."
+        )
+
+    lines += [
+        "",
+        "## Slot accuracy",
+        "",
+        "Does the tracker credit the facts the learner actually established? "
+        "**Spurious** is credit they did not earn — the failure this track "
+        "exists to remove. **Missed** is credit they earned and did not get — "
+        "the failure A2's floor exists to rescue. This is the metric V2's "
+        "grader has to beat, and these numbers are its baseline.",
+        "",
+        "| case | exact | spurious | missed |",
+        "|---|---|---|---|",
+    ]
+    totals = {"runs": 0, "exact": 0, "spurious": 0, "missed": 0}
+    for accuracy in slot_accuracy(observations, gold):
+        totals["runs"] += accuracy.runs
+        totals["exact"] += accuracy.exact
+        totals["spurious"] += sum(accuracy.spurious.values())
+        totals["missed"] += sum(accuracy.missed.values())
+        lines.append(
+            f"| {accuracy.case_id} | {accuracy.exact}/{accuracy.runs} | "
+            f"{_slot_counts(accuracy.spurious)} | {_slot_counts(accuracy.missed)} |"
+        )
+    lines.append(
+        f"| **total** | **{totals['exact']}/{totals['runs']}** | "
+        f"**{totals['spurious']}** | **{totals['missed']}** |"
+    )
+
+    lines += ["", "## Per-case runs", "", "| case | gold | observed | slots filled |", "|---|---|---|---|"]
+    for observation in observations:
+        expected = gold[observation.case_id].coherence
+        mark = "" if expected == observation.coherence else " ⚠️"
+        lines.append(
+            f"| {observation.case_id} | {expected} | {observation.coherence}{mark} | "
+            f"{', '.join(observation.slots_filled) or '—'} |"
+        )
+    return "\n".join(lines) + "\n"

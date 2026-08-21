@@ -1,0 +1,144 @@
+{
+  "model": "claude-sonnet-5",
+  "repeat": 3,
+  "observations": [
+    {
+      "case_id": "clean-slot-fill",
+      "coherence": "on_track",
+      "slots_filled": [
+        "recommendation"
+      ]
+    },
+    {
+      "case_id": "derailed-input",
+      "coherence": "off_track",
+      "slots_filled": []
+    },
+    {
+      "case_id": "earned-under-annotated",
+      "coherence": "on_track",
+      "slots_filled": [
+        "self_name",
+        "partner_name"
+      ]
+    },
+    {
+      "case_id": "elliptical-ni-ne",
+      "coherence": "on_track",
+      "slots_filled": [
+        "wellbeing"
+      ]
+    },
+    {
+      "case_id": "nonsequitur-slot-fill",
+      "coherence": "on_track",
+      "slots_filled": [
+        "recommendation"
+      ]
+    },
+    {
+      "case_id": "order-after-answers",
+      "coherence": "on_track",
+      "slots_filled": [
+        "order"
+      ]
+    },
+    {
+      "case_id": "wandering-no-slot",
+      "coherence": "off_track",
+      "slots_filled": []
+    },
+    {
+      "case_id": "clean-slot-fill",
+      "coherence": "on_track",
+      "slots_filled": [
+        "recommendation"
+      ]
+    },
+    {
+      "case_id": "derailed-input",
+      "coherence": "off_track",
+      "slots_filled": []
+    },
+    {
+      "case_id": "earned-under-annotated",
+      "coherence": "on_track",
+      "slots_filled": [
+        "self_name",
+        "partner_name"
+      ]
+    },
+    {
+      "case_id": "elliptical-ni-ne",
+      "coherence": "on_track",
+      "slots_filled": [
+        "wellbeing"
+      ]
+    },
+    {
+      "case_id": "nonsequitur-slot-fill",
+      "coherence": "on_track",
+      "slots_filled": [
+        "recommendation"
+      ]
+    },
+    {
+      "case_id": "order-after-answers",
+      "coherence": "on_track",
+      "slots_filled": [
+        "order"
+      ]
+    },
+    {
+      "case_id": "wandering-no-slot",
+      "coherence": "off_track",
+      "slots_filled": []
+    },
+    {
+      "case_id": "clean-slot-fill",
+      "coherence": "on_track",
+      "slots_filled": [
+        "recommendation"
+      ]
+    },
+    {
+      "case_id": "derailed-input",
+      "coherence": "off_track",
+      "slots_filled": []
+    },
+    {
+      "case_id": "earned-under-annotated",
+      "coherence": "on_track",
+      "slots_filled": [
+        "self_name",
+        "partner_name"
+      ]
+    },
+    {
+      "case_id": "elliptical-ni-ne",
+      "coherence": "on_track",
+      "slots_filled": [
+        "wellbeing"
+      ]
+    },
+    {
+      "case_id": "nonsequitur-slot-fill",
+      "coherence": "on_track",
+      "slots_filled": [
+        "recommendation"
+      ]
+    },
+    {
+      "case_id": "order-after-answers",
+      "coherence": "on_track",
+      "slots_filled": [
+        "order"
+      ]
+    },
+    {
+      "case_id": "wandering-no-slot",
+      "coherence": "drifting",
+      "slots_filled": []
+    }
+  ]
+}

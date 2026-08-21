@@ -339,17 +339,23 @@ async def test_the_model_exchange_is_not_annotated():
 # --- Truncation and parse failures are 502s, never 500s -------------------
 
 
-def test_thinking_is_disabled_with_room_for_the_output():
-    """The trap `conversation.py` documents, which this worker walked into.
+def test_verdict_runs_on_its_own_model_with_thinking_on(monkeypatch):
+    """V2's model split (docs/VALIDITY.md), tested here first.
 
-    Sonnet 5 thinks by default when the field is omitted, and `max_tokens` caps
-    thinking *plus* output — so reasoning ate the budget and the JSON was cut
-    off mid-string, ~269 characters in. Caught in production, not by a test,
-    because a truncated response is a perfectly valid request.
+    The verdict worker is already a judgment role, already one call per
+    session, already off the turn path — moving it to Opus 5 needs no
+    architecture change. Opus 5 thinks by default, unlike the Sonnet 5 trap
+    `conversation.py` documents (and this worker's own prior history with
+    thinking disabled), so `max_tokens` must cover thinking *plus* output —
+    the earlier 2048-token budget was sized for output alone.
     """
+    monkeypatch.setattr(config, "VERDICT_MODEL", "claude-opus-5")
+    monkeypatch.setattr(config, "VERDICT_EFFORT", "high")
     req = feedback.build_request(kb_block="KB", dialogue=[], prompt="P")
-    assert req["thinking"] == {"type": "disabled"}
-    assert req["max_tokens"] >= 2048
+    assert req["model"] == "claude-opus-5"
+    assert req["thinking"] == {"type": "adaptive"}
+    assert req["output_config"] == {"effort": "high"}
+    assert req["max_tokens"] >= 4096
 
 
 async def test_a_truncated_response_becomes_a_feedback_error():

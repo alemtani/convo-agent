@@ -1,0 +1,23 @@
+{
+  "id": "wandering-no-slot",
+  "topic_id": "food-ordering",
+  "sketch": "The server is brisk and a little busy — short answers, no small talk. It is lunchtime and most tables are full. A pot of tea sits on the counter.",
+  "dialogue": [
+    {
+      "role": "user",
+      "zh": "谢谢。",
+      "pinyin": "xièxie."
+    },
+    {
+      "role": "partner",
+      "zh": "你要喝什么？",
+      "pinyin": "nǐ yào hē shénme?"
+    }
+  ],
+  "learner_turn": "我有三个朋友。",
+  "state": {
+    "filled_at": {},
+    "consecutive_closes": 0
+  },
+  "notes": "In-band Chinese, in-scene nothing. Wanders and establishes no slot."
+}
