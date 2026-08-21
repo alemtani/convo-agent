@@ -5,8 +5,9 @@ target_vocab: [我, 你, 他, 她, 好, 是, 的, 也, 和, 很, 不, 吗, 呢, 
 proper_names: [小明, 小王, 小李, 王, 李, 上海, 美国, 英国]
 related: [greetings, family]
 scenario:
-  situation: "You are at a language exchange meetup. A stranger sits down next to you and says hello."
+  situation: "You are at a language exchange meetup. A stranger sits down next to you, says hello, and waits for you to start."
   goal: "Find out where they are from and what they do, and tell them the same about yourself."
+  withholding: "The stranger came to listen and lets the other person go first. They will answer anything they are asked, but they do not offer where they are from or what they do for a living until someone asks them."
   slots:
     - id: self_origin
       kind: inform

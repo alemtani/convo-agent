@@ -71,8 +71,9 @@ id: shopping
 display_name: "Shopping (买东西)"
 target_vocab: [买, 要, 水果, 三, 个, 多少, 钱, 块, 什么, 请问, 谢谢, 再见]
 scenario:
-  situation: "You're at a fruit stall. The vendor greets you."
+  situation: "You're at a fruit stall. Nothing on it is priced. The vendor greets you and waits."
   goal: "Buy three pieces of fruit, and find out what they cost."
+  withholding: "Nothing at the stall carries a price tag. The vendor is busy and says little: they name a price only when a customer asks for one."
   slots:
     - id: item
       kind: inform
@@ -92,6 +93,7 @@ scenario:
 | Field | Purpose |
 | --- | --- |
 | `situation`, `goal` | **English**, learner-visible. A band-1 learner cannot read a Chinese task description. Rendered on the scenario card. |
+| `withholding` | **English**, partner-facing, never learner-visible. What this scene does not hand over unasked — see [The scene has to create the gap](#the-scene-has-to-create-the-gap). Required once the scenario has a `request` slot. |
 | `kind: inform` | The learner must **convey** this to the partner. |
 | `kind: request` | The learner must **extract** this from the partner. |
 | `description` | English. Feeds the verdict card ("you never found out the price"). |
@@ -132,6 +134,60 @@ of answering can leave a learner credited for a fact they never obtained. We tak
 it because the partner is instructed to answer — a deflection is our bug, not the
 learner's — and because the floor only ever fires on the learner's own words, so
 it can never cause the volunteered-price failure this rule exists to prevent.
+
+### The scene has to create the gap
+
+**Added 2026-08-20, with [`VALIDITY.md`](VALIDITY.md)'s V2.**
+
+The rule above says the partner must not volunteer a `request` slot's answer.
+Until now the partner enforced that itself: it was handed the slot list and told
+not to give the answers away. V2 takes the slot list off it — a partner that
+knows what is being scored plays along with anything that looks like scoring, and
+that is the false positive `VALIDITY.md` exists to fix.
+
+A blind partner cannot withhold a fact it does not know is wanted. So the
+withholding has to come from somewhere else, and the only place left is the
+**scene**:
+
+> **Every situation must be authored so that a helpful, ordinary partner still
+> leaves each `request` slot unanswered.**
+
+The failure this prevents is not gaming. It is *politeness*. In `greetings` the
+partner's own name is a `request` slot, and the first thing a friendly classmate
+does is introduce themselves — 我叫小明，你呢？. Nobody did anything wrong and the
+slot is gone before the learner speaks. Every original situation had this bug,
+because every one of them was written for a partner that could see the rubric.
+
+The fix is prose, in a `withholding:` field:
+
+```yaml
+  situation: "You sit down in a small restaurant. There are no menus. A server comes over and waits to take your order."
+  withholding: "The kitchen prints no menu. The server keeps the day's dishes in their head and names a good one only when a customer asks."
+```
+
+Three properties make this different from the slot list it replaces:
+
+- **It describes the world, not the rubric.** A server with no menu is a fact
+  about a restaurant. "Do not reveal `recommendation` until asked" is a fact
+  about a test. The partner behaves the same way; only one of them tells it that
+  a checkbox exists.
+- **It is one block of prose, never a per-slot mapping.** A `withholding:` keyed
+  by slot id is the rubric with the labels filed off, and injecting it would
+  rebuild the cooperation V2 removes. One paragraph about the scene, or nothing.
+- **It never reaches the learner.** `ScenarioCard` carries `situation` and `goal`
+  and nothing else, which is why the field lives beside them rather than inside
+  `situation`.
+
+**What this does not forbid: the partner asking questions.** Only *answering
+unasked* is banned. Reciprocity is how the language actually works, and the
+system prompt already treats a bounced 你呢？ as real skill — a partner that may
+never ask anything cannot set that up. The partner may ask freely; it may not
+answer a question nobody put to it.
+
+**`validate.py` cannot check the prose.** No rule can read a situation and decide
+whether it really leaves the gap open. What it checks is that the author answered
+the question at all — the same bargain `max_turns_reason` strikes, and the reason
+the field is required rather than inferred.
 
 ---
 
@@ -655,6 +711,7 @@ the KB generally (`validate.py`, not pytest; see `CLAUDE.md`).
 | duplicate slot ids; cycle in `depends_on`; `depends_on` naming an unknown id | malformed graph |
 | an authored `max_turns` override below the derived value, or without a reason | pacing override that starves the goal |
 | `situation` / `goal` non-empty and ASCII-only | a Chinese task description a band-1 learner can't read |
+| a `request` slot with no `withholding` prose (ASCII) | a scene that answers its own question, which a goal-blind partner cannot stop |
 
 ---
 

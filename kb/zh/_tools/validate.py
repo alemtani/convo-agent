@@ -22,6 +22,8 @@ Checks (ERROR fails the run; WARN is advisory):
       · no duplicate slot ids, unknown `depends_on`, or dependency cycle     ERROR
       · a `max_turns` override is ≥ the derived cap and states a reason      ERROR
       · `situation` / `goal` are non-empty and ASCII                         ERROR
+      · a `request` slot requires ASCII `withholding` prose — the scene must
+        not answer its own question, because the partner is goal-blind         ERROR
     A topic with no scenario at all is a WARN — topics may land first.
 
 Usage:
@@ -205,6 +207,29 @@ def scenario_errors(scenario, target_vocab, hsk, ceiling):
         elif not value.isascii():
             errors.append(f"scenario `{field}` is not ASCII — a band-1 learner "
                           "cannot read a Chinese task description")
+
+    # 7. a request slot needs a scene that does not already answer it.
+    #
+    #    The converser is goal-blind (docs/VALIDITY.md): it cannot be told to
+    #    withhold a slot's answer, because it does not know the slot is there.
+    #    An ordinary, helpful partner then volunteers the fact — in `greetings`
+    #    it introduces itself, and `partner_name` is gone before the learner
+    #    speaks. Only the situation can stop that.
+    #
+    #    Prose is not checkable: no rule here can tell whether a scene really
+    #    leaves the gap open. What is checkable is whether the author answered
+    #    the question at all, which is the same bargain `max_turns_reason`
+    #    strikes. Scoped to request slots — an inform-only scenario withholds
+    #    nothing, and is already rejected by rule 3 for that.
+    if scenario.n_request_slots >= 1 and not (scenario.withholding or "").strip():
+        errors.append(
+            f"{scenario.n_request_slots} request slot(s) but no `withholding` — "
+            "say what the scene does not hand over unasked. A goal-blind "
+            "partner cannot withhold a fact it does not know is scored."
+        )
+    elif scenario.withholding and not scenario.withholding.isascii():
+        errors.append("scenario `withholding` is not ASCII — it is stage "
+                      "direction for the partner, not learner-facing Chinese")
     return errors
 
 

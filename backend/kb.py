@@ -45,7 +45,14 @@ _SCENARIO_INDENT = 2
 _SLOT_ITEM_INDENT = 4
 _SLOT_KEY_INDENT = 6
 _SLOT_KINDS = ("inform", "request")
-_SCENARIO_KEYS = ("situation", "goal", "slots", "max_turns", "max_turns_reason")
+_SCENARIO_KEYS = (
+    "situation",
+    "goal",
+    "withholding",
+    "slots",
+    "max_turns",
+    "max_turns_reason",
+)
 _SLOT_KEYS = ("id", "kind", "description", "expressible_with", "depends_on")
 _SLOT_REQUIRED = ("id", "kind", "description")
 
@@ -76,6 +83,15 @@ class Scenario:
     max_turns: int  # effective cap: the authored override, else derived
     authored_max_turns: Optional[int] = None
     max_turns_reason: Optional[str] = None
+    # What the scene does not hand over unasked. Prose, never learner-visible.
+    #
+    # A goal-blind converser cannot be *told* to withhold a `request` slot's
+    # answer: it does not know the slot exists (`docs/VALIDITY.md`). The
+    # situation has to create the gap instead, and this is where the author says
+    # how. Deliberately one block of prose rather than a per-slot mapping — a
+    # list keyed by slot id is the rubric under another name, and handing the
+    # partner that rebuilds the cooperation V2 exists to remove.
+    withholding: Optional[str] = None
 
     @property
     def n_slots(self) -> int:
@@ -283,6 +299,7 @@ def _parse_scenario(lines: List[str]) -> Scenario:
     return Scenario(
         situation=fields["situation"],
         goal=fields["goal"],
+        withholding=fields.get("withholding") or None,
         slots=slots,
         max_turns=authored if authored is not None else derive_max_turns(len(slots), n_request),
         authored_max_turns=authored,

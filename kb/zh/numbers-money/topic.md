@@ -5,8 +5,9 @@ target_vocab: [零, 一, 二, 两, 三, 四, 五, 六, 七, 八, 九, 十, 百, 
 proper_names: []
 related: [greetings, shopping]
 scenario:
-  situation: "You are at a small street stall. The vendor greets you and waits."
+  situation: "You are at a small street stall. Nothing on it is priced. The vendor greets you and waits."
   goal: "Find out what the item costs, find out whether there is a cheaper or smaller one, then say how many you want."
+  withholding: "Nothing at the stall carries a price tag. The vendor is busy and says little: they name a price only when a customer asks for one, and they never mention the cheaper and smaller stock kept under the counter."
   slots:
     - id: price
       kind: request
