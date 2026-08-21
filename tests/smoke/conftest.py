@@ -242,6 +242,10 @@ _STUB_JS = """
     // replacing it: A1 has to assert what the client sent (`end_reason`, an
     // echoed `topic_id`), not merely that it called.
     sent: [],
+    // Non-200 body, keyed by path. Default is "stubbed failure"; a timeout
+    // 502 needs the real Azure wording so the page's graceful copy can be
+    // pinned rather than the generic "error 502".
+    errors: {},
   };
   // `release()` flushes everything queued — the whole response, or a stream's
   // remaining lines at once. `releaseNext()` advances exactly one step, which is
@@ -293,7 +297,9 @@ _STUB_JS = """
       return new Promise((resolve) => state.waiting.push(() => resolve(make())));
     }
 
-    const body = status === 200 ? JSON.stringify(canned || {}) : "stubbed failure";
+    const body = status === 200
+      ? JSON.stringify(canned || {})
+      : (state.errors[path] || "stubbed failure");
     const make = () => new Response(body, {
       status,
       headers: { "Content-Type": status === 200 ? "application/json" : "text/plain" },

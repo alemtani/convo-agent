@@ -132,9 +132,9 @@ once the session is over.
 |---|---|---|
 | **I'm stuck** | dock, the one solid button | active, ≥1 learner turn, no turn in flight |
 | **👁 Show all text** | dock | always |
-| **⋯ More** | dock | always |
-| **Type instead** / **Speak instead** | in ⋯ More | always |
-| **Try something else** | in ⋯ More | always |
+| **⋯** | dock | always |
+| **⌨️ Type instead** / **🎙️ Speak instead** | in ⋯ | always |
+| **🔀 Try something else** | in ⋯ | always |
 | **Try this again** | verdict card | always |
 | **Try something else** | verdict card | always |
 | **Retry** | verdict card | only when the verdict fetch failed |
@@ -145,10 +145,10 @@ cannot cope with the line in front of them, and the escape route is still
 complete without the buried copy — "I'm stuck" lands on the card, and the card
 offers both restarts.
 
-`⌨️` moves into the menu **and becomes words**. It swapped between ⌨️ and 🎙️,
-so the glyph named the *destination* — whether an icon means "what you are" or
-"what you'll get" is a coin flip. That is note 4's complaint about 👁, on the
-control note 4 did not name.
+The ellipsis is the menu; it does not need the word "More". The two items keep
+the words — a glyph alone is note 4's coin flip, on the control note 4 did not
+name — and put the destination emoji next to them, so neither signal is on
+its own.
 
 Colour differentiates by **fill, not hue**. This UI already spends green / amber
 / red on tone scores, and red on the bail-out would tell the learner that asking

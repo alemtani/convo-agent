@@ -451,7 +451,7 @@
 
   <div id="info-panel" hidden>
     <div id="info-panel-content">
-      <p class="muted">Speak or type Mandarin (greetings). A real partner replies and remembers the conversation; spoken words come back with per-syllable tone scores (green good / amber ok / red off). The partner <strong>speaks its reply</strong> instead of writing it — that's the listening practice. Tap 🔊 to hear a line again, <strong>👁 Show text</strong> to see the words when you're stuck, or <strong>👁 Show all text</strong> below to reveal every reply at once. If you're stuck for good, <strong>I'm stuck</strong> ends the session and writes your feedback — that is a fine way to finish one. Under <strong>⋯ More</strong>: <strong>Type instead</strong> lets you type <strong>pinyin</strong> — your words come back as 汉字 — and <strong>Try something else</strong> starts a different scenario. Add tone numbers (<code>ni3hao3</code>) and your tones get checked too.</p>
+      <p class="muted">Speak or type Mandarin (greetings). A real partner replies and remembers the conversation; spoken words come back with per-syllable tone scores (green good / amber ok / red off). The partner <strong>speaks its reply</strong> instead of writing it — that's the listening practice. Tap 🔊 to hear a line again, <strong>👁 Show text</strong> to see the words when you're stuck, or <strong>👁 Show all text</strong> below to reveal every reply at once. If you're stuck for good, <strong>I'm stuck</strong> ends the session and writes your feedback — that is a fine way to finish one. Under <strong>⋯</strong>: <strong>⌨️ Type instead</strong> lets you type <strong>pinyin</strong> — your words come back as 汉字 — and <strong>🔀 Try something else</strong> starts a different scenario. Add tone numbers (<code>ni3hao3</code>) and your tones get checked too.</p>
       <button id="info-close" type="button">Close</button>
     </div>
   </div>
@@ -482,10 +482,10 @@
            lives here. `<details>` rather than hand-rolled JS: it is keyboard
            and screen-reader accessible without a focus trap of our own. -->
       <details id="more">
-        <summary title="More">⋯ More</summary>
+        <summary title="More">⋯</summary>
         <div id="more-menu">
-          <button id="mode" title="Switch to typing">Type instead</button>
-          <button id="reset" title="Start a different scenario">Try something else</button>
+          <button id="mode" title="Switch to typing">⌨️ Type instead</button>
+          <button id="reset" title="Start a different scenario">🔀 Try something else</button>
         </div>
       </details>
     </div>
@@ -516,6 +516,11 @@
     const send = document.getElementById("send");
 
     const TARGET_RATE = 16000;
+    // Same number as `STT_TIMEOUT_MAX_S`. A hold past this is cut and sent —
+    // the graceful limit — so the server cap is only a wedged recognizer, not
+    // a 502 on a long press. Overridable on `window.__convo.recordCapMs` so
+    // the smoke suite does not wait 30s.
+    const RECORD_CAP_MS = 30000;
     // The mic graph is built once and parked between presses (see ensureGraph);
     // `graph` holds the warm nodes, `graphPromise` the build in flight.
     let graph = null, graphPromise = null;
@@ -525,6 +530,7 @@
     // so nothing is dropped. `flowing` tracks whether frames have actually
     // arrived, and is what drives the red button.
     let capturing = false, flowing = false;
+    let recordCapTimer = null;
 
     // Minimal diagnostics for the Playwright smoke suite (tests/smoke/). The
     // races it guards — frames lost before the UI flips, a bubble duplicated
@@ -533,6 +539,7 @@
       framesCaptured: 0,     // frames pushed during the current/last press
       framesAtFlip: null,    // how many had arrived when the button went red
       lastSampleCount: null, // samples handed to the encoder on release
+      recordCapMs: RECORD_CAP_MS,
       warm: () => !!graph,
     };
 
@@ -875,7 +882,11 @@
     // `display_name`, and the `:empty` rule collapses the line instead of
     // printing "undefined" over a conversation in progress.
     function renderScenarioCard(card, displayName) {
-      if (!card) { scenarioCard.hidden = true; return; }
+      if (!card) {
+        scenarioCard.hidden = true;
+        scenarioTopic.textContent = "";
+        return;
+      }
       scenarioCard.classList.remove("loading");
       scenarioTopic.textContent = displayName || "";
       scenarioSituation.textContent = card.situation;
@@ -885,8 +896,12 @@
 
     // Shown the instant a fetch starts, not just on success — a blank space
     // where the card will eventually appear reads as broken, not as loading.
+    // The previous topic name must go too: leaving it over "Loading…" reads
+    // as the old scene still loading, which is the lie a restart is undoing.
+    // The `:empty` rule then collapses the title line until the draw lands.
     function renderScenarioLoading() {
       scenarioCard.classList.add("loading");
+      scenarioTopic.textContent = "";
       scenarioSituation.textContent = "Loading…";
       scenarioGoal.textContent = "";
       scenarioCard.hidden = false;
@@ -1837,12 +1852,25 @@
       if (!capturing) return;   // released again during the (first-press) build
       await g.ctx.resume();
       startMeter(g);
+      armRecordCap();
     }
 
-    async function stopRecording() {
+    function armRecordCap() {
+      clearTimeout(recordCapTimer);
+      const ms = debug.recordCapMs > 0 ? debug.recordCapMs : RECORD_CAP_MS;
+      recordCapTimer = setTimeout(() => {
+        recordCapTimer = null;
+        if (!capturing) return;
+        stopRecording({ capped: true });
+      }, ms);
+    }
+
+    async function stopRecording(opts) {
       if (!capturing) return;
       capturing = false;
       flowing = false;
+      clearTimeout(recordCapTimer);
+      recordCapTimer = null;
       talk.classList.remove("recording");
       talk.textContent = "🎙️ Hold to talk";
       stopMeter();
@@ -1855,6 +1883,10 @@
       debug.lastSampleCount = samples.length;
       if (samples.length === 0) { setStatus("no audio captured"); return; }
 
+      // Cut-and-send, not cut-and-discard. The status stays up while STT
+      // runs (sendTurn clears it on success) so the auto-stop is explained
+      // rather than looking like the button released itself.
+      if (opts && opts.capped) setStatus("that's as long as one turn can be");
       const wav = encodeWav(samples, TARGET_RATE);
       await sendTurn(wav);
     }
@@ -1961,6 +1993,24 @@
       if (buf.trim()) yield JSON.parse(buf.trim());
     }
 
+    async function readErrorDetail(resp) {
+      const raw = await resp.text();
+      try {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed.detail === "string") return parsed.detail;
+      } catch (_) {}
+      return raw;
+    }
+
+    function turnErrorCopy(status, detail) {
+      // A wedged recognizer is the one limit the recording cap cannot catch.
+      // The Azure wording is for the log; the bubble says what to do next.
+      if (status === 502 && /timed out/i.test(detail)) {
+        return "that took too long — try a shorter turn";
+      }
+      return "error " + status + ": " + detail;
+    }
+
     async function sendTurn(wavBlob) {
       // Through `applyControls`, never `talk.disabled = true`: it is not the
       // only control a turn in flight has to close any more. Setting the flag
@@ -2029,8 +2079,8 @@
           // partner never saw.
           const detail = gateIfUnauthorized(resp)
             ? "log back in and hold to talk again"
-            : await resp.text();
-          echo.fail("error " + resp.status + ": " + detail);
+            : await readErrorDetail(resp);
+          echo.fail(turnErrorCopy(resp.status, detail));
           setStatus("");
           return;
         }
@@ -2208,10 +2258,9 @@
 
     function applyMode() {
       dock.dataset.mode = mode;
-      // Words, not a glyph. The emoji named the *destination*, and whether an
-      // icon means "what you are" or "what you'll get" is a coin flip for the
-      // reader — note 4's complaint about 👁, on the control note 4 missed.
-      modeBtn.textContent = mode === "text" ? "Speak instead" : "Type instead";
+      // Words name the destination (note 4: a glyph alone is a coin flip).
+      // The emoji sits next to them so the item is findable at a glance.
+      modeBtn.textContent = mode === "text" ? "🎙️ Speak instead" : "⌨️ Type instead";
       modeBtn.title = modeBtn.textContent;
       setStatus("");
       // Holding the mic open while someone types would leave the browser's

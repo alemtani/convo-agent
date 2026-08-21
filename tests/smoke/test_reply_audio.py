@@ -184,6 +184,18 @@ def test_the_global_button_says_what_it_does_and_to_what(page):
     expect(page.locator("#show-text")).to_have_text("🙈 Hide all text")
 
 
+def test_the_per_bubble_reveal_says_what_it_does(page):
+    """Same note 4, on the control inside the bubble. The global button is
+    "all"; this one is the line. A phone check that only looked at the dock
+    would miss a bubble still saying 👁 alone."""
+    load(page)
+    bubble = _send_text(page)
+
+    expect(bubble.locator("button.reveal")).to_have_text("👁 Show text")
+    bubble.locator("button.reveal").click()
+    expect(bubble.locator("button.reveal")).to_have_text("🙈 Hide text")
+
+
 def test_show_text_preference_survives_a_reload(page):
     load(page)
     _send_text(page)

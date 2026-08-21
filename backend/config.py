@@ -124,6 +124,11 @@ LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 # comfortably covering the fluent turns it did not need to. So: a floor for the
 # short ones, plus a per-second allowance, capped so a wedged session still
 # cannot hold a request open indefinitely.
+#
+# The client cuts a hold at STT_TIMEOUT_MAX_S and sends what was said, so a
+# long press cannot grow a blob this budget cannot finish. The cap then only
+# fires for a wedged Azure call, which the turn already reports as a failure
+# they can retry.
 STT_TIMEOUT_S = float(os.getenv("STT_TIMEOUT_S", "5"))
 STT_TIMEOUT_PER_AUDIO_S = float(os.getenv("STT_TIMEOUT_PER_AUDIO_S", "1.0"))
 STT_TIMEOUT_MAX_S = float(os.getenv("STT_TIMEOUT_MAX_S", "30"))

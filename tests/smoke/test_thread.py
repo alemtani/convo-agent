@@ -106,6 +106,40 @@ def _speak(page):
     page.wait_for_function("window.__convo.lastSampleCount !== null")
 
 
+def test_a_hold_that_hits_the_cap_sends_what_was_said(page):
+    """The 30s recognition budget is not a 502 waiting to happen.
+
+    Push-to-talk has no other end than release, so a long hold used to grow a
+    WAV the server could not finish in budget — same 502 the flat 5s deadline
+    used to produce, just later. The graceful limit is to cut the recording
+    and send it, the way a voice memo maxes out: the learner keeps the turn,
+    not an error bubble. `recordCapMs` is the test seam so this does not wait
+    30s in CI.
+    """
+    seed(page)
+    page.evaluate(
+        "() => {"
+        "  window.__stub.manual = true;"
+        "  window.__convo.recordCapMs = 400;"
+        "}"
+    )
+    page.hover("#talk")
+    page.mouse.down()
+    expect(page.locator("#talk")).to_have_class(re.compile(r"\brecording\b"))
+
+    page.wait_for_function("window.__convo.lastSampleCount !== null")
+    expect(page.locator("#talk")).not_to_have_class(re.compile(r"\brecording\b"))
+    expect(page.locator("#status")).to_have_text("that's as long as one turn can be")
+    expect(bubbles(page, ".bubble.user")).to_have_count(1)
+
+    # Still holding. The lift must not send a second turn.
+    page.mouse.up()
+    expect(bubbles(page, ".bubble.user")).to_have_count(1)
+
+    page.evaluate("window.__stub.release()")
+    expect(bubbles(page, ".bubble.partner:not([data-opening])")).to_have_count(1)
+
+
 def test_transcript_renders_while_the_reply_is_still_pending(page):
     """The whole point of staging, asserted where a user would see it.
 
@@ -171,6 +205,31 @@ def test_a_pre_transcript_failure_leaves_no_partner_bubble(page):
     failed = bubbles(page, ".bubble.user.failed")
     expect(failed).to_have_count(1)
     expect(failed).to_contain_text("error 502")
+    expect(bubbles(page, ".bubble.partner:not([data-opening])")).to_have_count(0)
+
+
+def test_an_stt_timeout_asks_for_a_shorter_turn(page):
+    """A wedged recognizer is the limit the 30s cap still has to fire.
+
+    The auto-cut stops a long hold from *being* that case. What remains is
+    Azure never returning, and dumping `error 502: Azure STT timed out…` on
+    the echo is the same ungraceful cliff. Keep the failed echo (retry is
+    one more hold) and say what to do.
+    """
+    seed(page)
+    page.evaluate(
+        "() => {"
+        "  window.__stub.status['/api/turn'] = 502;"
+        "  window.__stub.errors['/api/turn'] ="
+        "    JSON.stringify({detail: 'Azure STT timed out after 30s'});"
+        "}"
+    )
+    _speak(page)
+
+    failed = bubbles(page, ".bubble.user.failed")
+    expect(failed).to_have_count(1)
+    expect(failed).to_contain_text("that took too long — try a shorter turn")
+    expect(failed).not_to_contain_text("502")
     expect(bubbles(page, ".bubble.partner:not([data-opening])")).to_have_count(0)
 
 
@@ -447,6 +506,51 @@ def test_new_conversation_clears_the_card_and_fetches_a_fresh_session(page):
     expect(page.locator("#scenario-card")).to_be_visible()
 
 
+NEXT_SESSION = {
+    "topic_id": "family",
+    "display_name": "Family (家人)",
+    "scenario_card": {
+        "situation": "You are meeting a friend's parent.",
+        "goal": "Ask how many people are in their family.",
+    },
+    "opening_line": {"zh": "你好！", "pinyin": "nǐ hǎo!"},
+    "sketch": "Warm.",
+}
+
+
+def test_a_new_session_does_not_keep_the_old_topic_title_while_loading(page):
+    """The title above "Your situation" is the topic the server just drew.
+
+    `renderScenarioLoading` used to leave the previous name in place, so a
+    restart showed "Greetings" over "Loading…" until the next draw landed.
+    The `:empty` rule is what collapses that line — it only works if we
+    actually empty it. Found on a phone during the A1 check.
+    """
+    seed(page)
+    expect(page.locator("#scenario-topic")).to_have_text(SESSION_START["display_name"])
+
+    page.evaluate(
+        "([next]) => {"
+        "  window.__stub.manual = true;"
+        "  window.__stub.responses['/api/session'] = next;"
+        "}",
+        [NEXT_SESSION],
+    )
+    page.click("#more > summary")
+    page.click("#reset")
+
+    expect(page.locator("#scenario-card")).to_be_visible()
+    expect(page.locator("#scenario-card")).to_have_class(re.compile(r"\bloading\b"))
+    expect(page.locator("#scenario-topic")).to_have_text("")
+    expect(page.locator("#scenario-situation")).to_have_text("Loading…")
+
+    page.evaluate("window.__stub.release()")
+    expect(page.locator("#scenario-topic")).to_have_text(NEXT_SESSION["display_name"])
+    expect(page.locator("#scenario-situation")).to_have_text(
+        NEXT_SESSION["scenario_card"]["situation"]
+    )
+
+
 def test_double_clicking_reset_does_not_duplicate_the_opening_line(page):
     """Two clicks close enough together must not fire two concurrent
     `POST /api/session` calls — each would independently see an empty thread
@@ -537,14 +641,31 @@ def test_the_menu_holds_the_session_controls_and_dismisses(page):
     expect(page.locator("#mode")).to_be_hidden()
 
 
+def test_the_overflow_labels_name_the_destination(page):
+    """The ellipsis is the affordance; it does not need the word "More".
+
+    The two items keep the words (note 4: a glyph alone is a coin flip) and
+    put the destination emoji next to them, so neither signal is on its own.
+    Phone check of A1: the ellipsis was enough, the items were clearer with
+    both.
+    """
+    seed(page, mode="speak")
+
+    expect(page.locator("#more > summary")).to_have_text("⋯")
+    page.click("#more > summary")
+    expect(page.locator("#mode")).to_have_text("⌨️ Type instead")
+    expect(page.locator("#reset")).to_have_text("🔀 Try something else")
+
+
 def test_the_mode_control_says_which_way_it_goes(page):
     """The emoji named the *destination*, and whether an icon means "what you
     are" or "what you'll get" is a coin flip — note 4's complaint about 👁, on
-    the control note 4 missed."""
+    the control note 4 missed. The word now carries that, and the glyph sits
+    next to it rather than replacing it."""
     seed(page, mode="speak")
     page.click("#more > summary")
 
-    expect(page.locator("#mode")).to_have_text("Type instead")
+    expect(page.locator("#mode")).to_have_text("⌨️ Type instead")
     page.click("#mode")
     page.click("#more > summary")
-    expect(page.locator("#mode")).to_have_text("Speak instead")
+    expect(page.locator("#mode")).to_have_text("🎙️ Speak instead")
