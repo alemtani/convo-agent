@@ -27,6 +27,7 @@ from backend.models import (
     ScoreEvent,
     SessionStartResponse,
     SessionState,
+    StateEvent,
     TextTurnRequest,
     TranscriptEvent,
     TurnAnnotation,
@@ -38,13 +39,14 @@ from backend.models import (
 from backend.pinyin import to_pinyin
 from backend.speech import pronunciation, stt
 from backend.workers import conversation
+from backend.workers import grader as grader_worker
 from backend.workers import sketch as sketch_worker
 
 logger = logging.getLogger(__name__)
 
 # One line of the NDJSON body `POST /api/turn` streams, discriminated by `stage`.
 StagedEvent = Union[
-    TranscriptEvent, ScoreEvent, ReplyEvent, DoneEvent, TurnErrorEvent
+    TranscriptEvent, ScoreEvent, ReplyEvent, StateEvent, DoneEvent, TurnErrorEvent
 ]
 
 # Shown when nothing is recognized — an explicit "please say it again" so the
@@ -79,23 +81,32 @@ async def run_text_turn(
     turn = _turn_index(req.dialogue)
 
     with timer.stage("claude"):
-        reply, annotation, grade, reading, usage = await conversation.respond(
+        reply, annotation, reading, usage = await conversation.respond(
             kb_block=kb_block,
             sketch=req.sketch,
             dialogue=req.dialogue,
             user_text=req.text,
             forgiveness_level=config.FORGIVENESS_LEVEL_DEFAULT,
-            hint=termination.pressure_hint(req.state, scenario=scenario, turn=turn),
+            hint=termination.closing_hint(scenario=scenario, turn=turn),
+            client=client,
+        )
+
+    # Serial, unlike the spoken path — and the one place text mode differs.
+    # The grader needs the learner's turn as 汉字, and in text mode only the
+    # converser can produce it: the learner typed pinyin. Re-resolving it here
+    # would be a second, independent reading of `wo jiao xiao ming`, and when
+    # the two disagreed the learner's own bubble and their grade would describe
+    # different sentences. This is the mic-free harness, not the learner's path,
+    # so a serialized second call is the cheaper of the two costs.
+    with timer.stage("grader"):
+        grade = await _grade_or_degrade(
+            scenario=scenario, dialogue=req.dialogue, user_text=reading.zh,
             client=client,
         )
 
     tone_errors = typed_pinyin.tone_errors_from_typed(req.text, reading.zh)
-    state = termination.advance(
-        req.state,
-        scenario=scenario,
-        slots_filled=grade.slots_filled,
-        learner_closed=grade.learner_closed,
-        turn=turn,
+    state = _advance_or_echo(
+        req.state, scenario=scenario, grade=grade, turn=turn
     )
     annotation = TurnAnnotation.from_worker(annotation, tone_errors)
 
@@ -284,7 +295,11 @@ async def stream_audio_turn(
         # no worker ran, so nothing was established, and a fresh state here would
         # wipe every filled slot on a single unrecognized mumble — with no server
         # copy to restore it from.
-        yield ReplyEvent(reply=RETRY_REPLY, state=state, **_at_emit(timer))
+        yield ReplyEvent(reply=RETRY_REPLY, **_at_emit(timer))
+        # The state still goes out, unchanged. "Nothing was established" and
+        # "no event arrived" are the same thing to a client that gets neither,
+        # and only one of them is safe to treat as the session standing still.
+        yield StateEvent(state=state, **_at_emit(timer))
         # Still a measured turn: it cost an STT round trip, and dropping the
         # short-circuit from the numbers would bias the p50 downward.
         yield DoneEvent(timings=_report(timer, None, mode="audio"),
@@ -303,9 +318,7 @@ async def stream_audio_turn(
                 dialogue=dialogue or [],
                 user_text=transcript.zh,
                 forgiveness_level=config.FORGIVENESS_LEVEL_DEFAULT,
-                hint=termination.pressure_hint(
-                    state, scenario=scenario, turn=turn
-                ),
+                hint=termination.closing_hint(scenario=scenario, turn=turn),
                 # STT already gave us the learner's 汉字, so the worker's reading
                 # of them would be an echo we drop — and the reply is the branch
                 # the learner waits behind. Don't buy tokens we throw away.
@@ -313,9 +326,21 @@ async def stream_audio_turn(
                 client=client,
             )
 
-    # Each branch times itself rather than the gather timing the pair: the whole
-    # question WS1 Stage 2 hangs on is which of PA and Claude is the slower one,
-    # and a single number for both cannot answer it.
+    async def grade_branch():
+        with timer.stage("grader"):
+            return await _grade_or_degrade(
+                scenario=scenario,
+                dialogue=dialogue or [],
+                # STT already produced the learner's 汉字, so this branch needs
+                # nothing from the converser and starts alongside it. That is
+                # only true on the spoken path; text mode has to serialize.
+                user_text=transcript.zh,
+                client=client,
+            )
+
+    # Each branch times itself rather than the gather timing the group: the whole
+    # question WS1 Stage 2 hangs on is which branch is the slower one, and a
+    # single number for all three cannot answer it.
     #
     # They are also *emitted* separately, as each resolves, rather than gathered
     # into one event. Stage 0 measured PA at 1.20s against Claude's 3.56s, so the
@@ -325,7 +350,8 @@ async def stream_audio_turn(
     # first, so neither stage can gate the other in either direction.
     pa_task = asyncio.ensure_future(assess_branch())
     worker_task = asyncio.ensure_future(respond_branch())
-    pending = {pa_task, worker_task}
+    grade_task = asyncio.ensure_future(grade_branch())
+    pending = {pa_task, worker_task, grade_task}
     usage = None
 
     try:
@@ -337,7 +363,7 @@ async def stream_audio_turn(
             # iteration order is arbitrary — drain in pipeline order instead, or
             # the event sequence is nondeterministic exactly when the two stages
             # are closest together.
-            for task in (pa_task, worker_task):
+            for task in (pa_task, worker_task, grade_task):
                 if task not in done:
                     continue
                 if task is pa_task:
@@ -357,8 +383,8 @@ async def stream_audio_turn(
                         ),
                         **_at_emit(timer),
                     )
-                else:
-                    reply, annotation, grade, _reading, usage = task.result()
+                elif task is worker_task:
+                    reply, annotation, _reading, usage = task.result()
 
                     yield ReplyEvent(
                         reply=reply,
@@ -366,17 +392,20 @@ async def stream_audio_turn(
                         # completed here with none: the two are derived from the
                         # PA result and must not re-gate the reply on scoring.
                         annotation=TurnAnnotation.from_worker(annotation, []),
-                        # Session state rides here for the mirror-image reason:
-                        # it comes from this annotation, so it is ready now, and
-                        # holding it to `done` would make the session's end wait
-                        # on the PA branch it has nothing to do with.
-                        state=termination.advance(
-                            state,
-                            scenario=scenario,
-                            slots_filled=grade.slots_filled,
-                            learner_closed=grade.learner_closed,
-                            turn=turn,
+                        **_at_emit(timer),
+                    )
+                else:
+                    grade = task.result()
+                    yield StateEvent(
+                        # A failed grade echoes the submitted state unchanged —
+                        # no slot credited, no close counted. The event still
+                        # goes out: "nothing changed" and "the grader never ran"
+                        # look identical to a client that gets no event at all,
+                        # and only one of them is safe to treat as progress.
+                        state=_advance_or_echo(
+                            state, scenario=scenario, grade=grade, turn=turn
                         ),
+                        coherence=grade.coherence if grade else None,
                         **_at_emit(timer),
                     )
 
@@ -393,7 +422,7 @@ async def stream_audio_turn(
     finally:
         # A failure in either branch leaves the other still running; without this
         # the losing branch outlives the request as an orphaned task.
-        for task in (pa_task, worker_task):
+        for task in (pa_task, worker_task, grade_task):
             if not task.done():
                 task.cancel()
         # One log line per turn, after both branches have settled — so it carries
@@ -414,6 +443,51 @@ def _at_emit(timer: timing.Timer) -> dict:
         "timings": TurnTimings.from_stages(timer.stages),
         "elapsed_ms": timer.total_ms,
     }
+
+
+async def _grade_or_degrade(*, scenario, dialogue, user_text, client=None):
+    """Run the grader, degrading a failure to `None` rather than failing the turn.
+
+    The same posture as `_assess_or_degrade`, for the same reason: the reply
+    stands either way. A learner whose grader timed out gets their partner's
+    answer and an unchanged session — they do not get a 502 in the middle of a
+    conversation.
+
+    `None` is not a grade. It is the absence of one, and `_advance_or_echo` is
+    the only thing allowed to interpret it.
+    """
+    if scenario is None:
+        # No scenario, nothing to grade — and no call to spend on finding out.
+        return None
+    try:
+        return await grader_worker.grade(
+            scenario=scenario, dialogue=dialogue, user_text=user_text,
+            client=client,
+        )
+    except grader_worker.GraderError as exc:
+        logger.warning("grader failed: %s", exc)
+        return None
+
+
+def _advance_or_echo(state, *, scenario, grade, turn):
+    """Advance the session on a grade, or echo the submitted state unchanged.
+
+    A missing grade must never look like a graded turn that established nothing:
+    the second credits no slot *and counts a turn*, and a learner saying goodbye
+    through a grader outage would otherwise have their close counted on no
+    evidence. So a failed grade advances nothing at all and the session falls
+    back on the turn cap — the same conservative direction the retry path takes
+    when STT hears silence.
+    """
+    if grade is None:
+        return state
+    return termination.advance(
+        state,
+        scenario=scenario,
+        slots_filled=grade.slots_filled,
+        learner_closed=grade.learner_closed,
+        turn=turn,
+    )
 
 
 async def _assess_or_degrade(audio_bytes, reference_text):

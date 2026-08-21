@@ -100,44 +100,31 @@ def advance(
     )
 
 
-def pressure_hint(
-    state: SessionState, *, scenario: Optional[Scenario], turn: int
-) -> Optional[str]:
+def closing_hint(*, scenario: Optional[Scenario], turn: int) -> Optional[str]:
     """The stage direction for this turn, or `None` if there is nothing to say.
 
-    A state rule, not a turn schedule (`docs/SCENARIOS.md`, "Pressure"): the
-    partner is steered toward whichever fact is still outstanding, and never
-    toward goodbye — you steer toward the *goal*, and the moment the goal is met
-    the session is over anyway.
+    What is left of `pressure_hint` after V2 (`docs/VALIDITY.md`). That function
+    steered the partner toward whichever slot was still outstanding, which a
+    goal-blind partner cannot be told and must not be: naming the missing fact
+    is the rubric, in a stage direction instead of a prompt. The scene creates
+    the gap now — `kb.render_scene_block`, and the authoring rule in
+    `docs/SCENARIOS.md`.
 
-    The caller injects this after the `cache_control` breakpoint, so nothing
-    here touches the frozen prefix. Written as stage direction rather than as a
-    question the partner asks: a fruit vendor does not say 你还要问什么吗？, and
-    an out-of-character prompt would leak that a criterion is outstanding.
+    The cap-turn close survives, because it is about the *session* rather than
+    the goal and nothing else can carry it. It stays a per-turn injection rather
+    than moving into the frozen prefix for the reason it always was one: it is
+    genuinely volatile, true on exactly one turn of the session, and the cached
+    prefix has to stay byte-identical across all of them.
+
+    It names no slot, so a partner reading it learns only that the conversation
+    is ending — which is a thing a person in a scene can know.
     """
-    if scenario is None:
+    if scenario is None or turn < scenario.max_turns:
         return None
-    missing = [slot for slot in scenario.slots if slot.id not in state.filled]
-    if not missing:
-        return None
-
-    target = missing[0]
-    lines = [
-        f"The learner has not yet established: {target.id} — {target.description}. "
-        "Leave the scene unresolved at that point so the gap is where they need "
-        "the words. Stay fully in character; never ask what they want to ask, "
-        "and never state or hint at what is outstanding.",
-        "Do not volunteer the answer to anything they have not asked you.",
-    ]
-    if turn >= scenario.max_turns:
-        # Additive, not a replacement. A request slot fills only when the
-        # partner answers, so a hint that merely said "close" would fail the
-        # learner who finally asked on their last turn.
-        lines.append(
-            "This is the final turn: answer the learner's turn normally, then "
-            "close the scene in character."
-        )
-    return " ".join(lines)
+    return (
+        "This is the final turn: answer the learner's turn normally, then "
+        "close the scene in character."
+    )
 
 
 def _validated_ids(ids: List[str], known: Set[str]) -> List[str]:

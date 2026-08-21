@@ -5,14 +5,23 @@ cached prefix. We patch the orchestrator so the route is exercised in isolation:
 JSON in -> reply + annotation; unknown topic -> 404; worker failure -> 502.
 """
 import pytest
+
+from tests.helpers import grade_stub
 from fastapi.testclient import TestClient
 
 from backend import kb, orchestrator
 from backend.main import app
 from backend.models import GraderResult, ConversationTurnResponse, TurnAnnotation, Utterance
-from backend.workers import conversation
+from backend.workers import conversation, grader
 
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def stub_grader(monkeypatch):
+    """V2's third branch. Every turn runs one, so every test needs one — and a
+    test that forgot would reach the real API."""
+    monkeypatch.setattr(grader, "grade", grade_stub())
 
 
 def _reply():
@@ -129,7 +138,6 @@ def test_turn_text_threads_the_sessions_sketch_through_to_the_worker(monkeypatch
         return (
             Utterance(zh="你好", pinyin="nǐ hǎo"),
             TurnAnnotation(),
-            GraderResult(coherence="on_track"),
             Utterance(zh="你好", pinyin="nǐ hǎo"),
             None,
         )
@@ -155,7 +163,6 @@ def test_turn_text_sketch_defaults_to_empty(monkeypatch):
         return (
             Utterance(zh="你好", pinyin="nǐ hǎo"),
             TurnAnnotation(),
-            GraderResult(coherence="on_track"),
             Utterance(zh="你好", pinyin="nǐ hǎo"),
             None,
         )
@@ -178,7 +185,6 @@ def test_text_turn_response_carries_stage_timings(monkeypatch):
         return (
             Utterance(zh="你好", pinyin="nǐ hǎo"),
             TurnAnnotation(),
-            GraderResult(coherence="on_track"),
             Utterance(zh="你好", pinyin="nǐ hǎo"),
             None,
         )
@@ -203,12 +209,12 @@ def test_state_round_trips_through_the_text_route(monkeypatch):
         return (
             Utterance(zh="好。", pinyin="hǎo."),
             TurnAnnotation(),
-            GraderResult(coherence="on_track", slots_filled=["self_name"]),
             Utterance(zh="我叫小明", pinyin="wǒ jiào xiǎo míng"),
             object(),
         )
 
     monkeypatch.setattr(conversation, "respond", fake_respond)
+    monkeypatch.setattr(grader, "grade", grade_stub(slots_filled=["self_name"]))
 
     resp = client.post(
         "/api/turn/text",

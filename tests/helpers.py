@@ -39,3 +39,33 @@ async def collect_audio_turn(
         )
     ]
     return {event.stage: event for event in events}
+
+
+def grade_stub(result=None, **fields):
+    """An async stand-in for `workers.grader.grade`.
+
+    Defaults to a grade that credits nothing, which is what most tests want: the
+    fan-out, the events and the routes are what they are about, and the grader
+    has its own contract tests. Pass `result=None` to make the call fail instead.
+    """
+    from backend.models import GraderResult
+
+    if result is None and not fields:
+        result = GraderResult(coherence="on_track")
+    elif fields:
+        result = GraderResult(coherence=fields.pop("coherence", "on_track"), **fields)
+
+    async def _grade(**_kwargs):
+        return result
+
+    return _grade
+
+
+def failing_grade_stub(exc=None):
+    """An async stand-in that fails the way a real grader outage does."""
+    from backend.workers.grader import GraderError
+
+    async def _grade(**_kwargs):
+        raise exc or GraderError("grader unavailable")
+
+    return _grade

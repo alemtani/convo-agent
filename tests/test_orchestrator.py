@@ -13,6 +13,8 @@ disagree with them.
 import dataclasses
 import pytest
 
+from tests.helpers import grade_stub
+
 from backend import config, kb, orchestrator
 from backend.models import (
     GraderResult,
@@ -24,8 +26,15 @@ from backend.models import (
     TurnAnnotation,
     Utterance,
 )
-from backend.workers import conversation
+from backend.workers import conversation, grader
 from backend.workers import sketch as sketch_worker
+
+
+@pytest.fixture(autouse=True)
+def stub_grader(monkeypatch):
+    """V2's third branch. Every turn runs one, so every test needs one — and a
+    test that forgot would reach the real API."""
+    monkeypatch.setattr(grader, "grade", grade_stub())
 
 
 async def test_run_text_turn_loads_kb_and_calls_worker(monkeypatch):
@@ -40,7 +49,6 @@ async def test_run_text_turn_loads_kb_and_calls_worker(monkeypatch):
         return (
             Utterance(zh="你好！你叫什么名字？", pinyin="nǐ hǎo! nǐ jiào shénme míngzi?"),
             TurnAnnotation(topic_tags=["greetings"]),
-            GraderResult(coherence="on_track"),
             Utterance(zh="我叫小明", pinyin="wǒ jiào xiǎo míng"),
             object(),
         )
@@ -78,7 +86,6 @@ async def test_run_text_turn_defaults_sketch_to_empty_before_a_session_starts(mo
         return (
             Utterance(zh="你好", pinyin="nǐ hǎo"),
             TurnAnnotation(),
-            GraderResult(coherence="on_track"),
             Utterance(zh="你好", pinyin="nǐ hǎo"),
             object(),
         )
@@ -118,7 +125,6 @@ async def test_run_text_turn_passes_the_stripped_text_to_the_worker(monkeypatch)
         return (
             Utterance(zh="你好", pinyin="nǐ hǎo"),
             TurnAnnotation(),
-            GraderResult(coherence="on_track"),
             Utterance(zh="你好", pinyin="nǐ hǎo"),
             object(),
         )
@@ -203,7 +209,6 @@ def _worker_reply(annotation=None, reading=None):
         return (
             Utterance(zh="你好！你叫什么名字？", pinyin="nǐ hǎo! nǐ jiào shénme míngzi?"),
             annotation or TurnAnnotation(topic_tags=["greetings"]),
-            GraderResult(coherence="on_track"),
             reading or Utterance(zh="你好", pinyin="nǐ hǎo"),
             object(),
         )
@@ -219,7 +224,6 @@ async def test_run_text_turn_reports_claude_and_total_only(monkeypatch):
         return (
             Utterance(zh="你好", pinyin="nǐ hǎo"),
             TurnAnnotation(),
-            GraderResult(coherence="on_track"),
             Utterance(zh="你好", pinyin="nǐ hǎo"),
             _FakeUsage(),
         )
@@ -407,7 +411,11 @@ def test_pick_scenario_topic_raises_when_the_kb_is_empty(monkeypatch):
 
 
 def _tracker_worker(monkeypatch, slots_filled=(), learner_closed=False, capture=None):
-    """Stub the worker with a fixed tracker result; record the kwargs it got."""
+    """Stub both calls of a text turn; record the kwargs the converser got.
+
+    Two stubs since V2: the converser writes the reply and the grader judges it.
+    The tracker result is the *grader's* now — the converser is not asked.
+    """
 
     async def fake_respond(*, kb_block, sketch, dialogue, user_text,
                            forgiveness_level, want_reading=True, hint=None,
@@ -417,12 +425,15 @@ def _tracker_worker(monkeypatch, slots_filled=(), learner_closed=False, capture=
         return (
             Utterance(zh="好。", pinyin="hǎo."),
             TurnAnnotation(),
-            GraderResult(coherence="on_track", slots_filled=list(slots_filled), learner_closed=learner_closed),
             Utterance(zh="我叫小明", pinyin="wǒ jiào xiǎo míng"),
             object(),
         )
 
     monkeypatch.setattr(conversation, "respond", fake_respond)
+    monkeypatch.setattr(
+        grader, "grade",
+        grade_stub(slots_filled=list(slots_filled), learner_closed=learner_closed),
+    )
 
 
 def _req(dialogue=None, state=None, text="我叫小明"):
@@ -477,11 +488,13 @@ async def test_the_turn_index_comes_from_the_submitted_history(monkeypatch):
         dialogue += [{"role": "user", "zh": "我叫小明"}, {"role": "partner", "zh": "好。"}]
 
 
-async def test_the_hint_names_the_outstanding_slot(monkeypatch):
+async def test_the_hint_names_no_slot_on_the_text_path_either(monkeypatch):
+    """V2: it used to name the outstanding one. The partner is blind now, and a
+    stage direction naming the missing fact is the rubric by another route."""
     captured = {}
     _tracker_worker(monkeypatch, capture=captured)
     await orchestrator.run_text_turn(_req(state=SessionState(filled_at={"self_name": 1})))
-    assert "partner_name" in captured["hint"]
+    assert captured["hint"] is None
 
 
 async def test_no_hint_on_the_first_turn_of_a_fresh_session(monkeypatch):

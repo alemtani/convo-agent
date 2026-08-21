@@ -25,8 +25,8 @@ from backend.models import (
     Utterance,
 )
 from backend.speech import pronunciation, stt
-from backend.workers import conversation
-from tests.helpers import collect_audio_turn
+from backend.workers import conversation, grader
+from tests.helpers import collect_audio_turn, grade_stub, failing_grade_stub
 
 client = TestClient(app)
 
@@ -66,7 +66,6 @@ def stub_worker_and_pa(monkeypatch):
         return (
             Utterance(zh="你好！你叫什么名字？", pinyin="nǐ hǎo! nǐ jiào shénme míngzi?"),
             TurnAnnotation(topic_tags=["greetings"]),
-            GraderResult(coherence="on_track"),
             Utterance(zh="你好", pinyin="nǐ hǎo"),
             object(),
         )
@@ -77,6 +76,10 @@ def stub_worker_and_pa(monkeypatch):
     monkeypatch.setattr(pronunciation, "assess", fake_assess)
     monkeypatch.setattr(conversation, "respond", fake_respond)
     monkeypatch.setattr(stt, "transcribe", fake_transcribe)
+    # The third branch. Autouse rather than per-test: a test that overrides
+    # `respond` with a failure must not fall through to the real grader and
+    # spend an API call proving the reply path broke.
+    monkeypatch.setattr(grader, "grade", grade_stub())
 
 
 def by_stage(resp):
@@ -102,7 +105,9 @@ def test_stream_emits_every_stage_of_a_turn():
     # and `score`/`reply` are both present somewhere between.
     assert staged[0]["stage"] == "transcript"
     assert staged[-1]["stage"] == "done"
-    assert {e["stage"] for e in staged} == {"transcript", "score", "reply", "done"}
+    assert {e["stage"] for e in staged} == {
+        "transcript", "score", "reply", "state", "done"
+    }
 
     seen = by_stage(resp)
     assert seen["transcript"]["transcript"] == {"zh": "你好", "pinyin": "nǐ hǎo"}
@@ -148,7 +153,6 @@ async def test_transcript_is_yielded_before_the_worker_finishes(monkeypatch):
         return (
             Utterance(zh="你好！", pinyin="nǐ hǎo!"),
             TurnAnnotation(),
-            GraderResult(coherence="on_track"),
             Utterance(zh="你好", pinyin="nǐ hǎo"),
             object(),
         )
@@ -167,8 +171,12 @@ async def test_transcript_is_yielded_before_the_worker_finishes(monkeypatch):
 
     worker_may_finish.set()
     rest = [event async for event in stream]
-    assert [e.stage for e in rest] == ["score", "reply", "done"]
-    assert rest[1].reply.zh == "你好！"
+    # The three branches settle in whatever order the loop runs them; what is
+    # guaranteed is that all three land and `done` is last. Asserting an exact
+    # interleaving here would pin scheduling, not behaviour.
+    assert {e.stage for e in rest} == {"score", "state", "reply", "done"}
+    assert rest[-1].stage == "done"
+    assert next(e for e in rest if e.stage == "reply").reply.zh == "你好！"
 
 
 def test_empty_recognition_streams_transcript_and_a_reprompt(monkeypatch):
@@ -199,7 +207,9 @@ def test_empty_recognition_streams_transcript_and_a_reprompt(monkeypatch):
     resp = client.post("/api/turn", files=_upload())
     assert resp.status_code == 200
     staged = events(resp)
-    assert [e["stage"] for e in staged] == ["transcript", "reply", "done"]
+    # `state` rides along even here: the submitted state is echoed unchanged, and
+    # "nothing was established" must not look like "no event arrived".
+    assert [e["stage"] for e in staged] == ["transcript", "reply", "state", "done"]
     assert called == []
 
     reply = staged[1]
@@ -323,7 +333,6 @@ def test_dialogue_defaults_to_empty(monkeypatch):
         return (
             Utterance(zh="你好", pinyin="nǐ hǎo"),
             TurnAnnotation(),
-            GraderResult(coherence="on_track"),
             Utterance(zh="你好", pinyin="nǐ hǎo"),
             object(),
         )
@@ -365,7 +374,6 @@ def test_route_threads_dialogue_history_into_the_stream(monkeypatch):
         return (
             Utterance(zh="认识你很高兴", pinyin="rènshi nǐ hěn gāoxìng"),
             TurnAnnotation(),
-            GraderResult(coherence="on_track"),
             Utterance(zh="你好", pinyin="nǐ hǎo"),
             object(),
         )
@@ -509,7 +517,6 @@ async def test_concurrent_branches_are_timed_separately(monkeypatch):
         return (
             Utterance(zh="你好", pinyin="nǐ hǎo"),
             TurnAnnotation(),
-            GraderResult(coherence="on_track"),
             Utterance(zh="你好", pinyin="nǐ hǎo"),
             _FakeUsage(),
         )
@@ -550,7 +557,6 @@ async def test_done_surfaces_the_anthropic_usage_block(monkeypatch):
         return (
             Utterance(zh="你好", pinyin="nǐ hǎo"),
             TurnAnnotation(),
-            GraderResult(coherence="on_track"),
             Utterance(zh="你好", pinyin="nǐ hǎo"),
             _FakeUsage(),
         )
@@ -595,7 +601,6 @@ async def test_score_is_yielded_before_the_worker_finishes(monkeypatch):
         return (
             Utterance(zh="你好！", pinyin="nǐ hǎo!"),
             TurnAnnotation(),
-            GraderResult(coherence="on_track"),
             Utterance(zh="你好", pinyin="nǐ hǎo"),
             object(),
         )
@@ -612,6 +617,7 @@ async def test_score_is_yielded_before_the_worker_finishes(monkeypatch):
     score = await _next(stream)
     assert score.stage == "score", "scores waited on the worker"
     assert score.pronunciation.overall == 80.0
+    assert (await _next(stream)).stage == "state", "the grade waited on the worker"
     assert not worker_may_finish.is_set()
 
     worker_may_finish.set()
@@ -678,6 +684,7 @@ async def test_reply_is_not_delayed_by_a_slow_pa(monkeypatch):
 
     reply = await _next(stream)
     assert reply.stage == "reply", "the reply waited on pronunciation scoring"
+    assert (await _next(stream)).stage == "state"
     assert not pa_may_finish.is_set()
 
     pa_may_finish.set()
@@ -716,7 +723,6 @@ async def test_the_spoken_turn_does_not_buy_a_reading_it_throws_away(monkeypatch
         return (
             Utterance(zh="你好", pinyin="nǐ hǎo"),
             TurnAnnotation(),
-            GraderResult(coherence="on_track"),
             None,
             None,
         )
@@ -828,7 +834,6 @@ def test_route_threads_the_sessions_sketch_through_to_the_worker(monkeypatch):
         return (
             Utterance(zh="你好", pinyin="nǐ hǎo"),
             TurnAnnotation(),
-            GraderResult(coherence="on_track"),
             Utterance(zh="你好", pinyin="nǐ hǎo"),
             object(),
         )
@@ -848,7 +853,6 @@ def test_route_sketch_defaults_to_empty(monkeypatch):
         return (
             Utterance(zh="你好", pinyin="nǐ hǎo"),
             TurnAnnotation(),
-            GraderResult(coherence="on_track"),
             Utterance(zh="你好", pinyin="nǐ hǎo"),
             object(),
         )
@@ -887,7 +891,6 @@ async def _stream(monkeypatch, *, slots_filled=(), learner_closed=False,
         return (
             Utterance(zh="好。", pinyin="hǎo."),
             TurnAnnotation(),
-            GraderResult(coherence="on_track", slots_filled=list(slots_filled), learner_closed=learner_closed),
             None,
             _FakeUsage(),
         )
@@ -897,12 +900,16 @@ async def _stream(monkeypatch, *, slots_filled=(), learner_closed=False,
 
     monkeypatch.setattr(conversation, "respond", fake_respond)
     monkeypatch.setattr(stt, "transcribe", fake_transcribe)
+    monkeypatch.setattr(
+        grader, "grade",
+        grade_stub(slots_filled=list(slots_filled), learner_closed=learner_closed),
+    )
 
     events = {}
     async for event in orchestrator.stream_audio_turn(
         b"FAKEWAV",
         transcript=Utterance(zh=transcript, pinyin="nǐ hǎo"),
-        kb_block=kb.load_kb_block("greetings"),
+        kb_block=kb.load_converser_block("greetings"),
         scenario=kb.load_scenario("greetings"),
         state=state or SessionState(),
         dialogue=dialogue or [],
@@ -911,17 +918,54 @@ async def _stream(monkeypatch, *, slots_filled=(), learner_closed=False,
     return events
 
 
-async def test_state_rides_the_reply_event(monkeypatch):
-    """Not `done`: `done` waits for the PA branch as well.
+async def test_state_rides_its_own_event(monkeypatch):
+    """Not `reply`, and not `done` (V2).
 
-    State is derived from the worker's annotation, so it is ready when the reply
-    is. Holding it to `done` would leave the mic live for up to `PA_TIMEOUT_S`
-    after a session had already ended, and would split the state commit from the
-    dialogue commit the client makes on this same event.
+    Not `reply`, because state comes from the *grader* now — a third branch that
+    resolves independently, and holding the reply for it would spend the latency
+    the fan-out exists to protect. Not `done`, because `done` waits for the PA
+    branch as well, which would leave the mic live for up to `PA_TIMEOUT_S`
+    after a session had already ended.
     """
     events = await _stream(monkeypatch, slots_filled=["self_name"])
-    assert events["reply"].state.filled_at == {"self_name": 1}
+    assert events["state"].state.filled_at == {"self_name": 1}
+    assert not hasattr(events["reply"], "state")
     assert not hasattr(events["done"], "state")
+
+
+async def test_the_grade_rides_the_state_event_not_the_annotation(monkeypatch):
+    """`coherence` is the grader's judgment, so it travels with the grade."""
+    events = await _stream(monkeypatch)
+    assert events["state"].coherence == "on_track"
+    assert not hasattr(events["reply"].annotation, "coherence")
+
+
+async def test_a_failed_grade_leaves_the_session_exactly_where_it_was(monkeypatch):
+    """The reply still stands. No slot is credited and no close is counted, so a
+    learner saying goodbye through a grader outage falls back on the turn cap —
+    never on a close nobody judged."""
+    submitted = SessionState(filled_at={"self_name": 1})
+
+    async def fake_respond(**kwargs):
+        return (Utterance(zh="好。", pinyin="hǎo."), TurnAnnotation(), None, _FakeUsage())
+
+    monkeypatch.setattr(conversation, "respond", fake_respond)
+    monkeypatch.setattr(grader, "grade", failing_grade_stub())
+
+    events = {}
+    async for event in orchestrator.stream_audio_turn(
+        b"FAKEWAV",
+        transcript=Utterance(zh="再见", pinyin="zàijiàn"),
+        kb_block=kb.load_converser_block("greetings"),
+        scenario=kb.load_scenario("greetings"),
+        state=submitted,
+    ):
+        events[event.stage] = event
+
+    assert events["reply"].reply.zh == "好。"
+    assert events["state"].state == submitted
+    assert events["state"].coherence is None
+    assert "error" not in events
 
 
 async def test_a_completed_session_says_so_on_the_reply(monkeypatch):
@@ -930,8 +974,8 @@ async def test_a_completed_session_says_so_on_the_reply(monkeypatch):
         slots_filled=["wellbeing"],
         state=SessionState(filled_at={"self_name": 1, "partner_name": 2}),
     )
-    assert events["reply"].state.status == "complete"
-    assert events["reply"].state.goal_met is True
+    assert events["state"].state.status == "complete"
+    assert events["state"].state.goal_met is True
 
 
 async def test_a_silent_turn_echoes_the_state_untouched(monkeypatch):
@@ -943,15 +987,17 @@ async def test_a_silent_turn_echoes_the_state_untouched(monkeypatch):
     """
     submitted = SessionState(filled_at={"self_name": 1}, consecutive_closes=1)
     events = await _stream(monkeypatch, transcript="", state=submitted)
-    assert events["reply"].state == submitted
+    assert events["state"].state == submitted
 
 
-async def test_the_hint_reaches_the_worker_on_the_spoken_path(monkeypatch):
+async def test_no_hint_reaches_the_worker_on_an_ordinary_turn(monkeypatch):
+    """V2: the stage direction used to name the outstanding slot on every turn.
+    A blind partner cannot be told that, so before the cap there is no hint."""
     captured = {}
     await _stream(
         monkeypatch, state=SessionState(filled_at={"self_name": 1}), capture=captured
     )
-    assert "partner_name" in captured["hint"]
+    assert captured["hint"] is None
 
 
 async def test_a_failed_turn_carries_no_state(monkeypatch):
@@ -968,7 +1014,7 @@ async def test_a_failed_turn_carries_no_state(monkeypatch):
     async for event in orchestrator.stream_audio_turn(
         b"FAKEWAV",
         transcript=Utterance(zh="你好", pinyin="nǐ hǎo"),
-        kb_block=kb.load_kb_block("greetings"),
+        kb_block=kb.load_converser_block("greetings"),
         scenario=kb.load_scenario("greetings"),
         state=SessionState(filled_at={"self_name": 1}),
     ):
@@ -986,12 +1032,12 @@ def test_state_round_trips_through_the_route(monkeypatch):
         return (
             Utterance(zh="好。", pinyin="hǎo."),
             TurnAnnotation(),
-            GraderResult(coherence="on_track", slots_filled=["partner_name"]),
             None,
             _FakeUsage(),
         )
 
     monkeypatch.setattr(conversation, "respond", fake_respond)
+    monkeypatch.setattr(grader, "grade", grade_stub(slots_filled=["partner_name"]))
 
     resp = client.post(
         "/api/turn",
@@ -1004,8 +1050,10 @@ def test_state_round_trips_through_the_route(monkeypatch):
         },
     )
 
-    reply = by_stage(resp)["reply"]
-    assert reply["state"]["filled_at"] == {"self_name": 1, "partner_name": 2}
+    assert by_stage(resp)["state"]["state"]["filled_at"] == {
+        "self_name": 1,
+        "partner_name": 2,
+    }
 
 
 def test_a_turn_on_a_completed_session_is_refused():
@@ -1039,4 +1087,4 @@ def test_an_absent_state_field_starts_a_fresh_session(monkeypatch):
     """A turn sent before any state exists still works — same as `sketch`."""
     resp = client.post("/api/turn", files=_upload(), data={"topic_id": "greetings"})
     assert resp.status_code == 200
-    assert by_stage(resp)["reply"]["state"]["filled_at"] == {}
+    assert by_stage(resp)["state"]["state"]["filled_at"] == {}

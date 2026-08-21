@@ -325,7 +325,8 @@ def test_turn_timings_defaults_every_stage_to_none():
     number every turn necessarily has."""
     timings = TurnTimings(total_ms=1200.0)
     assert timings.model_dump() == {
-        "stt_ms": None, "pa_ms": None, "claude_ms": None, "total_ms": 1200.0
+        "stt_ms": None, "pa_ms": None, "claude_ms": None, "grader_ms": None,
+        "total_ms": 1200.0
     }
 
 

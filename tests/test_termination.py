@@ -208,36 +208,39 @@ def test_no_scenario_leaves_the_state_untouched():
 
 
 def test_no_scenario_has_no_hint():
-    assert termination.pressure_hint(SessionState(), scenario=None, turn=1) is None
+    assert termination.closing_hint(scenario=None, turn=1) is None
 
 
-# --- Pressure ------------------------------------------------------------
+# --- V2: the hint stopped naming the rubric ------------------------------
+#
+# `pressure_hint` steered the partner toward whichever slot was outstanding.
+# A goal-blind partner cannot be told that and must not be — naming the missing
+# fact is the rubric, in a stage direction instead of a prompt. The scene
+# creates the gap now (`docs/SCENARIOS.md`, "The scene has to create the gap").
 
 
-def test_hint_names_a_missing_slot_and_withholds():
-    hint = termination.pressure_hint(
-        SessionState(filled_at={"item": 1, "quantity": 2}), scenario=FRUIT, turn=3
-    )
-    assert "price" in hint
-    assert "Find out what they cost" in hint
+def test_there_is_no_hint_before_the_cap():
+    """Every ordinary turn now sends none at all, so there is nothing to leak."""
+    for turn in range(1, FRUIT.max_turns):
+        assert termination.closing_hint(scenario=FRUIT, turn=turn) is None
 
 
-def test_hint_never_steers_toward_goodbye_while_slots_are_outstanding():
-    hint = termination.pressure_hint(
-        SessionState(filled_at={"item": 1}), scenario=FRUIT, turn=2
-    )
-    assert "goodbye" not in hint.lower()
-    assert "再见" not in hint
+def test_the_cap_hint_names_no_slot():
+    hint = termination.closing_hint(scenario=FRUIT, turn=FRUIT.max_turns)
+    for slot in FRUIT.slots:
+        assert slot.id not in hint
+        assert slot.description not in hint
 
 
 def test_cap_hint_instructs_answering_as_well_as_closing():
-    """The learner who finally asks on the cap turn must still get an answer.
-
-    A `request` slot fills only when the partner answers, so a hint that only
-    said "close" would fail the learner who succeeded last.
-    """
-    hint = termination.pressure_hint(
-        SessionState(filled_at={"item": 1}), scenario=FRUIT, turn=6
-    )
+    """The learner who finally speaks on the cap turn must still get an answer —
+    a hint that only said "close" would cut them off mid-exchange."""
+    hint = termination.closing_hint(scenario=FRUIT, turn=FRUIT.max_turns)
     assert "answer" in hint.lower()
     assert "close" in hint.lower()
+
+
+def test_the_cap_hint_holds_past_the_cap():
+    """A session can run a turn beyond its cap when state says so; the close
+    must not vanish because the index went one further."""
+    assert termination.closing_hint(scenario=FRUIT, turn=FRUIT.max_turns + 1)

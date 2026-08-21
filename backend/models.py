@@ -67,6 +67,7 @@ class TurnTimings(BaseModel):
     stt_ms: Optional[float] = None
     pa_ms: Optional[float] = None
     claude_ms: Optional[float] = None
+    grader_ms: Optional[float] = None
     total_ms: Optional[float] = None
 
     @classmethod
@@ -181,28 +182,51 @@ class ScoreEvent(TurnEvent):
 
 
 class ReplyEvent(TurnEvent):
-    """The partner's reply and the worker's annotation.
+    """The partner's reply and the converser's annotation.
 
     Not necessarily the last event, which is why it is `reply` and not `final`:
-    it races `score`, and whenever PA is the slower branch the scores land
-    *after* it. `done` is the terminal event.
+    it races `score` and `state`, and whenever either is slower they land after
+    it. `done` is the terminal event.
 
     Carries no scores — those went out on `score`. Deriving anything here from
     the PA result would make the reply wait on scoring.
 
-    It *does* carry `state`, because session state is derived from the worker's
-    annotation and so is ready at exactly this moment. Putting it on `done`
-    would make termination wait for the PA branch — up to `PA_TIMEOUT_S` of a
-    live mic on a session that has already ended — and would split the state
-    commit from the dialogue commit the client performs right here. A client
-    that loses the connection between the two events must not end up with the
-    turn recorded and its consequences lost.
+    **It no longer carries `state`** (V2, `docs/VALIDITY.md`). State is derived
+    from the *grader's* judgment, which is now a third branch of the fan-out and
+    resolves independently of the reply. Holding the reply until the grade lands
+    would spend the latency the fan-out exists to protect.
+
+    The cost is real and is accepted rather than hidden: reply and state used to
+    commit together, so a client that lost the connection between them could not
+    end up with the turn recorded and its consequences lost. Now it can. It is
+    survivable because the client resubmits state with every turn and the next
+    grade reads the same history — where a held reply would be paid on every
+    turn of every session.
     """
 
     stage: Literal["reply"] = "reply"
     reply: Utterance
     annotation: Optional["TurnAnnotation"] = None
-    state: Optional["SessionState"] = None
+
+
+class StateEvent(TurnEvent):
+    """How far the learner has got, as soon as the grader resolves (V2).
+
+    Its own event for the same reason `score` is one: it comes from a branch
+    that races the reply, and whichever lands first should go out first. The
+    grader is a short call on a small prefix, so it usually lands *before* the
+    reply — a session that has ended can say so without waiting for the partner
+    to finish a line nobody will read.
+
+    `coherence` rides here rather than on the reply's annotation because it is
+    the grader's judgment, not the converser's. The converser was asked for it
+    for the whole of M2 and could never answer honestly: it knew what was being
+    scored, so it took anything scoreable as relevant.
+    """
+
+    stage: Literal["state"] = "state"
+    state: "SessionState"
+    coherence: Optional[Literal["on_track", "drifting", "off_track"]] = None
 
 
 class DoneEvent(TurnEvent):
