@@ -5,7 +5,7 @@ documents specify the turn loop and how a session is graded. This one is about
 the first session run by the learner it was built for, and what has to be true
 before they open another one.
 
-Status: **not built.**
+Status: **A1 built** (#66). A2 and A3 not built.
 
 ---
 
@@ -116,25 +116,59 @@ A missed slot is a bad grade. A fabricated rule is bad teaching.
 
 ## A1 — let them leave
 
-- [ ] **"End this"** — a new `end_reason` into the existing verdict path.
-- [ ] **"Try this again"** — restart on the same `topic_id`.
-- [ ] **"Show text" / "Hide text"** in words. This is copy; it waits for nothing.
+- [x] **"I'm stuck"** — a new `end_reason` into the existing verdict path.
+- [x] **"Try this again"** — restart on the same `topic_id`.
+- [x] **"Show text" / "Hide text"** in words. This is copy; it waits for nothing.
 
 Note 6 is working as designed — restore-on-load protects a phone that locks
-mid-conversation — and **`↺ New` already re-rolls**. What is missing is a way to
-*decline* the restore, so this is labelling: `End this` / `Try this again` /
-`Different one`.
+mid-conversation — and the re-roll already exists. What is missing is a way to
+*decline* the restore, so this is labelling.
+
+The screen map, because where a control lives is half of whether it helps. A
+bail-out that appears only on the verdict card is useless: the card exists only
+once the session is over.
+
+| Control | Where | Live when |
+|---|---|---|
+| **I'm stuck** | dock, the one solid button | active, ≥1 learner turn, no turn in flight |
+| **👁 Show all text** | dock | always |
+| **⋯** | dock | always |
+| **⌨️ Type instead** / **🎙️ Speak instead** | in ⋯ | always |
+| **🔀 Try something else** | in ⋯ | always |
+| **Try this again** | verdict card | always |
+| **Try something else** | verdict card | always |
+| **Retry** | verdict card | only when the verdict fetch failed |
+
+What the learner needs *while drowning* stays on the surface; what manages the
+session goes one tap down. The dock keeps the two moves available to someone who
+cannot cope with the line in front of them, and the escape route is still
+complete without the buried copy — "I'm stuck" lands on the card, and the card
+offers both restarts.
+
+The ellipsis is the menu; it does not need the word "More". The two items keep
+the words — a glyph alone is note 4's coin flip, on the control note 4 did not
+name — and put the destination emoji next to them, so neither signal is on
+its own.
+
+Colour differentiates by **fill, not hue**. This UI already spends green / amber
+/ red on tone scores, and red on the bail-out would tell the learner that asking
+for help is a failure — the exact reading A1 exists to prevent.
 
 Two contracts, because neither is a bullet's worth of work:
 
-**The new `end_reason` needs a value and a sentence.** It is
-`Literal["goal", "cap", "closed"]` in two places (`models.py:409`, `:543`), and
-`render_verdict_prompt` has copy for `cap` and `closed` only. A reason with no
-copy produces a card that does not say why the session ended — on the one exit
-built for the learner who most needs to know.
+**The new `end_reason` needed a value and a sentence.** `"stuck"` is now in
+both `Literal`s (`models.py`, on `SessionState` and `VerdictCard`) and
+`render_verdict_prompt` has copy for it beside `cap` and `closed`. A reason with
+no copy would have produced a card that does not say why the session ended — on
+the one exit built for the learner who most needs to know. That copy is written
+*against* the `closed` block next to it: `closed` is deliberately gently
+corrective, and a model reading `stuck` the same way would tell someone who
+asked for help that they should have pushed on.
 
-**"Try this again" must clear the terminal state.** Both buttons write
-`status: "complete"`, and `main.py` 409s any turn against a complete session. The
+**"Try this again" must clear the terminal state.** Both endings write
+`status: "complete"` — the turn path via `termination.advance`, and now "I'm
+stuck" from the client — and `main.py` 409s any turn against a complete
+session. The
 load-time guard only drops state when the topic *changes*, so a same-topic
 restart sails past it. Clear `filled_at`, `status`, `consecutive_closes`, and
 `end_reason` — the existing `reset` handler already does exactly this and its

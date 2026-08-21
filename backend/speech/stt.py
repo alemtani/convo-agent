@@ -5,6 +5,9 @@ recognized transcript. This is the first pass of the two-pass speech flow: the
 transcript it returns becomes the reference text for `pronunciation.assess`.
 """
 import asyncio
+import wave
+import io
+import contextlib
 
 from backend import config
 from backend.speech._azure import (
@@ -17,6 +20,31 @@ from backend.speech._azure import (
 
 class SttError(RuntimeError):
     """Azure recognition failed (canceled or an unexpected result reason)."""
+
+
+def deadline_for(audio_wav: bytes) -> float:
+    """How long this particular recording may take to recognize.
+
+    Recognition time tracks the length of the audio, and push-to-talk makes the
+    hesitant learner's turn the *longest* one: they hold the button through
+    their own pauses, and each pause over `SEGMENTATION_SILENCE_MS` becomes its
+    own segment to decode. A flat budget therefore failed backwards — it cut off
+    the learner who needed the time and was never near the limit for the ones
+    who did not.
+
+    Unreadable bytes fall back to the floor rather than raising. Whether the
+    body is a WAV is Azure's call (`SttError` on `SPXERR_INVALID_HEADER`); this
+    must not become a second, earlier place that rejects them.
+    """
+    try:
+        with contextlib.closing(wave.open(io.BytesIO(audio_wav), "rb")) as w:
+            seconds = w.getnframes() / float(w.getframerate() or 1)
+    except (wave.Error, EOFError, ZeroDivisionError):
+        return config.STT_TIMEOUT_S
+    return min(
+        config.STT_TIMEOUT_S + seconds * config.STT_TIMEOUT_PER_AUDIO_S,
+        config.STT_TIMEOUT_MAX_S,
+    )
 
 
 def _join(segments, language: str) -> str:
@@ -39,7 +67,7 @@ def _recognize_sync(audio_wav: bytes, language: str) -> str:
     """
     with recognizer_for(audio_wav, language) as recognizer:
         segments, canceled = recognize_continuous(
-            recognizer, config.STT_TIMEOUT_S
+            recognizer, deadline_for(audio_wav)
         )
 
     if canceled is not None:
@@ -71,18 +99,17 @@ async def transcribe(audio_wav: bytes, language: str = "zh-CN") -> str:
     the connection, which is the part that was unbounded; it is not a way to
     reclaim the thread.
     """
+    deadline = deadline_for(audio_wav)
     try:
         return await asyncio.wait_for(
             asyncio.to_thread(_recognize_sync, audio_wav, language),
-            timeout=config.STT_TIMEOUT_S,
+            timeout=deadline,
         )
     except (asyncio.TimeoutError, RecognitionTimeout) as exc:
         # Two deadlines, one message: `wait_for` frees the request, and the
         # thread-side bound in `recognize_continuous` frees the thread. Whichever
         # fires first, the learner's turn failed the same way.
-        raise SttError(
-            f"Azure STT timed out after {config.STT_TIMEOUT_S:g}s"
-        ) from exc
+        raise SttError(f"Azure STT timed out after {deadline:g}s") from exc
     except RuntimeError as exc:
         # The SDK raises out of *recognizer construction* for a body that isn't
         # a WAV (`SPXERR_INVALID_HEADER`) — before any result exists, so the

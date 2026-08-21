@@ -39,10 +39,12 @@ Shipped, in the order a learner hits it:
 
 - Passcode gate, Fly.io deploy, CI deploy on `main` (M1).
 - Spoken loop: `POST /api/turn` streams NDJSON
-  (`transcript` → `score` ∥ `reply` → `done`).
+  (`transcript` → `score` ∥ `reply` → `done`). A hold is cut at 30s and
+  sent; an STT timeout asks for a shorter turn instead of dumping a 502.
 - Text loop: `POST /api/turn/text` (pinyin or 汉字).
 - Session start: `POST /api/session` draws a topic, returns opening line +
-  flavour sketch + English scenario card.
+  flavour sketch + English scenario card. An optional `topic_id` in the body
+  replays a scenario the server issued earlier ("Try this again").
 - Slot tracker + `termination.py` + end-of-session `POST /api/verdict`, now on
   `claude-opus-5` with thinking on — V2's model split (docs/VALIDITY.md),
   tested here first since this worker needed no architecture change to try it.
@@ -51,24 +53,30 @@ Shipped, in the order a learner hits it:
   `numbers-money`, `food-ordering`. Catalog: `GET /api/topics`.
 - Mobile-first PWA (`frontend/index.html`). Transcript and session state
   live in `localStorage`.
+- A1 of the accessibility track (#66): "I'm stuck" ends a session the learner
+  cannot finish (`end_reason: "stuck"`, written by the client), the verdict card
+  offers "Try this again" / "Try something else", and the controls say what they
+  do in words — session management sits under a ⋯ menu.
 
 Limits of the running app (not a backlog, just what is missing today):
 
 - No `backend/db.py` / `backend/profile.py`. No covered-set, no proficiency
   store, no weighted draw. Session start is uniform random.
   `schema.sql` exists; nothing reads it. No Fly volume.
-- No in-session coaching. The only feedback card is the verdict.
-- No per-turn redo. "New" starts a fresh session.
+- No in-session coaching. The only feedback card is the verdict — reachable
+  early with "I'm stuck", but still only at the end of a session.
+- No per-turn redo. "Try something else" starts a fresh session.
 - The topic catalog is read-only. The learner does not pick.
-- **A stuck learner has no next move.** No translation, no way to ask for
-  the words, no way to end early. Guess, or say goodbye twice.
+- **A stuck learner can leave, but not get unstuck in place.** "I'm stuck"
+  ends the session into the verdict (A1, #66). What is still missing is help
+  *during* a turn: no translation, no way to ask for the words. A3 (#68) is
+  gated on whether a session after A2 still drowns for vocabulary.
 - **The partner holds the rubric.** One call both converses and annotates
   slots, so a non-sequitur that lands on a slot gets credited and played
   along with. `coherence` is computed every turn and read by nothing.
 
-The last product work on `main` is polish after M2: #58 (keep one machine
-warm), #59 (session-start retry), #60 (score the transcript in place),
-#62 (keep speech after a pause). A new session starts from that tip.
+The last product work on `main` is V0 (#72), the verdict worker on Opus 5
+(#74), and A1 (#66). A new session starts from that tip.
 
 ---
 
@@ -239,7 +247,9 @@ Coefficients live in `kb/zh/pacing.json`.
 ## Conventions
 
 - **Branch + PR, never commit to `main`.** Conventional commits
-  (`fix:`, `feat:`, `docs:`). Explain *why* in the PR body.
+  (`fix:`, `feat:`, `docs:`). Explain *why* in the PR body. When the
+  work on an open PR is done, commit and push. Do not wait to be asked.
+  Uncommitted work is not on the PR.
 - **Failing test first** for any deterministic logic. Then make it pass.
 - Verification is tiered. Pure logic: real TDD. Prompt cache: assert the
   assembled request is byte-identical across turns, breakpoint after the
@@ -252,6 +262,11 @@ Coefficients live in `kb/zh/pacing.json`.
 - A change that changes what the learner experiences needs a real phone
   check through `./scripts/tunnel.sh`. That includes prompt and KB
   changes, not only `frontend/`.
+- A case found by hand is a missing test. Pin it in `tests/smoke/` (what
+  the learner sees) or the matching pytest module (what the server does)
+  before you call the case done. The phone check is for feel; the test is
+  so nobody has to re-run the case. Skip only what a browser cannot
+  observe (silent-switch autoplay, "does this read as failure").
 - **Prompt cache:** system prompt + topic KB + sketch stay byte-frozen.
   No timestamps, no `user_id`, no per-turn flags in the prefix.
 - **Authoring tools import `backend`, never the reverse.**

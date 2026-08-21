@@ -16,6 +16,7 @@ from backend.models import (
     PronunciationScore,
     ReplyEvent,
     ScoreEvent,
+    SessionState,
     SyllableScore,
     TextTurnRequest,
     ToneError,
@@ -26,6 +27,7 @@ from backend.models import (
     TurnTimings,
     TurnUsage,
     Utterance,
+    VerdictCard,
     WorkerAnnotation,
 )
 
@@ -342,3 +344,24 @@ def test_turn_usage_tolerates_a_usage_block_missing_cache_fields():
 
 def test_turn_usage_from_nothing_is_none():
     assert TurnUsage.from_sdk(None) is None
+
+
+# --- A1: the learner's own exit (#66) ---------------------------------------
+
+
+def test_stuck_is_a_session_end_reason():
+    """The bail-out ends a session, so it needs a value on both models.
+
+    `SessionState` carries it off the client; `VerdictCard` carries it back with
+    the card. A reason accepted on one and rejected on the other would 422 the
+    verdict of the one exit built for a learner who is already stuck.
+    """
+    assert SessionState(end_reason="stuck").end_reason == "stuck"
+    assert VerdictCard(
+        goal_met=False, end_reason="stuck", explanation="…"
+    ).end_reason == "stuck"
+
+
+def test_an_invented_end_reason_is_still_rejected():
+    with pytest.raises(ValidationError):
+        SessionState(end_reason="bored")

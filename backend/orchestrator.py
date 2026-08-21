@@ -143,17 +143,43 @@ def _pick_scenario_topic() -> kb.Topic:
     return random.choice(candidates)
 
 
-async def start_session(client: Optional[AsyncAnthropic] = None) -> SessionStartResponse:
+def _load_scenario_topic(topic_id: str) -> kb.Topic:
+    """Load a caller-echoed topic, refusing one that cannot host a session.
+
+    Both failures are the same `kb.KbError` the draw raises, and both reach the
+    learner as the route's existing 404: an id we never issued, and an id whose
+    topic has since lost its scenario (the KB is authored, so that can happen
+    between one session and the next).
+    """
+    topic = kb.load_topic(topic_id)
+    if topic.scenario is None:
+        raise kb.KbError(f"topic has no authored scenario: {topic_id}")
+    return topic
+
+
+async def start_session(
+    *, topic_id: Optional[str] = None, client: Optional[AsyncAnthropic] = None
+) -> SessionStartResponse:
     """Coordinate one session start: pick a topic, generate flavour, pin the
     scenario card.
 
-    The topic is chosen here, never supplied by the caller — the frontend has
-    no business knowing which topics exist (that's the KB's business), so
-    `POST /api/session` takes no request body. `topic_id` rides back on the
-    response instead, and the client echoes it on every turn after
-    (`TextTurnRequest.topic_id`, the `topic_id` form field on `POST /api/turn`)
-    the same way it echoes `sketch` — an opaque value handed to it, not a
-    lookup it performs on its own.
+    The topic is normally chosen here — the frontend has no business knowing
+    which topics exist (that's the KB's business), so `POST /api/session` needs
+    no request body. `topic_id` rides back on the response instead, and the
+    client echoes it on every turn after (`TextTurnRequest.topic_id`, the
+    `topic_id` form field on `POST /api/turn`) the same way it echoes `sketch`
+    — an opaque value handed to it, not a lookup it performs on its own.
+
+    A caller *may* pass a topic id to replay the same scenario (A1's "Try this
+    again", `docs/ACCESSIBILITY.md`); the draw is simply skipped. In practice
+    that is an id this endpoint issued, but nothing here enforces it — the
+    server keeps no record of what it handed out, and `GET /api/topics` lists
+    the catalog anyway. What the client still does not do is *choose*: it hands
+    back a string it was given. That distinction is the design, not a check.
+
+    Keyword-only on purpose. Every caller and every test double passes
+    `client=` by name, and a positional `topic_id` in front of it would let a
+    mocked client bind silently to the topic slot.
 
     One `sketch` worker call per session (M2-B) — the opening line and the
     persona/color flavour that used to be the hardcoded `prompts.OPENING_LINE`
@@ -166,7 +192,7 @@ async def start_session(client: Optional[AsyncAnthropic] = None) -> SessionStart
     Raises `kb.KbError` if no topic has an authored scenario, `sketch.
     SketchError` on a refusal / unparseable reply.
     """
-    topic = _pick_scenario_topic()
+    topic = _load_scenario_topic(topic_id) if topic_id else _pick_scenario_topic()
 
     result = await sketch_worker.generate(topic.id, topic.scenario, client=client)
     return SessionStartResponse(

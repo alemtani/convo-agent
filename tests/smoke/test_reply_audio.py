@@ -169,17 +169,31 @@ def test_the_global_toggle_overrules_a_revealed_bubble(page):
     expect(bubble.locator(".zh")).to_have_count(0)
 
 
-def test_the_global_button_names_its_scope(page):
-    """It sits beside a bubble carrying the same two emoji.
+def test_the_global_button_says_what_it_does_and_to_what(page):
+    """Both halves of the label are load-bearing (note 4).
 
-    Bare, a global 👁 next to a bubble whose text is already visible reads as
-    the two controls disagreeing — which is exactly how it was reported.
+    An eye alone does not say whether the next tap shows or hides, and the
+    learner asked for words. "All" is the other half: bare, a global control
+    next to a bubble whose text is already visible reads as the two disagreeing
+    — which is exactly how it was reported.
     """
     load(page)
 
-    expect(page.locator("#show-text")).to_have_text("👁 All")
+    expect(page.locator("#show-text")).to_have_text("👁 Show all text")
     page.click("#show-text")
-    expect(page.locator("#show-text")).to_have_text("🙈 All")
+    expect(page.locator("#show-text")).to_have_text("🙈 Hide all text")
+
+
+def test_the_per_bubble_reveal_says_what_it_does(page):
+    """Same note 4, on the control inside the bubble. The global button is
+    "all"; this one is the line. A phone check that only looked at the dock
+    would miss a bubble still saying 👁 alone."""
+    load(page)
+    bubble = _send_text(page)
+
+    expect(bubble.locator("button.reveal")).to_have_text("👁 Show text")
+    bubble.locator("button.reveal").click()
+    expect(bubble.locator("button.reveal")).to_have_text("🙈 Hide text")
 
 
 def test_show_text_preference_survives_a_reload(page):
@@ -344,6 +358,8 @@ def test_a_new_conversation_drops_the_cached_audio(page):
     _send_text(page)
     page.wait_for_function("window.__audio._cached() === 1")
 
+    # "Try something else" moved into the ⋯ menu (A1, #66).
+    page.click("#more > summary")
     page.click("#reset")
 
     assert page.evaluate("window.__audio._cached()") == 0

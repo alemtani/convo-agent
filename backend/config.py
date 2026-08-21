@@ -117,7 +117,21 @@ TTS_CACHE_MAX_ENTRIES = int(os.getenv("TTS_CACHE_MAX_ENTRIES", "64"))
 # timings line and the session state machine.
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 
+# The STT deadline is not one number, because recognition time tracks the
+# length of the recording. Push-to-talk holds the button through the learner's
+# own pauses, so a hesitant turn is a *longer* WAV with more segments in it —
+# and a flat budget timed out exactly the learner who needed the time, while
+# comfortably covering the fluent turns it did not need to. So: a floor for the
+# short ones, plus a per-second allowance, capped so a wedged session still
+# cannot hold a request open indefinitely.
+#
+# The client cuts a hold at STT_TIMEOUT_MAX_S and sends what was said, so a
+# long press cannot grow a blob this budget cannot finish. The cap then only
+# fires for a wedged Azure call, which the turn already reports as a failure
+# they can retry.
 STT_TIMEOUT_S = float(os.getenv("STT_TIMEOUT_S", "5"))
+STT_TIMEOUT_PER_AUDIO_S = float(os.getenv("STT_TIMEOUT_PER_AUDIO_S", "1.0"))
+STT_TIMEOUT_MAX_S = float(os.getenv("STT_TIMEOUT_MAX_S", "30"))
 PA_TIMEOUT_S = float(os.getenv("PA_TIMEOUT_S", "5"))
 CLAUDE_TIMEOUT_S = float(os.getenv("CLAUDE_TIMEOUT_S", "15"))
 

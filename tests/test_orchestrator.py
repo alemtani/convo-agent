@@ -10,6 +10,7 @@ collected form to assert against any more — `POST /api/turn` streams, so the
 staged events are the contract and there is no second code path that could
 disagree with them.
 """
+import dataclasses
 import pytest
 
 from backend import config, kb, orchestrator
@@ -519,3 +520,42 @@ async def test_start_session_returns_the_topic_display_name(monkeypatch):
     resp = await orchestrator.start_session()
     assert resp.display_name == kb.load_topic(resp.topic_id).display_name
     assert resp.display_name
+
+
+# --- A1: a caller-supplied topic (#66) --------------------------------------
+
+
+async def test_start_session_uses_a_given_topic_instead_of_drawing_one(monkeypatch):
+    """"Try this again" must land on the same scenario, not a random one."""
+    captured = {}
+
+    async def fake_generate(topic_id, scenario, client=None):
+        captured["topic_id"] = topic_id
+        return SketchResult(
+            opening_line=Utterance(zh="你好！", pinyin="nǐ hǎo!"),
+            sketch="The partner is warm and unhurried.",
+        )
+
+    monkeypatch.setattr(sketch_worker, "generate", fake_generate)
+
+    def explode():
+        raise AssertionError("a supplied topic must not go through the draw")
+
+    monkeypatch.setattr(orchestrator, "_pick_scenario_topic", explode)
+
+    resp = await orchestrator.start_session(topic_id="greetings")
+
+    assert resp.topic_id == "greetings"
+    assert captured["topic_id"] == "greetings"
+
+
+async def test_start_session_rejects_a_topic_with_no_scenario(monkeypatch):
+    """Straight into the route's existing 404. A topic with no authored
+    scenario has nothing to be a session about."""
+    scenarioless = dataclasses.replace(kb.load_topic("greetings"), scenario=None)
+    monkeypatch.setattr(
+        kb, "load_topic", lambda topic_id, root=kb.KB_ROOT: scenarioless
+    )
+
+    with pytest.raises(kb.KbError):
+        await orchestrator.start_session(topic_id="greetings")

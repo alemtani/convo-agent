@@ -201,6 +201,19 @@ def render_verdict_prompt(
         )
     elif end_reason == "cap":
         reason_block = "\nThe session ran out of turns."
+    elif end_reason == "stuck":
+        # Written against the block above it. `closed` is deliberately gently
+        # corrective — the learner left early and the card says so — and a
+        # model that reads this reason the same way would tell someone who
+        # asked for help that they should have pushed on. That is the reading
+        # A1 exists to prevent (`docs/ACCESSIBILITY.md`), so both halves are
+        # said out loud rather than left to inference.
+        reason_block = (
+            "\nThe learner stopped and asked for feedback rather than guessing. "
+            "That is a reasonable thing to have done. Do not treat it as giving "
+            "up, and do not tell them to keep trying next time — give them the "
+            "words they were missing."
+        )
     if notes:
         reason_block += "\n\nPer-turn notes from the session:\n" + "\n".join(
             f"- {note}" for note in notes
