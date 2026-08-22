@@ -444,6 +444,71 @@ def load_kb_block(topic_id: str, root: str = KB_ROOT) -> str:
     return "\n\n".join(parts)
 
 
+# `dialogues.md` ends with notes addressed to the sketch generator. They are
+# written in rubric terms — `self-intro` names its `request` slots outright — so
+# they must not reach the partner, however useful they are to the sketch worker.
+_AUTHOR_NOTES_HEADING = "## Notes for the sketch generator"
+
+
+def _without_author_notes(block: str) -> str:
+    """Drop the authoring notes from a KB block, keeping the rest byte-for-byte."""
+    head, sep, _tail = block.partition(_AUTHOR_NOTES_HEADING)
+    return head.rstrip() + "\n" if sep else block
+
+
+@functools.lru_cache(maxsize=None)
+def load_converser_block(topic_id: str, root: str = KB_ROOT) -> str:
+    """The conversation worker's cached payload: vocab + grammar + dialogues,
+    plus the **scene** — and never the rubric (V2, `docs/VALIDITY.md`).
+
+    This is what `load_kb_block` used to be for the converser, minus the part
+    that made the partner a proctor. A partner handed the slot list will take a
+    question about dishes as an answer to a question about drinks, because it can
+    see the checkbox behind it. So it is no longer told: no goal, no slot ids, no
+    kinds, no descriptions.
+
+    What replaces the instruction is `render_scene_block` — the authored
+    `situation` and `withholding` prose. A server with no menu is a fact about a
+    restaurant; "do not reveal `recommendation` until asked" is a fact about a
+    test. The partner behaves the same way, and only one of them tells it a
+    checkbox exists.
+
+    The authoring notes at the foot of `dialogues.md` come out here too. They
+    are addressed to the sketch generator and written in rubric terms, so a
+    scenario block that is blind while they ride along satisfies the invariant
+    on paper and breaks it in the prompt.
+
+    Memoized and byte-identical for the same reason `load_kb_block` is: this is
+    the frozen prefix behind the `cache_control` breakpoint. Blinding the partner
+    must not unfreeze it.
+    """
+    parts = [_without_author_notes(load_vocab_block(topic_id, root))]
+    topic = parse_topic_frontmatter(
+        _read(os.path.join(_topic_dir(topic_id, root), "topic.md"))
+    )
+    if topic.scenario is not None:
+        parts.append(render_scene_block(topic.scenario))
+    return "\n\n".join(parts)
+
+
+def render_scene_block(scenario: Scenario) -> str:
+    """Render the scene the partner plays — the situation, and what it withholds.
+
+    A pure function of authored bytes, so it stays byte-identical across turns
+    and across process restarts — the cached-prefix rule again.
+
+    `goal` and `slots` are deliberately absent; that is the whole point of the
+    split. `withholding` is omitted entirely when unset rather than rendered as
+    an empty heading: the field is required only once a scenario has a `request`
+    slot (`kb/zh/_tools/validate.py`), so a scene may legitimately have nothing
+    to hold back, and an empty label invites the model to invent a reason for it.
+    """
+    lines = ["# SCENE", "", scenario.situation]
+    if scenario.withholding:
+        lines += ["", scenario.withholding]
+    return "\n".join(lines) + "\n"
+
+
 def render_scenario_block(scenario: Scenario) -> str:
     """Render the authored scenario for the cached prefix.
 

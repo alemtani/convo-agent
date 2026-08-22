@@ -24,12 +24,16 @@ from typing import Callable, Dict, Iterable, List, Optional, Sequence
 
 # Stage names, in critical-path order. The harness prints stages in this order
 # and skips any a given run didn't record (PA is absent when it degrades off).
-STAGE_ORDER = ("stt", "pa", "claude", "total")
+# `grader` sits beside `claude` rather than after it: they are concurrent
+# branches of the same turn on the spoken path, and the critical path is
+# `stt + max(pa, claude, grader)`. Printing them side by side is what says which
+# branch is the slow one — the question the whole fan-out is built around.
+STAGE_ORDER = ("stt", "pa", "claude", "grader", "total")
 
 # Staged-event names, in the order a turn *usually* emits them. Only `transcript`
 # and the terminal event have fixed positions — `score` and `reply` race — so
 # this is a reading order for the report, never an assertion about the wire.
-EVENT_ORDER = ("transcript", "score", "reply", "done", "error")
+EVENT_ORDER = ("transcript", "score", "reply", "state", "done", "error")
 
 
 class Timer:

@@ -23,7 +23,7 @@ from backend.models import (
     DialogueTurn,
     SpokenConversationResult,
     Utterance,
-    WorkerAnnotation,
+    ConverserAnnotation,
 )
 from backend.prompts import render_system_prompt
 
@@ -164,7 +164,7 @@ async def respond(
     want_reading: bool = True,
     hint: Optional[str] = None,
     client: Optional[AsyncAnthropic] = None,
-) -> Tuple[Utterance, WorkerAnnotation, Optional[Utterance], object]:
+) -> Tuple[Utterance, ConverserAnnotation, Optional[Utterance], object]:
     """Run one conversation turn; return (reply, annotation, reading, usage).
 
     `reading` is the worker's rendering of the learner's own turn as 汉字 + pinyin
@@ -200,6 +200,13 @@ async def respond(
         raise ConversationError(
             f"conversation worker timed out after {config.CLAUDE_TIMEOUT_S:g}s"
         ) from exc
+    except anthropic.APIError as exc:
+        # Everything else the SDK raises — rate limits, 5xx, a dropped
+        # connection. `CLAUDE_MAX_RETRIES` is 0, so there is no retry layer
+        # absorbing a transient failure first, and an uncaught `APIError` escapes
+        # into a stream that has already sent a 200. Wrapped, it degrades the way
+        # a timeout does.
+        raise ConversationError(f"conversation worker call failed: {exc}") from exc
     except ValidationError as exc:
         # A response cut off mid-JSON is validated *inside* `messages.parse`, so
         # it arrives as an exception rather than as `parsed_output is None`.

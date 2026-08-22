@@ -11,10 +11,17 @@ staged events are the contract and there is no second code path that could
 disagree with them.
 """
 import dataclasses
+from types import SimpleNamespace
+
 import pytest
+
+from tests.helpers import grade_stub
 
 from backend import config, kb, orchestrator
 from backend.models import (
+    ConversationResult,
+    GraderResult,
+    ConverserAnnotation,
     ConversationTurnResponse,
     SessionStartResponse,
     SessionState,
@@ -23,8 +30,20 @@ from backend.models import (
     TurnAnnotation,
     Utterance,
 )
-from backend.workers import conversation
+from backend.workers import conversation, grader
 from backend.workers import sketch as sketch_worker
+
+
+# Captured before the autouse stub replaces it, for the one test that wants the
+# real worker (`..._runs_the_real_workers_against_a_faked_sdk`).
+_REAL_GRADE = grader.grade
+
+
+@pytest.fixture(autouse=True)
+def stub_grader(monkeypatch):
+    """V2's third branch. Every turn runs one, so every test needs one — and a
+    test that forgot would reach the real API."""
+    monkeypatch.setattr(grader, "grade", grade_stub())
 
 
 async def test_run_text_turn_loads_kb_and_calls_worker(monkeypatch):
@@ -38,7 +57,7 @@ async def test_run_text_turn_loads_kb_and_calls_worker(monkeypatch):
         )
         return (
             Utterance(zh="你好！你叫什么名字？", pinyin="nǐ hǎo! nǐ jiào shénme míngzi?"),
-            TurnAnnotation(coherence="on_track", topic_tags=["greetings"]),
+            TurnAnnotation(topic_tags=["greetings"]),
             Utterance(zh="我叫小明", pinyin="wǒ jiào xiǎo míng"),
             object(),
         )
@@ -55,14 +74,15 @@ async def test_run_text_turn_loads_kb_and_calls_worker(monkeypatch):
 
     assert isinstance(resp, ConversationTurnResponse)
     assert resp.reply.zh == "你好！你叫什么名字？"
-    assert resp.annotation.coherence == "on_track"
+    assert resp.annotation.topic_tags == ["greetings"]
 
     # The orchestrator passes the client-held sketch straight through and owns
     # only the forgiveness default; it loads the real KB.
     assert captured["sketch"] == "SKETCH bytes from this session's POST /api/session"
     assert captured["forgiveness_level"] == config.FORGIVENESS_LEVEL_DEFAULT
     assert captured["user_text"] == "我叫小明"
-    assert captured["kb_block"] == kb.load_kb_block("greetings")
+    # The converser's block, not the full KB: no goal and no slots reach it.
+    assert captured["kb_block"] == kb.load_converser_block("greetings")
 
 
 async def test_run_text_turn_defaults_sketch_to_empty_before_a_session_starts(monkeypatch):
@@ -74,7 +94,7 @@ async def test_run_text_turn_defaults_sketch_to_empty_before_a_session_starts(mo
         captured["sketch"] = sketch
         return (
             Utterance(zh="你好", pinyin="nǐ hǎo"),
-            TurnAnnotation(coherence="on_track"),
+            TurnAnnotation(),
             Utterance(zh="你好", pinyin="nǐ hǎo"),
             object(),
         )
@@ -113,7 +133,7 @@ async def test_run_text_turn_passes_the_stripped_text_to_the_worker(monkeypatch)
         captured["user_text"] = user_text
         return (
             Utterance(zh="你好", pinyin="nǐ hǎo"),
-            TurnAnnotation(coherence="on_track"),
+            TurnAnnotation(),
             Utterance(zh="你好", pinyin="nǐ hǎo"),
             object(),
         )
@@ -197,7 +217,7 @@ def _worker_reply(annotation=None, reading=None):
                            want_reading=True, hint=None, client=None):
         return (
             Utterance(zh="你好！你叫什么名字？", pinyin="nǐ hǎo! nǐ jiào shénme míngzi?"),
-            annotation or TurnAnnotation(coherence="on_track", topic_tags=["greetings"]),
+            annotation or TurnAnnotation(topic_tags=["greetings"]),
             reading or Utterance(zh="你好", pinyin="nǐ hǎo"),
             object(),
         )
@@ -212,7 +232,7 @@ async def test_run_text_turn_reports_claude_and_total_only(monkeypatch):
     async def fake_respond(**kwargs):
         return (
             Utterance(zh="你好", pinyin="nǐ hǎo"),
-            TurnAnnotation(coherence="on_track"),
+            TurnAnnotation(),
             Utterance(zh="你好", pinyin="nǐ hǎo"),
             _FakeUsage(),
         )
@@ -400,7 +420,11 @@ def test_pick_scenario_topic_raises_when_the_kb_is_empty(monkeypatch):
 
 
 def _tracker_worker(monkeypatch, slots_filled=(), learner_closed=False, capture=None):
-    """Stub the worker with a fixed tracker result; record the kwargs it got."""
+    """Stub both calls of a text turn; record the kwargs the converser got.
+
+    Two stubs since V2: the converser writes the reply and the grader judges it.
+    The tracker result is the *grader's* now — the converser is not asked.
+    """
 
     async def fake_respond(*, kb_block, sketch, dialogue, user_text,
                            forgiveness_level, want_reading=True, hint=None,
@@ -409,16 +433,16 @@ def _tracker_worker(monkeypatch, slots_filled=(), learner_closed=False, capture=
             capture.update(hint=hint, dialogue=dialogue)
         return (
             Utterance(zh="好。", pinyin="hǎo."),
-            TurnAnnotation(
-                coherence="on_track",
-                slots_filled=list(slots_filled),
-                learner_closed=learner_closed,
-            ),
+            TurnAnnotation(),
             Utterance(zh="我叫小明", pinyin="wǒ jiào xiǎo míng"),
             object(),
         )
 
     monkeypatch.setattr(conversation, "respond", fake_respond)
+    monkeypatch.setattr(
+        grader, "grade",
+        grade_stub(slots_filled=list(slots_filled), learner_closed=learner_closed),
+    )
 
 
 def _req(dialogue=None, state=None, text="我叫小明"):
@@ -473,11 +497,13 @@ async def test_the_turn_index_comes_from_the_submitted_history(monkeypatch):
         dialogue += [{"role": "user", "zh": "我叫小明"}, {"role": "partner", "zh": "好。"}]
 
 
-async def test_the_hint_names_the_outstanding_slot(monkeypatch):
+async def test_the_hint_names_no_slot_on_the_text_path_either(monkeypatch):
+    """V2: it used to name the outstanding one. The partner is blind now, and a
+    stage direction naming the missing fact is the rubric by another route."""
     captured = {}
     _tracker_worker(monkeypatch, capture=captured)
     await orchestrator.run_text_turn(_req(state=SessionState(filled_at={"self_name": 1})))
-    assert "partner_name" in captured["hint"]
+    assert captured["hint"] is None
 
 
 async def test_no_hint_on_the_first_turn_of_a_fresh_session(monkeypatch):
@@ -559,3 +585,57 @@ async def test_start_session_rejects_a_topic_with_no_scenario(monkeypatch):
 
     with pytest.raises(kb.KbError):
         await orchestrator.start_session(topic_id="greetings")
+
+
+# --- the seam the stubs cannot see ---------------------------------------
+
+
+async def test_a_text_turn_runs_the_real_workers_against_a_faked_sdk():
+    """Drive `run_text_turn` through the *real* `respond` and `grade`, faking
+    only the SDK client underneath them.
+
+    Every other test here stubs the workers, which means the suite asserts both
+    sides of a contract that need not meet. It did not meet: `respond` returned
+    five values while the orchestrator unpacked four, and the suite stayed green
+    because `tests/test_conversation.py` asserted the five-tuple and every
+    orchestrator stub returned four. Two green files, one `ValueError` on every
+    live turn.
+
+    So this one crosses the seam. It asserts nothing about wording — only that
+    the pieces still fit together.
+    """
+    conversation_reply = ConversationResult(
+        partner_response=Utterance(zh="你好！", pinyin="nǐ hǎo!"),
+        turn_annotation=ConverserAnnotation(topic_tags=["greetings"]),
+        user_reading=Utterance(zh="我叫小明", pinyin="wǒ jiào xiǎo míng"),
+    )
+    grade = GraderResult(coherence="on_track", slots_filled=["self_name"])
+
+    def _message(parsed):
+        return SimpleNamespace(
+            parsed_output=parsed,
+            stop_reason="end_turn",
+            usage=SimpleNamespace(
+                cache_read_input_tokens=0, cache_creation_input_tokens=0,
+                input_tokens=10, output_tokens=5,
+            ),
+        )
+
+    async def parse(**kwargs):
+        # One fake client serves both workers; the output schema says which is
+        # calling, exactly as it does in production.
+        is_grader = kwargs["output_format"] is GraderResult
+        return _message(grade if is_grader else conversation_reply)
+
+    client = SimpleNamespace(messages=SimpleNamespace(parse=parse))
+
+    # Step back out of the autouse stub: the real worker is what is on trial.
+    grader.grade = _REAL_GRADE
+    try:
+        resp = await orchestrator.run_text_turn(_req(), client=client)
+    finally:
+        grader.grade = grade_stub()
+
+    assert resp.reply.zh == "你好！"
+    assert resp.transcript.zh == "我叫小明"
+    assert resp.state.filled_at == {"self_name": 1}

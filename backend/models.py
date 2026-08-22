@@ -67,6 +67,7 @@ class TurnTimings(BaseModel):
     stt_ms: Optional[float] = None
     pa_ms: Optional[float] = None
     claude_ms: Optional[float] = None
+    grader_ms: Optional[float] = None
     total_ms: Optional[float] = None
 
     @classmethod
@@ -83,12 +84,21 @@ class TurnUsage(BaseModel):
     prefix is actually being reused — was invisible outside the live test. Every
     field is optional: the SDK omits the cache counters on some responses, and
     reading usage must never be able to fail a turn.
+
+    `grader` is the second call the turn now buys (V2). It is reported
+    separately rather than summed, because the two run on **different models at
+    different prices** — Sonnet 5 for the reply, Opus 5 at `effort: high` with
+    thinking on for the judgment — and a single token count across both would
+    describe a price that nothing charges. Reporting only the converser's, as
+    this did at first, hides the more expensive half on the branch whose cost was
+    the whole reason for a separate model.
     """
 
     input_tokens: Optional[int] = None
     output_tokens: Optional[int] = None
     cache_read_input_tokens: Optional[int] = None
     cache_creation_input_tokens: Optional[int] = None
+    grader: Optional["TurnUsage"] = None
 
     @classmethod
     def from_sdk(cls, usage) -> "Optional[TurnUsage]":
@@ -99,6 +109,7 @@ class TurnUsage(BaseModel):
             **{
                 field: getattr(usage, field, None)
                 for field in cls.model_fields
+                if field != "grader"
             }
         )
 
@@ -181,28 +192,51 @@ class ScoreEvent(TurnEvent):
 
 
 class ReplyEvent(TurnEvent):
-    """The partner's reply and the worker's annotation.
+    """The partner's reply and the converser's annotation.
 
     Not necessarily the last event, which is why it is `reply` and not `final`:
-    it races `score`, and whenever PA is the slower branch the scores land
-    *after* it. `done` is the terminal event.
+    it races `score` and `state`, and whenever either is slower they land after
+    it. `done` is the terminal event.
 
     Carries no scores — those went out on `score`. Deriving anything here from
     the PA result would make the reply wait on scoring.
 
-    It *does* carry `state`, because session state is derived from the worker's
-    annotation and so is ready at exactly this moment. Putting it on `done`
-    would make termination wait for the PA branch — up to `PA_TIMEOUT_S` of a
-    live mic on a session that has already ended — and would split the state
-    commit from the dialogue commit the client performs right here. A client
-    that loses the connection between the two events must not end up with the
-    turn recorded and its consequences lost.
+    **It no longer carries `state`** (V2, `docs/VALIDITY.md`). State is derived
+    from the *grader's* judgment, which is now a third branch of the fan-out and
+    resolves independently of the reply. Holding the reply until the grade lands
+    would spend the latency the fan-out exists to protect.
+
+    The cost is real and is accepted rather than hidden: reply and state used to
+    commit together, so a client that lost the connection between them could not
+    end up with the turn recorded and its consequences lost. Now it can. It is
+    survivable because the client resubmits state with every turn and the next
+    grade reads the same history — where a held reply would be paid on every
+    turn of every session.
     """
 
     stage: Literal["reply"] = "reply"
     reply: Utterance
     annotation: Optional["TurnAnnotation"] = None
-    state: Optional["SessionState"] = None
+
+
+class StateEvent(TurnEvent):
+    """How far the learner has got, as soon as the grader resolves (V2).
+
+    Its own event for the same reason `score` is one: it comes from a branch
+    that races the reply, and whichever lands first should go out first. The
+    grader is a short call on a small prefix, so it usually lands *before* the
+    reply — a session that has ended can say so without waiting for the partner
+    to finish a line nobody will read.
+
+    `coherence` rides here rather than on the reply's annotation because it is
+    the grader's judgment, not the converser's. The converser was asked for it
+    for the whole of M2 and could never answer honestly: it knew what was being
+    scored, so it took anything scoreable as relevant.
+    """
+
+    stage: Literal["state"] = "state"
+    state: "SessionState"
+    coherence: Optional[Literal["on_track", "drifting", "off_track"]] = None
 
 
 class DoneEvent(TurnEvent):
@@ -277,51 +311,102 @@ class ToneError(BaseModel):
     index: Optional[int] = None
 
 
-class WorkerAnnotation(BaseModel):
-    """The annotation *as the model produces it* — no `tone_errors`.
+# `ConverserAnnotation`'s docstring is deliberately short, and the reasoning for
+# its shape lives out here in comments. Pydantic emits a model's docstring as the
+# JSON-schema `description`, and `messages.parse` renders that schema into the
+# request — so anything written inside the class is text the conversation worker
+# reads. A docstring explaining which rubric fields moved to the grader, and why,
+# would teach the partner the rubric in the act of documenting its removal.
+#
+# What moved (V2, `docs/VALIDITY.md`): `slots_filled`, `learner_closed` and
+# `coherence` were folded in here to avoid a second call. The cost was
+# epistemic — a partner that can see the checkbox behind a question stops being
+# a person in a scene and becomes a proctor who wants you to pass. They are
+# `GraderResult`'s now and the converser is given no place to say them.
+#
+# What stayed: `grammar_notes`, a verdict input about the learner's Chinese
+# rather than about the rubric, produced by the call that already read their
+# sentence in order to answer it.
+#
+# `tone_errors` is absent for a different reason: tone is never the model's
+# judgment. The server fills it from Azure PA accuracy or from typed tone digits.
+# It used to be in the schema with the prompt insisting it stay empty, so every
+# turn spent output tokens rendering `"tone_errors":[]` and then had it
+# overwritten. `TurnAnnotation` is the wire shape that carries it.
+class ConverserAnnotation(BaseModel):
+    """Notes on one learner turn, alongside the partner's reply."""
 
-    Tone is never the model's judgment: the server fills it deterministically,
-    from Azure PA accuracy on the spoken path or from the tone digits the learner
-    typed. The field used to be in the schema with the prompt insisting it stay
-    empty, so every turn spent output tokens rendering `"tone_errors":[]` and
-    then had it overwritten. Leaving it out is the same contract enforced by
-    construction instead of by instruction.
-
-    `TurnAnnotation` is still what goes on the wire — see `from_worker`.
-
-    `slots_filled` and `learner_closed` are M2-C's tracker, folded in here rather
-    than bought with a second call: both are observations about the learner's
-    utterance, which is what an annotation is, and living on the shared shape
-    means the spoken schema gets them for free. The model's job with
-    `slots_filled` is narrow — *which of these named facts did this turn
-    establish?* — structured extraction, not judgment. What the ids then *mean*
-    is decided in `termination.py`, in Python.
-    """
-
-    coherence: Literal["on_track", "drifting", "off_track"]
     grammar_notes: List[str] = []
     topic_tags: List[str] = []
     should_give_feedback: bool = False
+    learner_said_goodbye: bool = False
+
+
+class GraderResult(BaseModel):
+    """What the *grader* judges — the scoring half, on its own call (V2).
+
+    Produced by a goal-blind converser's counterpart: a call that holds no
+    character, writes no reply, and has no reason to be generous. It reads the
+    previous partner turn plus the learner's turn — exactly the pair that answers
+    both questions it is asked (`docs/VALIDITY.md`, "What the grader reads").
+
+    `slots_filled` is narrow — *which of these named facts did this turn
+    establish?* — structured extraction, not judgment. What the ids then *mean*
+    is decided in `termination.py`, in Python.
+
+    **A `request` slot is credited on the learner's ask alone.** The authored
+    rule reads *asked* AND *partner answered*, and the grader deliberately does
+    not wait for the second half: the slot is a claim about the learner's
+    Chinese, and whether the partner answered is the partner's performance.
+    Grading the learner on it grades the wrong party. That is a stronger reason
+    than the one in `docs/SCENARIOS.md`, which credits on the ask only because
+    Python cannot check a reply — and it is why the grader needs one turn rather
+    than a lag or a session-end pass.
+
+    `slots_filled` is what the *current* turn established;
+    `slots_filled_previously` is what any **owed** turns established — turns
+    whose grade never landed, which this call is settling. They are attributed
+    rather than unioned because `termination.advance` resets the close counter on
+    a turn that carried content, and a slot credited late is not content this
+    turn carried. Empty by construction whenever the window is one turn, which is
+    every healthy turn.
+
+    Both default to crediting nothing, so a partial grade cannot advance a
+    session by accident. `coherence` deliberately has **no default**: it is the
+    judgment, and a grader that omitted it should fail validation and degrade to
+    an unchanged state rather than have an opinion invented for it.
+
+    **`learner_closed` is not here.** Noticing that someone is leaving needs no
+    rubric, so it is the converser's observation (`ConverserAnnotation`), which
+    means a close is applied on time even through a total grader outage.
+    """
+
+    coherence: Literal["on_track", "drifting", "off_track"]
     slots_filled: List[str] = []
-    learner_closed: bool = False
+    slots_filled_previously: List[str] = []
 
 
-class TurnAnnotation(WorkerAnnotation):
-    """The worker's read on one learner turn — logged silently, surfaced later.
+class TurnAnnotation(ConverserAnnotation):
+    """The converser's read on one learner turn — logged silently, surfaced later.
 
-    `coherence` is whether the turn stayed on the conversation's arc;
     `grammar_notes`/`tone_errors`/`topic_tags` accumulate the per-turn signal the
     (Phase 4) feedback worker consumes. `should_give_feedback` is the worker's
     hint that enough has accrued to interrupt for a coaching round.
 
     Extends the model-facing shape with the one field the server owns.
+
+    It carries **no `coherence`**, and that is a wire fact rather than an
+    oversight: coherence is the grader's judgment now, and this annotation ships
+    on the `reply` event, which fires the moment the converser lands. There is no
+    grade to merge in yet. The grader's output rides `state` instead, so each
+    event carries what its own branch produced.
     """
 
     tone_errors: List[ToneError] = []
 
     @classmethod
     def from_worker(
-        cls, annotation: WorkerAnnotation, tone_errors: List[ToneError]
+        cls, annotation: ConverserAnnotation, tone_errors: List[ToneError]
     ) -> "TurnAnnotation":
         """Wire annotation = what the model said + what the server measured.
 
@@ -333,48 +418,52 @@ class TurnAnnotation(WorkerAnnotation):
         return cls(
             **{
                 name: getattr(annotation, name)
-                for name in WorkerAnnotation.model_fields
+                for name in ConverserAnnotation.model_fields
             },
             tone_errors=tone_errors,
         )
 
 
+# Same rule as `ConverserAnnotation` above, and this is the class that proves it:
+# every word of a model's docstring is rendered into the request as the schema
+# `description`, so design notes written here are prompt.
+#
+# `user_reading` carries text mode. A beginner types `wo jiao xiao ming` and the
+# worker resolves it in context — 他 or 她 from context, words outside the topic
+# vocab — and it is the only component that can. The short instruction below is
+# addressed to the model on purpose; the rest of the reasoning is out here.
+#
+# **There is no `grade` field**, and its absence is the point rather than an
+# omission. A `GraderResult` nested here would be rendered into the request by
+# `messages.parse` — field names, and the rubric docstring with it — handing the
+# partner the criteria in its cached prefix by exactly the route the system
+# prompt was stripped to close (V2, `docs/VALIDITY.md`).
 class ConversationResult(BaseModel):
-    """Structured output the conversation worker constrains Claude to (text).
-
-    Mirrors `DESIGN.md`'s per-turn JSON: the partner's reply plus the turn
-    annotation. The model is forced to this shape via `messages.parse`, so the
-    worker never parses free text.
-
-    `user_reading` is what the worker understood the learner to have *said* — the
-    turn rendered as 汉字 + correct pinyin. It carries text mode: a beginner types
-    `wo jiao xiao ming` and the worker resolves it in context (including 他/她 and
-    words outside the topic vocab), and it is the only component that can.
-    """
+    """The partner's reply, notes on the turn, and the learner's own words as
+    you understood them."""
 
     partner_response: Utterance
-    turn_annotation: WorkerAnnotation
+    turn_annotation: ConverserAnnotation
     user_reading: Utterance
 
 
+# The spoken path's schema. STT already produced the learner's 汉字, so the
+# worker's reading of them is an echo the orchestrator drops — and asking for it
+# cost ~40 output tokens on the one branch the reply waits behind, measured at
+# ~0.8s of the turn. That is why this is a second schema rather than one shared
+# shape.
+#
+# The cost of the split is one extra prompt-cache entry per session: the output
+# schema is rendered *into* the cached prefix, so a variant changes
+# `cache_creation_input_tokens` for byte-identical system blocks. One extra write
+# per session, not per turn — and each path still reads its own prefix on every
+# turn after the first. That same rendering is why neither schema may carry the
+# rubric; see `ConversationResult`.
 class SpokenConversationResult(BaseModel):
-    """The same turn without `user_reading` — the spoken path's schema.
-
-    On the audio path the learner's words already arrived as 汉字 from STT, so
-    the worker's reading of them is an echo the orchestrator drops on the floor.
-    Asking for it anyway cost ~40 output tokens on the one branch the reply waits
-    behind — measured at ~0.8s of the turn, which is why this is a second schema
-    rather than one shared shape.
-
-    The cost of the split is one extra prompt-cache entry per session: the
-    output schema is rendered *into* the cached prefix (a variant changes
-    `cache_creation_input_tokens` for byte-identical system blocks), so the two
-    paths cache separately. That is one extra write per session, not per turn,
-    and each path still reads its own prefix on every turn after the first.
-    """
+    """The partner's reply, and notes on the turn."""
 
     partner_response: Utterance
-    turn_annotation: WorkerAnnotation
+    turn_annotation: ConverserAnnotation
 
 
 class SessionState(BaseModel):
@@ -404,9 +493,23 @@ class SessionState(BaseModel):
 
     filled_at: Dict[str, PositiveInt] = Field(default_factory=dict, max_length=32)
     consecutive_closes: int = Field(default=0, ge=0)
+    # The highest turn a grade has landed for. The window a grader must judge is
+    # `turn - last_graded_turn`, so a turn whose grade never arrived is settled
+    # by the next one.
+    #
+    # A watermark rather than a count of ungraded turns, because a count has to
+    # be *incremented by the client* when a grade does not arrive — and not
+    # receiving the `state` event is the entire failure mode. A watermark only
+    # goes stale, and the arithmetic covers the gap on its own.
+    #
+    # `None`, not `0`, when absent. A client that does not report a watermark is
+    # saying nothing about its grades, and `0` would say the opposite — that
+    # every turn so far is owed. That reading would fire a recovery pass on every
+    # session a client too old to send the field ever finished.
+    last_graded_turn: Optional[int] = Field(default=None, ge=0)
     status: Literal["active", "complete"] = "active"
     goal_met: bool = False
-    end_reason: Optional[Literal["goal", "cap", "closed", "stuck"]] = None
+    end_reason: Optional[Literal["goal", "cap", "closed", "stuck", "ungraded"]] = None
     # Which topic this state belongs to, stamped by the client at write time so
     # a restored store can be checked against the session it was written under
     # (#29 puts more than one topic on disk). Absent on a fresh state.
@@ -561,7 +664,7 @@ class VerdictCard(BaseModel):
     """
 
     goal_met: bool
-    end_reason: Optional[Literal["goal", "cap", "closed", "stuck"]] = None
+    end_reason: Optional[Literal["goal", "cap", "closed", "stuck", "ungraded"]] = None
     missing: List[MissingSlot] = []
     explanation: str
     model_exchange: List[ModelLine] = []
@@ -585,6 +688,10 @@ class VerdictRequest(BaseModel):
     dialogue: List[DialogueTurn] = Field(default_factory=list, max_length=40)
     state: SessionState = Field(default_factory=SessionState)
     notes: List[str] = Field(default_factory=list, max_length=60)
+    # Only read by the recovery pass, and only when the debt reaches back to the
+    # first turn — where the opening line is the sole thing the learner's words
+    # answer, and it is never in `dialogue`. Optional everywhere else.
+    opening_line: Optional[Utterance] = None
 
     @field_validator("notes")
     @classmethod
@@ -631,6 +738,14 @@ class TextTurnRequest(BaseModel):
     dialogue: List[DialogueTurn] = []
     state: SessionState = Field(default_factory=SessionState)
     sketch: str = ""
+    # The partner's first line, client-held like `sketch`. It is deliberately not
+    # in `dialogue` — it costs the learner none of their turn budget
+    # (`docs/SCENARIOS.md`, "Definition of a turn") — but the grader has to see
+    # it, because on turn 1 it is the *only* thing the learner's words are a
+    # response to. Without it, coherence on the turn most likely to be answering
+    # a greeting is judged against nothing at all. Optional: a session started
+    # before this field existed simply grades turn 1 without it.
+    opening_line: Optional[Utterance] = None
 
     @field_validator("text")
     @classmethod

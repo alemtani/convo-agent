@@ -24,7 +24,7 @@ import anthropic
 from anthropic import AsyncAnthropic
 from pydantic import ValidationError
 
-from backend import config, kb
+from backend import config, kb, termination
 from backend.models import (
     MissingSlot,
     SessionState,
@@ -33,6 +33,7 @@ from backend.models import (
     VerdictResult,
 )
 from backend.pinyin import annotate_hanzi
+from backend.workers import grader
 from backend.prompts import render_verdict_prompt
 
 logger = logging.getLogger(__name__)
@@ -92,6 +93,85 @@ def _missing_slots(scenario: Optional[kb.Scenario], state: SessionState) -> List
     ]
 
 
+async def settle_outstanding_grades(
+    req: VerdictRequest, *, scenario, grader_client=None
+) -> SessionState:
+    """One last grader pass for turns whose grade never landed, before the card.
+
+    The verdict is computed from state, so an unsettled debt means telling the
+    learner they missed something they established — the false negative
+    `ACCESSIBILITY.md` exists to prevent, at the moment it is most visible.
+
+    This is the "session-end pass" `VALIDITY.md` contemplated and dropped, and
+    it is **recovery, not the rule**. The rule is still one grade per turn,
+    credited on the ask; nothing here re-opens the AND rule or re-audits turns
+    that were graded. It judges only what was never judged.
+
+    Returns the submitted state untouched when nothing is owed — which is every
+    healthy session, and so costs nothing — or when the pass itself fails. A
+    broken grader at the end of a broken session is not a reason to invent a
+    grade.
+    """
+    turns_taken = len(req.dialogue) // 2
+    if (
+        scenario is None
+        # No watermark reported is not a debt — see `SessionState`.
+        or req.state.last_graded_turn is None
+        or req.state.last_graded_turn >= turns_taken
+    ):
+        return req.state
+    window = turns_taken - req.state.last_graded_turn
+    logger.warning(
+        "settling %d ungraded turn(s) before the verdict (last graded %d of %d)",
+        window, req.state.last_graded_turn, turns_taken,
+    )
+
+    # **The grader must be handed the same shape a live turn hands it**: the
+    # history *up to* the learner's last turn, and that turn separately. At
+    # verdict time `dialogue` holds everything, including the partner's final
+    # reply — so the split is at the last `user` entry, not at the end. Passing
+    # the whole history plus the last learner turn would show that turn twice,
+    # after a partner line it actually preceded.
+    last_user = next(
+        (i for i in range(len(req.dialogue) - 1, -1, -1)
+         if req.dialogue[i].role == "user"),
+        None,
+    )
+    if last_user is None:
+        return req.state
+    try:
+        grade, _usage = await grader.grade(
+            scenario=scenario,
+            dialogue=req.dialogue[:last_user],
+            user_text=req.dialogue[last_user].zh,
+            opening_line=req.opening_line.zh if req.opening_line else None,
+            window=window,
+            timeout=config.VERDICT_RECOVERY_TIMEOUT_S,
+            # Its own client. The verdict's is forwarded nowhere: two workers
+            # sharing one injected fake lets a test fabricate a grade it never
+            # meant to stub.
+            client=grader_client,
+        )
+    except grader.GraderError as exc:
+        logger.warning("final grading pass failed: %s", exc)
+        return req.state
+
+    # **Not `termination.advance`.** The session has already ended, and advance
+    # recomputes `status`/`end_reason` from scratch — it would overwrite the real
+    # ending (`stuck`, `closed`, `ungraded`) with whatever a fresh evaluation of
+    # a finished session produces. Only the credit is new, so only `filled_at`
+    # moves. Whether that credit completes the goal is decided downstream, where
+    # `missing` is recomputed from the KB anyway.
+    known = {slot.id for slot in scenario.slots}
+    filled_at = dict(req.state.filled_at)
+    for sid in list(grade.slots_filled) + list(grade.slots_filled_previously):
+        if sid in known and sid not in filled_at:
+            filled_at[sid] = turns_taken
+    return req.state.model_copy(
+        update={"filled_at": filled_at, "last_graded_turn": turns_taken}
+    )
+
+
 def _consistent_end_reason(
     state: SessionState, *, scenario: Optional[kb.Scenario], missing, turns_taken
 ) -> Optional[str]:
@@ -108,6 +188,12 @@ def _consistent_end_reason(
     confusing thing we could say to someone who didn't.
     """
     reason = state.end_reason
+    if not missing and reason not in (None, "goal"):
+        # The final pass filled the last slot. Whatever button the learner
+        # pressed, someone who established everything did not leave unfinished
+        # and did not run out of road — `stuck` least of all (`A1`).
+        logger.info("end_reason %r superseded by a late pass completing the goal", reason)
+        return "goal"
     if reason == "goal" and missing:
         logger.warning("end_reason 'goal' with %d slots missing — dropping", len(missing))
         return None
@@ -170,11 +256,19 @@ async def verdict(
     scenario = kb.load_scenario(req.topic_id)
     kb_block = kb.load_kb_block(req.topic_id)
 
-    missing = _missing_slots(scenario, req.state)
+    state = await settle_outstanding_grades(req, scenario=scenario)
+    missing = _missing_slots(scenario, state)
     goal_met = not missing
     turns_taken = len(req.dialogue) // 2
     end_reason = _consistent_end_reason(
-        req.state, scenario=scenario, missing=missing, turns_taken=turns_taken
+        state, scenario=scenario, missing=missing, turns_taken=turns_taken
+    )
+    # What the recovery pass could not settle. Both a failed pass and a session
+    # stopped for repeated grading failures land here.
+    unchecked = (
+        max(0, turns_taken - state.last_graded_turn)
+        if state.last_graded_turn is not None
+        else 0
     )
 
     request = build_request(
@@ -186,6 +280,7 @@ async def verdict(
             turns_taken=turns_taken,
             end_reason=end_reason,
             notes=req.notes,
+            unchecked_turns=unchecked,
         ),
     )
 

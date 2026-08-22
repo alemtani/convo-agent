@@ -809,7 +809,13 @@
     // dialogue it belongs to (see the `reply` handlers), because a turn whose
     // exchange was saved and whose consequences were not is a session that has
     // silently lost progress it can never recompute.
-    let state = readJson(STATE_KEY, null) || { filled_at: {}, status: "active" };
+    // `last_graded_turn: 0` from the start, not left absent. Absent means "this
+    // client is not reporting its grades", which the server correctly reads as
+    // no debt — so a first turn whose grade was lost would never be settled.
+    // Starting the watermark at 0 says "nothing graded yet", which is true, and
+    // makes turn 1 recoverable like every other turn.
+    let state = readJson(STATE_KEY, null)
+      || { filled_at: {}, status: "active", last_graded_turn: 0 };
     // Per-turn tone/grammar notes, keyed by turn index, for the verdict roll-up.
     let notes = readJson(NOTES_KEY, {});
 
@@ -862,7 +868,7 @@
     // topic in the first place.
     if (session && state && state.topic_id && state.topic_id !== session.topic_id) {
       dialogue = [];
-      state = { filled_at: {}, status: "active" };
+      state = { filled_at: {}, status: "active", last_graded_turn: 0 };
       notes = {};
       for (const key of [STORE_KEY, STATE_KEY, NOTES_KEY, VERDICT_KEY]) {
         localStorage.removeItem(key);
@@ -920,7 +926,7 @@
       talk.disabled = off;
       textInput.disabled = send.disabled = off;
       // Three false conditions, and `busy` is the one that is easy to miss.
-      // `adoptState` replaces the whole state object when a reply lands, so a
+      // `adoptState` replaces the whole state object when the grade lands, so a
       // bail-out pressed mid-turn would be silently overwritten: the learner
       // taps it, the partner answers, and their exit disappears. The other two
       // are ordinary — a finished session has already produced its card, and a
@@ -2056,6 +2062,13 @@
       form.append("sketch", session.sketch);
       // This session's progress, held here because the server keeps none.
       form.append("state", JSON.stringify(state));
+      // The partner's first line. Deliberately not in `dialogue` — it costs the
+      // learner none of their turn budget — but on turn 1 it is the only thing
+      // their words are a response to, and the grader is judging exactly that.
+      form.append(
+        "opening_line",
+        (session.opening_line && session.opening_line.zh) || ""
+      );
       // Captured before the request, not read inside the handlers: `reply`
       // pushes two entries into `dialogue`, so a late `score` reading
       // `dialogue.length` would file its tone errors against the next turn.
@@ -2086,9 +2099,9 @@
         }
 
         // Dispatch on `stage`, never on position: only `transcript` has a fixed
-        // place. `score` and `reply` are concurrent branches emitted in whichever
-        // order they resolve, and a slow Azure call legitimately puts the reply
-        // first.
+        // place. `score`, `reply` and `state` are concurrent branches emitted in
+        // whichever order they resolve — a slow Azure call legitimately puts the
+        // reply first, and the grader usually beats both.
         for await (const event of ndjson(resp)) {
           if (event.stage === "transcript") {
             transcript = event.transcript;
@@ -2106,6 +2119,13 @@
             recordNote(turnIndex, { tone_errors: event.tone_errors || [] });
           } else if (event.stage === "reply") {
             renderReply(replyBubble(), event.reply);
+            // The partner has answered, but the turn is not finished: the grade
+            // runs on a slower, more careful model and the controls stay shut
+            // until it lands. Say so, and say it plainly — the partner is a
+            // person in a scene, but the app is not pretending the session is
+            // ungraded, and a learner who knows a judgment is happening reads
+            // the pause as care rather than as a hang.
+            setStatus("checking what you got across…");
             // Only record a real exchange: an empty transcript means nothing was
             // recognized (the reply was a re-prompt), so it isn't part of history.
             if (transcript && transcript.zh) {
@@ -2116,10 +2136,15 @@
                 grammar_notes: (event.annotation && event.annotation.grammar_notes) || [],
               });
             }
-            // Written here, in the same block as the dialogue it belongs to —
-            // a turn saved without its consequences is progress that cannot be
-            // recomputed. (A silent turn echoes the state back unchanged, so
-            // this is safe on the re-prompt path too.)
+          } else if (event.stage === "state") {
+            // The grade has landed, so the wait is over. Cleared here rather
+            // than on `done`: `done` also waits on pronunciation scoring, and
+            // the learner is waiting to know about their *answer*.
+            setStatus("");
+            // Its own branch since V2: the grade comes from a separate call that
+            // races the reply, so it lands whenever it lands. A silent turn (and
+            // a failed grade) echoes the submitted state back unchanged, so this
+            // is safe on the re-prompt path too — it just doesn't move.
             adoptState(event.state);
           } else if (event.stage === "done") {
             // The terminal event, so the timings line is appended last in the
@@ -2207,6 +2232,8 @@
             dialogue: dialogue.map((t) => ({ role: t.role, zh: t.zh })),
             sketch: session.sketch,
             state: state,
+            // See the spoken path: turn 1 has nothing else to be judged against.
+            opening_line: session.opening_line || null,
           }),
         });
         if (!resp.ok) {
@@ -2404,7 +2431,7 @@
       // survives into the new scene: `applyControls` disables the mic on a
       // scenario the learner has not spoken into, every turn 409s, and the
       // only recovery affordance is the button that just did this.
-      state = { filled_at: {}, status: "active" };
+      state = { filled_at: {}, status: "active", last_graded_turn: 0 };
       notes = {};
       localStorage.removeItem(STATE_KEY);
       localStorage.removeItem(NOTES_KEY);

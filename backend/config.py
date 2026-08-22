@@ -189,3 +189,49 @@ def _load_band_ceiling(default: int = 2) -> int:
 
 
 HSK_BAND_CEILING = _load_band_ceiling()
+
+
+# --- V2: the grader (docs/VALIDITY.md) ------------------------------------
+#
+# The scoring judgment, split off the converser and onto its own goal-blind
+# call. It joins the turn's fan-out rather than waiting on the reply, so the
+# learner never waits behind it — but the *session* does, since termination is
+# computed from what it returns.
+GRADER_MODEL = os.getenv("GRADER_MODEL", "claude-opus-5")
+
+# Judgment is where capability pays. Opus 5 is $5/$25 per Mtok against Sonnet 5's
+# $3/$15 — 1.67x, on a call that runs once per turn against a short prefix.
+# Caches are per-model, so the grader gets its own entry either way; Opus 5
+# caches from 512 tokens where Sonnet 5 needs 1024, which suits the smaller
+# grader prefix.
+#
+# `medium`, not `high`. This call is off the *reply* path but not off the turn:
+# the learner cannot speak again until the grade lands, because they are waiting
+# to find out whether they got their point across. So the grader is the branch
+# the turn's wall clock now runs on, and effort here is latency the learner sits
+# in — not a free upgrade paid for in tokens alone.
+GRADER_EFFORT = os.getenv("GRADER_EFFORT", "medium")
+
+# **Thinking is on here, and that is the reason for a separate token budget.**
+# The conversation, sketch and verdict workers all set `thinking: disabled`
+# because `max_tokens` caps thinking *plus* output: a budget sized for the JSON
+# alone gets eaten by reasoning and the call dies with `stop_reason: max_tokens`
+# and nothing parsed. A grader wants the deliberation — it *is* the judgment —
+# so it gets headroom instead of a prohibition. On Opus 5 thinking is on by
+# default and disabling it is rejected above `high` effort, so this worker has
+# to decide it explicitly rather than inherit the hot path's posture.
+GRADER_MAX_TOKENS = int(os.getenv("GRADER_MAX_TOKENS", "4096"))
+
+# The learner waits on this: the controls stay shut until the grade lands, so
+# this timeout is the longest they can be left looking at an answered reply and
+# a dead microphone. A failure is survivable — the reply stands, the credit is
+# owed and settled by the next turn — which is what makes a bound of this size
+# affordable rather than reckless.
+GRADER_TIMEOUT_S = float(os.getenv("GRADER_TIMEOUT_S", "15"))
+
+# The recovery pass runs *in front of* the verdict call, so its budget and the
+# verdict's add up in the one place a learner is already waiting on a spinner.
+# It is also best-effort by construction — a failure leaves the state alone and
+# the card is still written — so it gets a tighter bound than a live turn's
+# grade, which is the one whose result the session depends on.
+VERDICT_RECOVERY_TIMEOUT_S = float(os.getenv("VERDICT_RECOVERY_TIMEOUT_S", "8"))

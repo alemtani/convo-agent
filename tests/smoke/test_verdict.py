@@ -296,7 +296,7 @@ def test_the_bail_out_is_dead_before_the_learner_has_said_anything(page):
 def test_the_bail_out_is_dead_while_a_turn_is_in_flight(page):
     """The other false condition, and the one that is easy to miss.
 
-    `adoptState` replaces the whole state object when the reply lands, so a
+    `adoptState` replaces the whole state object when the grade lands, so a
     bail-out pressed mid-turn would be silently overwritten: the learner taps
     it, the partner answers, and the exit they asked for disappears.
     """

@@ -216,6 +216,7 @@ async def turn(
     dialogue: str = Form("[]"),
     sketch: str = Form(""),
     state: str = Form("{}"),
+    opening_line: str = Form(""),
 ) -> StreamingResponse:
     """One spoken conversation turn, streamed as NDJSON.
 
@@ -251,6 +252,12 @@ async def turn(
 
     _refuse_if_complete(session_state)
 
+    # Client-held like `sketch`, and deliberately *not* part of `dialogue` — it
+    # costs the learner none of their turn budget. The grader needs it on turn 1,
+    # where it is the only thing the learner's words answer. Absent is fine: a
+    # session started before this field existed grades turn 1 without it.
+    opening = (opening_line or "").strip() or None
+
     audio_bytes = await audio.read()
     try:
         transcript, kb_block, timer = await orchestrator.prepare_audio_turn(
@@ -271,6 +278,7 @@ async def turn(
             sketch=sketch,
             scenario=kb.load_scenario(topic_id),
             state=session_state,
+            opening_line=opening,
         ):
             yield event.model_dump_json() + "\n"
 

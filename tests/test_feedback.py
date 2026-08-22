@@ -21,13 +21,15 @@ from pydantic import ValidationError
 
 from backend import config, kb, prompts
 from backend.models import (
+    GraderResult,
     DialogueTurn,
     ModelLine,
     SessionState,
     VerdictRequest,
     VerdictResult,
 )
-from backend.workers import feedback
+from backend.prompts import render_verdict_prompt
+from backend.workers import feedback, grader
 
 DIALOGUE = [
     DialogueTurn(role="user", zh="我叫小明"),
@@ -415,3 +417,204 @@ async def test_the_stuck_brief_forbids_the_told_you_so():
         goal_met=False, missing=[], turns_taken=4, end_reason="closed"
     )
     assert "said goodbye twice" in closed
+
+
+# --- V2: settling a debt before the card ----------------------------------
+
+
+def _dialogue(pairs=2):
+    turns = []
+    for _ in range(pairs):
+        turns.append(DialogueTurn(role="user", zh="我叫小明"))
+        turns.append(DialogueTurn(role="partner", zh="你好"))
+    return turns
+
+
+async def test_a_session_with_no_debt_spends_no_grader_call(monkeypatch):
+    """Every healthy session takes this path, so it must cost nothing."""
+    called = False
+
+    async def never(**kwargs):
+        nonlocal called
+        called = True
+        raise AssertionError("graded a session that owed nothing")
+
+    monkeypatch.setattr(grader, "grade", never)
+    req = VerdictRequest(
+        topic_id="greetings",
+        dialogue=_dialogue(2),
+        state=SessionState(status="complete", last_graded_turn=2),
+    )
+    state = await feedback.settle_outstanding_grades(
+        req, scenario=kb.load_scenario("greetings")
+    )
+    assert state is req.state
+    assert called is False
+
+
+async def test_a_client_reporting_no_watermark_is_not_in_debt(monkeypatch):
+    """`None` says nothing about its grades. Reading it as `0` would fire a
+    recovery pass on every session an older client ever finished."""
+    async def never(**kwargs):
+        raise AssertionError("graded a session that reported no watermark")
+
+    monkeypatch.setattr(grader, "grade", never)
+    req = VerdictRequest(
+        topic_id="greetings", dialogue=_dialogue(3),
+        state=SessionState(status="complete"),
+    )
+    assert req.state.last_graded_turn is None
+    state = await feedback.settle_outstanding_grades(
+        req, scenario=kb.load_scenario("greetings")
+    )
+    assert state is req.state
+
+
+async def test_an_outstanding_debt_is_settled_before_the_card(monkeypatch):
+    """The card is computed from state, so an unsettled debt tells the learner
+    they missed something they established — at the moment it is most visible."""
+    async def late(**kwargs):
+        assert kwargs["window"] == 2
+        return (
+            GraderResult(
+                coherence="on_track",
+                slots_filled=["wellbeing"],
+                slots_filled_previously=["self_name", "partner_name"],
+            ),
+            None,
+        )
+
+    monkeypatch.setattr(grader, "grade", late)
+    req = VerdictRequest(
+        topic_id="greetings", dialogue=_dialogue(3),
+        state=SessionState(status="complete", last_graded_turn=1),
+    )
+    state = await feedback.settle_outstanding_grades(
+        req, scenario=kb.load_scenario("greetings")
+    )
+    assert set(state.filled_at) == {"self_name", "partner_name", "wellbeing"}
+
+
+async def test_a_failed_final_pass_leaves_the_state_alone(monkeypatch):
+    """A broken grader at the end of a broken session is not a reason to invent
+    a grade."""
+    async def boom(**kwargs):
+        raise grader.GraderError("still down")
+
+    monkeypatch.setattr(grader, "grade", boom)
+    req = VerdictRequest(
+        topic_id="greetings", dialogue=_dialogue(3),
+        state=SessionState(status="complete", last_graded_turn=1),
+    )
+    state = await feedback.settle_outstanding_grades(
+        req, scenario=kb.load_scenario("greetings")
+    )
+    assert state is req.state
+
+
+def test_a_late_pass_that_completes_the_goal_supersedes_the_end_reason():
+    """A learner who established everything did not leave unfinished, whatever
+    button they pressed. `stuck` least of all (A1)."""
+    reason = feedback._consistent_end_reason(
+        SessionState(status="complete", end_reason="stuck"),
+        scenario=kb.load_scenario("greetings"),
+        missing=[],
+        turns_taken=3,
+    )
+    assert reason == "goal"
+
+
+async def test_the_recovery_pass_hands_the_grader_a_live_turns_shape(monkeypatch):
+    """At verdict time `dialogue` holds everything, including the partner's
+    final reply — but a live turn hands the grader the history *up to* the
+    learner's turn plus that turn separately. Splitting at the end instead of at
+    the last `user` entry showed the learner's turn twice, after a partner line
+    it actually preceded."""
+    captured = {}
+
+    async def capture(**kwargs):
+        captured.update(kwargs)
+        return GraderResult(coherence="on_track"), None
+
+    monkeypatch.setattr(grader, "grade", capture)
+    dialogue = [
+        DialogueTurn(role="user", zh="u1"),
+        DialogueTurn(role="partner", zh="p1"),
+        DialogueTurn(role="user", zh="u2"),
+        DialogueTurn(role="partner", zh="p2"),
+    ]
+    req = VerdictRequest(
+        topic_id="greetings", dialogue=dialogue,
+        state=SessionState(status="complete", last_graded_turn=0),
+    )
+    await feedback.settle_outstanding_grades(
+        req, scenario=kb.load_scenario("greetings")
+    )
+
+    assert [t.zh for t in captured["dialogue"]] == ["u1", "p1"]
+    assert captured["user_text"] == "u2"
+    # The partner's final reply is not shown, exactly as on a live turn.
+    assert "p2" not in [t.zh for t in captured["dialogue"]]
+
+
+async def test_the_recovery_pass_does_not_rewrite_how_the_session_ended(monkeypatch):
+    """The session is over. `termination.advance` recomputes `status` and
+    `end_reason` from scratch, so running it here would overwrite the real
+    ending — `stuck`, `closed`, `ungraded` — with a fresh evaluation of a
+    finished session. Only the credit is new."""
+    async def late(**kwargs):
+        return GraderResult(coherence="on_track", slots_filled=["self_name"]), None
+
+    monkeypatch.setattr(grader, "grade", late)
+    req = VerdictRequest(
+        topic_id="greetings", dialogue=_dialogue(3),
+        state=SessionState(
+            status="complete", end_reason="stuck", last_graded_turn=1
+        ),
+    )
+    state = await feedback.settle_outstanding_grades(
+        req, scenario=kb.load_scenario("greetings")
+    )
+
+    assert state.end_reason == "stuck"
+    assert state.status == "complete"
+    assert "self_name" in state.filled_at
+
+
+def test_a_card_over_unchecked_turns_never_blames_the_learner():
+    """A turn nobody graded is not a turn the learner failed — and unlike a live
+    turn there is no next one to correct it."""
+    prompt = render_verdict_prompt(
+        goal_met=False, missing=[], turns_taken=4, unchecked_turns=2
+    )
+    assert "could not be checked" in prompt
+    assert "our fault and not theirs" in prompt
+
+
+def test_a_healthy_card_says_nothing_about_grading():
+    prompt = render_verdict_prompt(goal_met=True, missing=[], turns_taken=4)
+    assert "could not be checked" not in prompt
+
+
+async def test_a_debt_with_no_learner_turn_to_grade_is_left_alone(monkeypatch):
+    """A session whose history holds no learner turn has nothing for the grader
+    to judge — spending a call to discover that is worse than not making it."""
+    async def never(**kwargs):
+        raise AssertionError("graded a history with no learner turn")
+
+    monkeypatch.setattr(grader, "grade", never)
+    req = VerdictRequest(
+        topic_id="greetings",
+        # Two partner lines and no learner turn: `turns_taken` is 1, so the
+        # debt guard passes and the *no learner turn* guard is the one that has
+        # to catch it.
+        dialogue=[
+            DialogueTurn(role="partner", zh="你好"),
+            DialogueTurn(role="partner", zh="再见"),
+        ],
+        state=SessionState(status="complete", last_graded_turn=0),
+    )
+    state = await feedback.settle_outstanding_grades(
+        req, scenario=kb.load_scenario("greetings")
+    )
+    assert state is req.state

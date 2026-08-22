@@ -11,6 +11,7 @@ derived turn cap. The parser's job is *structure* — the semantic guardrails
 `validate.py` at authoring time, so a degenerate-but-well-formed scenario must
 still parse. Otherwise the validator could never report on it.
 """
+import dataclasses
 import textwrap
 
 import pytest
@@ -491,3 +492,96 @@ def test_render_scenario_block_never_carries_the_withholding_prose():
     )
     scenario = kb.parse_topic_frontmatter(md).scenario
     assert "No prices are posted" not in kb.render_scenario_block(scenario)
+
+
+# --- V2: the converser is blind to the rubric -----------------------------
+#
+# `docs/VALIDITY.md`. The partner used to be handed the slot list and told not to
+# give the answers away. It cannot be trusted with that: a partner that knows
+# `recommendation` is a slot will take a non-sequitur about dishes as an answer
+# to a question about drinks, because it can see the checkbox behind it. So it
+# stops being told. What replaces the instruction is the *scene*.
+
+
+def test_the_converser_block_carries_the_scene_and_not_the_rubric():
+    block = kb.load_converser_block("greetings")
+    scenario = kb.load_scenario("greetings")
+    assert scenario.situation in block
+    assert scenario.withholding in block
+    # The rubric, in every form it could leak.
+    assert scenario.goal not in block
+    for slot in scenario.slots:
+        assert slot.id not in block
+        assert slot.description not in block
+    # `kind` is checked against the scene alone: "inform" is a substring of
+    # "informal" in the vocab glosses, so the whole-block form is a false alarm.
+    scene = kb.render_scene_block(scenario)
+    for slot in scenario.slots:
+        assert slot.kind not in scene
+
+
+def test_the_converser_block_is_byte_identical_across_calls():
+    """Still the cached prefix — blinding it must not unfreeze it."""
+    kb.load_converser_block.cache_clear()
+    first = kb.load_converser_block("greetings")
+    kb.load_converser_block.cache_clear()
+    assert kb.load_converser_block("greetings") == first
+    assert kb.load_converser_block("greetings") == first
+
+
+def test_the_converser_block_starts_from_the_vocab_the_partner_speaks():
+    block = kb.load_converser_block("greetings")
+    vocab = kb.load_vocab_block("greetings")
+    # Everything above the authoring notes, which the partner never sees.
+    assert block.startswith(vocab.split("## Notes for the sketch generator")[0].rstrip())
+
+
+def test_the_scene_block_omits_the_goal_and_the_slots(tmp_path):
+    scenario = kb.load_scenario("greetings")
+    scene = kb.render_scene_block(scenario)
+    assert "SCENE" in scene
+    assert scenario.situation in scene
+    assert scenario.withholding in scene
+    assert "Goal" not in scene
+    assert "Slots" not in scene
+
+
+def test_a_topic_without_a_scenario_still_has_a_converser_block(tmp_path):
+    """Topics land before their scenarios do. No scene is not an error."""
+    md = "---\nid: bare2\ndisplay_name: Bare\ntarget_vocab: [\u4f60]\n---\n"
+    topic_id, root = _write_topic(tmp_path, md, topic_id="bare2")
+    block = kb.load_converser_block(topic_id, root)
+    assert "SCENE" not in block
+    assert block == kb.load_vocab_block(topic_id, root)
+
+
+def test_a_scene_with_nothing_withheld_says_only_the_situation(tmp_path):
+    """`withholding` is required only once a scenario has a `request` slot, so
+    a scene may legitimately have none. It must not render an empty heading."""
+    scenario = dataclasses.replace(kb.load_scenario("greetings"), withholding=None)
+    scene = kb.render_scene_block(scenario)
+    assert scenario.situation in scene
+    assert "Withheld" not in scene
+
+
+def test_the_converser_block_drops_the_authoring_notes():
+    """`dialogues.md` ends with notes addressed to the *sketch generator*, and
+    they are written in rubric terms: `self-intro` names its `request` slots and
+    cites `SCENARIOS.md`, `food-ordering` lists the slot arc as "mid-arc beats",
+    `greetings` tells the partner to close once `target_turns` is approached.
+
+    They rode the converser's cached prefix for the whole of M2. Blinding the
+    scenario block alone would have left the rubric in the prompt and the
+    blindness invariant satisfied on paper — so the notes come out here, where
+    the partner reads, and stay where the sketch worker reads.
+    """
+    for topic_id in kb.list_topic_ids():
+        block = kb.load_converser_block(topic_id)
+        assert "Notes for the sketch generator" not in block
+        assert "target_turns" not in block
+        assert "slot" not in block
+
+
+def test_the_sketch_still_gets_the_authoring_notes():
+    """They are useful there — that is who they were written for."""
+    assert "Notes for the sketch generator" in kb.load_vocab_block("greetings")

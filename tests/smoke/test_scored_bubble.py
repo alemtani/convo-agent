@@ -46,6 +46,16 @@ def staged(transcript, syllables, overall=88.0):
             "timings": {**TIMINGS, "total_ms": None},
             "elapsed_ms": 1240.0,
         },
+        # V2: the grade is a third branch, so state has its own event. It
+        # usually beats the reply; here it lands after, which the page must
+        # also handle — it dispatches on `stage`, never on position.
+        {
+            "stage": "state",
+            "state": {"filled_at": {}, "status": "active"},
+            "coherence": "on_track",
+            "timings": {**TIMINGS, "total_ms": None},
+            "elapsed_ms": 1245.0,
+        },
         {"stage": "done", "timings": TIMINGS, "usage": USAGE, "elapsed_ms": 1250.0},
     ]
 

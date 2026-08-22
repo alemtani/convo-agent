@@ -12,14 +12,19 @@ import anthropic
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
+import json
+
 import pytest
 
-from backend import config, kb
+from backend import config
+from backend import kb
+from backend.prompts import render_system_prompt
 from backend.models import (
+    GraderResult,
     ConversationResult,
     SpokenConversationResult,
     Utterance,
-    WorkerAnnotation,
+    ConverserAnnotation,
 )
 from backend.workers import conversation
 
@@ -83,16 +88,15 @@ def test_forgiveness_literal_is_in_frozen_block_not_volatile():
         assert "我叫小明" not in block["text"]
 
 
-def test_scenario_rides_the_cached_prefix_not_the_per_turn_messages():
-    """M2: authored slots are frozen KB, so they cost cached tokens once.
+def test_the_scene_rides_the_cached_prefix_not_the_per_turn_messages():
+    """V2: the *scene* is authored, so it costs cached tokens once.
 
-    They are authored — they cannot change mid-session — so they belong inside
-    the KB block behind the breakpoint. (What is *volatile* is which slots are
-    still outstanding; that arrives with the tracker in #31 and must stay out of
-    this prefix.) Asserted on the real greetings block, because the point is that
-    the loader put it there.
+    It cannot change mid-session, so it belongs inside the KB block behind the
+    breakpoint. What is volatile — whether this is the final turn — arrives
+    after it, in `messages`. Asserted on the real greetings block, because the
+    point is that the loader put it there.
     """
-    real_kb = kb.load_kb_block("greetings")
+    real_kb = kb.load_converser_block("greetings")
     req = conversation.build_request(
         kb_block=real_kb,
         sketch=SKETCH,
@@ -101,13 +105,61 @@ def test_scenario_rides_the_cached_prefix_not_the_per_turn_messages():
         forgiveness_level=0.8,
         want_reading=True,
     )
-    assert "# SCENARIO" in req["system"][1]["text"]
-    assert "Find out their name" in req["system"][1]["text"]
+    assert "# SCENE" in req["system"][1]["text"]
+    assert "never volunteer their own name" in req["system"][1]["text"]
     # Still cached as one frozen unit: the breakpoint sits after the sketch.
     assert "cache_control" not in req["system"][1]
     assert req["system"][2]["cache_control"] == {"type": "ephemeral"}
     for message in req["messages"]:
-        assert "SCENARIO" not in message["content"]
+        assert "SCENE" not in message["content"]
+
+
+def test_no_part_of_the_request_tells_the_partner_what_is_scored():
+    """The invariant V2 exists for, asserted on the assembled request rather
+    than on any one component — a blind partner is only blind if *nothing* in
+    the turn carries the rubric, including the system prompt itself."""
+    scenario = kb.load_scenario("greetings")
+    req = conversation.build_request(
+        kb_block=kb.load_converser_block("greetings"),
+        sketch=SKETCH,
+        dialogue=[{"role": "user", "zh": "你好"}],
+        user_text="我叫小明",
+        forgiveness_level=0.8,
+        want_reading=True,
+    )
+    everything = "\n".join(block["text"] for block in req["system"])
+    everything += "\n".join(
+        m["content"] if isinstance(m["content"], str)
+        else "".join(b["text"] for b in m["content"])
+        for m in req["messages"]
+    )
+    # **The output schema is part of the request.** `messages.parse` renders it
+    # into the call — field names, and the model docstrings Pydantic emits as
+    # schema `description`. An earlier version of this test joined `system` and
+    # `messages` only, and passed while `ConversationResult` still nested
+    # `GraderResult`: the partner was handed `slots_filled`, `learner_closed`,
+    # `coherence` and a docstring spelling out the credit rule, in its cached
+    # prefix, by the one component the assertion skipped.
+    everything += json.dumps(
+        req["output_format"].model_json_schema(), ensure_ascii=False
+    )
+    assert scenario.goal not in everything
+    for slot in scenario.slots:
+        assert slot.id not in everything
+        assert slot.description not in everything
+    # The words the old prompt used to teach the rubric with.
+    for word in ("slot", "SCENARIO", "scenario", "criteri", "scored"):
+        assert word not in everything
+
+
+def test_the_converser_is_not_asked_to_annotate_what_it_cannot_see():
+    """The system prompt taught `slots_filled`, `learner_closed` and
+    `coherence`. All three are the grader's now, and a prompt that still asks
+    for them would have the partner reasoning about a rubric it was not given —
+    the worst of both designs."""
+    prompt = render_system_prompt(0.8)
+    for field in ("slots_filled", "learner_closed", "coherence"):
+        assert field not in prompt
 
 
 def test_empty_sketch_is_omitted_rather_than_sent_as_an_empty_block():
@@ -228,7 +280,7 @@ def test_effort_is_omitted_rather_than_defaulted_when_unset(monkeypatch):
 def _recorded_result():
     return ConversationResult(
         partner_response=Utterance(zh="你好！你叫什么名字？", pinyin="nǐ hǎo! nǐ jiào shénme míngzi?"),
-        turn_annotation=WorkerAnnotation(coherence="on_track", topic_tags=["greetings"]),
+        turn_annotation=ConverserAnnotation(topic_tags=["greetings"]),
         # Text mode: the learner typed pinyin, the worker reports what it read.
         user_reading=Utterance(zh="我叫小明", pinyin="wǒ jiào xiǎo míng"),
     )
@@ -260,7 +312,6 @@ async def test_respond_sends_built_request_and_parses_recorded_response():
 
     # We parsed the recorded response into our models.
     assert reply == Utterance(zh="你好！你叫什么名字？", pinyin="nǐ hǎo! nǐ jiào shénme míngzi?")
-    assert annotation.coherence == "on_track"
     assert annotation.topic_tags == ["greetings"]
     # The reading is surfaced separately from the reply — it's the learner's turn.
     assert reading == Utterance(zh="我叫小明", pinyin="wǒ jiào xiǎo míng")
@@ -438,62 +489,28 @@ def test_prior_dialogue_turns_never_carry_a_hint():
     assert isinstance(req["messages"][2]["content"], list)
 
 
-# --- M2-C: the tracker, folded into the annotation -----------------------
-
-
-async def test_the_tracker_signal_is_parsed_off_a_recorded_response():
-    """Contract test: assert the id *set*, never the model's wording.
-
-    The tracker is folded into the annotation the worker already returns, so it
-    costs no extra call and no extra latency on a hot path that is already 73%
-    Claude (`docs/SCENARIOS.md`, "Runtime: three tiers").
-    """
-    result = _recorded_result()
-    result.turn_annotation = WorkerAnnotation(
-        coherence="on_track",
-        slots_filled=["item", "quantity"],
-        learner_closed=False,
-    )
-    client, _ = _fake_client(result)
-
-    _reply, annotation, _reading, _usage = await conversation.respond(
-        kb_block=KB,
-        sketch=SKETCH,
-        dialogue=[],
-        user_text="我要三个水果",
-        forgiveness_level=0.8,
-        client=client,
-    )
-
-    assert annotation.slots_filled == ["item", "quantity"]
-    assert annotation.learner_closed is False
-
-
-async def test_a_close_is_reported_on_the_annotation():
-    result = _recorded_result()
-    result.turn_annotation = WorkerAnnotation(coherence="on_track", learner_closed=True)
-    client, _ = _fake_client(result)
-
-    _reply, annotation, _reading, _usage = await conversation.respond(
-        kb_block=KB, sketch=SKETCH, dialogue=[], user_text="再见",
-        forgiveness_level=0.8, client=client,
-    )
-    assert annotation.learner_closed is True
+# --- V2: the tracker is not the converser's to report ----------------------
+#
+# It used to be folded into the annotation to avoid a second call. Those tests
+# lived here and now live in `tests/test_grader.py`, against the call that
+# actually makes the judgment. What is left here is the invariant that replaced
+# them: the converser is not asked, in any component of the request.
 
 
 def test_the_tracker_fields_default_to_a_no_op():
     """A turn that establishes nothing must parse, not fail — most turns do."""
-    annotation = WorkerAnnotation(coherence="on_track")
-    assert annotation.slots_filled == []
-    assert annotation.learner_closed is False
+    grade = GraderResult(coherence="on_track")
+    assert grade.slots_filled == []
+    assert grade.slots_filled_previously == []
 
 
-def test_the_spoken_schema_carries_the_tracker_too():
-    """Both paths get it free by living on the shared annotation."""
+def test_neither_conversation_schema_carries_the_grade():
+    """The schema is rendered into the request, so a `GraderResult` nested in
+    either result model would hand the partner the rubric in its cached prefix —
+    the exact route stripping the system prompt was meant to close."""
     for schema in (ConversationResult, SpokenConversationResult):
-        fields = schema.model_fields["turn_annotation"].annotation.model_fields
-        assert "slots_filled" in fields
-        assert "learner_closed" in fields
+        assert "grade" not in schema.model_fields
+        assert "GraderResult" not in json.dumps(schema.model_json_schema())
 
 
 async def test_a_truncated_response_becomes_a_conversation_error():
