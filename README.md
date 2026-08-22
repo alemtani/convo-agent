@@ -1,15 +1,136 @@
 # Convo Agent
 
-A Mandarin conversation practice agent powered by Claude and Azure Speech Services.
+A Mandarin conversation tutor for one beginner (HSK 3.0, bands 1–2). The
+learner gets a situation and a goal, speaks or types pinyin, and an AI partner
+replies in 汉字 + pinyin. A **separate** AI grades whether they earned each
+goal slot. Python decides pass/fail. The session ends when the goal is met,
+the turn cap is hit, the learner says goodbye twice, or they tap "I'm stuck."
+
+<!-- TODO: phone screenshot of a live session + the verdict card -->
+
+Each topic is a markdown knowledge base (vocab, grammar, dialogues). A
+conversation is the applied form of that KB — generated from it, scored
+against it. The goal is a set of named binary slots, not a model's opinion.
+
+Spoken and typed, end to end, as a mobile-first PWA. Five topics, all
+scenario-ready: greetings, self-intro, family, numbers-money, food-ordering.
+
+## Why it's interesting
+
+Three design choices, each enforced in code rather than hoped for in a prompt.
+
+### The partner doesn't know what's being tested
+
+A partner handed the slot list will take a question about dishes as an answer
+to a question about drinks, because it can see the checkbox behind it. So it
+is no longer told.
+
+`load_converser_block` (`backend/kb.py`) structurally omits the goal and the
+slot graph. The converser gets only `# SCENE` — the situation, and authored
+withholding prose. The grader (`backend/workers/grader.py`) gets the rubric as
+Python data and never touches that string block. Two subtractions enforce it:
+the scene renderer never emits `goal` or slots, and author notes written in
+rubric terms are stripped before they reach the partner. A test asserts the
+converser's output schema cannot carry `slots_filled`.
+
+> A server with no menu is a fact about a restaurant; "do not reveal
+> `recommendation` until asked" is a fact about a test.
+
+### Python decides pass/fail. The model only explains
+
+`backend/termination.py` is pure — no I/O, no clock, no model call. Slot fill
+is set comparison against the authored rubric. The verdict worker
+(`backend/workers/feedback.py`) recomputes `goal_met` server-side and will
+correct a `goal` or `cap` `end_reason` that does not square with the slots;
+the rest are trusted, not verified. The model writes the explanation; it
+does not get a vote.
+
+### Three models, chosen per job
+
+| Job | Model | Thinking |
+|---|---|---|
+| Partner, opening sketch | Claude Sonnet 5 | explicitly off (hot path) |
+| Grader | Claude Opus 5 | on (adaptive) |
+| Verdict | Claude Opus 5 | on, effort high |
+
+Separate cache prefixes. Usage tracked separately, because the prices differ.
+
+## How a turn runs
+
+The server is a stateless proxy. It stores no transcript. The client
+resubmits `dialogue`, `sketch`, and `state` every turn.
+
+```
+mic → STT → transcript
+        ├─ Azure pronunciation assessment → score
+        ├─ Claude converser  (goal-blind)  → reply
+        └─ Claude grader     (sees rubric) → state
+                                             done
+```
+
+PA, converser, and grader start together. Events emit as they resolve, except
+`state`, which is held until `reply` has been sent: the client commits the
+turn to `dialogue` on `reply`, so a credited slot must not outlive a failed
+converser.
+
+The typed path is serial on purpose — the grader is fed the converser's 汉字
+rendering of the pinyin, so the learner's bubble and their grade describe the
+same sentence.
+
+```
+max_turns = n_slots + n_request_slots + 2
+```
+
+A `request` slot fills when the learner asks, whether or not the partner
+answered. Scene withholding is authored prose, not a per-turn hint.
+
+## Evaluating the agent
+
+The interesting failure is not "the model said something wrong." It is
+**unearned credit** — the partner treating a non-sequitur as a slot fill
+because it could see the checkbox. The unit of measurement is slot accuracy,
+split so one number cannot hide which failure it is:
+
+- **spurious** — credit the learner did not earn
+- **missed** — credit the learner earned and was not given
+
+The fixture corpus lives in [`tests/fixtures/sessions/`](tests/fixtures/sessions/)
+(7 recorded turns). Gold labels are kept in a separate file from the
+transcripts. A second-opinion label set exists; that labeller had repo access,
+so it is corroboration, not independence.
+
+The replay harness ([`evals/coherence/replay.py`](evals/coherence/replay.py))
+calls through the same seam the orchestrator uses, so the eval cannot drift
+from production. [`tests/test_coherence_eval.py`](tests/test_coherence_eval.py)
+tests the eval framework itself, including assertions about the shipped
+corpus (pairing, wire shape). The replay is a script, not a test: its output
+is a report, and a report is not an assertion. Nothing in `pytest -q` spends
+tokens.
+
+A measurement that killed a feature: V0 measured the converser's `coherence`
+tag against gold and found no threshold that could gate on it safely. No gate
+shipped. See [`docs/VALIDITY.md`](docs/VALIDITY.md) and
+[`evals/coherence/`](evals/coherence/).
+
+**In flight.** V2 moved grading onto a dedicated worker. The matrix has to be
+re-run against the grader before the same conclusions hold. The corpus also
+cannot yet demonstrate the under-annotation floor earning its keep — that
+needs a case drawn from a real session, not one written from imagination.
 
 ## Architecture
 
 - **FastAPI** backend serving the API and the PWA (`frontend/`)
-- **Anthropic Claude API** for the partner, the session sketch, and the verdict
-- **Azure Speech Services** for speech-to-text, pronunciation assessment, and on-demand TTS
-- **Client-held session state** in `localStorage` — the server is a stateless turn proxy
-- Durable learning state (SQLite) is designed, not built. See [`AGENTS.md`](AGENTS.md).
+- **Anthropic Claude** — partner and sketch on Sonnet 5; grader and verdict
+  on Opus 5
+- **Azure Speech** — STT, pronunciation assessment, on-demand TTS
+- **Client-held session state** in `localStorage` — the server is a
+  stateless turn proxy
+- Durable learning state (SQLite) is designed, not built. `schema.sql`
+  exists; nothing reads it. See [`AGENTS.md`](AGENTS.md).
 - CORS also allows `http://localhost:3000` for a separately-hosted frontend
+
+576 tests in the default gate; 105 more sit behind `live` / `smoke` markers
+(real keys, or Playwright).
 
 ## Setup
 
@@ -47,8 +168,8 @@ A Mandarin conversation practice agent powered by Claude and Azure Speech Servic
    (matches the `eastus` default in `backend/config.py`). Then under
    **Keys and Endpoint**, copy **KEY 1** → `AZURE_SPEECH_KEY` and the
    **Region** → `AZURE_SPEECH_REGION`. A spoken session also needs
-   `ANTHROPIC_API_KEY` — the partner, the opening line, and the verdict
-   all call Claude.
+   `ANTHROPIC_API_KEY` — the partner, the opening line, the grader, and the
+   verdict all call Claude.
 
 ## Running the dev server
 
@@ -83,7 +204,8 @@ lasts `SESSION_TTL_DAYS` (default 30). Rotating `APP_PASSCODE` invalidates every
 outstanding session — the signing key is derived from it, which is the only
 revocation lever a single shared credential has.
 
-## Deploying (Fly.io)
+<details>
+<summary>Deploying (Fly.io)</summary>
 
 The mic needs a secure context, so this is what makes the app reachable from a
 phone at all. `Dockerfile` and `fly.toml` are checked in; `fly launch` and
@@ -139,9 +261,9 @@ phone at all. `Dockerfile` and `fly.toml` are checked in; `fly launch` and
 6. Open `https://<your-app-name>.fly.dev` on your phone, log in with the
    passcode, and confirm a spoken turn completes end to end.
 
-No persistent volume is configured — SQLite/durable learning state is cut from
-MVP scope (Phase 4+), so every deploy is stateless on disk. The KB markdown
-under `kb/zh/` is baked into the image at build time, not mounted.
+No persistent volume is configured — SQLite/durable learning state is Phase 7,
+not built, so every deploy is stateless on disk. The KB markdown under `kb/zh/`
+is baked into the image at build time, not mounted.
 
 ### Automatic deploys
 
@@ -167,15 +289,9 @@ automating precisely because it fails *open*: the app serves normally, so the
 only symptom is an unauthenticated endpoint spending your Anthropic and Azure
 quota on a public hostname.
 
-## Try it yourself (manual validation)
+</details>
 
-This section always shows **only what the app does right now** — one walkthrough,
-**updated in place** as each phase ships, never an append-only pile of old steps.
-Because phases are cumulative (each builds on the last), running the current
-walkthrough exercises everything underneath it. The full phase plan lives in
-[`docs/DESIGN.md`](docs/DESIGN.md#build-order--walking-skeleton).
-
-### What works today: a bounded scenario, spoken or typed
+## Try it yourself
 
 The server draws one of five topics, pins an English situation and goal above
 the thread, and plays a partner who will not volunteer the facts you are
@@ -183,7 +299,7 @@ supposed to extract. You have a derived turn cap. The session ends with a
 verdict: did you hit the goal, and what should you have said.
 
 **Needs both keys** — Azure for speech, Anthropic for the partner, the
-opening line, and the verdict.
+opening line, the grader, and the verdict.
 
 1. Set `ANTHROPIC_API_KEY`, `AZURE_SPEECH_KEY`, and `AZURE_SPEECH_REGION`
    in `.env` (see [Setup](#setup)).
@@ -202,11 +318,12 @@ opening line, and the verdict.
 5. **Hold** *Hold to talk* — a live mic-level meter fills as you speak —
    answer in Mandarin, and release. Or tap the keyboard and type pinyin
    (`ni hao` or `ni3hao3`).
-6. ✅ **Expected:** your words appear with per-syllable tone underlines
-   (green / amber / red) on the spoken path; the partner replies in 汉字 +
-   pinyin. You can tap to hear a reply. The session ends when you fill
-   every goal slot, you hit the turn cap, or you say goodbye twice. A
-   verdict card explains the outcome. *New* draws a fresh topic.
+6. Your words appear with per-syllable tone underlines (green / amber / red)
+   on the spoken path; the partner replies in 汉字 + pinyin. You can tap to
+   hear a reply. The session ends when you fill every goal slot, you hit the
+   turn cap, you say goodbye twice, or you tap *I'm stuck*. A verdict card
+   explains the outcome. *Try this again* replays the same topic; *Try
+   something else* draws a fresh one.
 
    No speech detected replies 请再说一次 and does not spend a turn. If
    scoring fails, the turn still shows your transcript, just without tone
@@ -223,8 +340,8 @@ curl -s -X POST http://localhost:8000/api/session
 # -> topic_id, display_name, scenario_card, opening_line, sketch
 ```
 
-A spoken turn is an NDJSON stream (`transcript`, then `score` / `reply`,
-then `done`), not one JSON object. Use `scripts/replay.py` to measure
+A spoken turn is an NDJSON stream (`transcript` → `score` ∥ `reply` ∥
+`state` → `done`), not one JSON object. Use `scripts/replay.py` to measure
 latency, or `scripts/walk_scenario.py` to prove a topic is winnable.
 Both spend real quota.
 </details>
@@ -236,13 +353,13 @@ the same numbers on the response, so the page, the log, and the replay harness
 never disagree about how long something took:
 
 ```
-turn timings mode=audio stt=1103ms pa=884ms claude=2612ms total=3721ms cache_read=5120 …
+turn timings mode=audio stt=1103ms pa=884ms claude=2612ms grader=1840ms total=3721ms cache_read=5120 …
 ```
 
 The thread shows a quiet line under each exchange — round trip, server total,
-each stage, and `cache_read` tokens. On the spoken path PA and Claude run
-concurrently, so `stt + max(pa, claude)` is the critical path and the stages
-deliberately sum to more than the total.
+each stage, and `cache_read` tokens. On the spoken path PA, Claude, and the
+grader run concurrently, so `stt + max(pa, claude, grader)` is the critical
+path and the stages deliberately sum to more than the total.
 
 To get distributions rather than anecdotes, replay recorded turns at a running
 server (**this spends real Azure/Anthropic quota**):
@@ -278,10 +395,10 @@ kb/zh/
 
 **Two ways to manage topics:**
 
-- **Assisted (Claude Code):** invoke the `kb-topic` skill — type `/kb-topic` (e.g.
-  `/kb-topic add a family topic`) or just describe the task. It drafts/edits the
-  files, runs validation, and opens a PR. See `.claude/skills/kb-topic/SKILL.md`
-  for the workflow and the authoring rules it enforces.
+- **Assisted:** invoke the `kb-topic` skill (Claude Code, OpenCode, or anything
+  else that loads `.claude/skills/kb-topic/`). It drafts/edits the files, runs
+  validation, and opens a PR. See `.claude/skills/kb-topic/SKILL.md` for the
+  workflow and the authoring rules it enforces.
 - **Manual (any editor):** edit the markdown, then run the tools yourself:
 
   ```bash
@@ -304,29 +421,27 @@ kb/zh/
 
 See `kb/zh/_hsk/README.md` for how the wordlist and band ceiling work.
 
-## Current status
+## Project status
 
 The walking-skeleton phases live in
 [`docs/DESIGN.md`](docs/DESIGN.md#build-order--walking-skeleton).
 [`AGENTS.md`](AGENTS.md) is the short map of what is live.
 
-- ✅ **Phases 0–3b** — page, spoken loop, pronunciation underlines, Claude
-  partner with a cached prefix, multi-turn history on the client.
-- ✅ **M1** — passcode gate, Fly.io deploy, CI deploy on `main`, phone
-  AudioContext unlock.
-- ✅ **M2** — authored scenario slots, sketch worker, slot tracker,
-  state-driven end conditions, verdict card. Five topics. Topic catalog
-  (`GET /api/topics`); session start still draws the topic.
-- ✅ **M4** — on-demand TTS, beside the loop.
-- ⏳ **Phase 6** — per-turn redo. Not built. *New* starts a fresh session.
-- ⏳ **Phase 7** — `db.py` / `profile.py`, covered-set, proficiency,
-  weighted draw. Not built.
+| | Status |
+|---|---|
+| Spoken + typed loop, five topics, verdict card | Shipped |
+| Passcode gate, Fly.io, CI deploy on `main` (M1) | Shipped |
+| Goal-blind converser + dedicated grader (V2) | Shipped |
+| `coherence` measured against gold; no gate (V0) | Shipped |
+| "I'm stuck" exit + retry card (A1) | Shipped |
+| On-demand TTS | Shipped |
+| Python floor under the tracker, progress HUD (A2) | Open |
+| Partner reads `HSK_BAND_CEILING` (C0) | Open |
+| Per-turn redo | Not built |
+| Durable learning state / weighted topic draw (Phase 7) | Not built |
 
-In-session coaching every N turns (the original Phase 4 feedback worker)
-did not ship. The only coaching card is the end-of-session verdict.
-
-The first real session by the learner it was built for (2026-08-16) found
-the loop works and the learner drowns: being stumped has no exit but
-guessing or saying goodbye twice. The plan for that is
-[`docs/ACCESSIBILITY.md`](docs/ACCESSIBILITY.md) — a next move that always
-exists, priced instead of hidden.
+The next product work is A2, C0, or more topics — not more validity
+architecture. The next *eval* work is re-running the V0 matrix against the
+V2 grader. Detail in [`docs/VALIDITY.md`](docs/VALIDITY.md),
+[`docs/ACCESSIBILITY.md`](docs/ACCESSIBILITY.md),
+[`docs/CURRICULUM.md`](docs/CURRICULUM.md).
