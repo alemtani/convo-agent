@@ -66,9 +66,13 @@ def _make_fake_speechsdk(recognizer_class, recorder):
             recorder["applied_to"] = recognizer
 
     class FakePaResult:
+        # Mirrors the real SDK: each field is assigned only when Azure's JSON
+        # carried the matching key, so a missing one raises `AttributeError` on
+        # access rather than reading back as `None`.
         def __init__(self, res):
-            self.accuracy_score = res._pa.accuracy_score
-            self.words = res._pa.words
+            for field in ("accuracy_score", "words"):
+                if hasattr(res._pa, field):
+                    setattr(self, field, getattr(res._pa, field))
 
     grading = types.SimpleNamespace(HundredMark="HundredMark")
     granularity = types.SimpleNamespace(Phoneme="Phoneme")
@@ -315,3 +319,76 @@ async def test_a_stalled_assessment_times_out_as_a_pa_error(monkeypatch):
 
     with pytest.raises(pa.PaError, match="timed out"):
         await pa.assess(b"FAKEWAV", "你好")
+
+
+# --- Words and segments the SDK left half-built -------------------------------
+#
+# The SDK's result classes assign `_syllables`, `_accuracy_score` and `_words`
+# only when the matching key is in Azure's JSON, and every property returns its
+# private attribute bare. So an absent key is not a `None` to fall back from —
+# reading the property raises `AttributeError`. This crashed a live turn
+# (`'PronunciationAssessmentWordResult' object has no attribute '_syllables'`)
+# after the response had already committed to 200, which is why these fakes omit
+# the attributes rather than setting them empty.
+
+
+def _word_without(word, accuracy=None, syllables=None):
+    """A word result missing the attributes Azure's JSON did not carry."""
+    fields = {"word": word}
+    if accuracy is not None:
+        fields["accuracy_score"] = accuracy
+    if syllables is not None:
+        fields["syllables"] = syllables
+    return types.SimpleNamespace(**fields)
+
+
+def _result_without_words(reason, accuracy=0.0):
+    return types.SimpleNamespace(
+        reason=reason,
+        error_details="",
+        _pa=types.SimpleNamespace(accuracy_score=accuracy),
+    )
+
+
+async def test_word_missing_the_syllables_attribute_scores_as_one_chunk(patched):
+    # `word.syllables` raises rather than returning None, so `or []` never sees
+    # it. The learner still gets the word scored as a single chunk.
+    result = _result(
+        "RecognizedSpeech",
+        accuracy=88.0,
+        words=[_word_without("你好", accuracy=94.0)],
+    )
+    patched(result)
+
+    score = await pa.assess(b"FAKEWAV", "你好")
+
+    assert [(s.hanzi, s.pinyin, s.accuracy) for s in score.syllables] == [
+        ("你好", "nǐ hǎo", 94.0),
+    ]
+
+
+async def test_word_azure_never_assessed_is_dropped_not_scored_zero(patched):
+    # No `PronunciationAssessment` block means Azure did not judge this word.
+    # Scoring it 0 would tell the learner they mispronounced something nobody
+    # listened to, so the chunk is dropped and the assessed word stands alone.
+    result = _result(
+        "RecognizedSpeech",
+        accuracy=90.0,
+        words=[_word("老师", 97.0, []), _word_without("的")],
+    )
+    patched(result)
+
+    score = await pa.assess(b"FAKEWAV", "老师的")
+
+    assert [(s.hanzi, s.accuracy) for s in score.syllables] == [("老师", 97.0)]
+
+
+async def test_segment_without_words_contributes_nothing(patched):
+    # A segment Azure returned with no `Words` at all is not a zero-scoring
+    # segment; it is one we have nothing to say about.
+    result = _result_without_words("RecognizedSpeech", accuracy=50.0)
+    patched(result)
+
+    score = await pa.assess(b"FAKEWAV", "你好")
+
+    assert score is None

@@ -36,10 +36,21 @@ def _syllables_of(assessment) -> list:
 
     Key each scored chunk by its hanzi grapheme. When a word carries no syllable
     breakdown, score the whole word as one chunk so a grapheme always surfaces.
+
+    Every read here goes through `getattr`, because the SDK's result classes
+    assign `_words`, `_syllables` and `_accuracy_score` **only** when Azure's
+    JSON carried the matching key, and each property returns its private
+    attribute bare. An absent key therefore raises `AttributeError` instead of
+    reading back as `None` — which took down a live turn after the response had
+    already committed to 200.
+
+    A word Azure never scored is dropped rather than surfaced at zero: no
+    assessment block means nobody judged it, and a zero would tell the learner
+    they mispronounced a word that was never listened to.
     """
     syllables = []
-    for word in assessment.words:
-        word_syllables = word.syllables or []
+    for word in getattr(assessment, "words", None) or []:
+        word_syllables = getattr(word, "syllables", None) or []
         if word_syllables:
             for syl in word_syllables:
                 hanzi = syl.grapheme or syl.syllable
@@ -51,11 +62,14 @@ def _syllables_of(assessment) -> list:
                     )
                 )
         else:
+            accuracy = getattr(word, "accuracy_score", None)
+            if accuracy is None:
+                continue
             syllables.append(
                 SyllableScore(
                     hanzi=word.word,
                     pinyin=to_pinyin(word.word),
-                    accuracy=word.accuracy_score,
+                    accuracy=accuracy,
                 )
             )
     return syllables
@@ -77,8 +91,9 @@ def _to_score(segments) -> Optional[PronunciationScore]:
     for result in segments:
         assessment = speechsdk.PronunciationAssessmentResult(result)
         syllables = _syllables_of(assessment)
-        if syllables:
-            per_segment.append((assessment.accuracy_score, syllables))
+        accuracy = getattr(assessment, "accuracy_score", None)
+        if syllables and accuracy is not None:
+            per_segment.append((accuracy, syllables))
 
     if not per_segment:
         return None
