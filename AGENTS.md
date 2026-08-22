@@ -3,9 +3,11 @@
 Shared brief for every coding agent (Grok, Claude Code, or anything else).
 Read this first. Then read the file you are about to change.
 
-Claude Code also loads [`CLAUDE.md`](CLAUDE.md) — hooks, tunnel lifetime, and
-the `kb-topic` skill. Leave that file to Claude Code. Do not edit it from
-this track.
+Claude Code also loads [`CLAUDE.md`](CLAUDE.md) — Stop and SessionEnd hooks.
+Do not edit that file from this track.
+
+The `kb-topic` skill lives at `.claude/skills/kb-topic/`. Every agent loads
+it. It is authoring workflow, not a Claude hook.
 
 ---
 
@@ -39,179 +41,87 @@ Shipped, in the order a learner hits it:
 
 - Passcode gate, Fly.io deploy, CI deploy on `main` (M1).
 - Spoken loop: `POST /api/turn` streams NDJSON
-  (`transcript` → `score` ∥ `reply` → `done`). A hold is cut at 30s and
-  sent; an STT timeout asks for a shorter turn instead of dumping a 502.
+  (`transcript` → `score` ∥ `reply` ∥ `state` → `done`). A hold is cut at
+  30s and sent; an STT timeout asks for a shorter turn instead of dumping a
+  502. A word Azure left half-built no longer takes down the turn (#77).
 - Text loop: `POST /api/turn/text` (pinyin or 汉字).
 - Session start: `POST /api/session` draws a topic, returns opening line +
   flavour sketch + English scenario card. An optional `topic_id` in the body
   replays a scenario the server issued earlier ("Try this again").
-- Slot tracker + `termination.py` + end-of-session `POST /api/verdict`, now on
-  `claude-opus-5` with thinking on — V2's model split (docs/VALIDITY.md),
-  tested here first since this worker needed no architecture change to try it.
+- Goal-blind converser + grader on the fan-out (V2, #76). State rides
+  `StateEvent`, derived from the grader. Verdict worker on `claude-opus-5`
+  with thinking on (`POST /api/verdict`).
 - On-demand `POST /api/tts` (slowed, cached by line). Beside the loop.
 - Five topics, all scenario-ready: `greetings`, `self-intro`, `family`,
   `numbers-money`, `food-ordering`. Catalog: `GET /api/topics`.
 - Mobile-first PWA (`frontend/index.html`). Transcript and session state
   live in `localStorage`.
-- A1 of the accessibility track (#66): "I'm stuck" ends a session the learner
-  cannot finish (`end_reason: "stuck"`, written by the client), the verdict card
-  offers "Try this again" / "Try something else", and the controls say what they
-  do in words — session management sits under a ⋯ menu.
+- A1 (#66): "I'm stuck" ends a session (`end_reason: "stuck"`), the verdict
+  card offers "Try this again" / "Try something else", controls say what
+  they do in words.
 
 Limits of the running app (not a backlog, just what is missing today):
 
-- No `backend/db.py` / `backend/profile.py`. No covered-set, no proficiency
-  store, no weighted draw. Session start is uniform random.
-  `schema.sql` exists; nothing reads it. No Fly volume.
-- No in-session coaching. The only feedback card is the verdict — reachable
-  early with "I'm stuck", but still only at the end of a session.
+- No `backend/db.py` / `backend/profile.py`. Session start is uniform
+  random. `schema.sql` exists; nothing reads it. No Fly volume.
+- No in-session coaching. The only feedback card is the verdict.
 - No per-turn redo. "Try something else" starts a fresh session.
 - The topic catalog is read-only. The learner does not pick.
-- **A stuck learner can leave, but not get unstuck in place.** "I'm stuck"
-  ends the session into the verdict (A1, #66). What is still missing is help
-  *during* a turn: no translation, no way to ask for the words. A3 (#68) is
-  gated on whether a session after A2 still drowns for vocabulary.
-- **The partner holds the rubric.** One call both converses and annotates
-  slots, so a non-sequitur that lands on a slot gets credited and played
-  along with. `coherence` is computed every turn and read by nothing.
+- A stuck learner can leave, but not get unstuck in place. No translation,
+  no way to ask for the words during a turn. A3 (#68) is gated on evidence
+  after A2.
 
-The last product work on `main` is V0 (#72), the verdict worker on Opus 5
-(#74), and A1 (#66). A new session starts from that tip.
+The last product work on `main` is V2 (#76) and the Azure half-built-word
+fix (#77). A new session starts from that tip.
 
 ---
 
 ## What's next
 
-Three tracks. All open. Growing the surface and fitting the session are
-independent; **validity depends on accessibility** and cannot lead it.
-The issue list is the detail; this is the split.
+Three tracks. Growing the surface and fitting the session are independent.
+Detail lives in the issue list and the docs linked below.
 
-### Grow the surface — more topics, scenarios, languages
+### Grow the surface
 
-Five Mandarin topics is where the MVP stopped. The next content is more
-scenes for this learner, then the same scene shape in another language.
+More `kb/zh/<id>/` topics with a real scenario (more than one slot, at
+least one `request`). Then the same scene shape in another language
+(designed, not built: C5 #48, C9 #50). C4 (#47) hardens `validate.py`.
+#56 is the known pinyin-sandhi bug.
 
-- Author more `kb/zh/<id>/` topics with a real scenario (more than one
-  slot, at least one `request`). The cut slate — time/date, weather,
-  directions — is the hard shape: two things to find out, plus one to
-  tell. See [`docs/CURRICULUM.md`](docs/CURRICULUM.md).
-- A second language is designed, not built: `kb/<lang>/lang.json`, a
-  pinned lexicon, romanization as a capability. C5 (#48), C9 (#50).
-  C7 (#52) is the live-edit hook: a session pins a `content_hash`, so
-  new topics apply to the *next* session, not mid-turn.
-- Authoring must stay honest as the slate grows. C4 (#47) hardens
-  `validate.py` into the generation gate. #56 is the known pinyin-sandhi
-  bug in `annotate_pinyin.py`.
+### Curriculum — [`docs/CURRICULUM.md`](docs/CURRICULUM.md), #44–#53
 
-### Fit the session to this learner
-
-The loop works. It does not yet know what you have learned or where you
-are weak. Every session is the same draw, the same band-2 partner, the
-same pacing.
-
-That is the curriculum track ([`docs/CURRICULUM.md`](docs/CURRICULUM.md),
-issues #44–#53):
-
-| Issue | Stage | What it changes for the learner |
+| Issue | Stage | What it changes |
 |---|---|---|
-| #51 | C0 | The partner actually reads `HSK_BAND_CEILING`. Today the prompt hardcodes band 2. |
-| #44 | C1 | A syllabus record: which units they just finished. |
+| #51 | C0 | Partner reads `HSK_BAND_CEILING`. Today the prompt hardcodes band 2. |
+| #44 | C1 | Syllabus record: which units they just finished. |
 | #45 | C2 | Prefer covered vocab. Soft, never a hard filter. |
-| #46 | C3 | Weighted draw from recency, weakness, staleness — not uniform random. |
-| #48 | C5 | Split **band** (which words) from **stage** (how hard the conversation is). |
+| #46 | C3 | Weighted draw from recency, weakness, staleness. |
+| #48 | C5 | Split **band** (words) from **stage** (how hard the conversation is). |
 | #49 | C6 | Purpose facet — family, travel, work — reweights the draw. |
 | #53 | C8 | In-app topic list: covered, weak, stale, pin, tap to play. |
 
-C3 and C8 need the Phase 7 store (`db.py`, `profile.py`). C0 does not —
-it is the first thing that makes a ceiling bump mean anything.
+C3 and C8 need the Phase 7 store. C0 does not. Leftover loop polish: #63.
 
-Leftover loop polish from the bug bash sits beside this track, not
-instead of it: #63 (fetch timeouts, speech tunables, dead
-`SessionState.topic_id`).
+### Accessibility — [`docs/ACCESSIBILITY.md`](docs/ACCESSIBILITY.md)
 
-### Make it survivable when the learner is stuck
-
-The first real session by the learner it was built for (2026-08-16) found
-the loop works and the learner drowns. Being stumped has no exit but
-guessing or quitting, and one turn was graded wrong and then explained
-with a rule nobody wrote.
-
-That is the accessibility track
-([`docs/ACCESSIBILITY.md`](docs/ACCESSIBILITY.md)):
-
-| Chunk | What it changes for the learner |
+| Chunk | Status |
 |---|---|
-| A1 | "I'm stuck, end it" ends the session into the verdict. "Try this again." Buttons say words, not emoji. |
-| A2 | The card becomes true: a Python floor under the slot tracker, a verdict that names facts without inventing causes, the progress HUD on. |
-| A3 | Only if a session after A2 still drowns for words: translate on tap, word-level hints. |
+| A1 | Done (#66). "I'm stuck" ends into the verdict. |
+| A2 | Open. Python floor under the tracker, a verdict that names facts, progress HUD. |
+| A3 | Gated on evidence after A2, not scheduled. |
 
-A1 and A2 are independent. **A3 is gated on evidence, not scheduled** —
-decide it after one more phone session by the same learner.
+Difficulty is C0, not this track. The topic catalog is C8.
 
-Two things deliberately *not* here. Difficulty is C0 (#51): the partner
-is pinned to band 2 by a literal in `prompts.py` while
-`HSK_BAND_CEILING` is loaded and never read. The topic catalog is C8
-(#53): five topics and one learner make re-roll enough, and note 8 is
-agency, not stuckness.
+### Validity — [`docs/VALIDITY.md`](docs/VALIDITY.md)
 
-### Make the grade mean what it says
-
-Accessibility fixes a grade that withheld credit the learner earned.
-The other direction is credit they did not: the partner holds the
-rubric, so a non-sequitur that happens to land on a slot is both
-credited *and* cooperated with. A person would have said "…I asked if
-you wanted a drink."
-
-That is the validity track ([`docs/VALIDITY.md`](docs/VALIDITY.md)):
-
-| Chunk | What it changes |
+| Chunk | Status |
 |---|---|
-| V0 | **Done (#72).** A recorded-transcript set and the first evaluation of `coherence`. No threshold separates gaming from earned credit — 0/3 gaming runs blocked, 0/12 rescues suppressed at every gate tried. |
-| V1 | **Punted.** A gate on `coherence` would never have fired — no benefit, and issue #71 records why. The gaming case stays V2's to fix. |
-| V2 | **In progress.** The converser goes goal-blind; the grader joins the fan-out reading the *previous* partner turn. Withholding becomes persona, `pressure_hint` retires into authored scene design. Staged: (1) verdict worker → Opus 5 with thinking on, done as a standalone model-split test — no architecture change needed since it's already a judgment role off the turn path; (2) rewrite `food-ordering`'s situation for a structural gap; (3) the converser/grader split itself. |
-| V3 | Re-open A2's floor-on-ask compromise if the grader evaluates ask-AND-answer reliably. |
+| V0 | Done (#72). `coherence` cannot carry a gate. |
+| V1 | Punted (#71). |
+| V2 | Done (#76). Goal-blind converser; grader on the previous partner turn; Opus 5 grades. |
+| V3 | Closed as decided. Floor-on-ask stays; the partner's answer is the partner's. |
 
-**V1 does not close the gaming case; V2 does.** Even gated, the floor
-only stops itself from adding credit. The model tracker still grants
-the slot while the partner still holds the rubric.
-
-**The grader reads the *previous* partner turn, not the new one.** That
-is the pair the judgment needs — did the learner answer what was
-actually said — so the grader joins the `PA ∥ converser` fan-out instead
-of waiting on the reply. The wire shape is unchanged and the reply gets
-*faster*, since the annotation leaves the converser's output schema. A
-`request` slot's "partner answered" half then resolves one turn late,
-which costs nothing while A2 credits on the ask alone.
-
-**V2 also splits the model.** Sonnet 5 converses; **Opus 5 grades** —
-judgment is where capability pays, and it is off the reply path. The
-verdict worker made this move first (`VERDICT_MODEL`, separate from
-`CONVERSATION_MODEL`, which still serves the conversation and sketch
-workers) — thinking on, `max_tokens` headroom the hot-path workers
-deliberately avoid. The grader worker still to come wants the same
-treatment.
-
-**Does not wait on the accessibility track.** `docs/VALIDITY.md`
-narrows the original framing in issue #71: the real dependency is
-**authored scene design**, not A2's HUD. A2 ships a count ("2 of 3"),
-which says something is outstanding, not which fact it is — V2 needs a
-situation with a structural gap instead, which is content work
-independent of #67 merging.
-
-The A2 floor is the load-bearing decision. `SCENARIOS.md` predicted a
-strict extractor and prescribed extractor prompting — and that is the
-mitigation that failed, because the partner is asked in one call to
-withhold answers *and* to annotate slots. Deterministic logic gets a
-failing test first; a `live` eval set is a weather report, not a gate.
-
-Three things about that floor are decided, not open. It reads
-`user_reading` on the text path and the **STT transcript** on the spoken
-path — `SpokenConversationResult` drops `user_reading` deliberately, so a
-floor gated on it would not run where the learner actually is. It matches
-**content tokens** from `expressible_with`, since all-tokens fails
-`我叫小明` and any-token fires on a bare `我`. And it runs on the turn
-path **before `termination.advance`**, never on the verdict path, or the
-HUD and the verdict can disagree.
+The next product work is A2, C0, or more topics — not more validity architecture.
 
 ---
 
@@ -222,19 +132,20 @@ resubmits `dialogue`, `sketch`, and `state` every turn.
 
 ```
 mic → STT → yield transcript
-         ├─ Azure PA  → yield score (tone underlines)
-         └─ Claude    → yield reply + new SessionState
-         both done    → yield done
+         ├─ Azure PA                      → yield score
+         ├─ Claude partner (goal-blind)   → yield reply
+         └─ Claude grader (prev. turn)    → yield state
+         all done                         → yield done
 ```
 
 Partner path uses the forgiving STT transcript. Eval path uses Azure
 accuracy scores. Azure does not report the tone the learner produced;
 the UI shows accuracy, not expected-vs-actual.
 
-A `request` slot fills only when the learner asks **and** the partner
-answers. Pressure is a stage direction after the cache breakpoint:
-leave the scene unresolved, stay in character, do not volunteer the
-answer.
+The converser never sees the goal or the slots (`kb.load_converser_block`).
+The grader reads the previous partner turn plus the learner's turn.
+A `request` slot fills when the learner asks. Scene withholding is
+authored prose, not a per-turn hint.
 
 ```
 max_turns = n_slots + n_request_slots + 2
@@ -251,6 +162,7 @@ Coefficients live in `kb/zh/pacing.json`.
   work on an open PR is done, commit and push. Do not wait to be asked.
   Uncommitted work is not on the PR.
 - **Failing test first** for any deterministic logic. Then make it pass.
+  Show the pytest output as evidence. Do not claim green without it.
 - Verification is tiered. Pure logic: real TDD. Prompt cache: assert the
   assembled request is byte-identical across turns, breakpoint after the
   stable block. Claude/Azure: contract tests on the request we build and
@@ -258,18 +170,23 @@ Coefficients live in `kb/zh/pacing.json`.
   behavior: `@pytest.mark.live`, excluded from the default run.
 - Frontend races: `tests/smoke/` (Playwright, fake mic, stubbed fetch).
   Own requirements. Not in the default run because of Chromium, not
-  because it is flaky.
+  because it is flaky. Install with
+  `pip install -r tests/smoke/requirements.txt && playwright install chromium`.
 - A change that changes what the learner experiences needs a real phone
   check through `./scripts/tunnel.sh`. That includes prompt and KB
-  changes, not only `frontend/`.
-- A case found by hand is a missing test. Pin it in `tests/smoke/` (what
-  the learner sees) or the matching pytest module (what the server does)
-  before you call the case done. The phone check is for feel; the test is
-  so nobody has to re-run the case. Skip only what a browser cannot
-  observe (silent-switch autoplay, "does this read as failure").
+  changes, not only `frontend/`. The mic API needs a secure context —
+  HTTPS or localhost, not a LAN IP.
+- A case found by hand is a missing test. Pin it in `tests/smoke/` or
+  the matching pytest module before you call the case done. Skip only
+  what a browser cannot observe (silent-switch autoplay, "does this
+  read as failure").
 - **Prompt cache:** system prompt + topic KB + sketch stay byte-frozen.
   No timestamps, no `user_id`, no per-turn flags in the prefix.
-- **Authoring tools import `backend`, never the reverse.**
+- Async/await throughout. `user_id` and `language` stay first-class
+  (defaulted) so multi-user / multi-language stays additive.
+- **Authoring tools import `backend`, never the reverse.** `validate.py`
+  is the KB gate, not pytest. `tests/test_kb_validate.py` tests the
+  validator against broken fixtures, not topic content.
 - Secrets stay server-side. `APP_PASSCODE` unset = gate off (local).
   On a public host the gate must be on; `/health` reports `auth`.
 
@@ -289,10 +206,18 @@ pytest -m smoke tests/smoke        # needs Playwright Chromium
 python kb/zh/_tools/validate.py --all
 ```
 
-Phone: `./scripts/tunnel.sh start`, serve on the printed port, then
-`./scripts/tunnel.sh stop`. Claude Code's SessionEnd hook stops a
-tunnel it opened. A hand-started `cloudflared` is outside that
-guarantee.
+Phone (HTTPS required for the mic):
+
+```bash
+./scripts/tunnel.sh start          # prints the https:// URL and the port
+uvicorn backend.main:app --reload --port <port>
+./scripts/tunnel.sh status
+./scripts/tunnel.sh stop
+```
+
+A session-changing PR is prompt, turn shape, or KB — not only `frontend/`.
+Claude's SessionEnd hook and OpenCode's `session.deleted` plugin both run
+`tunnel.sh stop`. A hand-started `cloudflared` is outside that guarantee.
 
 ---
 
@@ -305,8 +230,13 @@ When you ship a behavior change, update the Status section above in the
 same PR. Do not leave this file describing last month's app.
 
 Do not ask the user to re-explain the product. Start from this file,
-the latest commits / PRs, and the code. For a Claude Code session you
-are continuing, use the `resume-claude` skill rather than a paste.
+the latest commits / PRs, and the code.
+
+Shared skill: `kb-topic`. Shared scripts: `scripts/run-tests.sh`,
+`scripts/tunnel.sh`. Claude wires those as Stop / SessionEnd hooks.
+OpenCode wires them as plugins under `.opencode/plugins/`. OpenCode
+cannot block a turn the way Claude's Stop hook can; it runs the suite
+on idle and toasts on failure.
 
 ---
 
@@ -315,8 +245,9 @@ are continuing, use the `resume-claude` skill rather than a paste.
 | Question | File |
 |---|---|
 | Turn coordination | `backend/orchestrator.py` |
-| End conditions, pressure | `backend/termination.py` |
-| Partner + slot tracker | `backend/workers/conversation.py` |
+| End conditions | `backend/termination.py` |
+| Goal-blind partner | `backend/workers/conversation.py` |
+| Slot grader | `backend/workers/grader.py` |
 | Opening line + flavour | `backend/workers/sketch.py` |
 | Verdict (explains, does not decide) | `backend/workers/feedback.py` |
 | Frozen system prompt | `backend/prompts.py` |

@@ -9,14 +9,16 @@
 #
 # Usage: tunnel.sh start [PORT] | stop | url | port | status
 #
-# State is keyed per Claude session, and each session picks its own free port,
+# State is keyed per agent session, and each session picks its own free port,
 # so concurrent agents in this repo never see or kill each other's tunnel.
-# `stop` only ever touches the tunnel this session started.
+# Claude sets CLAUDE_CODE_SESSION_ID. OpenCode's plugin injects
+# OPENCODE_SESSION_ID into every shell. `stop` only ever touches the
+# tunnel this session started.
 
 set -euo pipefail
 
 ROOT="${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
-KEY="${CLAUDE_CODE_SESSION_ID:-manual-$$}"
+KEY="${CLAUDE_CODE_SESSION_ID:-${OPENCODE_SESSION_ID:-manual-$$}}"
 RUN="$ROOT/.tunnel/$KEY"
 PIDFILE="$RUN/pid"
 URLFILE="$RUN/url"

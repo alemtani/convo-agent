@@ -116,7 +116,7 @@ Authoring rules, all enforced by `validate.py`:
    they must be whitelisted).
 7. Add the topic row to `kb/zh/index.md`.
 8. **Validate:** `python kb/zh/_tools/validate.py kb/zh/<id>` — fix every ERROR.
-9. Deliver via PR (see CLAUDE.md "Delivery").
+9. Deliver via PR (see AGENTS.md Conventions).
 
 ## Extend / update a topic
 
