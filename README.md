@@ -15,11 +15,17 @@ against it. The goal is a set of named binary slots, not a model's opinion.
 Spoken and typed, end to end, as a mobile-first PWA. Five topics, all
 scenario-ready: greetings, self-intro, family, numbers-money, food-ordering.
 
-## Why it's interesting
+## How practice works
 
-Three design choices, each enforced in code rather than hoped for in a prompt.
+A session puts you in a situation with a gap: no menu, no prices, a stranger
+who has not offered their name. The partner is the other person in that
+scene. They do not know what you are trying to accomplish, and they will
+not volunteer the facts you are supposed to extract. You have to ask, the
+way you would if you were actually there.
 
-### The partner doesn't know what's being tested
+A flashcard with a situation attached is not practice. This is.
+
+### The partner does not know the goal
 
 A partner handed the slot list will take a question about dishes as an answer
 to a question about drinks, because it can see the checkbox behind it. So it
@@ -36,7 +42,7 @@ converser's output schema cannot carry `slots_filled`.
 > A server with no menu is a fact about a restaurant; "do not reveal
 > `recommendation` until asked" is a fact about a test.
 
-### Python decides pass/fail. The model only explains
+### You either did the thing or you didn't
 
 `backend/termination.py` is pure — no I/O, no clock, no model call. Slot fill
 is set comparison against the authored rubric. The verdict worker
@@ -44,16 +50,6 @@ is set comparison against the authored rubric. The verdict worker
 correct a `goal` or `cap` `end_reason` that does not square with the slots;
 the rest are trusted, not verified. The model writes the explanation; it
 does not get a vote.
-
-### Three models, chosen per job
-
-| Job | Model | Thinking |
-|---|---|---|
-| Partner, opening sketch | Claude Sonnet 5 | explicitly off (hot path) |
-| Grader | Claude Opus 5 | on (adaptive) |
-| Verdict | Claude Opus 5 | on, effort high |
-
-Separate cache prefixes. Usage tracked separately, because the prices differ.
 
 ## How a turn runs
 
@@ -120,8 +116,9 @@ needs a case drawn from a real session, not one written from imagination.
 ## Architecture
 
 - **FastAPI** backend serving the API and the PWA (`frontend/`)
-- **Anthropic Claude** — partner and sketch on Sonnet 5; grader and verdict
-  on Opus 5
+- **Anthropic Claude** — partner and sketch on Sonnet 5, thinking off (hot
+  path); grader and verdict on Opus 5, thinking on (verdict at high effort).
+  Separate cache prefixes; usage tracked separately, because the prices differ.
 - **Azure Speech** — STT, pronunciation assessment, on-demand TTS
 - **Client-held session state** in `localStorage` — the server is a
   stateless turn proxy
