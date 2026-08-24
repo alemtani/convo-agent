@@ -341,23 +341,31 @@ async def test_the_model_exchange_is_not_annotated():
 # --- Truncation and parse failures are 502s, never 500s -------------------
 
 
-def test_verdict_runs_on_its_own_model_with_thinking_on(monkeypatch):
-    """V2's model split (docs/VALIDITY.md), tested here first.
+def test_verdict_explains_on_sonnet_with_thinking_off():
+    """The verdict explains a computed outcome; it does not judge.
 
-    The verdict worker is already a judgment role, already one call per
-    session, already off the turn path — moving it to Opus 5 needs no
-    architecture change. Opus 5 thinks by default, unlike the Sonnet 5 trap
-    `conversation.py` documents (and this worker's own prior history with
-    thinking disabled), so `max_tokens` must cover thinking *plus* output —
-    the earlier 2048-token budget was sized for output alone.
+    Opus 5 plus adaptive thinking was a V2 staging test (#74) before the
+    grader existed. The grader is now the judgment role. This call is one
+    paragraph of English plus a four-line in-band exchange, and a learner
+    is watching the card for the whole of it — so it matches the converser
+    and the sketch: Sonnet 5, thinking off. Effort still goes out, because
+    the API default is `high` and this task has no use for that spend.
     """
+    req = feedback.build_request(kb_block="KB", dialogue=[], prompt="P")
+    assert req["model"] == config.VERDICT_MODEL
+    assert req["model"] == "claude-sonnet-5"
+    assert req["thinking"] == {"type": "disabled"}
+    assert req["output_config"] == {"effort": config.VERDICT_EFFORT}
+    assert req["max_tokens"] == 2048
+
+
+def test_verdict_model_stays_its_own_knob(monkeypatch):
+    """Independent of `CONVERSATION_MODEL`, so a measured swap does not
+    need a code edit. Thinking stays off even if the model is Opus."""
     monkeypatch.setattr(config, "VERDICT_MODEL", "claude-opus-5")
-    monkeypatch.setattr(config, "VERDICT_EFFORT", "high")
     req = feedback.build_request(kb_block="KB", dialogue=[], prompt="P")
     assert req["model"] == "claude-opus-5"
-    assert req["thinking"] == {"type": "adaptive"}
-    assert req["output_config"] == {"effort": "high"}
-    assert req["max_tokens"] >= 4096
+    assert req["thinking"] == {"type": "disabled"}
 
 
 async def test_a_truncated_response_becomes_a_feedback_error():
