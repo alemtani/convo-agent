@@ -314,7 +314,8 @@ opening line, the grader, and the verdict.
    spend a turn.
 5. **Hold** *Hold to talk* — a live mic-level meter fills as you speak —
    answer in Mandarin, and release. Or tap the keyboard and type pinyin
-   (`ni hao` or `ni3hao3`).
+   (`ni hao` or `ni3hao3`). The scenario card shows how many parts of the
+   goal you have done, and how many turns you have used.
 6. Your words appear with per-syllable tone underlines (green / amber / red)
    on the spoken path; the partner replies in 汉字 + pinyin. You can tap to
    hear a reply. The session ends when you fill every goal slot, you hit the
@@ -432,13 +433,14 @@ The walking-skeleton phases live in
 | `coherence` measured against gold; no gate (V0) | Shipped |
 | "I'm stuck" exit + retry card (A1) | Shipped |
 | On-demand TTS | Shipped |
-| Python floor under the tracker, progress HUD (A2) | Open |
+| Progress HUD — slots filled and turns used (A2) | Shipped |
+| Python floor under the tracker, verdict that names facts (A2 remainder) | Open |
 | Partner reads `HSK_BAND_CEILING` (C0) | Open |
 | Per-turn redo | Not built |
 | Durable learning state / weighted topic draw (Phase 7) | Not built |
 
-The next product work is A2, C0, or more topics — not more validity
-architecture. The next *eval* work is re-running the V0 matrix against the
+The next product work is the rest of A2 (floor and verdict copy), C0, or
+more topics — not more validity architecture. The next *eval* work is re-running the V0 matrix against the
 V2 grader. Detail in [`docs/VALIDITY.md`](docs/VALIDITY.md),
 [`docs/ACCESSIBILITY.md`](docs/ACCESSIBILITY.md),
 [`docs/CURRICULUM.md`](docs/CURRICULUM.md).

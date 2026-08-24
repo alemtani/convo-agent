@@ -201,7 +201,8 @@ async def start_session(
     byte-identical on every turn for the rest of the session, so this is the
     one point in the session where a cache *write* happens rather than a read
     (`docs/SCENARIOS.md`, "Caching"). `scenario_card` is the authored
-    `situation`/`goal` straight from `topic.md`; slots are never surfaced.
+    `situation`/`goal` straight from `topic.md`, plus the two HUD counts
+    (`n_slots`, `max_turns`). Slot ids stay off it.
 
     Raises `kb.KbError` if no topic has an authored scenario, `sketch.
     SketchError` on a refusal / unparseable reply.
@@ -213,7 +214,10 @@ async def start_session(
         topic_id=topic.id,
         display_name=topic.display_name,
         scenario_card=ScenarioCard(
-            situation=topic.scenario.situation, goal=topic.scenario.goal
+            situation=topic.scenario.situation,
+            goal=topic.scenario.goal,
+            n_slots=topic.scenario.n_slots,
+            max_turns=topic.scenario.max_turns,
         ),
         opening_line=result.opening_line,
         sketch=result.sketch,

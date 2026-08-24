@@ -17,6 +17,7 @@ from backend.models import (
     GraderResult,
     PronunciationScore,
     ReplyEvent,
+    ScenarioCard,
     ScoreEvent,
     SessionState,
     SyllableScore,
@@ -412,3 +413,42 @@ def test_stuck_is_a_session_end_reason():
 def test_an_invented_end_reason_is_still_rejected():
     with pytest.raises(ValidationError):
         SessionState(end_reason="bored")
+
+
+# --- A2 HUD: ScenarioCard carries counts, not the slots --------------------
+#
+# The client already holds `filled_at` (the numerator) and the dialogue (turns
+# used). It needs the two denominators to paint "2 of 3" / "3 of 7" during the
+# session. Slot ids and descriptions stay off this card
+# (`docs/ACCESSIBILITY.md`, "Ship the count, not the names").
+
+
+def test_scenario_card_carries_the_counts_the_hud_needs():
+    card = ScenarioCard(
+        situation="You're at a fruit stall.",
+        goal="Buy three pieces of fruit, and find out what they cost.",
+        n_slots=3,
+        max_turns=6,
+    )
+    assert card.model_dump() == {
+        "situation": "You're at a fruit stall.",
+        "goal": "Buy three pieces of fruit, and find out what they cost.",
+        "n_slots": 3,
+        "max_turns": 6,
+    }
+
+
+def test_scenario_card_rejects_a_zero_count():
+    """A card with no slots or no budget is not a scenario the HUD can show."""
+    with pytest.raises(ValidationError):
+        ScenarioCard(situation="s", goal="g", n_slots=0, max_turns=6)
+    with pytest.raises(ValidationError):
+        ScenarioCard(situation="s", goal="g", n_slots=3, max_turns=0)
+
+
+def test_scenario_card_has_no_slot_ids_or_descriptions():
+    """A count is still not the slots. Naming outstanding facts is a later
+    disclosure, not this field set."""
+    assert set(ScenarioCard.model_fields) == {
+        "situation", "goal", "n_slots", "max_turns",
+    }

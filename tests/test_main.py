@@ -57,7 +57,10 @@ def _session_response():
         topic_id="greetings",
         display_name="Greetings (你好)",
         scenario_card=ScenarioCard(
-            situation="You meet a classmate on campus.", goal="Introduce yourself."
+            situation="You meet a classmate on campus.",
+            goal="Introduce yourself.",
+            n_slots=3,
+            max_turns=7,
         ),
         opening_line=Utterance(zh="你好！", pinyin="nǐ hǎo!"),
         sketch="The classmate is friendly and a little shy.",
@@ -82,6 +85,8 @@ def test_session_start_returns_topic_card_opening_line_and_sketch(monkeypatch):
     assert body["scenario_card"] == {
         "situation": "You meet a classmate on campus.",
         "goal": "Introduce yourself.",
+        "n_slots": 3,
+        "max_turns": 7,
     }
     assert body["opening_line"] == {"zh": "你好！", "pinyin": "nǐ hǎo!"}
     assert body["sketch"] == "The classmate is friendly and a little shy."

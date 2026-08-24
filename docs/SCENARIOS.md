@@ -182,9 +182,9 @@ Three properties make this different from the slot list it replaces:
 - **It is one block of prose, never a per-slot mapping.** A `withholding:` keyed
   by slot id is the rubric with the labels filed off, and injecting it would
   rebuild the cooperation V2 removes. One paragraph about the scene, or nothing.
-- **It never reaches the learner.** `ScenarioCard` carries `situation` and `goal`
-  and nothing else, which is why the field lives beside them rather than inside
-  `situation`.
+- **It never reaches the learner.** `ScenarioCard` carries `situation` and
+  `goal`, plus the HUD counts; never `withholding` or the slots. That is why
+  the field lives beside them rather than inside `situation`.
 
 **What this does not forbid: the partner asking questions.** Only *answering
 unasked* is banned. Reciprocity is how the language actually works, and the
@@ -440,8 +440,9 @@ The slots are not shown. The learner sees the goal in English; the
 machine-checkable form stays hidden.
 
 **Amended 2026-08-17.** Still true of the slots themselves, but the card now
-also carries `n_slots`, so the learner sees a **"0 of 3"** counter here that
-advances as facts land. The count is not the slots — no id, no description, no
+also carries `n_slots` and `max_turns`, so the learner sees a **"0 of 3"**
+slot counter and a **"0 of 6"** turn counter here that advance as facts land
+and turns are spent. The count is not the slots — no id, no description, no
 `expressible_with` — and it is what turns "the verdict teaches the missed phrase"
 from the *only* feedback into the *last* feedback. See
 [Difficulty, deferred](#difficulty-deferred).

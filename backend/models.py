@@ -526,10 +526,19 @@ class ScenarioCard(BaseModel):
     `situation` and `goal`, English, straight from `topic.md`'s `scenario:`
     block — pinned at the top of the thread. Slots are the machine-checkable
     form of the same goal and are never shown here.
+
+    `n_slots` and `max_turns` are the two denominators the progress HUD needs
+    (`docs/ACCESSIBILITY.md` A2). The client already holds the numerators —
+    `len(state.filled_at)` and learner turns in the dialogue
+    (`len(dialogue) // 2`; the opening line is not in `dialogue`) — so this
+    is still a count, not the slots: no id, no description, no
+    `expressible_with`.
     """
 
     situation: str
     goal: str
+    n_slots: PositiveInt
+    max_turns: PositiveInt
 
 
 class SketchResult(BaseModel):
@@ -600,8 +609,9 @@ class TopicListing(BaseModel):
     """One row of `GET /api/topics` — a topic a learner can recognise.
 
     Blurb only. Vocab, grammar and the scenario slots stay server-side: the
-    client never needs them, and `situation`/`goal` reach it through
-    `SessionStartResponse.scenario_card` once a session actually starts.
+    client never needs them, and `situation`/`goal` plus the HUD counts reach
+    it through `SessionStartResponse.scenario_card` once a session actually
+    starts.
     """
 
     id: str

@@ -59,20 +59,24 @@ Shipped, in the order a learner hits it:
 - A1 (#66): "I'm stuck" ends a session (`end_reason: "stuck"`), the verdict
   card offers "Try this again" / "Try something else", controls say what
   they do in words.
+- A2 HUD: the scenario card shows "N of M" slots filled and turns used.
+  Counts only — slot names stay off the card.
 
 Limits of the running app (not a backlog, just what is missing today):
 
 - No `backend/db.py` / `backend/profile.py`. Session start is uniform
   random. `schema.sql` exists; nothing reads it. No Fly volume.
-- No in-session coaching. The only feedback card is the verdict.
+- No in-session coaching. Progress is a count on the scenario card; the
+  only feedback card is the verdict.
 - No per-turn redo. "Try something else" starts a fresh session.
 - The topic catalog is read-only. The learner does not pick.
 - A stuck learner can leave, but not get unstuck in place. No translation,
   no way to ask for the words during a turn. A3 (#68) is gated on evidence
   after A2.
 
-The last product work on `main` is V2 (#76) and the Azure half-built-word
-fix (#77). A new session starts from that tip.
+The last product work on `main` is the A2 progress HUD (slots filled and
+turns used, counts only). A2's floor, verdict copy, and gender pin are
+still open.
 
 ---
 
@@ -107,7 +111,7 @@ C3 and C8 need the Phase 7 store. C0 does not. Leftover loop polish: #63.
 | Chunk | Status |
 |---|---|
 | A1 | Done (#66). "I'm stuck" ends into the verdict. |
-| A2 | Open. Python floor under the tracker, a verdict that names facts, progress HUD. |
+| A2 | HUD shipped. Floor, verdict that names facts, and gender pin still open. |
 | A3 | Gated on evidence after A2, not scheduled. |
 
 Difficulty is C0, not this track. The topic catalog is C8.
@@ -121,7 +125,8 @@ Difficulty is C0, not this track. The topic catalog is C8.
 | V2 | Done (#76). Goal-blind converser; grader on the previous partner turn; Opus 5 grades. |
 | V3 | Closed as decided. Floor-on-ask stays; the partner's answer is the partner's. |
 
-The next product work is A2, C0, or more topics — not more validity architecture.
+The next product work is the rest of A2 (floor and verdict copy), C0, or
+more topics — not more validity architecture.
 
 ---
 

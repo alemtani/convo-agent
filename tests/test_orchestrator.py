@@ -310,13 +310,17 @@ async def test_start_session_calls_the_sketch_worker_and_pins_the_scenario_card(
     assert captured["scenario"] == real_scenario
     assert resp.scenario_card.situation == real_scenario.situation
     assert resp.scenario_card.goal == real_scenario.goal
+    # The HUD denominators. Numerator is `state.filled_at`, already on the
+    # client; without these two the card cannot paint "0 of 3" / "0 of 7".
+    assert resp.scenario_card.n_slots == real_scenario.n_slots
+    assert resp.scenario_card.max_turns == real_scenario.max_turns
     assert resp.opening_line.zh == "你好！你叫什么名字？"
     assert resp.sketch == "The partner is warm and unhurried."
 
 
 async def test_start_session_never_shows_slots_on_the_scenario_card(monkeypatch):
-    """`ScenarioCard` is `situation` + `goal` only — slots stay server-side
-    (`docs/SCENARIOS.md`)."""
+    """The card carries counts, never a slot list
+    (`docs/SCENARIOS.md`, `docs/ACCESSIBILITY.md` A2 HUD)."""
 
     async def fake_generate(topic_id, scenario, *, client=None):
         return SketchResult(
@@ -326,8 +330,12 @@ async def test_start_session_never_shows_slots_on_the_scenario_card(monkeypatch)
     monkeypatch.setattr(sketch_worker, "generate", fake_generate)
 
     resp = await orchestrator.start_session()
+    dumped = resp.scenario_card.model_dump()
 
-    assert set(type(resp.scenario_card).model_fields) == {"situation", "goal"}
+    assert set(dumped) == {"situation", "goal", "n_slots", "max_turns"}
+    # The leak this guards is a new field (a slot list, an id). Whole-value
+    # membership over the authored English would fire on `order` sitting
+    # inside "order a dish" — the goal doing its job, not a rubric leak.
 
 
 async def test_start_session_does_not_load_the_topic_twice(monkeypatch):

@@ -5,7 +5,8 @@ documents specify the turn loop and how a session is graded. This one is about
 the first session run by the learner it was built for, and what has to be true
 before they open another one.
 
-Status: **A1 built** (#66). A2 and A3 not built.
+Status: **A1 built** (#66). A2 HUD built. Floor, verdict copy, and gender pin
+still open. A3 not built.
 
 > **A2's floor is no longer a compromise — updated 2026-08-20.** It credits a
 > `request` slot on the learner's ask because Python cannot judge whether a
@@ -196,7 +197,7 @@ Note 8 is agency, not stuckness.
 - [ ] The deterministic floor, below.
 - [ ] The verdict addition: never assert a cause, never add a criterion.
 - [ ] Pin the partner's gender in the sketch.
-- [ ] The progress HUD.
+- [x] The progress HUD.
 - [ ] One more phone session by the same learner. **Gates A3 only.**
 
 ### The floor
@@ -282,6 +283,11 @@ it can compute the numerator; all it lacks is the denominator. **Add `n_slots` t
 `ScenarioCard`** — "2 of 3", no per-turn wire change, and a count is still not
 the slots. Naming the outstanding facts needs their descriptions on the wire,
 which is a real disclosure decision and can follow if a count proves too thin.
+
+**Turns too.** The same row carries `max_turns`, so the learner sees "3 of 7"
+next to the slot count. The opening line does not spend a turn; the numerator is
+the number of learner turns in the dialogue. A cap with no warning is how a
+session ends in surprise.
 
 This is the whole of note 9: progress the learner sees *during* the session,
 which is when they asked for it — not a badge afterwards.
