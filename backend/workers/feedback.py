@@ -218,15 +218,14 @@ def build_request(*, kb_block: str, dialogue, prompt: str) -> dict:
     return {
         "model": config.VERDICT_MODEL,
         # Room for the paragraph of English plus a four-line exchange this
-        # worker always produced, *and* the thinking that now precedes it —
+        # worker always produced, *and* the thinking that precedes it —
         # `max_tokens` caps thinking plus output together. 2048 was sized for
         # the output alone and left no headroom; this is that budget plus
         # explicit room for deliberation.
         "max_tokens": 4096,
-        # Opus 5 thinks by default (unlike the Sonnet 5 trap
-        # `workers/conversation.py` documents, and this worker's own history
-        # with `{"type": "disabled"}` below). Adaptive, explicit, so the choice
-        # reads at the call site rather than depending on omission.
+        # Adaptive, explicit, so the choice reads at the call site rather
+        # than depending on omission. Sonnet 5 thinks when the field is
+        # left off (`workers/conversation.py`); this call wants that on.
         "thinking": {"type": "adaptive"},
         "output_config": {"effort": config.VERDICT_EFFORT},
         "system": [{"type": "text", "text": prompt}],

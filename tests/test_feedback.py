@@ -341,22 +341,19 @@ async def test_the_model_exchange_is_not_annotated():
 # --- Truncation and parse failures are 502s, never 500s -------------------
 
 
-def test_verdict_runs_on_its_own_model_with_thinking_on(monkeypatch):
-    """V2's model split (docs/VALIDITY.md), tested here first.
+def test_verdict_runs_on_sonnet_with_thinking_on():
+    """Same call as before, cheaper model.
 
-    The verdict worker is already a judgment role, already one call per
-    session, already off the turn path — moving it to Opus 5 needs no
-    architecture change. Opus 5 thinks by default, unlike the Sonnet 5 trap
-    `conversation.py` documents (and this worker's own prior history with
-    thinking disabled), so `max_tokens` must cover thinking *plus* output —
-    the earlier 2048-token budget was sized for output alone.
+    Opus 5 at `high` effort timed out a failed self-intro at 20s. The
+    verdict explains a computed outcome; the grader is the judgment role.
+    Thinking stays on at `medium` — Sonnet 5 can afford that inside the
+    timeout the learner will wait through.
     """
-    monkeypatch.setattr(config, "VERDICT_MODEL", "claude-opus-5")
-    monkeypatch.setattr(config, "VERDICT_EFFORT", "high")
     req = feedback.build_request(kb_block="KB", dialogue=[], prompt="P")
-    assert req["model"] == "claude-opus-5"
+    assert req["model"] == config.VERDICT_MODEL
+    assert req["model"] == "claude-sonnet-5"
     assert req["thinking"] == {"type": "adaptive"}
-    assert req["output_config"] == {"effort": "high"}
+    assert req["output_config"] == {"effort": "medium"}
     assert req["max_tokens"] >= 4096
 
 
