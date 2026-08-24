@@ -341,31 +341,20 @@ async def test_the_model_exchange_is_not_annotated():
 # --- Truncation and parse failures are 502s, never 500s -------------------
 
 
-def test_verdict_explains_on_sonnet_with_thinking_off():
-    """The verdict explains a computed outcome; it does not judge.
+def test_verdict_runs_on_sonnet_with_thinking_on():
+    """Same call as before, cheaper model.
 
-    Opus 5 plus adaptive thinking was a V2 staging test (#74) before the
-    grader existed. The grader is now the judgment role. This call is one
-    paragraph of English plus a four-line in-band exchange, and a learner
-    is watching the card for the whole of it — so it matches the converser
-    and the sketch: Sonnet 5, thinking off. Effort still goes out, because
-    the API default is `high` and this task has no use for that spend.
+    Opus 5 at `high` effort timed out a failed self-intro at 20s. The
+    verdict explains a computed outcome; the grader is the judgment role.
+    Thinking stays on at `medium` — Sonnet 5 can afford that inside the
+    timeout the learner will wait through.
     """
     req = feedback.build_request(kb_block="KB", dialogue=[], prompt="P")
     assert req["model"] == config.VERDICT_MODEL
     assert req["model"] == "claude-sonnet-5"
-    assert req["thinking"] == {"type": "disabled"}
-    assert req["output_config"] == {"effort": config.VERDICT_EFFORT}
-    assert req["max_tokens"] == 2048
-
-
-def test_verdict_model_stays_its_own_knob(monkeypatch):
-    """Independent of `CONVERSATION_MODEL`, so a measured swap does not
-    need a code edit. Thinking stays off even if the model is Opus."""
-    monkeypatch.setattr(config, "VERDICT_MODEL", "claude-opus-5")
-    req = feedback.build_request(kb_block="KB", dialogue=[], prompt="P")
-    assert req["model"] == "claude-opus-5"
-    assert req["thinking"] == {"type": "disabled"}
+    assert req["thinking"] == {"type": "adaptive"}
+    assert req["output_config"] == {"effort": "medium"}
+    assert req["max_tokens"] >= 4096
 
 
 async def test_a_truncated_response_becomes_a_feedback_error():

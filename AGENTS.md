@@ -50,8 +50,8 @@ Shipped, in the order a learner hits it:
   replays a scenario the server issued earlier ("Try this again").
 - Goal-blind converser + grader on the fan-out (V2, #76). State rides
   `StateEvent`, derived from the grader. Verdict worker on `claude-sonnet-5`
-  with thinking off (`POST /api/verdict`) — it explains a computed
-  outcome; the grader is the judgment role.
+  with thinking on at `medium` effort (`POST /api/verdict`) — it explains
+  a computed outcome; the grader is the judgment role.
 - On-demand `POST /api/tts` (slowed, cached by line). Beside the loop.
 - Five topics, all scenario-ready: `greetings`, `self-intro`, `family`,
   `numbers-money`, `food-ordering`. Catalog: `GET /api/topics`.

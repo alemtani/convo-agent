@@ -215,26 +215,19 @@ def build_request(*, kb_block: str, dialogue, prompt: str) -> dict:
         f"{'Learner' if turn.role == 'user' else 'Partner'}: {turn.zh}"
         for turn in dialogue
     )
-    # Omitted entirely when unset, not sent as a default: `effort` is a
-    # parameter only some models take, and left unset the API runs at `high`.
-    effort = (
-        {"output_config": {"effort": config.VERDICT_EFFORT}}
-        if config.VERDICT_EFFORT
-        else {}
-    )
     return {
         "model": config.VERDICT_MODEL,
-        # Room for a paragraph of English plus a four-line exchange, with the
-        # 汉字 and pinyin that carries. 1024 was not enough and failed *silently*
-        # — as a truncated string, not an error. Thinking is off, so this budget
-        # is for the output alone.
-        "max_tokens": 2048,
-        # Same reasoning as the converser and the sketch: a short structured
-        # reply has no use for adaptive thinking, and `max_tokens` caps both.
-        # Opus 5 also rejects `thinking: disabled` above `high` effort, so this
-        # has to be explicit if `VERDICT_MODEL` is ever swapped back.
-        "thinking": {"type": "disabled"},
-        **effort,
+        # Room for the paragraph of English plus a four-line exchange this
+        # worker always produced, *and* the thinking that precedes it —
+        # `max_tokens` caps thinking plus output together. 2048 was sized for
+        # the output alone and left no headroom; this is that budget plus
+        # explicit room for deliberation.
+        "max_tokens": 4096,
+        # Adaptive, explicit, so the choice reads at the call site rather
+        # than depending on omission. Sonnet 5 thinks when the field is
+        # left off (`workers/conversation.py`); this call wants that on.
+        "thinking": {"type": "adaptive"},
+        "output_config": {"effort": config.VERDICT_EFFORT},
         "system": [{"type": "text", "text": prompt}],
         "messages": [
             {

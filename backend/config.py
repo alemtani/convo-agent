@@ -157,18 +157,16 @@ CLAUDE_MAX_RETRIES = int(os.getenv("CLAUDE_MAX_RETRIES", "0"))
 # default, which would be a spinner with no end.
 VERDICT_TIMEOUT_S = float(os.getenv("VERDICT_TIMEOUT_S", "20"))
 
-# The verdict explains a computed outcome; it does not judge. Opus 5 plus
-# adaptive thinking was a V2 staging test (#74) before the grader existed.
-# The grader is now the judgment role, and this call is one paragraph of
-# English plus a four-line in-band exchange that a learner sits in front of.
-# Sonnet 5, same family as the converser and the sketch. Separate knob from
-# `CONVERSATION_MODEL` so a measured swap still does not need a code edit.
+# The verdict explains a computed outcome; it does not judge. Opus 5 was a
+# V2 staging test (#74) before the grader existed. The grader is now the
+# judgment role. Separate knob from `CONVERSATION_MODEL` so a measured swap
+# still does not need a code edit.
 VERDICT_MODEL = os.getenv("VERDICT_MODEL", "claude-sonnet-5")
 
-# Same posture as `CONVERSATION_EFFORT`: unset means the API default (`high`),
-# which buys deliberation this card has no use for. Env-overridable for the
-# same reason as the model.
-VERDICT_EFFORT = os.getenv("VERDICT_EFFORT", "low")
+# Thinking stays on; `medium` is the trade against the 20s timeout a learner
+# will sit in front of. `high` on Opus 5 blew that bound on a failed
+# 8-turn session. Env-overridable, same reasoning as `CONVERSATION_EFFORT`.
+VERDICT_EFFORT = os.getenv("VERDICT_EFFORT", "medium")
 
 
 def _load_band_ceiling(default: int = 2) -> int:
