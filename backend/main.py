@@ -182,7 +182,8 @@ async def session_start(
     every turn for the rest of the session (`TextTurnRequest.sketch`, the
     `sketch` form field on `POST /api/turn`) — the server never stores it
     (stateless proxy). `scenario_card` is `situation` + `goal` straight from
-    the authored seed, in English; slots are never shown.
+    the authored seed, in English, plus the HUD counts (`n_slots`,
+    `max_turns`); slot ids are never shown.
     """
     try:
         return await orchestrator.start_session(

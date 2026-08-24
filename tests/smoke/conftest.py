@@ -153,6 +153,8 @@ SESSION_START = {
     "scenario_card": {
         "situation": "You meet a classmate on campus in the morning.",
         "goal": "Introduce yourself and find out their name.",
+        "n_slots": 3,
+        "max_turns": 7,
     },
     "opening_line": {"zh": "你好！你叫什么名字？", "pinyin": "nǐ hǎo! nǐ jiào shénme míngzi?"},
     "sketch": "The classmate is warm and a little shy.",

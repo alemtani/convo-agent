@@ -80,8 +80,9 @@
     }
 
     /* The authored scenario, English, pinned above the scrolling thread — not
-       a bubble in it. Slots are never rendered here (docs/SCENARIOS.md): the
-       learner sees the goal, never the machine-checkable criteria. */
+       a bubble in it. Slot ids are never rendered here (docs/SCENARIOS.md):
+       the learner sees the goal, plus a count of how many parts of it have
+       landed. */
     #scenario-card {
       margin-top: 0.75rem;
       padding: 0.6rem 0.85rem;
@@ -106,6 +107,21 @@
     #scenario-card .topic:empty { display: none; }
     #scenario-card .situation { margin: 0.1rem 0 0.4rem; }
     #scenario-card .goal { font-weight: 600; }
+    /* A2 HUD: counts, not names. Sits under the brief so the learner can
+       glance at how far they are without the partner breaking character. */
+    #scenario-progress {
+      display: flex;
+      gap: 1.5rem;
+      margin-top: 0.55rem;
+      padding-top: 0.45rem;
+      border-top: 1px solid rgba(127, 127, 127, 0.2);
+    }
+    #scenario-progress[hidden] { display: none; }
+    #scenario-progress .stat { min-width: 4.5rem; }
+    #scenario-progress .value {
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
     /* Explicit "this is loading," not a blank space that might be broken.
        A subtle pulse rather than a spinner — one line of text, low stakes. */
     #scenario-card.loading { animation: card-pulse 1.4s ease-in-out infinite; }
@@ -462,6 +478,16 @@
     <div class="situation" id="scenario-situation"></div>
     <div class="label">Your goal</div>
     <div class="goal" id="scenario-goal"></div>
+    <div id="scenario-progress" hidden aria-live="polite">
+      <div class="stat">
+        <div class="label">Progress</div>
+        <div class="value" id="scenario-slots"></div>
+      </div>
+      <div class="stat">
+        <div class="label">Turns</div>
+        <div class="value" id="scenario-turns"></div>
+      </div>
+    </div>
   </div>
 
   <div id="thread"></div>
@@ -503,6 +529,9 @@
     const scenarioTopic = document.getElementById("scenario-topic");
     const scenarioSituation = document.getElementById("scenario-situation");
     const scenarioGoal = document.getElementById("scenario-goal");
+    const scenarioProgress = document.getElementById("scenario-progress");
+    const scenarioSlots = document.getElementById("scenario-slots");
+    const scenarioTurns = document.getElementById("scenario-turns");
     const infoBtn = document.getElementById("info-btn");
     const infoPanel = document.getElementById("info-panel");
     const infoClose = document.getElementById("info-close");
@@ -795,6 +824,7 @@
     }
     function saveDialogue() {
       localStorage.setItem(STORE_KEY, JSON.stringify(dialogue));
+      renderProgress();
     }
 
     function readJson(key, fallback) {
@@ -857,7 +887,8 @@
     // the client freezes the result and resubmits `session.sketch` on every
     // turn (the `sketch` field/form-field below), exactly like `dialogue` —
     // the server never stores it. `scenario_card` is pinned above the thread,
-    // in English; slots are never fetched or rendered.
+    // in English; slot ids are never fetched or rendered. The HUD paints
+    // counts from `n_slots` / `max_turns` and the client-held stores.
     const SESSION_KEY = "convo.session";
     let session = loadSession();
 
@@ -891,6 +922,7 @@
       if (!card) {
         scenarioCard.hidden = true;
         scenarioTopic.textContent = "";
+        scenarioProgress.hidden = true;
         return;
       }
       scenarioCard.classList.remove("loading");
@@ -898,6 +930,26 @@
       scenarioSituation.textContent = card.situation;
       scenarioGoal.textContent = card.goal;
       scenarioCard.hidden = false;
+      renderProgress();
+    }
+
+    // The HUD denominators live on the card (`n_slots`, `max_turns`); the
+    // numerators are already in the client-held stores. A session cached
+    // before this shipped has neither denominator — hide the row rather than
+    // print "undefined of undefined" over a conversation in progress.
+    function renderProgress() {
+      const card = session && session.scenario_card;
+      const nSlots = card && card.n_slots;
+      const maxTurns = card && card.max_turns;
+      if (!card || scenarioCard.hidden || !nSlots || !maxTurns) {
+        scenarioProgress.hidden = true;
+        return;
+      }
+      const filled = Object.keys((state && state.filled_at) || {}).length;
+      const turnsUsed = Math.floor(dialogue.length / 2);
+      scenarioSlots.textContent = filled + " of " + nSlots;
+      scenarioTurns.textContent = turnsUsed + " of " + maxTurns;
+      scenarioProgress.hidden = false;
     }
 
     // Shown the instant a fetch starts, not just on success — a blank space
@@ -905,11 +957,14 @@
     // The previous topic name must go too: leaving it over "Loading…" reads
     // as the old scene still loading, which is the lie a restart is undoing.
     // The `:empty` rule then collapses the title line until the draw lands.
+    // The HUD goes with it: leftover "2 of 3" over "Loading…" is the previous
+    // scene's progress, which a restart has just thrown away.
     function renderScenarioLoading() {
       scenarioCard.classList.add("loading");
       scenarioTopic.textContent = "";
       scenarioSituation.textContent = "Loading…";
       scenarioGoal.textContent = "";
+      scenarioProgress.hidden = true;
       scenarioCard.hidden = false;
     }
 
@@ -1281,6 +1336,7 @@
       state = next;
       if (session) state.topic_id = session.topic_id;
       saveState();
+      renderProgress();
       applyControls(false);
       if (isComplete()) showVerdict();
     }
@@ -2411,6 +2467,7 @@
       }
       stuck = true;
       scrollToBottom("auto");
+      renderProgress();
     }
 
     // New conversation: clear memory and the thread so the partner starts

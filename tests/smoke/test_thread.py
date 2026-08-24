@@ -512,6 +512,8 @@ NEXT_SESSION = {
     "scenario_card": {
         "situation": "You are meeting a friend's parent.",
         "goal": "Ask how many people are in their family.",
+        "n_slots": 3,
+        "max_turns": 7,
     },
     "opening_line": {"zh": "你好！", "pinyin": "nǐ hǎo!"},
     "sketch": "Warm.",
