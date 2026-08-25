@@ -20,4 +20,5 @@ scenario:
 
 # Fixture unknown_dep
 
-Deliberately invalid — a `validate.py` rule fixture. See tests/test_kb_validate.py.
+Deliberately invalid — leftover `depends_on` after A2 cut the field.
+See tests/test_kb_validate.py.

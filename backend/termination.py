@@ -85,7 +85,7 @@ def advance(
     ]
     filled_at.update({sid: turn for sid in late})
 
-    _check_guards(scenario, filled_at, newly + late, turn)
+    _check_guards(scenario, newly + late, turn)
 
     # A close that carries real content is a learner still working, not one
     # disengaging — so it takes the reset branch. Otherwise, on a topic that
@@ -213,28 +213,14 @@ def _validated(filled_at: Dict[str, int], known: Set[str]) -> Dict[str, int]:
     return {sid: turn for sid, turn in filled_at.items() if sid in known}
 
 
-def _check_guards(
-    scenario: Scenario, filled_at: Dict[str, int], newly: List[str], turn: int
-) -> None:
+def _check_guards(scenario: Scenario, newly: List[str], turn: int) -> None:
     """Sanity-check the tracker's output. Logs only — never raises, never drops.
 
-    A `depends_on` violation (`price` credited before `item`) is nonsense under
-    any pacing and is the sharp hallucination signal. It is still recorded: the
-    learner should not fail because our extractor misfired, and the log is for
-    us. Filling everything on turn 1 is *not* a fault — a learner who packs an
+    Filling everything on turn 1 is *not* a fault — a learner who packs an
     utterance demonstrated more competence, not less — so it is info.
+    `depends_on` used to log a fill-order hallucination here. It never
+    blocked a credit, and A2 removed the field.
     """
-    for slot in scenario.slots:
-        if slot.id in newly:
-            unmet = [dep for dep in slot.depends_on if dep not in filled_at]
-            if unmet:
-                logger.error(
-                    "slot %r filled on turn %d before its dependencies %s — "
-                    "likely tracker hallucination",
-                    slot.id,
-                    turn,
-                    unmet,
-                )
     if turn == 1 and len(newly) == scenario.n_slots and scenario.n_slots > 1:
         logger.info(
             "all %d slots filled on turn 1 — a packed utterance, not a fault",

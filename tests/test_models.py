@@ -156,10 +156,18 @@ def test_dialogue_turn_rejects_unknown_role():
 
 def test_turn_annotation_defaults_are_empty():
     ann = TurnAnnotation()
-    assert ann.grammar_notes == []
     assert ann.tone_errors == []
-    assert ann.topic_tags == []
-    assert ann.should_give_feedback is False
+    assert ann.learner_said_goodbye is False
+
+
+def test_the_converser_only_notices_a_goodbye():
+    """A field belongs to whichever of the two parties would actually notice it
+    (`docs/streams/grading.md` A2). The partner is the person you are talking
+    to. Tags, coaching flags, and grammar notes are a coach's job."""
+    assert set(ConverserAnnotation.model_fields) == {"learner_said_goodbye"}
+    for field in ("grammar_notes", "topic_tags", "should_give_feedback"):
+        assert field not in ConverserAnnotation.model_fields
+        assert field not in TurnAnnotation.model_fields
 
 
 def test_grader_result_rejects_unknown_coherence():
@@ -177,16 +185,15 @@ def test_the_converser_is_never_asked_what_the_grader_judges():
 
 
 def test_the_grader_judges_the_learner_and_nothing_else():
-    """The mirror. `grammar_notes` stays on the converser — it is a verdict
-    input about the learner's Chinese, not about the rubric — and the grader has
-    no reply to write, so it carries none of the converser's fields."""
+    """The mirror. The grader has no reply to write and none of the
+    converser's fields. Noticing a goodbye needs no rubric, so it stays on
+    the converser — which is what keeps `consecutive_closes` exact through
+    a grader outage."""
     assert set(GraderResult.model_fields) == {
         "coherence",
         "slots_filled",
         "slots_filled_previously",
     }
-    # Noticing a goodbye needs no rubric, so it is the converser's — which is
-    # what keeps `consecutive_closes` exact through a grader outage.
     assert "learner_said_goodbye" in ConverserAnnotation.model_fields
 
 
@@ -209,16 +216,14 @@ def test_conversation_result_nests_reply_and_annotation():
         {
             "partner_response": {"zh": "你今天怎么样？", "pinyin": "nǐ jīntiān zěnmeyàng?"},
             "turn_annotation": {
-                "grammar_notes": [],
-                "topic_tags": ["greetings"],
-                "should_give_feedback": False,
+                "learner_said_goodbye": False,
             },
             "grade": {"coherence": "on_track"},
             "user_reading": {"zh": "我很好", "pinyin": "wǒ hěn hǎo"},
         }
     )
     assert result.partner_response.zh == "你今天怎么样？"
-    assert result.turn_annotation.topic_tags == ["greetings"]
+    assert result.turn_annotation.learner_said_goodbye is False
     # The learner's own turn, resolved from whatever they typed.
     assert result.user_reading.zh == "我很好"
 
@@ -245,10 +250,10 @@ def test_the_spoken_schema_drops_the_reading_the_audio_path_throws_away():
 
 def test_wire_annotation_takes_tone_errors_from_the_server_not_the_model():
     annotation = TurnAnnotation.from_worker(
-        ConverserAnnotation(topic_tags=["greetings"]),
+        ConverserAnnotation(learner_said_goodbye=True),
         [ToneError(syllable="ma", expected=3, said=1)],
     )
-    assert annotation.topic_tags == ["greetings"]
+    assert annotation.learner_said_goodbye is True
     assert annotation.tone_errors[0].expected == 3
 
 
@@ -265,18 +270,17 @@ def test_conversation_turn_response_shape():
     resp = ConversationTurnResponse(
         transcript=Utterance(zh="我叫小明", pinyin="wǒ jiào xiǎo míng"),
         reply=Utterance(zh="你好", pinyin="nǐ hǎo"),
-        annotation=TurnAnnotation(topic_tags=["greetings"]),
+        annotation=TurnAnnotation(),
     )
     assert resp.model_dump() == {
         "transcript": {"zh": "我叫小明", "pinyin": "wǒ jiào xiǎo míng"},
         "reply": {"zh": "你好", "pinyin": "nǐ hǎo"},
         # No `coherence`, no `slots_filled`, no `learner_closed`: the scoring
         # half is the grader's and travels with `state`, not here (V2).
+        # No `grammar_notes` / `topic_tags` / `should_give_feedback`: those
+        # were a coach's job, and the partner is not the coach (A2).
         "annotation": {
-            "grammar_notes": [],
             "tone_errors": [],
-            "topic_tags": ["greetings"],
-            "should_give_feedback": False,
             "learner_said_goodbye": False,
         },
         "timings": None,

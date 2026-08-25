@@ -16,7 +16,6 @@ scenario:
       kind: request
       description: "Find out what they cost"
       expressible_with: [多少, 钱]
-      depends_on: [item]
 ---
 
 # Fixture override_no_reason

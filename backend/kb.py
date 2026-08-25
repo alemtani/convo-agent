@@ -53,7 +53,7 @@ _SCENARIO_KEYS = (
     "max_turns",
     "max_turns_reason",
 )
-_SLOT_KEYS = ("id", "kind", "description", "expressible_with", "depends_on")
+_SLOT_KEYS = ("id", "kind", "description", "expressible_with")
 _SLOT_REQUIRED = ("id", "kind", "description")
 
 
@@ -70,7 +70,6 @@ class Slot:
     kind: str  # "inform" (learner conveys) | "request" (learner extracts)
     description: str
     expressible_with: Tuple[str, ...] = ()
-    depends_on: Tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -249,17 +248,16 @@ def _parse_slot(entries: List[Tuple[str, str]]) -> Slot:
         kind=fields["kind"],
         description=fields["description"],
         expressible_with=tuple(fields.get("expressible_with", ()) or ()),
-        depends_on=tuple(fields.get("depends_on", ()) or ()),
     )
 
 
 def _parse_scenario(lines: List[str]) -> Scenario:
     """Parse the indented `scenario:` block.
 
-    Structure only. Duplicate slot ids, dependency cycles, an override that
-    starves the goal and the two guardrail rules all parse cleanly here and are
-    rejected by `validate.py` — that split is what lets the validator's fixtures
-    exist at all.
+    Structure only. Duplicate slot ids, an override that starves the goal
+    and the two guardrail rules all parse cleanly here and are rejected by
+    `validate.py` — that split is what lets the validator's fixtures exist
+    at all.
     """
     fields, slot_entries, in_slots = {}, [], False
     for line in lines:

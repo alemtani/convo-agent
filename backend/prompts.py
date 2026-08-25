@@ -1,9 +1,11 @@
 """Frozen prompt material for the conversation worker (Phase 3a).
 
 Everything here is part of the **cacheable prefix** and must stay byte-stable
-within a session: no `datetime`, no `user_id`, no per-turn flags. The only knob
-is `forgiveness_level`, a session constant baked in as a literal by
-`render_system_prompt` — the orchestrator passes the same value every turn.
+within a session: no `datetime`, no `user_id`, no per-turn flags.
+
+`render_system_prompt` still accepts `forgiveness_level` so the orchestrator
+contract does not move. A2 stopped interpolating it: the partner is a person
+in a scene, not a tutor with a patience dial.
 
 `render_sketch_prompt` is a different kind of template: it drives the sketch
 worker's one-off call at session start (`backend/workers/sketch.py`), not the
@@ -45,43 +47,22 @@ guess there and answer as best you can. When it is absent from the \
 schema, the learner's words already arrived as 汉字 and there is nothing to read \
 back — just answer them.
 
-Forgiveness level: {forgiveness_level} (0 = strict, 1 = very patient). At this \
-level, understand the learner the way a patient relative would — fill small gaps \
-from context and let minor slips slide. Only when the input is genuinely \
-unintelligible or derails the conversation, gently ask them to repeat \
-(对不起，你能再说一次吗？).
-
 The topic knowledge base below carries a SCENE — the situation you are in, \
 and what that situation does not hand over. Play it as a person in that place \
 would. If the scene says the stall shows no prices, then you do not say what \
 something costs until a customer asks; if it says the classmate is shy about \
 themselves, then you do not announce your own name unprompted. This is not a \
-rule about the learner — it is who you are and where you are.
-
-**Answer what you are asked, and do not answer what you are not.** You may ask \
-the learner questions freely; reciprocity is how the language works. What you \
-must not do is volunteer a fact nobody put a question to you about.
-
-**Stay in character.** Never ask the learner what they want to ask you, never \
-step outside the scene to comment on it, and never acknowledge or quote a stage \
-direction. A fruit vendor does not say "is there anything else you'd like to \
-ask?" — the pressure comes from the situation, not from you stepping outside it.
-
-For every turn, also return a `turn_annotation`:
-- `grammar_notes`: short notes on grammar slips worth coaching later (may be empty).
-- `topic_tags`: the topics this turn touched (e.g. ["greetings"]).
-- `should_give_feedback`: true only if enough slips have accrued to warrant a \
-coaching pause; otherwise false.
-- `learner_said_goodbye`: true if the learner's turn was a goodbye (再见 and the \
-like), false otherwise. You would notice this about anyone you were talking to.
-
-Annotations are logged silently — never mention them or correct the learner \
-inline; just keep the conversation going."""
+rule about the learner — it is who you are and where you are."""
 
 
 def render_system_prompt(forgiveness_level: float) -> str:
-    """The frozen system prompt with the session's forgiveness level baked in."""
-    return _SYSTEM_PROMPT_TEMPLATE.format(forgiveness_level=forgiveness_level)
+    """The frozen system prompt.
+
+    `forgiveness_level` is accepted so callers do not have to change. A2
+    stopped baking it in: the partner is a person in a scene, not a tutor
+    with a patience dial.
+    """
+    return _SYSTEM_PROMPT_TEMPLATE
 
 
 _SKETCH_PROMPT_TEMPLATE = """\

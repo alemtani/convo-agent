@@ -17,7 +17,6 @@ scenario:
       kind: request
       description: "Find out whether a cheaper or smaller one exists"
       expressible_with: [有, 便宜, 小, 的]
-      depends_on: [price]
     - id: order
       kind: inform
       description: "Say which one you want and how many"
@@ -45,10 +44,7 @@ title.
 **Scenario.** Three slots — two `request`, one `inform` — so the turn cap
 derives to 7. Both requests are real obstacles: the learner cannot know the
 price until the vendor says it, and cannot know a cheaper one exists until they
-ask. The `inform` slot closes the transaction. Only one `depends_on` edge is
-authored — `alternative` after `price` — because "a cheaper one" presupposes a
-price the learner already heard; crediting it first is a tracker hallucination
-signal. The order slot carries no dependency, so a learner who packs the whole
+ask. The `inform` slot closes the transaction. A learner who packs the whole
 purchase into one utterance is not flagged. `expressible_with` names the vocab
 that *can* express each slot; it is a hint to the extractor and a handle for
 `validate.py`, never a string matcher.
