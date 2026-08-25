@@ -65,24 +65,41 @@ the stream starts earlier, `upload` and `transcript` split on their own.
 
 Ships behind the same flag the HUD already uses.
 
-### B1 — Optimise the grader
+### B1 — Optimise the grader — **closed, a failed experiment (no config change)**
 
-The branch the turn's wall clock most likely runs on. In order of expected
-return:
+The premise was that the grader is the branch the turn's wall clock runs on, so
+its dials — model, effort, `max_tokens` — are latency dials. Measured over 84
+live grades on the labelled corpus: **they are not.** Full table and method in
+[`evals/grader/RESULTS.md`](../../evals/grader/RESULTS.md). **Do not re-run the
+sweep to re-decide this.**
 
-1. **Shrink its input.** Stream A's A5 cuts it from the whole transcript to the
-   partner's last line plus the learner's turn. Fewer input tokens, less to think
-   about. This is the biggest lever and it lands in the other stream —
-   coordinate, do not duplicate.
-2. **Measure effort and model against accuracy.** `GRADER_EFFORT` is `medium`.
-   Try `low`. Try Sonnet 5. Stream A's cassette suite makes this a measurement
-   rather than a guess: same cases, same labels, compare accuracy and latency
-   across settings.
-3. **Cap `max_tokens` to what thinking actually uses.** 4096 is headroom, not a
-   measurement. Record what real grades consume.
+| setting | exact | p50 | p95 |
+| --- | ---: | ---: | ---: |
+| `claude-opus-5/medium` (shipped, unchanged) | 16/21 | 3.50s | 6.85s |
+| `claude-opus-5/low` | 15/21 | 2.78s | 3.70s |
+| `claude-sonnet-5/medium` | 16/**19** | 3.23s | 4.90s |
+| `claude-sonnet-5/low` | 17/21 | 2.75s | 4.52s |
 
-The rule: a change here needs an accuracy number beside the latency number. A
-fast grader that is wrong is Stream A's problem all over again.
+Three corrections this step owes the rest of the doc:
+
+- **Effort is worth 0.75s of p50, over arms that differ by one or two runs at
+  n=21.** The corpus cannot resolve the accuracy side of that trade, so there is
+  nothing here to decide on.
+- **Sonnet 5 at medium lost two grades to `GRADER_TIMEOUT_S`** on one case —
+  hence 19 runs, not 21. A timeout is an *uncredited turn*, not a slow one, which
+  makes it the worst arm rather than the cheap win.
+- **`max_tokens` is a cap, not a reservation.** Cutting 4096 to the measured 1536
+  saves no tokens and no milliseconds; it only risks truncating a hard grade.
+  "4096 is headroom, not a measurement" was right about the fact and wrong about
+  the consequence — the headroom is free, so it stays.
+
+**And a warning for A5.** The grader's per-turn input is already **16–63 tokens**
+after the cache breakpoint; the other ~2,080 are the cached rubric. Latency here
+tracks *output* — grades under 100 output tokens ran a median 2.86s, grades over
+200 ran 5.32s — and there is a ~2.2s floor no setting goes under. Stream A calls
+shrinking the input the biggest lever; on this corpus it is not obviously a lever
+at all. Worth measuring before it is worth building, and
+`evals/grader/sweep.py` is the instrument that measures it.
 
 ### B2 — Stream the verdict
 
