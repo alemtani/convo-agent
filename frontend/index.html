@@ -263,17 +263,22 @@
       background: rgba(0, 0, 0, 0.25);
     }
 
-    /* WS1 Stage 0: the turn's cost, in the thread where the wait was felt. A
-       latency number read off a log after the fact is a different thing from one
-       sitting next to the reply you just waited for. Deliberately quiet — it is
-       a dev instrument, and the learner should be able to ignore it. */
+    /* WS1 Stage 0 / B0: the turn's cost, in the thread where the wait was felt.
+       Three rows so the round-trip / server split cannot be misread as one
+       number, then the client marks, then the server stages. Quiet enough to
+       ignore; loud enough that the split is the first thing you see. */
     .timings {
       align-self: flex-start;
       font-size: 0.68rem;
-      opacity: 0.5;
       font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
       margin: -0.3rem 0 0.2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.05rem;
+      max-width: 100%;
     }
+    .timings-split { opacity: 0.75; }
+    .timings-client, .timings-server { opacity: 0.45; }
     .timings .slow { color: #f87171; opacity: 1; }
 
     #dock {
@@ -1655,43 +1660,90 @@
       el.replaceChildren(zhRow, pyRow);
     }
 
-    // WS1 Stage 0. The server measures; the client only renders what it was told,
-    // so page and log quote the same numbers. `total` is bold because it is the
-    // number the <3s target is stated against, and the stages after it explain
-    // where it went — on the spoken path PA and Claude overlap, so their sum
-    // deliberately exceeds the total.
+    // B0. The server measures its stages; the client measures the rest. An
+    // unlabeled headline was how a 10.87s round trip got read as server time,
+    // and dropping `grader_ms` was how the post-STT region looked empty. Both
+    // halves of the split are named, and a missing stage still reports nothing
+    // rather than zero.
     const SLOW_TOTAL_MS = 3000;
 
-    function renderTimings(timings, usage, roundTripMs) {
+    function secs(ms) {
+      return (ms / 1000).toFixed(2) + "s";
+    }
+
+    function joinMarks(pairs) {
+      return pairs
+        .filter(([, ms]) => ms != null)
+        .map(([label, ms]) => label + " " + secs(ms))
+        .join("  ·  ");
+    }
+
+    function renderTimings(timings, usage, roundTripMs, client) {
       if (!timings) return;
       const el = document.createElement("div");
       el.className = "timings";
-      const secs = (ms) => (ms / 1000).toFixed(2) + "s";
 
-      // The wait the learner actually felt is the round trip, not the server
-      // total: on the spoken path a ~160 KB WAV has to upload first, and over a
-      // phone or a dev tunnel that gap is the finding. Server total sits beside
-      // it so the difference is readable rather than inferred.
+      // Row 1: the split. Round trip is the wait the learner felt (WAV upload
+      // included). Server total is the orchestrator's clock. The difference is
+      // the client/network remainder B0's client marks then explain.
+      const split = document.createElement("div");
+      split.className = "timings-split";
+      const headlineMs = roundTripMs != null ? roundTripMs : timings.total_ms;
       const total = document.createElement("b");
-      total.textContent = secs(roundTripMs != null ? roundTripMs : timings.total_ms);
-      if ((roundTripMs != null ? roundTripMs : timings.total_ms) > SLOW_TOTAL_MS) {
-        total.className = "slow";
+      total.textContent = (roundTripMs != null ? "round trip " : "server ")
+        + secs(headlineMs);
+      if (headlineMs > SLOW_TOTAL_MS) total.className = "slow";
+      split.append(total);
+      if (roundTripMs != null && timings.total_ms != null) {
+        split.append(document.createTextNode("  ·  server " + secs(timings.total_ms)));
       }
-      el.append(total);
+      el.append(split);
 
-      const parts = [];
-      if (roundTripMs != null) parts.push("server " + secs(timings.total_ms));
-      for (const [key, label] of [["stt_ms", "stt"], ["pa_ms", "pa"],
-                                  ["claude_ms", "claude"]]) {
-        if (timings[key] != null) parts.push(label + " " + secs(timings[key]));
+      // Row 2: client marks, elapsed from mic-release (or send, on the text
+      // path). encode and upload are durations; the stage names are arrival.
+      // paint is `done` → this node, measured just before we attach it.
+      const clientPairs = [
+        ["encode", client && client.encode_ms],
+        ["upload", client && client.upload_ms],
+        ["transcript", client && client.transcript_ms],
+        ["score", client && client.score_ms],
+        ["reply", client && client.reply_ms],
+        ["state", client && client.state_ms],
+      ];
+      if (client && client.paint_from != null) {
+        clientPairs.push(["paint", performance.now() - client.paint_from]);
       }
+      const clientText = joinMarks(clientPairs);
+      if (clientText) {
+        const row = document.createElement("div");
+        row.className = "timings-client";
+        row.textContent = clientText;
+        el.append(row);
+      }
+
+      // Row 3: server stages as known at `done`. Grader is the third fan-out
+      // branch (Opus 5, thinking on) and was the one the hardcoded list dropped.
+      const serverPairs = [
+        ["stt", timings.stt_ms],
+        ["pa", timings.pa_ms],
+        ["claude", timings.claude_ms],
+        ["grader", timings.grader_ms],
+      ];
+      const serverText = joinMarks(serverPairs);
       // cache_read = 0 on the first turn of a session (it writes the prefix) and
       // should be large on every turn after. A run of zeroes means the cacheable
       // prefix is not byte-identical across turns and we are paying full price.
-      if (usage && usage.cache_read_input_tokens != null) {
-        parts.push("cache " + usage.cache_read_input_tokens);
+      const cacheText = (usage && usage.cache_read_input_tokens != null)
+        ? "cache " + usage.cache_read_input_tokens
+        : "";
+      const serverLine = [serverText, cacheText].filter(Boolean).join("  ·  ");
+      if (serverLine) {
+        const row = document.createElement("div");
+        row.className = "timings-server";
+        row.textContent = serverLine;
+        el.append(row);
       }
-      el.append(document.createTextNode("  ·  " + parts.join("  ·  ")));
+
       thread.appendChild(el);
       // Follows the same rule as a bubble: only chase the bottom if that's where
       // the reader already is, and via the shared helper so this scroll can't
@@ -1931,6 +1983,10 @@
       if (!capturing) return;
       capturing = false;
       flowing = false;
+      // Mic-release is t0 for the round trip and for every client mark. The
+      // wait the learner feels starts here, not when fetch() is eventually
+      // called — encodeWav of a ~160 KB clip is part of that wait.
+      const releasedAt = performance.now();
       clearTimeout(recordCapTimer);
       recordCapTimer = null;
       talk.classList.remove("recording");
@@ -1950,7 +2006,7 @@
       // rather than looking like the button released itself.
       if (opts && opts.capped) setStatus("that's as long as one turn can be");
       const wav = encodeWav(samples, TARGET_RATE);
-      await sendTurn(wav);
+      await sendTurn(wav, releasedAt);
     }
 
     // Live mic-level meter: read the warm graph's AnalyserNode and animate the
@@ -2073,7 +2129,7 @@
       return "error " + status + ": " + detail;
     }
 
-    async function sendTurn(wavBlob) {
+    async function sendTurn(wavBlob, releasedAt) {
       // Through `applyControls`, never `talk.disabled = true`: it is not the
       // only control a turn in flight has to close any more. Setting the flag
       // directly here left "I'm stuck" live for the length of a spoken reply,
@@ -2087,6 +2143,7 @@
         setStatus("couldn't start a session — try again in a moment");
         return;
       }
+      if (releasedAt == null) releasedAt = performance.now();
       // One bubble on release, not two. The echo goes up immediately and holds
       // the learner's place while STT runs — its pending dots *are* the
       // "transcribing…" indicator, in the thread rather than in a status line
@@ -2104,7 +2161,6 @@
       // to land; after `transcript` this always returns the existing bubble.
       const replyBubble = () =>
         (pending = pending || createBubble("partner").pending());
-      const startedAt = performance.now();
       const form = new FormData();
       form.append("audio", wavBlob, "turn.wav");
       form.append("topic_id", session.topic_id);
@@ -2130,8 +2186,16 @@
       // `dialogue.length` would file its tone errors against the next turn.
       const turnIndex = dialogue.length / 2 + 1;
       let transcript = null;
+      const arrivals = {};
       try {
+        const sentAt = performance.now();
         const resp = await fetch("/api/turn", { method: "POST", body: form });
+        // Headers. On today's server that is after STT (the stream does not
+        // start until the transcript exists), so this interval is upload plus
+        // STT, not upload alone. Still the right mark: when we flush headers
+        // earlier, this number splits from `transcript` on its own.
+        const uploadMs = performance.now() - sentAt;
+        const encodeMs = sentAt - releasedAt;
         // Everything that maps to a status — unknown topic, STT failure — is
         // settled before the first byte, so this still catches those cleanly.
         if (!resp.ok) {
@@ -2159,6 +2223,7 @@
         // whichever order they resolve — a slow Azure call legitimately puts the
         // reply first, and the grader usually beats both.
         for await (const event of ndjson(resp)) {
+          if (event.stage) arrivals[event.stage] = performance.now() - releasedAt;
           if (event.stage === "transcript") {
             transcript = event.transcript;
             echo.render(transcript, { emptyText: "(nothing recognized)" });
@@ -2204,11 +2269,18 @@
             adoptState(event.state);
           } else if (event.stage === "done") {
             // The terminal event, so the timings line is appended last in the
-            // thread no matter which of score/reply arrived second. Its
-            // `total_ms` is the server's whole-turn number; the wall-clock is
-            // measured from mic release, so the gap between them is transport —
-            // the one thing the server can't see.
-            renderTimings(event.timings, event.usage, performance.now() - startedAt);
+            // thread no matter which of score/reply arrived second. Round trip
+            // is mic-release → now; server total sits beside it; client marks
+            // explain the rest.
+            renderTimings(event.timings, event.usage, performance.now() - releasedAt, {
+              encode_ms: encodeMs,
+              upload_ms: uploadMs,
+              transcript_ms: arrivals.transcript,
+              score_ms: arrivals.score,
+              reply_ms: arrivals.reply,
+              state_ms: arrivals.state,
+              paint_from: performance.now(),
+            });
           } else if (event.stage === "error") {
             // Failed after the transcript was sent, so keep it — the learner can
             // see what they said, and only the reply is missing.
@@ -2279,6 +2351,7 @@
       // the reply will actually appear.
       const startedAt = performance.now();
       try {
+        const sentAt = startedAt;
         const resp = await fetch("/api/turn/text", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -2292,6 +2365,7 @@
             opening_line: session.opening_line || null,
           }),
         });
+        const uploadMs = performance.now() - sentAt;
         if (!resp.ok) {
           if (resp.status === 409) {
             // The session finished elsewhere (another tab, a restored one).
@@ -2318,7 +2392,10 @@
           toneErrors: data.annotation && data.annotation.tone_errors,
         });
         renderReply(pending, data.reply);
-        renderTimings(data.timings, data.usage, performance.now() - startedAt);
+        renderTimings(data.timings, data.usage, performance.now() - startedAt, {
+          upload_ms: uploadMs,
+          paint_from: performance.now(),
+        });
         dialogue.push({ role: "user", zh: data.transcript.zh, pinyin: data.transcript.pinyin });
         dialogue.push({ role: "partner", zh: data.reply.zh, pinyin: data.reply.pinyin });
         saveDialogue();

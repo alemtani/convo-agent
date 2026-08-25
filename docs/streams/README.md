@@ -31,7 +31,14 @@ as well as code.
 `kb-topic` skill is the only writer. A hand-edit is a lost test of the skill, and
 the skill is the thing that has to work when a second language arrives.
 
-**One stream, one branch, one PR.** Streams do not share a branch.
+**One stream, one worktree, one branch, one PR.** Streams do not share a
+branch. Start in `.claude/worktrees/<name>/` before the first edit
+(`AGENTS.md`).
+
+**The kickoff prompt is the next paste.** Each spec ends in a fenced
+prompt. When a step ships, rewrite that prompt to the next open step in
+the same PR. A prompt that still names a finished step starts the wrong
+work.
 
 ## What is not in a stream
 
