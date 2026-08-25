@@ -158,34 +158,6 @@ code to be reconciled at the moment they diverged. Hence the standing rule in
 `AGENTS.md` — the stream doc's kickoff prompt is updated in the same PR as the
 work it describes.
 
-### A0.5 — Interception — **declined, PR #88 closed**
-
-The plan was `cassette.install()` seeding each worker's module-global `_client`,
-plus an `evals/server.py` entrypoint, so an eval could drive a real server for
-free. It was built, tested and then closed unmerged, because the premise was
-wrong.
-
-**`run_text_turn` threads one client into both workers.** `orchestrator.py:88`
-passes it to `conversation.respond`; `orchestrator.py:105` passes the same object
-to `_grade_or_degrade`, which forwards it to `grader.grade`. So an eval that
-passes a `CassetteClient` already replays the reply *and* the grade. A0's seam
-covers, completely, every path we actually run: `evals/*/replay.py` calls the
-workers directly and every `live` test passes `client=`. None uses `TestClient`.
-
-Interception exists for the case where nobody passes a client — a running
-server — and nothing in the repo drives one. Carrying a runtime mutation of
-production module state for zero callers is the wrong trade, however well
-tested.
-
-**What would reopen it:** `tests/smoke/` pointed at a real server instead of its
-`fetch` stub, or any eval that must exercise routes, auth or error mapping
-rather than the orchestrator. The code is in PR #88's history.
-
-One finding outlived it: the workers annotate `client: Optional[AsyncAnthropic]`
-while the eval hands them a `CassetteClient`. Nothing enforces it (no mypy in
-the gate) and every call is `messages.parse`, which both satisfy — but the
-annotation is a lie today, and a `SupportsParse` Protocol would make it honest.
-
 ### A0.6 — Repair the `live` suite and put it in CI
 
 `tests/test_conversation_live.py` unpacks five values from
@@ -245,7 +217,7 @@ The two misses are `strict` xfails so CI stays a merge gate. A3 removes the
 mark. An unexpected pass fails the build — that is how we notice the fix
 landed early.
 
-### A1.5 — The turn runner, so the *partner* is measured too — **shipped**
+### A1.5 — The turn runner, so the *partner* is measured too — **code shipped (PR #93); cassettes outstanding**
 
 Every eval in the repo called `grader.grade` directly. That measures the judge
 and never the thing being judged: the partner's prompt had no coverage at all,
@@ -414,8 +386,8 @@ Needs a server-side token and a rate limit. The client never sees the token.
 
 ## Done when
 
-- The cassette suite runs in CI, spends nothing, and is a merge gate.
-- An eval can drive the real server end-to-end without spending anything.
+- The cassette suite runs in CI, spends nothing, and is a merge gate — the
+  grader's cases and the partner's alike.
 - The `live` suite runs — the behavioral half in CI, the contact half on a
   schedule. Neither can rot unnoticed again.
 - All four recorded misses pass.
@@ -425,16 +397,52 @@ Needs a server-side token and a rate limit. The client never sees the token.
 
 ## Kickoff prompts
 
-One per step, each runnable as written. **A0 is done (PR #86)** — its prompt is
-retired. **A1 is done (PR #90)** — its prompt is retired. **A2 is done (this
-PR)** — its prompt is retired. A0.5 and A0.6 remain independent of A3 and
-can run in parallel, in separate worktrees.
+One per step, each runnable as written. **A0 (PR #86), A1 (PR #90) and A2
+(PR #91) are done** — their prompts are retired. A1.5, A0.6 and A3 are
+independent of each other and can run in parallel, in separate worktrees.
 
 Every one of these ends the same way, so it is said once here: work in a git
 worktree, write the failing test first, branch from `main`, conventional commits,
 open a PR explaining the *why* — and **update this document in the same PR**:
 mark what landed, correct what the work taught you, and leave the next prompt
 runnable.
+
+### A1.5 — record the turn runner's cassettes
+
+```
+Read docs/streams/grading.md. Finish Stream A at A1.5: the turn runner is
+merged (PR #93) but records nothing, so it is not a gate yet.
+
+`evals/turn/replay.py` drives `orchestrator.run_text_turn` — one client threads
+into both workers, so one run covers the reply, the grade computed against that
+reply, and the state it advances to. `evals/turn/withholding.py` then asks
+whether the reply gave away a `request` slot the learner had not asked for.
+
+Record and commit the cassettes. This spends money, one wave:
+
+    python -m evals.turn.replay --record --samples 3
+    python -m evals.turn.replay --record --samples 3 --cases-dir evals/turn/cases
+
+Two calls per case, plus a judge call wherever a candidate slot exists. The
+second command is the red-team probes, which are the point: on `greeting-only`
+and `i-am-hungry` the learner asks for nothing, so any slot the partner's reply
+establishes was volunteered — a point the learner can now never earn.
+
+Then report what the recording found, which is the actual deliverable:
+
+- Does the partner honour `withholding`? It was seen breaking it twice in real
+  sessions and nothing has ever checked it.
+- Did A2's trimmed prompt (PR #91) change the partner in a way nobody was
+  watching? A third of the system prompt went with no partner-side eval in
+  existence. This is the first look.
+
+Wire the runner into the CI eval job beside the coherence one, and into
+`.github/workflows/rerecord.yml` so it cannot go stale unnoticed.
+
+If a probe shows the partner volunteering, do **not** fix it in this PR. Write
+it up: it is either a prompt bug for its own change or an authoring bug in
+`withholding`, and which one it is deserves deciding on its own.
+```
 
 ### A0.6 — repair the `live` suite
 
