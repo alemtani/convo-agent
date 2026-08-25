@@ -130,20 +130,25 @@ is worse than a slow one.
 ## Kickoff prompt
 
 ```
-Read docs/streams/latency.md. Start Stream B at B0: surface the granularity.
+Read docs/streams/latency.md. Start Stream B at B1: make the grader fast.
 
-A 10.87s turn reported STT 1.01s, PA 0.97s, Claude 3.30s. STT is the only serial
-stage — PA, the conversation worker and the grader all run concurrently after it
-— so the region after STT is ~9.9s wide and the longest branch anybody can see
-in it is 3.3s.
+B0 is done. The timings HUD now names round trip vs server, shows grader_ms,
+and reports encode / upload / each stage arrival / paint. A live turn through
+a tunnel reported stt 1.43s, pa 1.18s, claude 2.79s, grader 2.69s, server
+4.23s, round trip 4.35s. On that turn the grader matched Claude. The 10.87s
+session's missing ~6s is the shape this step is for: a slower Opus grade.
 
-The reason is instrumentation, not mystery. frontend/index.html:1683 renders a
-hardcoded [stt_ms, pa_ms, claude_ms] and drops grader_ms, which is the third
-fan-out branch and runs Opus 5 with thinking on. Add it. Then make the
-round-trip vs "server" split (index.html:1674) legible, since that separates
-WAV upload from server time.
+Do not duplicate Stream A's A5 (shrink the grader's input to the partner's
+last line plus the learner's turn). That is the biggest lever and it lands
+there — coordinate, do not rebuild it. Here: measure GRADER_EFFORT=medium vs
+low, and Opus 5 vs Sonnet 5, against accuracy on Stream A's cassette suite.
+Then cap GRADER_MAX_TOKENS (4096 is headroom, not a measurement). If the
+cassette layer is not on main yet, wait or coordinate; do not rebuild it.
 
-Measure before changing anything. Write the failing tests first. Branch from
-main, conventional commits, open a PR showing a real turn's full breakdown from
-a phone through a tunnel.
+A change here needs an accuracy number beside the latency number. A fast
+grader that is wrong is Stream A's problem all over again.
+
+Start in a new git worktree (.claude/worktrees/<name>/, branch from main)
+before the first edit. Write the failing tests first. Conventional commits,
+open a PR.
 ```

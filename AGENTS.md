@@ -167,10 +167,30 @@ Coefficients live in `kb/zh/pacing.json`.
 
 ## Conventions
 
+- **Start in a git worktree.** Several agents run in this repo at once.
+  One checkout means they share a branch, a working tree, and each
+  other's half-finished edits. Create the worktree **before the first
+  edit** — moving into one later means moving uncommitted work. From
+  the primary checkout:
+
+  ```bash
+  git fetch origin main
+  git worktree add -b feat/<name> .claude/worktrees/<name> origin/main
+  ln -sfn "$PWD/.env" .claude/worktrees/<name>/.env
+  ```
+
+  Then work only inside `.claude/worktrees/<name>/`. `.env` is
+  gitignored (copy or symlink it, or every real call 500s). `.venv`
+  is too: use the primary checkout's interpreter. The directory is
+  gitignored. Raise the PR from the worktree's branch like any other.
 - **Branch + PR, never commit to `main`.** Conventional commits
   (`fix:`, `feat:`, `docs:`). Explain *why* in the PR body. When the
   work on an open PR is done, commit and push. Do not wait to be asked.
   Uncommitted work is not on the PR.
+- **Stream kickoff prompt.** Each spec in `docs/streams/` ends in a
+  fenced prompt the next agent pastes. When a stream step ships,
+  rewrite that prompt to the next open step **in the same PR**. A
+  prompt that still names a finished step starts the wrong work.
 - **Failing test first** for any deterministic logic. Then make it pass.
   Show the pytest output as evidence. Do not claim green without it.
 - Verification is tiered. Pure logic: real TDD. Prompt cache: assert the
@@ -237,7 +257,9 @@ Either agent may implement. The other reviews the PR the way a second
 engineer would: the diff, the tests, and "does this change the session?"
 
 When you ship a behavior change, update the Status section above in the
-same PR. Do not leave this file describing last month's app.
+same PR. Do not leave this file describing last month's app. If the
+work is a stream step, rewrite that stream's kickoff prompt to the
+next open step in the same PR.
 
 Do not ask the user to re-explain the product. Start from this file,
 the latest commits / PRs, and the code.
