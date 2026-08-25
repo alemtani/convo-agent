@@ -103,7 +103,7 @@ invalidates cassettes, so doing them together means one re-record wave instead o
 four. A trimmed prompt is also a cleaner baseline to measure the multi-slot fix
 against.
 
-### A0 — The cassette layer (first, everything else depends on it)
+### A0 — The cassette layer (first, everything else depends on it) — **shipped, PR #86**
 
 Evals are the gate for this stream and the gate cannot cost money each run.
 
@@ -136,6 +136,84 @@ weekly, never per-PR — re-records against live and diffs.
 **Watch B2.** Streaming the verdict ([latency.md](latency.md)) introduces the one
 thing a cassette layer is worst at. B2 must prove the layer survives before it
 lands, or it quietly turns the eval gate off.
+
+**What shipped, and what it taught us.** `evals/cassette/` — key, store, client,
+shared CLI flags — plus `.github/workflows/rerecord.yml`. Two corrections to the
+plan above, both found in review:
+
+- The key is **everything in the payload except `timeout`**. Not just the five
+  named parts: `max_tokens`, `thinking`, `output_config.effort` and any dial
+  added later all shape the output, so all of them are hashed. An allow-list
+  would have replayed a recording made at a different setting and said nothing.
+- **No cassette was recorded.** `evals/coherence/replay.py` is stale as of V2 —
+  it calls `termination.pressure_hint` (now `closing_hint`) and reads
+  `coherence` / `slots_filled` off the converser's annotation, which V2 moved to
+  the grader — so it raises before reaching the network. A recording of a call
+  the app no longer makes is worse than no recording. **A1 repoints it first.**
+
+That staleness is not an isolated slip. The `live` suite has the same disease
+(A0.6), and both rotted for the same reason: nothing forced the spec and the
+code to be reconciled at the moment they diverged. Hence the standing rule in
+`AGENTS.md` — the stream doc's kickoff prompt is updated in the same PR as the
+work it describes.
+
+### A0.5 — Interception, so an end-to-end eval is free too
+
+A0 covers the seam where a caller passes `client=`: the workers, the
+orchestrator, `replay.py`. It does **not** cover a run against a live server.
+`main.py` threads no client, so each worker falls back to its module-global
+`_get_client()` and a real `POST /api/turn/text` spends real money. Today there
+is no way to say "this run is an eval" at all.
+
+**Never a flag inside `backend/`.** `if os.environ["CASSETTES"]` on the hot path
+means one misconfigured variable on fly.io serves learners canned replies, and
+it puts eval code in the production import path. **The differentiator is which
+entrypoint you launched**, which is a thing that cannot ship to production.
+
+- `cassette.install()` seeds each worker's module-global `_client`. All four
+  workers already resolve `client or _get_client()` off a module global, so this
+  is a real seam.
+- `evals/server.py` calls `install()` and then exposes `backend.main:app`. An
+  eval run is `uvicorn evals.server:app`; the ordinary
+  `uvicorn backend.main:app` is unchanged and cannot be installed into.
+
+**Its own step because it touches the critical path.** The diff adds no line to
+`backend/`, but `install()` swaps the client object sitting on the hot path at
+runtime — production module state, mutated by eval code. That is worth a review
+of its own rather than a footnote in a cassette PR.
+
+**Not a blocker for A1**, which runs at the worker seam where `client=` already
+works. Either order.
+
+**Azure stays real.** This layer wraps `messages.parse`; STT and PA are a
+different SDK and a different shape. "Free end-to-end" means the text harness
+until someone writes an Azure layer, and the audio path is not that.
+
+### A0.6 — Repair the `live` suite and put it in CI
+
+`tests/test_conversation_live.py` unpacks five values from
+`conversation.respond`, which has returned four since the grader split. It fails
+at the first call. It cannot have passed since that change landed, and nothing
+noticed, because the suite is excluded from the default run and nobody runs it
+by hand.
+
+An excluded suite rots. That is the finding, and it is worth more than the fix.
+
+**Split the marker rather than promoting it wholesale.** The six live files are
+two different kinds of test:
+
+- **Behavioral** — structural invariants over model output
+  (`test_conversation_live`, `test_session_live`, the Anthropic half of
+  `test_turn_live`). Cassettes fit exactly. These become deterministic, run in
+  CI for free, and are a merge gate.
+- **Contact** — tests whose whole point is touching the real API.
+  `cache_read_input_tokens > 0` is the sharp case: replaying a recorded `850`
+  proves only that someone once wrote `850` into a JSON file. Cassetting it does
+  not make it cheap, it makes it a lie. `test_stt`, `test_pronunciation` and
+  `test_tts_live` are **Azure**, which A0's layer does not cover at all.
+
+So: behavioral tests move onto cassettes and become required; a small `live` set
+stays genuinely live, stays out of CI, and is what the scheduled job exercises.
 
 ### A1 — The failing cases
 
@@ -245,31 +323,91 @@ Needs a server-side token and a rate limit. The client never sees the token.
 ## Done when
 
 - The cassette suite runs in CI, spends nothing, and is a merge gate.
+- An eval can drive the real server end-to-end without spending anything.
+- The `live` suite runs — the behavioral half in CI, the contact half on a
+  schedule. Neither can rot unnoticed again.
 - All four recorded misses pass.
 - The grader returns slots and nothing else.
 - The partner prompt fits on one screen.
 - A learner can file a bug, or contest a grade, in three taps.
 
-## Kickoff prompt
+## Kickoff prompts
+
+One per step, each runnable as written. **A0 is done (PR #86)** — its prompt is
+retired. A0.5, A0.6 and A1 are independent of each other and can run in parallel,
+in separate worktrees.
+
+Every one of these ends the same way, so it is said once here: work in a git
+worktree, write the failing test first, branch from `main`, conventional commits,
+open a PR explaining the *why* — and **update this document in the same PR**:
+mark what landed, correct what the work taught you, and leave the next prompt
+runnable.
+
+### A0.5 — interception
 
 ```
-Read docs/streams/grading.md. Start Stream A at A0: the cassette layer for the
-eval harness.
+Read docs/streams/grading.md. Start Stream A at A0.5: interception, so an
+end-to-end eval against the real server is free too.
 
-Build a record/replay wrapper for Anthropic calls under evals/, keyed on
-sha256 of model + system + tools + messages + params. Cassettes commit to the
-repo. A key miss fails loudly unless --record is passed. It wraps the same seam
-evals/coherence/replay.py already uses; it must not touch backend/.
+A0 (evals/cassette/) covers callers that pass client=. It does not cover a run
+against a live server: main.py threads no client, so each worker falls back to
+its module-global _get_client() and a real POST /api/turn/text spends money.
 
-Build it rather than adopting pytest-recording/VCR.py — that was evaluated and
-declined; see the spec. Every Anthropic call today is a non-streaming
-messages.parse, which keeps this small.
+Add cassette.install(), which seeds each worker's module-global _client, and
+evals/server.py, which calls install() and then exposes backend.main:app. An
+eval run is `uvicorn evals.server:app`. Do not add a flag inside backend/ — one
+misconfigured env var on fly.io would serve learners canned replies. The
+differentiator is which entrypoint was launched.
 
-Record N samples per key and assert against the distribution, not one draw
-(replay.py already has --repeat). No probabilistic live calls: CI stays
-deterministic and freshness is handled by a scheduled re-record job.
+This touches the critical path even though it adds no line to backend/:
+install() swaps the client object on the hot path at runtime. Say so plainly in
+the PR, and test that an ordinary `uvicorn backend.main:app` process is
+unaffected.
 
-Write the failing tests first. Branch from main, conventional commits, open a PR
-explaining why the eval gate had to stop costing money before the grader work
-could start.
+Azure stays real — this layer wraps messages.parse, so "free end-to-end" means
+the text harness, not the audio path.
+```
+
+### A0.6 — repair the `live` suite
+
+```
+Read docs/streams/grading.md. Start Stream A at A0.6: repair the live suite and
+put it in CI.
+
+tests/test_conversation_live.py unpacks five values from conversation.respond,
+which has returned four since the grader split. It fails at the first call and
+has not passed in a long time, because the suite is excluded from the default
+run and nobody runs it by hand. Fix every stale live test, and report what you
+found: the rot is the finding, the fix is the easy part.
+
+Then split the marker rather than promoting it wholesale. Behavioral tests —
+structural invariants over model output — move onto the A0 cassette layer, run
+in CI for free, and become a merge gate. Contact tests stay live and stay out of
+CI: cache_read_input_tokens > 0 exists to prove the real API cached our prefix,
+and replaying a recorded 850 proves only that someone once wrote 850 into a JSON
+file. test_stt, test_pronunciation and test_tts_live are Azure, which the
+cassette layer does not cover at all.
+
+Wire the remaining live set into .github/workflows/rerecord.yml — the scheduled
+job that already spends money — so it cannot rot unnoticed again.
+```
+
+### A1 — the failing cases
+
+```
+Read docs/streams/grading.md. Start Stream A at A1: the failing cases, written
+before anything is fixed.
+
+First, repoint evals/coherence/replay.py — it is stale as of V2 and raises
+before it reaches the network. termination.pressure_hint is now closing_hint,
+and coherence / slots_filled moved off the converser's annotation onto the
+grader (GraderResult). The fixtures also need the opening line that a turn-1
+grade is judged against; tests/fixtures/sessions/*.json carry none.
+
+Then write fail-to-pass cases from the four real misses in the spec's table —
+turns that filled several slots and got credit for fewer. Record their cassettes
+(python -m evals.coherence.replay --record --samples 3) and commit them. These
+are the first real cassettes in the repo; A0 deliberately recorded none.
+
+Do not fix the grader in this PR. The cases go red and stay red until A3.
 ```

@@ -224,6 +224,15 @@ Two things a fresh worktree does not inherit: `.env` (gitignored — copy it in,
 or every real call 500s) and `.venv` (use the main checkout's interpreter). The
 PR is raised from the worktree's branch like any other.
 
+**Update the stream doc in the same PR as the work.** Work is planned in
+`docs/streams/*.md`, and each step ends in a copy-paste kickoff prompt. Before
+moving to the next step: mark what landed, correct what the work taught you, and
+leave the next prompt runnable as written. A spec that still asks for what you
+just shipped is how `evals/coherence/replay.py` and the `live` suite both rotted
+— nothing forced the plan and the code to be reconciled at the moment they
+diverged. This is not documentation housekeeping; the prompt is the interface
+the next agent starts from.
+
 ## Knowledge-base authoring (separate from the service)
 
 Authoring/updating topic KBs is a **dev-time workflow you invoke directly** (the
