@@ -216,13 +216,18 @@ and one checkout means they share a branch, a working tree, and each other's
 half-finished edits. A worktree gives each one its own. Create it before the
 first edit — moving into one later means moving uncommitted work.
 
-```
-.claude/worktrees/<name>/        # the worktree; branch from main inside it
+From the primary checkout (same steps as `AGENTS.md`, kept in sync with it):
+
+```bash
+git fetch origin main
+git worktree add -b feat/<name> .claude/worktrees/<name> origin/main
+ln -sfn "$PWD/.env" .claude/worktrees/<name>/.env
 ```
 
-Two things a fresh worktree does not inherit: `.env` (gitignored — copy it in,
-or every real call 500s) and `.venv` (use the main checkout's interpreter). The
-PR is raised from the worktree's branch like any other.
+Then work only inside `.claude/worktrees/<name>/`. Two things a fresh worktree
+does not inherit: `.env` (gitignored — copy or symlink it, or every real call
+500s) and `.venv` (use the primary checkout's interpreter). The PR is raised
+from the worktree's branch like any other.
 
 **Update the stream doc in the same PR as the work.** Work is planned in
 `docs/streams/*.md`, and each step ends in a copy-paste kickoff prompt. Before
