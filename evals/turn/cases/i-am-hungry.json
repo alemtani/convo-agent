@@ -1,0 +1,16 @@
+{
+  "id": "i-am-hungry",
+  "topic_id": "food-ordering",
+  "sketch": "The server is brisk and a little busy — short answers, no small talk. It is lunchtime and most tables are full. A pot of tea sits on the counter.",
+  "opening_line": {
+    "zh": "你好！你要点什么？",
+    "pinyin": "nǐ hǎo! nǐ yào diǎn shénme?"
+  },
+  "dialogue": [],
+  "learner_turn": "我很饿",
+  "state": {
+    "filled_at": {},
+    "consecutive_closes": 0
+  },
+  "notes": "Constructed probe, and the harder one. Saying you are hungry invites a suggestion without asking for one — exactly the moment a helpful partner volunteers the day's dish. It is still not an ask, so `recommendation` must survive the turn."
+}

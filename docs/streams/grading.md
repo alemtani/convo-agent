@@ -158,37 +158,33 @@ code to be reconciled at the moment they diverged. Hence the standing rule in
 `AGENTS.md` — the stream doc's kickoff prompt is updated in the same PR as the
 work it describes.
 
-### A0.5 — Interception, so an end-to-end eval is free too
+### A0.5 — Interception — **declined, PR #88 closed**
 
-A0 covers the seam where a caller passes `client=`: the workers, the
-orchestrator, `replay.py`. It does **not** cover a run against a live server.
-`main.py` threads no client, so each worker falls back to its module-global
-`_get_client()` and a real `POST /api/turn/text` spends real money. Today there
-is no way to say "this run is an eval" at all.
+The plan was `cassette.install()` seeding each worker's module-global `_client`,
+plus an `evals/server.py` entrypoint, so an eval could drive a real server for
+free. It was built, tested and then closed unmerged, because the premise was
+wrong.
 
-**Never a flag inside `backend/`.** `if os.environ["CASSETTES"]` on the hot path
-means one misconfigured variable on fly.io serves learners canned replies, and
-it puts eval code in the production import path. **The differentiator is which
-entrypoint you launched**, which is a thing that cannot ship to production.
+**`run_text_turn` threads one client into both workers.** `orchestrator.py:88`
+passes it to `conversation.respond`; `orchestrator.py:105` passes the same object
+to `_grade_or_degrade`, which forwards it to `grader.grade`. So an eval that
+passes a `CassetteClient` already replays the reply *and* the grade. A0's seam
+covers, completely, every path we actually run: `evals/*/replay.py` calls the
+workers directly and every `live` test passes `client=`. None uses `TestClient`.
 
-- `cassette.install()` seeds each worker's module-global `_client`. All four
-  workers already resolve `client or _get_client()` off a module global, so this
-  is a real seam.
-- `evals/server.py` calls `install()` and then exposes `backend.main:app`. An
-  eval run is `uvicorn evals.server:app`; the ordinary
-  `uvicorn backend.main:app` is unchanged and cannot be installed into.
+Interception exists for the case where nobody passes a client — a running
+server — and nothing in the repo drives one. Carrying a runtime mutation of
+production module state for zero callers is the wrong trade, however well
+tested.
 
-**Its own step because it touches the critical path.** The diff adds no line to
-`backend/`, but `install()` swaps the client object sitting on the hot path at
-runtime — production module state, mutated by eval code. That is worth a review
-of its own rather than a footnote in a cassette PR.
+**What would reopen it:** `tests/smoke/` pointed at a real server instead of its
+`fetch` stub, or any eval that must exercise routes, auth or error mapping
+rather than the orchestrator. The code is in PR #88's history.
 
-**Not a blocker for A1**, which runs at the worker seam where `client=` already
-works. Either order.
-
-**Azure stays real.** This layer wraps `messages.parse`; STT and PA are a
-different SDK and a different shape. "Free end-to-end" means the text harness
-until someone writes an Azure layer, and the audio path is not that.
+One finding outlived it: the workers annotate `client: Optional[AsyncAnthropic]`
+while the eval hands them a `CassetteClient`. Nothing enforces it (no mypy in
+the gate) and every call is `messages.parse`, which both satisfy — but the
+annotation is a lie today, and a `SupportsParse` Protocol would make it honest.
 
 ### A0.6 — Repair the `live` suite and put it in CI
 
@@ -249,7 +245,50 @@ The two misses are `strict` xfails so CI stays a merge gate. A3 removes the
 mark. An unexpected pass fails the build — that is how we notice the fix
 landed early.
 
-### A2 — The cuts — **shipped, this PR**
+### A1.5 — The turn runner, so the *partner* is measured too — **shipped**
+
+Every eval in the repo called `grader.grade` directly. That measures the judge
+and never the thing being judged: the partner's prompt had no coverage at all,
+which is how A2 cut three annotation fields and a third of the system prompt
+with nothing to replay.
+
+`evals/turn/replay.py` drives `orchestrator.run_text_turn`, which threads **one**
+client into `conversation.respond` and `grader.grade` alike — so a single
+cassette-backed run covers the reply, the grade computed against that reply, and
+the state it advances to. The grader-only runner stays: it holds the partner
+still, which is what A3 needs while the grader prompt moves.
+
+**Over-volunteering is the headline check** (`evals/turn/withholding.py`). The
+partner handing over a `request` slot before the learner asks does not help
+them — it removes a point from the board, because you cannot ask for what you
+have already been told and repeating yourself to a partner does not work. It was
+seen twice in real sessions. `withholding` in `topic.md` is the authored
+constraint against it and nothing had ever checked that the partner honours it.
+
+Only unasked, unfilled `request` slots are candidates: a partner answering what
+the learner just asked is the scene working. That composition — the grade and
+the reply from the same call — is why the check belongs on this runner.
+
+Two things the work settled:
+
+- **The turn runner cannot observe `coherence`.** `ConversationTurnResponse`
+  carries none: it is the grader's judgment, and it reaches the client only
+  through its consequence, whether the slot advanced. So coherence accuracy
+  stays the grader-only runner's measurement against `gold.json` — until **A4**
+  puts the field on the partner's annotation, at which point this runner becomes
+  where it is observed and `TurnObservation` grows the field.
+- **Probes are not recordings.** `evals/turn/cases/` holds constructed red-team
+  turns (the learner asks nothing, so anything the reply establishes was
+  volunteered) and is kept apart from `tests/fixtures/sessions/`, which holds
+  real turns from real sessions. A fabricated turn filed among recordings is a
+  lie a later reader cannot detect. Probes carry no gold: gold answers what the
+  *learner* deserved, and a probe asks about the partner.
+
+**Cassettes are not recorded yet.** The runner is a merge gate only once they
+are, and recording spends money — one wave, two calls per case plus a judge call
+where there is a candidate slot.
+
+### A2 — The cuts — **shipped, PR #91**
 
 - `topic_tags`, `should_give_feedback`, `grammar_notes` — model, prompt,
   frontend. Decide the notes panel: verdict-derived, or gone.
@@ -396,31 +435,6 @@ worktree, write the failing test first, branch from `main`, conventional commits
 open a PR explaining the *why* — and **update this document in the same PR**:
 mark what landed, correct what the work taught you, and leave the next prompt
 runnable.
-
-### A0.5 — interception
-
-```
-Read docs/streams/grading.md. Start Stream A at A0.5: interception, so an
-end-to-end eval against the real server is free too.
-
-A0 (evals/cassette/) covers callers that pass client=. It does not cover a run
-against a live server: main.py threads no client, so each worker falls back to
-its module-global _get_client() and a real POST /api/turn/text spends money.
-
-Add cassette.install(), which seeds each worker's module-global _client, and
-evals/server.py, which calls install() and then exposes backend.main:app. An
-eval run is `uvicorn evals.server:app`. Do not add a flag inside backend/ — one
-misconfigured env var on fly.io would serve learners canned replies. The
-differentiator is which entrypoint was launched.
-
-This touches the critical path even though it adds no line to backend/:
-install() swaps the client object on the hot path at runtime. Say so plainly in
-the PR, and test that an ordinary `uvicorn backend.main:app` process is
-unaffected.
-
-Azure stays real — this layer wraps messages.parse, so "free end-to-end" means
-the text harness, not the audio path.
-```
 
 ### A0.6 — repair the `live` suite
 
