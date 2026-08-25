@@ -34,8 +34,12 @@ relevant. Under V2 that argument no longer holds: the partner is goal-blind
 (`kb.load_converser_block`), so it cannot see what is scoreable.
 
 Coherence is a question about what the partner just said and whether the reply
-followed from it. The partner is the only party that knows what it meant. Move
-it.
+followed from it. The partner is the only party that knows what it meant.
+
+**Goal-blindness is what makes the move safe.** The objection to giving the judge
+a stake is the obvious one, and blindness is the answer: the partner cannot steer
+toward slots it cannot see. The blindness invariant is asserted on the assembled
+request, and it now protects a scoring decision as well as a conversational one.
 
 The result is a grader with exactly one job: which slots did this turn fill.
 
@@ -43,8 +47,15 @@ The result is a grader with exactly one job: which slots did this turn fill.
 
 It is sent the full dialogue for context. Once it only judges slots it needs the
 partner's last line, the learner's turn, and the set of slots already filled.
-Everything else is input tokens and thinking time on the branch that gates the
-session.
+
+This is mostly a latency change and Stream B counts the win — see
+[latency.md](latency.md) B1, which names it as its largest lever. The work lives
+here because it edits the same prompt as the multi-slot fix, and two streams
+editing one file costs more than filing the task under the right heading.
+
+There is a smaller accuracy argument too. `slots_filled` is scoped to the final
+turn, so the rest of the transcript is material the grader must actively ignore.
+Ten turns of history is ten chances to credit something from turn 3.
 
 ### 4. Dead weight in `ConverserAnnotation`
 
@@ -52,13 +63,19 @@ session.
 described in the system prompt, so the partner spends output tokens and attention
 producing them on every turn.
 
-`grammar_notes` is consumed (`frontend/index.html:874`) but sits on the wrong
-worker. The partner's only question is "did I understand". Judging whether a
-grammar slip is worth coaching is a coach's question. Either move it to the
-grader or drop it and let the verdict worker read the transcript.
+`grammar_notes` goes too. The partner's only question is "did I understand you".
+Judging whether a slip is worth coaching is a coach's question, and the partner
+is not the coach. It is consumed (`frontend/index.html:874`), so dropping it is
+not free: either the verdict worker derives the notes from the transcript it
+already has, or the panel goes with the field.
 
-`learner_said_goodbye` stays. It drives termination (`orchestrator.py:418`), and
-noticing a goodbye is something any listener does.
+The rule this follows, and the one to apply to any field added later: **a field
+belongs to whichever of the two parties would actually notice it.** The partner
+is the person you are talking to. The grader is the one who wants you at your
+best.
+
+`learner_said_goodbye` passes that test and stays. It drives termination
+(`orchestrator.py:418`), and anyone notices a goodbye.
 
 ### 5. Prompts are long enough to dilute the instruction that matters
 
@@ -81,6 +98,11 @@ Remove it. It is cleanup, not a fix — it caused none of the misses above.
 
 ## What gets built
 
+Cuts come before additions. Every cut changes a prompt, and every prompt change
+invalidates cassettes, so doing them together means one re-record wave instead of
+four. A trimmed prompt is also a cleaner baseline to measure the multi-slot fix
+against.
+
 ### A0 — The cassette layer (first, everything else depends on it)
 
 Evals are the gate for this stream and the gate cannot cost money each run.
@@ -96,27 +118,90 @@ Record and replay every Anthropic call, keyed on
 Sits under `evals/`, wrapping the same seam `replay.py` already uses
 (`orchestrator.run_text_turn`). It does not touch `backend/`.
 
-Non-determinism is real: the same key can produce different text on a real call.
-That is what the cassette pins. Recording is deliberate and reviewed in the diff.
+**Built here, not taken off the shelf.** `pytest-recording` over VCR.py was
+evaluated and declined: it matches on HTTP method, URI and body rather than on
+the request we assemble, and the layer has to stay flexible enough to follow the
+workers. Every Anthropic call today is a non-streaming `messages.parse`, which
+makes a hand-rolled layer small. Extract it as a shared library later, if and
+only if the same code gets written a second time somewhere else.
 
-### A1 — The multi-slot fix
+**Sampling, not jitter.** A single recording can be a lucky draw. The answer is
+not a probabilistic live call — that makes CI non-deterministic, which is the
+exact property this layer exists to remove, and a build that is green 90% of the
+time is worse than one that is honestly stale. Instead: record N samples per key
+(`replay.py` already has `--repeat` for this reason), store all N, and assert
+against the distribution rather than one draw. A scheduled job — nightly or
+weekly, never per-PR — re-records against live and diffs.
 
-Fail-to-pass cases, from the real sessions above, before any prompt edit.
+**Watch B2.** Streaming the verdict ([latency.md](latency.md)) introduces the one
+thing a cassette layer is worst at. B2 must prove the layer survives before it
+lands, or it quietly turns the eval gate off.
 
-Then rewrite the `slots_filled` instruction so multi-fill is the leading rule,
-not a subordinate clause.
+### A1 — The failing cases
 
-### A2 — Coherence moves to the partner
+The record of the bug, written before anything is fixed. Fail-to-pass cases from
+the four real sessions above.
+
+They are written before the cuts even though the fix lands after, because a bug
+with no case is a bug that comes back.
+
+### A2 — The cuts
+
+- `topic_tags`, `should_give_feedback`, `grammar_notes` — model, prompt,
+  frontend. Decide the notes panel: verdict-derived, or gone.
+- `depends_on` — model, four `topic.md` files (via the `kb-topic` skill, never by
+  hand), `validate.py` cycle check, `termination.py` guard, `docs/SCENARIOS.md`.
+- The partner prompt, trimmed to persona, scene, band ceiling, pinyin reading.
+
+Re-run the full eval set after. This is the change most likely to move numbers in
+a direction nobody intended.
+
+### A3 — The multi-slot fix
+
+Rewrite the `slots_filled` instruction so multi-fill is the leading rule, not a
+subordinate clause. A1's cases go green.
+
+### A4 — Coherence moves to the partner, as a gate
 
 Add `coherence` to `ConverserAnnotation`. Remove it from the grader prompt and
 `GraderResult`.
 
-Watch: `evals/coherence/` measures `coherence` against `gold.json`. The label set
-survives the move — the same turns get the same labels — but the harness reads
-the field off a different worker. `endpoint.py` already leaves `coherence`
-unobserved on the wire and stays that way.
+**Binary.** Understood given what came before, or not. Three tags were built to
+*measure*; once this is a gate, `drifting` has no defined consequence.
 
-### A3 — The grader's input window
+**Drifting counts as incoherent.** The gaming case this exists to catch — the
+partner asks what you want to drink, the learner asks which dish is best — is
+precisely `drifting`. That also means a legitimate topic change gets caught. It
+is a real cost, accepted deliberately.
+
+**The gold labels need remapping, not relabelling.** `evals/coherence/gold.json`
+is three-tag. Collapsing to two is a defined map (`drifting` → incoherent), and
+it must be done as an explicit, reviewed change to the label set.
+
+**A gate, never a deduction.** An incoherent turn earns nothing *that turn*.
+Points already earned are never taken back. A learner watching 3/4 become 2/4
+reads that as a bug, not a judgment — and the gate at the moment of the gamed
+turn already catches what retroactive cancellation was for.
+
+The one exception is the owed-turn recovery path, where a turn is credited before
+its coherence is known. `slots_filled_previously` is the only place a
+cancellation is both meaningful and invisible to the learner mid-session.
+
+**Where it lives: `_advance_or_echo`.** The grader and converser are concurrent
+(`asyncio.wait(..., FIRST_COMPLETED)`) so neither is reliably first, and the gate
+cannot live inside either branch. It belongs where both results meet.
+
+The orchestrator already guarantees this ordering, at no cost:
+`orchestrator.py:426-437` never emits `StateEvent` before `ReplyEvent` — a grade
+that lands first is parked in `pending_grade` and released after the reply
+flushes. So the annotation always exists when `_advance_or_echo` runs. The gate
+is a new argument to a pure, already-tested function. No new latency, no new
+ordering logic.
+
+(The comment at `orchestrator.py:431` claiming the grader usually wins the race
+is out of date. Delete it while you are in there.)
+
+### A5 — The grader's input window
 
 Send the partner's last line, the learner's turn, and the filled-slot set.
 
@@ -126,26 +211,34 @@ The window shrinks what goes *after* the breakpoint.
 `render_window_note` and the owed-turn recovery path must keep working: a turn
 settling a debt needs the earlier turns it never judged.
 
-### A4 — Prompt trim and dead-field removal
+### A6 — The verdict reviews the session
 
-Cut `topic_tags` and `should_give_feedback` from the model, the prompt, and the
-frontend. Decide `grammar_notes`: move to grader, or drop.
+`feedback.settle_outstanding_grades` already re-grades the last unsettled turn
+before the card is written, and the verdict already holds the whole transcript.
+Extend it to review every turn with hindsight.
 
-Trim the partner prompt. Re-run the full eval set after — this is the change most
-likely to move numbers in a direction nobody intended.
+This is strictly fairer. The grader at turn 3 did not know what turn 5 would
+clarify.
 
-### A5 — Remove `depends_on`
+**Review may add credit and may never remove it.** Non-negotiable. The card is
+read after a session the learner already watched live; a card that takes away a
+point they saw themselves earn is indistinguishable from a bug, and there is no
+way for them to tell a correction from a defect.
 
-Model, four `topic.md` files (via the `kb-topic` skill, never by hand),
-`validate.py` cycle check, `termination.py` guard, `docs/SCENARIOS.md`.
-
-### A6 — Feedback intake
+### A7 — Feedback intake, and contesting a grade
 
 A button in the app. It opens a GitHub issue with the session transcript, the
 scenario, the slot state, and what the learner says went wrong.
 
-This is in Stream A and not Stream C because its output is eval cases. A filed
-issue is handled by: write the failing case, then fix, then close.
+A **contest** is the same mechanism pointed at one turn. It earns its own affordance
+because there is currently no recourse at all: you cannot repeat yourself in a
+conversation without it getting strange, so a turn graded wrong stays graded
+wrong.
+
+Both live in Stream A rather than Stream C because their output is eval cases. A
+filed issue is handled by: write the failing case, then fix, then close. A
+contested grade is a **labelled disagreement**, which is the highest-value thing
+that can land in `gold.json`.
 
 Needs a server-side token and a rate limit. The client never sees the token.
 
@@ -155,7 +248,7 @@ Needs a server-side token and a rate limit. The client never sees the token.
 - All four recorded misses pass.
 - The grader returns slots and nothing else.
 - The partner prompt fits on one screen.
-- A learner can file a bug in three taps.
+- A learner can file a bug, or contest a grade, in three taps.
 
 ## Kickoff prompt
 
@@ -167,6 +260,14 @@ Build a record/replay wrapper for Anthropic calls under evals/, keyed on
 sha256 of model + system + tools + messages + params. Cassettes commit to the
 repo. A key miss fails loudly unless --record is passed. It wraps the same seam
 evals/coherence/replay.py already uses; it must not touch backend/.
+
+Build it rather than adopting pytest-recording/VCR.py — that was evaluated and
+declined; see the spec. Every Anthropic call today is a non-streaming
+messages.parse, which keeps this small.
+
+Record N samples per key and assert against the distribution, not one draw
+(replay.py already has --repeat). No probabilistic live calls: CI stays
+deterministic and freshness is handled by a scheduled re-record job.
 
 Write the failing tests first. Branch from main, conventional commits, open a PR
 explaining why the eval gate had to stop costing money before the grader work
