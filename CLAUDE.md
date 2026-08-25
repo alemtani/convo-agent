@@ -169,6 +169,11 @@ it pass. Verification is tiered by how deterministic the code is:
   `cache_read_input_tokens > 0` check are marked `@pytest.mark.live` — they need
   keys and cost money, so they are **excluded from the default run**. Invoke
   explicitly with `pytest -m live`.
+  Evals under `evals/` are a third thing again: they judge model *behavior*, and
+  they run off committed **cassettes** (`evals/cassette/`, recorded once and
+  replayed by request hash) so the suite is a merge gate that spends nothing. A
+  key with no recording fails the run; only `--record` calls the API, and
+  freshness is a scheduled job's problem (`.github/workflows/rerecord.yml`).
 - **Frontend behavior — a browser, deterministically.** `tests/smoke/` drives
   `frontend/index.html` in Chromium (`@pytest.mark.smoke`) to pin the races that
   clicking around is worst at catching: mic frames lost before the button turns
@@ -205,6 +210,19 @@ straight to `main`. The reviewer reads the diff and leaves inline comments; when
 addressing them, push fixes and **reply on each review thread**. Steps: branch
 from `main` → commit (conventional) → `git push -u` → `gh pr create` with a body
 explaining the *why*. This is the standing workflow, not just for large changes.
+
+**Start the work in a git worktree.** Several agents run in this repo at once,
+and one checkout means they share a branch, a working tree, and each other's
+half-finished edits. A worktree gives each one its own. Create it before the
+first edit — moving into one later means moving uncommitted work.
+
+```
+.claude/worktrees/<name>/        # the worktree; branch from main inside it
+```
+
+Two things a fresh worktree does not inherit: `.env` (gitignored — copy it in,
+or every real call 500s) and `.venv` (use the main checkout's interpreter). The
+PR is raised from the worktree's branch like any other.
 
 ## Knowledge-base authoring (separate from the service)
 
