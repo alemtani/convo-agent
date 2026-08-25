@@ -1,7 +1,9 @@
 """Replay the recorded cases through the conversation worker and record the tags.
 
-The live half of V0. It spends tokens, so it is a script rather than a test:
-its output is a report, and a report is not an assertion.
+Runs off **cassettes** by default (`evals/cassette/`): a key with no recording
+is an error, not a live call. `--record` is the only thing that spends money,
+and what it buys is committed. Its output is still a report rather than an
+assertion — but a report that costs nothing to reproduce.
 
 Each case is replayed `--repeat` times, because `coherence` is a model's output
 and not a function — one run tells you what happened once. Every run is its own
@@ -12,8 +14,17 @@ calls exactly this): same KB block, same sketch, same pressure hint, same
 `turn` derivation. A measurement taken through a different path than the one
 that ships would measure something else.
 
-    python -m evals.coherence.replay --repeat 3
+    python -m evals.coherence.replay --repeat 3               # free, off cassettes
+    python -m evals.coherence.replay --record --samples 3     # live; costs money
     python -m evals.coherence.replay --case nonsequitur-slot-fill --out /tmp/obs.json
+
+**This runner is stale as of V2** and raises `AttributeError` before it reaches
+the network: `termination.pressure_hint` is now `closing_hint`, and `coherence`
+and `slots_filled` moved off the converser's annotation onto the grader
+(`backend/models.py:GraderResult`). Repointing it — and giving the fixtures the
+opening line a turn-1 grade needs — is A1's first job. The cassette wiring below
+is ready for it, and no cassette has been recorded through it yet for exactly
+this reason: a recording of a call the app no longer makes is worse than none.
 """
 import argparse
 import asyncio
@@ -25,6 +36,7 @@ from typing import List
 from backend import config, kb, orchestrator, termination
 from backend.models import SessionState
 from backend.workers import conversation
+from evals import cassette
 from evals.coherence.cases import Case, CaseError, load_cases, load_gold, paired
 from evals.coherence.matrix import Observation
 
@@ -60,7 +72,9 @@ async def replay_case(case: Case, *, client=None) -> Observation:
     )
 
 
-async def replay_all(cases: List[Case], *, repeat: int, on_run=None) -> List[Observation]:
+async def replay_all(
+    cases: List[Case], *, repeat: int, on_run=None, client=None
+) -> List[Observation]:
     """Every case, `repeat` times, run by run.
 
     Serial on purpose. This is a measurement of a hot-path call and there is no
@@ -76,7 +90,7 @@ async def replay_all(cases: List[Case], *, repeat: int, on_run=None) -> List[Obs
     for run in range(1, repeat + 1):
         for case in cases:
             try:
-                observation = await replay_case(case)
+                observation = await replay_case(case, client=client)
             except conversation.ConversationError as exc:
                 print(f"run {run}/{repeat}  {case.id:<24} FAILED: {exc}")
                 continue
@@ -92,6 +106,7 @@ async def replay_all(cases: List[Case], *, repeat: int, on_run=None) -> List[Obs
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
+    cassette.cli.add_arguments(parser)
     parser.add_argument("--repeat", type=int, default=3, help="runs per case")
     parser.add_argument("--case", action="append", help="replay only this case id")
     parser.add_argument("--cases-dir", default=CASES_DIR)
@@ -127,7 +142,10 @@ def main() -> None:
 
     # Written after every run, not once at the end: the file is the only record
     # of calls that have already been billed.
-    observations = asyncio.run(replay_all(cases, repeat=args.repeat, on_run=write))
+    client = cassette.cli.client_from_args(args)
+    observations = asyncio.run(
+        replay_all(cases, repeat=args.repeat, on_run=write, client=client)
+    )
     write(observations)
     print(f"\nwrote {len(observations)} observations to {args.out}")
 
