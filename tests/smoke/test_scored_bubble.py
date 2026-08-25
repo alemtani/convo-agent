@@ -29,14 +29,14 @@ def staged(transcript, syllables, overall=88.0):
         {
             "stage": "transcript",
             "transcript": transcript,
-            "timings": {**TIMINGS, "pa_ms": None, "claude_ms": None, "total_ms": None},
+            "timings": {**TIMINGS, "pa_ms": None, "claude_ms": None, "grader_ms": None, "total_ms": None},
             "elapsed_ms": 310.0,
         },
         {
             "stage": "score",
             "pronunciation": {"overall": overall, "syllables": syllables},
             "tone_errors": [],
-            "timings": {**TIMINGS, "claude_ms": None, "total_ms": None},
+            "timings": {**TIMINGS, "claude_ms": None, "grader_ms": None, "total_ms": None},
             "elapsed_ms": 560.0,
         },
         {

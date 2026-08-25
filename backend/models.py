@@ -147,10 +147,10 @@ class TurnEvent(BaseModel):
 
     `timings` is the stage table *as known at emit*, so it fills in as the turn
     progresses: `transcript` has `stt_ms` only, `score` adds `pa_ms`, `reply`
-    adds `claude_ms`. A stage still running is absent rather than zero. Only
-    `done` carries `total_ms` — on any earlier event a "total" would be a total
-    of nothing, which is exactly the trap of reading a cumulative snapshot as a
-    per-event cost.
+    adds `claude_ms`, `state` adds `grader_ms`. A stage still running is absent
+    rather than zero. Only `done` carries `total_ms` — on any earlier event a
+    "total" would be a total of nothing, which is exactly the trap of reading a
+    cumulative snapshot as a per-event cost.
     """
 
     elapsed_ms: Optional[float] = None

@@ -139,7 +139,13 @@ def browser_context_args(browser_context_args, frontend_server):
 # `timings`/`usage` are carried so the per-turn timings line actually renders —
 # without them `renderTimings` returns early and the tests would silently stop
 # covering where that line lands relative to the bubbles.
-TIMINGS = {"stt_ms": 300.0, "pa_ms": 250.0, "claude_ms": 900.0, "total_ms": 1250.0}
+TIMINGS = {
+    "stt_ms": 300.0,
+    "pa_ms": 250.0,
+    "claude_ms": 900.0,
+    "grader_ms": 1100.0,
+    "total_ms": 1250.0,
+}
 USAGE = {"input_tokens": 4200, "output_tokens": 60, "cache_read_input_tokens": 4096}
 
 # M2-B: `POST /api/session`'s canned reply — the opening line + scenario card
@@ -177,7 +183,7 @@ TURN_AUDIO = [
     {
         "stage": "transcript",
         "transcript": {"zh": "你好", "pinyin": "nǐ hǎo"},
-        "timings": {**TIMINGS, "pa_ms": None, "claude_ms": None, "total_ms": None},
+        "timings": {**TIMINGS, "pa_ms": None, "claude_ms": None, "grader_ms": None, "total_ms": None},
         "elapsed_ms": 310.0,
     },
     {
@@ -190,7 +196,7 @@ TURN_AUDIO = [
             ],
         },
         "tone_errors": [],
-        "timings": {**TIMINGS, "claude_ms": None, "total_ms": None},
+        "timings": {**TIMINGS, "claude_ms": None, "grader_ms": None, "total_ms": None},
         "elapsed_ms": 560.0,
     },
     {

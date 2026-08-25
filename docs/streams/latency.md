@@ -45,7 +45,7 @@ So the grader does not come off the wait. It gets made fast.
 
 ## What gets built
 
-### B0 — Surface the granularity (first)
+### B0 — Surface the granularity (done)
 
 Nothing else here is worth doing before the numbers are complete. This is a
 read-the-instrument task before it is a fix-anything task.
@@ -58,6 +58,10 @@ read-the-instrument task before it is a fix-anything task.
 3. **Then add client marks** for whatever the split leaves unexplained: mic stop
    → request sent (encode), request sent → first byte (upload), each stage event,
    `done` → rendered.
+
+`upload` is request sent → first byte. Today's server does not flush headers
+until STT returns, so that interval is upload plus STT, not upload alone. When
+the stream starts earlier, `upload` and `transcript` split on their own.
 
 Ships behind the same flag the HUD already uses.
 

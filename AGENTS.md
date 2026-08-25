@@ -62,6 +62,10 @@ Shipped, in the order a learner hits it:
   they do in words.
 - A2 HUD: the scenario card shows "N of M" slots filled and turns used.
   Counts only — slot names stay off the card.
+- B0 timings HUD: the per-turn line names the round trip and the server
+  total, shows `grader_ms` next to STT/PA/Claude, and reports client
+  marks (encode, upload, each stage arrival, paint). Dev instrument;
+  same quiet surface as before.
 
 Limits of the running app (not a backlog, just what is missing today):
 
@@ -77,7 +81,7 @@ Limits of the running app (not a backlog, just what is missing today):
 
 The last product work on `main` is the A2 progress HUD (slots filled and
 turns used, counts only). A2's floor, verdict copy, and gender pin are
-still open.
+still open. Stream B B0 is the timings HUD: every branch now has a number.
 
 ---
 

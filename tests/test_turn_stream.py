@@ -445,7 +445,7 @@ def test_the_stage_table_fills_in_as_the_turn_progresses():
     assert seen["reply"]["timings"]["claude_ms"] is not None
 
     # Only `done` sees the whole turn.
-    for stage in ("stt_ms", "pa_ms", "claude_ms", "total_ms"):
+    for stage in ("stt_ms", "pa_ms", "claude_ms", "grader_ms", "total_ms"):
         assert seen["done"]["timings"][stage] is not None, stage
 
 
@@ -500,6 +500,7 @@ def test_short_circuited_turn_is_still_measured(monkeypatch):
     # flatter the p50 of exactly the stage the latency work turns on.
     assert done["timings"]["pa_ms"] is None
     assert done["timings"]["claude_ms"] is None
+    assert done["timings"]["grader_ms"] is None
 
 
 async def test_concurrent_branches_are_timed_separately(monkeypatch):
