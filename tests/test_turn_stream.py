@@ -67,7 +67,7 @@ def stub_worker_and_pa(monkeypatch):
                            want_reading=True, hint=None, client=None):
         return (
             Utterance(zh="你好！你叫什么名字？", pinyin="nǐ hǎo! nǐ jiào shénme míngzi?"),
-            TurnAnnotation(topic_tags=["greetings"]),
+            TurnAnnotation(),
             Utterance(zh="你好", pinyin="nǐ hǎo"),
             object(),
         )

@@ -21,7 +21,6 @@ scenario:
       kind: request
       description: "Find out how old one of their brothers or sisters is"
       expressible_with: [哥哥, 姐姐, 弟弟, 妹妹, 多, 大, 今年, 岁]
-      depends_on: [their_family_size]
 ---
 
 # Family (家人)
@@ -45,11 +44,8 @@ ask the same things.
 **Scenario.** Three slots — one `inform`, two `request` — so the turn cap
 derives to 7. Both `request` slots are real obstacles: no packing lets the
 learner know a family's size or a sibling's age before the partner says it.
-`sibling_age` depends on `their_family_size`, because an age credited before the
-learner knows a sibling exists is a hallucination signal (the tracker guard in
-`docs/SCENARIOS.md`). `expressible_with` names the vocab that *can* express each
-slot; it is a hint to the extractor and a handle for `validate.py`, never a
-string matcher.
+`expressible_with` names the vocab that *can* express each slot; it is a hint
+to the extractor and a handle for `validate.py`, never a string matcher.
 
 **The pressure this scenario applies.** The classmate volunteers nothing. They
 answer what is asked and hand the question back with 呢, so the gap sits where

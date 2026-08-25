@@ -98,14 +98,11 @@ def test_duplicate_slot_ids_are_rejected(hsk, ceiling):
     assert any("duplicate slot id" in e and "item" in e for e in errors)
 
 
-def test_depends_on_an_unknown_slot_is_rejected(hsk, ceiling):
+def test_leftover_depends_on_is_rejected_as_an_unknown_key(hsk, ceiling):
+    """A2 cut the field. A topic that still writes it must not parse, so
+    the authoring skill cannot keep emitting it by habit."""
     errors, _ = _run("unknown_dep", hsk, ceiling)
-    assert any("unknown slot" in e and "vendor" in e for e in errors)
-
-
-def test_a_dependency_cycle_is_rejected(hsk, ceiling):
-    errors, _ = _run("dep_cycle", hsk, ceiling)
-    assert any("cycle" in e for e in errors)
+    assert any("unknown key" in e and "depends_on" in e for e in errors)
 
 
 # --- rule 5: a pacing override that starves the goal ----------------------

@@ -851,7 +851,10 @@
     // makes turn 1 recoverable like every other turn.
     let state = readJson(STATE_KEY, null)
       || { filled_at: {}, status: "active", last_graded_turn: 0 };
-    // Per-turn tone/grammar notes, keyed by turn index, for the verdict roll-up.
+    // Per-turn tone notes, keyed by turn index, for the verdict roll-up.
+    // Grammar notes used to ride along from the partner. A2 dropped them:
+    // judging a slip is a coach's job, and the partner is not the coach.
+    // Azure tone errors stay because they were measured, not judged.
     let notes = readJson(NOTES_KEY, {});
 
     function saveState() {
@@ -861,22 +864,21 @@
 
     function isComplete() { return state && state.status === "complete"; }
 
-    // Notes arrive on two different events on the spoken path — `grammar_notes`
-    // with the reply, `tone_errors` with the score — and a slow Azure call
-    // legitimately puts the score *after* the reply. So each turn's record is
-    // merged into by both, under an index captured before either can run.
+    // Tone errors arrive on the score event. A slow Azure call legitimately
+    // puts the score after the reply, so each turn's record is merged under
+    // an index captured before either can run.
     function recordNote(turnIndex, fields) {
       const prior = notes[turnIndex] || {};
       notes[turnIndex] = Object.assign(prior, fields);
     }
 
     // Flattened at verdict time: the worker wants sentences about the session,
-    // not our wire shapes.
+    // not our wire shapes. Grammar notes are not collected — the panel went
+    // with the field rather than becoming a new verdict job.
     function notesForVerdict() {
       const out = [];
       for (const turn of Object.keys(notes).sort((a, b) => a - b)) {
         const note = notes[turn] || {};
-        for (const g of note.grammar_notes || []) out.push(`turn ${turn}: ${g}`);
         for (const t of note.tone_errors || []) {
           out.push(`turn ${turn}: tone ${t.expected} on ${t.syllable}`);
         }
@@ -2253,9 +2255,6 @@
               dialogue.push({ role: "user", zh: transcript.zh, pinyin: transcript.pinyin });
               dialogue.push({ role: "partner", zh: event.reply.zh, pinyin: event.reply.pinyin });
               saveDialogue();
-              recordNote(turnIndex, {
-                grammar_notes: (event.annotation && event.annotation.grammar_notes) || [],
-              });
             }
           } else if (event.stage === "state") {
             // The grade has landed, so the wait is over. Cleared here rather
@@ -2400,7 +2399,6 @@
         dialogue.push({ role: "partner", zh: data.reply.zh, pinyin: data.reply.pinyin });
         saveDialogue();
         recordNote(turnIndex, {
-          grammar_notes: (data.annotation && data.annotation.grammar_notes) || [],
           tone_errors: (data.annotation && data.annotation.tone_errors) || [],
         });
         adoptState(data.state);

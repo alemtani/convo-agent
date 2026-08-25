@@ -80,9 +80,14 @@ def test_system_prefix_is_byte_identical_across_turns():
     assert a["system"] == b["system"]
 
 
-def test_forgiveness_literal_is_in_frozen_block_not_volatile():
+def test_forgiveness_is_not_in_the_partner_prompt():
+    """A2 cut. Forgiveness was a session constant baked in as a literal, and
+    it asked the partner to hold a tutoring stance it is not. The worker
+    still takes the arg so the orchestrator contract does not move; it no
+    longer reaches the frozen prefix."""
     req = _build(forgiveness=0.8)
-    assert "0.8" in req["system"][0]["text"]
+    assert "0.8" not in req["system"][0]["text"]
+    assert "Forgiveness" not in req["system"][0]["text"]
     # The learner's words never leak into the cached system prefix.
     for block in req["system"]:
         assert "我叫小明" not in block["text"]
@@ -160,6 +165,28 @@ def test_the_converser_is_not_asked_to_annotate_what_it_cannot_see():
     prompt = render_system_prompt(0.8)
     for field in ("slots_filled", "learner_closed", "coherence"):
         assert field not in prompt
+
+
+def test_the_partner_prompt_is_persona_scene_band_and_pinyin():
+    """A2: the partner holds four things, not a coaching brief.
+
+    Reciprocity, stay-in-character, forgiveness, and the annotation dump
+    were extra jobs. The scene block already says what the place does not
+    hand over. Schema carries `learner_said_goodbye`."""
+    prompt = render_system_prompt(0.8)
+    assert "conversation partner" in prompt
+    assert "HSK 3.0 band 2" in prompt
+    assert "pinyin" in prompt.lower()
+    assert "scene" in prompt.lower()
+    for gone in (
+        "grammar_notes",
+        "topic_tags",
+        "should_give_feedback",
+        "Stay in character",
+        "Answer what you are asked",
+        "turn_annotation",
+    ):
+        assert gone not in prompt
 
 
 def test_empty_sketch_is_omitted_rather_than_sent_as_an_empty_block():
@@ -280,7 +307,7 @@ def test_effort_is_omitted_rather_than_defaulted_when_unset(monkeypatch):
 def _recorded_result():
     return ConversationResult(
         partner_response=Utterance(zh="你好！你叫什么名字？", pinyin="nǐ hǎo! nǐ jiào shénme míngzi?"),
-        turn_annotation=ConverserAnnotation(topic_tags=["greetings"]),
+        turn_annotation=ConverserAnnotation(),
         # Text mode: the learner typed pinyin, the worker reports what it read.
         user_reading=Utterance(zh="我叫小明", pinyin="wǒ jiào xiǎo míng"),
     )
@@ -312,7 +339,7 @@ async def test_respond_sends_built_request_and_parses_recorded_response():
 
     # We parsed the recorded response into our models.
     assert reply == Utterance(zh="你好！你叫什么名字？", pinyin="nǐ hǎo! nǐ jiào shénme míngzi?")
-    assert annotation.topic_tags == ["greetings"]
+    assert annotation.learner_said_goodbye is False
     # The reading is surfaced separately from the reply — it's the learner's turn.
     assert reading == Utterance(zh="我叫小明", pinyin="wǒ jiào xiǎo míng")
     assert usage.cache_creation_input_tokens == 123

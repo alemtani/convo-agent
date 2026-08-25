@@ -87,7 +87,6 @@ scenario:
       kind: request
       description: "Find out what they cost"
       expressible_with: [多少, 钱]
-      depends_on: [item]
 ```
 
 | Field | Purpose |
@@ -98,7 +97,6 @@ scenario:
 | `kind: request` | The learner must **extract** this from the partner. |
 | `description` | English. Feeds the verdict card ("you never found out the price"). |
 | `expressible_with` | KB vocab that can express the slot. Lets `validate.py` check the slot is *achievable* with `target_vocab` at the current band ceiling. |
-| `depends_on` | Slot ids that must be filled first. Used **only** by the tracker sanity guard — see [Guards](#guards). It does not affect the turn budget. |
 
 **No turn counts are authored.** The budget is derived — see
 [Turn budget](#turn-budget).
@@ -391,10 +389,10 @@ being byte-stable.
 
 ### Guards
 
-The tracker can hallucinate a fill. One structural check catches the sharp case:
-
-- **a fill whose `depends_on` is unsatisfied** — `price` credited before `item` is
-  nonsense under any pacing. Log as an error.
+The tracker can hallucinate a fill. `depends_on` used to catch the sharp
+case (`price` credited before `item`) and log it. It never blocked a
+credit, so A2 removed the field. Leftover YAML fails as an unknown slot
+key.
 
 Deliberately **not** a guard: *"all slots filled on turn 1"* and *"more than one
 request slot filled in one turn."* Both are legitimate for a strong learner who
@@ -629,8 +627,7 @@ Same scenario. The learner packs everything into one utterance.
 ```
 tracker  → slots_filled: [item, quantity, price]
 state    → missing: ∅
-guards   → depends_on satisfied (item precedes price in the utterance) → no error
-           all slots on turn 1 → INFO log, not a warning
+guards   → all slots on turn 1 → INFO log, not a warning
 termination: end condition 1         → COMPLETE, goal met
 ```
 
@@ -725,7 +722,7 @@ the KB generally (`validate.py`, not pytest; see `CLAUDE.md`).
 | every `expressible_with` word ∈ `target_vocab`, at or below the ceiling | unachievable slot (the 苹果 case) |
 | **`n_slots > 1`** | one-exchange scenario — a flashcard with a situation attached |
 | **`n_request_slots ≥ 1`** | vocabulary drill masquerading as a scenario |
-| duplicate slot ids; cycle in `depends_on`; `depends_on` naming an unknown id | malformed graph |
+| duplicate slot ids | malformed graph |
 | an authored `max_turns` override below the derived value, or without a reason | pacing override that starves the goal |
 | `situation` / `goal` non-empty and ASCII-only | a Chinese task description a band-1 learner can't read |
 | a `request` slot with no `withholding` prose (ASCII) | a scene that answers its own question, which a goal-blind partner cannot stop |
@@ -743,8 +740,8 @@ The reframe converts most of this into deterministic logic, which is exactly wha
   consecutive_closes)`. One case per end condition, plus the one-turn clear.
 - **Monotonicity** — property test: replaying any transcript prefix never un-fills
   a slot.
-- **The `depends_on` guard** — a fixture where `price` fills before `item` must
-  raise; a fixture filling everything on turn 1 must **not**.
+- **Packed utterance** — a fixture filling everything on turn 1 must **not**
+  raise. `depends_on` is gone (A2); leftover YAML is an unknown slot key.
 - **`validate.py` rejections** — one fixture topic per rule above, each of which
   must fail.
 - **Slot extraction** — contract test against recorded responses; assert the exact
@@ -834,11 +831,10 @@ vendor volunteered it turns every session into a pass. Both directions are
 catchable with recorded-transcript fixtures, which is why slot extraction gets a
 contract test rather than an eval.
 
-**`depends_on` may not earn its authoring cost.** After the turn budget stopped
-using the DAG, its only remaining job is the tracker guard. That guard is real —
-`price` before `item` is a genuine hallucination signal — and the field is one
-line to write. But if it proves annoying across eight topics, it can be dropped
-and the design survives; the guard degrades to the info-level log.
+**`depends_on` did not earn its authoring cost.** After the turn budget stopped
+using the DAG, its only remaining job was the tracker guard, which logged and
+kept the fill. A2 dropped it. The design survives; the guard degrades to the
+info-level packed-utterance log.
 
 **`n_slots` as a pacing proxy is a guess.** It is the one hand-tuned assumption
 left, and it only affects `max_turns` — a policy number in a policy formula, in a

@@ -7,9 +7,9 @@ the committed `kb/zh/greetings` topic plus a tmp topic for the parser edges.
 
 M2 adds the `scenario:` block (`docs/SCENARIOS.md`): authored slots, and one
 derived turn cap. The parser's job is *structure* — the semantic guardrails
-(`n_slots > 1`, dependency cycles, a starving `max_turns` override) belong to
-`validate.py` at authoring time, so a degenerate-but-well-formed scenario must
-still parse. Otherwise the validator could never report on it.
+(`n_slots > 1`, a starving `max_turns` override) belong to `validate.py` at
+authoring time, so a degenerate-but-well-formed scenario must still parse.
+Otherwise the validator could never report on it.
 """
 import dataclasses
 import textwrap
@@ -40,7 +40,6 @@ SCENARIO_MD = textwrap.dedent(
           kind: request
           description: "Find out what they cost"
           expressible_with: [多少, 钱]
-          depends_on: [item]
     ---
 
     # Shopping
@@ -188,15 +187,25 @@ def test_parse_scenario_extracts_slots_in_authored_order():
     assert [s.kind for s in scenario.slots] == ["inform", "inform", "request"]
     assert scenario.slots[0].description == "Say you want fruit"
     assert scenario.slots[2].expressible_with == ("多少", "钱")
-    assert scenario.slots[2].depends_on == ("item",)
+    assert not hasattr(scenario.slots[2], "depends_on")
 
 
 def test_parse_scenario_defaults_optional_slot_fields():
-    # `depends_on` is optional; an absent one is empty, never None.
     scenario = kb.parse_topic_frontmatter(SCENARIO_MD).scenario
-    assert scenario.slots[0].depends_on == ()
     assert scenario.max_turns_reason is None
     assert scenario.authored_max_turns is None
+
+
+def test_depends_on_is_an_unknown_slot_key():
+    """A2 cut. The field earned a cycle check and a log line, and never
+    blocked a credit. Leftover YAML must fail loudly so authors do not
+    keep writing it."""
+    md = SCENARIO_MD.replace(
+        "      expressible_with: [多少, 钱]\n",
+        "      expressible_with: [多少, 钱]\n      depends_on: [item]\n",
+    )
+    with pytest.raises(kb.KbError, match="unknown key"):
+        kb.parse_topic_frontmatter(md)
 
 
 def test_parse_scenario_counts_slots_and_request_slots():

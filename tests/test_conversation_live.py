@@ -79,7 +79,7 @@ async def test_live_reply_is_valid_structured_output():
     assert isinstance(reply, Utterance)
     assert reply.zh and reply.pinyin
     assert annotation.coherence in {"on_track", "drifting", "off_track"}
-    assert isinstance(annotation.topic_tags, list)
+    assert annotation.learner_said_goodbye in (True, False)
     # Tone is never the model's to judge, so the field it would go in is not
     # even in the schema any more — the server adds it downstream.
     assert not hasattr(annotation, "tone_errors")
