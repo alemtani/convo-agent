@@ -1,0 +1,89 @@
+{
+  "key": "e541f215f0fae3b01be31cf63b754895b215f751da444ef3b46734262740beaf",
+  "model": "claude-sonnet-5",
+  "recorded_at": "2026-08-25T05:56:41+00:00",
+  "samples": [
+    {
+      "parsed_output": {
+        "partner_response": {
+          "pinyin": "nǐ hǎo! zǎoshang hǎo.",
+          "zh": "你好！早上好。"
+        },
+        "turn_annotation": {
+          "grammar_notes": [],
+          "learner_said_goodbye": false,
+          "should_give_feedback": false,
+          "topic_tags": [
+            "greetings"
+          ]
+        },
+        "user_reading": {
+          "pinyin": "nǐ hǎo",
+          "zh": "你好"
+        }
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 5055,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 6,
+        "output_tokens": 137
+      }
+    },
+    {
+      "parsed_output": {
+        "partner_response": {
+          "pinyin": "nǐ hǎo! zǎoshang hǎo!",
+          "zh": "你好！早上好！"
+        },
+        "turn_annotation": {
+          "grammar_notes": [],
+          "learner_said_goodbye": false,
+          "should_give_feedback": false,
+          "topic_tags": [
+            "greetings"
+          ]
+        },
+        "user_reading": {
+          "pinyin": "nǐ hǎo",
+          "zh": "你好"
+        }
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 5055,
+        "input_tokens": 6,
+        "output_tokens": 138
+      }
+    },
+    {
+      "parsed_output": {
+        "partner_response": {
+          "pinyin": "nǐ hǎo! zǎoshang hǎo!",
+          "zh": "你好！早上好！"
+        },
+        "turn_annotation": {
+          "grammar_notes": [],
+          "learner_said_goodbye": false,
+          "should_give_feedback": false,
+          "topic_tags": [
+            "greetings"
+          ]
+        },
+        "user_reading": {
+          "pinyin": "nǐ hǎo",
+          "zh": "你好"
+        }
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 5055,
+        "input_tokens": 6,
+        "output_tokens": 138
+      }
+    }
+  ],
+  "summary": "claude-sonnet-5 → ConversationResult: 你好"
+}

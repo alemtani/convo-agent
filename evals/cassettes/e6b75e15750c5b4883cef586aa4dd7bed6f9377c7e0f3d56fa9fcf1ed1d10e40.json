@@ -1,0 +1,56 @@
+{
+  "key": "e6b75e15750c5b4883cef586aa4dd7bed6f9377c7e0f3d56fa9fcf1ed1d10e40",
+  "model": "claude-sonnet-5",
+  "recorded_at": "2026-08-25T05:56:53+00:00",
+  "samples": [
+    {
+      "parsed_output": {
+        "opening_line": {
+          "pinyin": "nǐ hǎo!",
+          "zh": "你好！"
+        },
+        "sketch": "A friendly but shy classmate, happy to chat and quick to answer when asked directly, though too reserved to volunteer personal details on their own. Casual campus morning setting: a few other students walking by, backpacks, maybe a coffee cart nearby. Keeps replies short and simple, and always happy to turn a question back with 你呢."
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 4227,
+        "output_tokens": 150
+      }
+    },
+    {
+      "parsed_output": {
+        "opening_line": {
+          "pinyin": "nǐ hǎo!",
+          "zh": "你好！"
+        },
+        "sketch": "Play a friendly but shy classmate: warm and quick to answer, happy to ask about the other person, yet never the one to offer up your own name or bring up how you've been. It's a cool, quiet morning on campus with a few students walking by. Keep replies short and simple, matching beginner-level Mandarin."
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 4227,
+        "output_tokens": 140
+      }
+    },
+    {
+      "parsed_output": {
+        "opening_line": {
+          "pinyin": "nǐ hǎo!",
+          "zh": "你好！"
+        },
+        "sketch": "Play a friendly but shy classmate: warm and quick to answer, happy to ask about the other person, but never the one to offer up their own name or bring up how they've been. Morning campus scene—cool air, students walking to class, maybe books in hand. Keep replies short and simple, HSK band 1-2 only."
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 4227,
+        "output_tokens": 141
+      }
+    }
+  ],
+  "summary": "claude-sonnet-5 → SketchResult: # VOCABULARY\n\n# Vocabulary — Greetings (你好)\n\nAll single wor…"
+}

@@ -190,7 +190,7 @@ works. Either order.
 different SDK and a different shape. "Free end-to-end" means the text harness
 until someone writes an Azure layer, and the audio path is not that.
 
-### A0.6 — Repair the `live` suite and put it in CI
+### A0.6 — Repair the `live` suite and put it in CI — **shipped, this PR**
 
 `tests/test_conversation_live.py` unpacks five values from
 `conversation.respond`, which has returned four since the grader split. It fails
@@ -204,9 +204,11 @@ An excluded suite rots. That is the finding, and it is worth more than the fix.
 two different kinds of test:
 
 - **Behavioral** — structural invariants over model output
-  (`test_conversation_live`, `test_session_live`, the Anthropic half of
-  `test_turn_live`). Cassettes fit exactly. These become deterministic, run in
-  CI for free, and are a merge gate.
+  (`test_conversation_live`, `test_session_live`). Cassettes fit exactly. These
+  become deterministic, run in CI for free, and are a merge gate. *(The plan
+  also named "the Anthropic half of `test_turn_live`". There isn't one to
+  split: that file drives the whole spoken loop, so Azure is on the same call
+  path and it stays live entire.)*
 - **Contact** — tests whose whole point is touching the real API.
   `cache_read_input_tokens > 0` is the sharp case: replaying a recorded `850`
   proves only that someone once wrote `850` into a JSON file. Cassetting it does
@@ -216,7 +218,54 @@ two different kinds of test:
 So: behavioral tests move onto cassettes and become required; a small `live` set
 stays genuinely live, stays out of CI, and is what the scheduled job exercises.
 
-### A1 — The failing cases — **shipped, this PR**
+**What shipped, and what the rot turned out to be.** Every one of the nine
+Anthropic tests under the marker was broken, and in more ways than the
+five-value unpack. Four distinct failures, each one older than the last time
+anybody looked:
+
+| What was stale | Since | What it would have raised |
+| --- | --- | --- |
+| `conversation.respond` unpacked as 5 values | the grader split | `ValueError` on the first call, in 6 tests |
+| `annotation.coherence` / `annotation.slots_filled` | V2 moved both to `GraderResult` | `AttributeError` in 4 tests |
+| `sketch.generate("greetings", client=…)` | `scenario` became a required positional | `TypeError` in 2 tests |
+| `kb.load_kb_block` fed to the converser | V2 blindness (`load_converser_block`) | nothing — and that is the bad one |
+
+The last row is the finding worth keeping. The first three are loud: the test
+dies before the network. The fourth is silent — it passes, spends money, and
+measures the cache behaviour of a prefix the app stopped building. A test that
+fails is a test that told you something. **These had been telling nobody
+anything for months, and one of them would have gone on lying after the other
+three were fixed.**
+
+A second, quieter rot the split had to close: every live test skips itself when
+its key is absent. A scheduled job with a missing secret is a green run that
+asserted nothing — the same failure in a new place — so the `live` job checks
+its three keys before pytest starts and fails with the name of the missing one.
+
+Three of the moved tests changed meaning rather than just syntax. The M2-C
+tracker cases asserted the converser's `slots_filled`, which V2 gave to the
+grader; repointed, they also had to drop a `dialogue` that opened with a partner
+turn, because no client sends one (the opening line is its own field). They were
+grading a `messages` array production never assembles.
+
+Where it landed:
+
+- `evals/behavior/` — `cases.py` defines each worker call once, and both the
+  test and `python -m evals.behavior.record` read it. A recorder that assembled
+  its own request would key on a call the test never makes, and the first sign
+  of that is a red build with no recording to fix it.
+- `tests/test_worker_behavior.py` — eight tests, in the default run, off 15
+  committed samples. Three draws per assertion, so an invariant has to hold on
+  every recorded draw rather than a lucky one.
+- `tests/test_conversation_live.py` and `tests/test_session_live.py` keep three
+  contact tests between them. `test_stt`, `test_pronunciation`, `test_tts_live`
+  and `test_turn_live` are unchanged — `test_turn_live` was the one Anthropic
+  file that had *not* rotted, because it drives the orchestrator through
+  `tests/helpers.py` rather than calling a worker signature directly.
+- `.github/workflows/rerecord.yml` gains a `live` job on the weekly schedule,
+  and a step that re-records the behavior cases alongside the coherence ones.
+
+### A1 — The failing cases — **shipped, PR #90**
 
 The record of the bug, written before anything is fixed. Fail-to-pass cases from
 the four real sessions above.
@@ -224,7 +273,7 @@ the four real sessions above.
 They are written before the cuts even though the fix lands after, because a bug
 with no case is a bug that comes back.
 
-**What shipped, and what it taught us.** `evals/coherence/replay.py` now calls
+**What shipped, and what it taught us (PR #90).** `evals/coherence/replay.py` now calls
 the grader, not the converser. Fixtures carry `opening_line`. Ten cassettes live
 under `evals/cassettes/`, three samples each — the first recordings in the repo.
 
@@ -358,8 +407,8 @@ Needs a server-side token and a rate limit. The client never sees the token.
 
 - The cassette suite runs in CI, spends nothing, and is a merge gate.
 - An eval can drive the real server end-to-end without spending anything.
-- The `live` suite runs — the behavioral half in CI, the contact half on a
-  schedule. Neither can rot unnoticed again.
+- ~~The `live` suite runs — the behavioral half in CI, the contact half on a
+  schedule. Neither can rot unnoticed again.~~ **Done (A0.6).**
 - All four recorded misses pass.
 - The grader returns slots and nothing else.
 - The partner prompt fits on one screen.
@@ -367,9 +416,9 @@ Needs a server-side token and a rate limit. The client never sees the token.
 
 ## Kickoff prompts
 
-One per step, each runnable as written. **A0 is done (PR #86)** — its prompt is
-retired. **A1 is done (this PR)** — its prompt is retired. A0.5, A0.6 and A2 are
-independent of each other and can run in parallel, in separate worktrees.
+One per step, each runnable as written. **A0 (PR #86), A1 (PR #90) and A0.6
+(this PR) are done** — their prompts are retired. A0.5 and A2 are independent
+of each other and can run in parallel, in separate worktrees.
 
 Every one of these ends the same way, so it is said once here: work in a git
 worktree, write the failing test first, branch from `main`, conventional commits,
@@ -404,27 +453,9 @@ the text harness, not the audio path.
 
 ### A0.6 — repair the `live` suite
 
-```
-Read docs/streams/grading.md. Start Stream A at A0.6: repair the live suite and
-put it in CI.
-
-tests/test_conversation_live.py unpacks five values from conversation.respond,
-which has returned four since the grader split. It fails at the first call and
-has not passed in a long time, because the suite is excluded from the default
-run and nobody runs it by hand. Fix every stale live test, and report what you
-found: the rot is the finding, the fix is the easy part.
-
-Then split the marker rather than promoting it wholesale. Behavioral tests —
-structural invariants over model output — move onto the A0 cassette layer, run
-in CI for free, and become a merge gate. Contact tests stay live and stay out of
-CI: cache_read_input_tokens > 0 exists to prove the real API cached our prefix,
-and replaying a recorded 850 proves only that someone once wrote 850 into a JSON
-file. test_stt, test_pronunciation and test_tts_live are Azure, which the
-cassette layer does not cover at all.
-
-Wire the remaining live set into .github/workflows/rerecord.yml — the scheduled
-job that already spends money — so it cannot rot unnoticed again.
-```
+Retired: shipped. The `live` marker now means "a recording cannot stand in for
+this call", the behavioral half is a merge gate off cassettes, and the weekly
+job runs what is left.
 
 ### A2 — the cuts
 

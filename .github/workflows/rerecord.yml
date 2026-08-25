@@ -6,6 +6,12 @@ name: re-record cassettes
 # The alternative — a probabilistic live call on every PR — buys freshness with
 # the one property the cassette layer exists to give CI: determinism. A build
 # that is green 90% of the time is worse than one that is honestly stale.
+#
+# The `live` job below rides the same schedule for the same reason. It is the
+# half of the old `live` marker a recording cannot stand in for — a real
+# `cache_read_input_tokens`, and Azure — and A0.6 found every Anthropic test in
+# it broken, because a suite excluded from every run is a suite nobody runs.
+# This job is what makes that impossible a second time.
 on:
   schedule:
     # Weekly, Monday 06:00 UTC. The eval corpus is small and the models do not
@@ -41,6 +47,13 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: python -m evals.coherence.replay --record --refresh --samples 3
 
+      # The A0.6 behavioral evals: the same layer, a different corpus. Recorded
+      # here so the tests that became a merge gate cannot go stale either.
+      - name: Re-record the worker behavior cases
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python -m evals.behavior.record --record --refresh --samples 3
+
       - name: Show what moved
         run: git --no-pager diff --stat -- evals/cassettes
 
@@ -56,3 +69,54 @@ jobs:
       # is evidence and evidence does not update itself.
       - name: Fail if the recording moved
         run: git diff --exit-code -- evals/cassettes
+
+  # The contact half of the old `live` marker: the tests whose whole point is
+  # touching the real API. `cache_read_input_tokens > 0` proves the API served
+  # our prefix from cache, and a replayed `850` proves only that someone once
+  # wrote `850` into a JSON file. `test_stt`, `test_pronunciation` and
+  # `test_tts_live` are Azure, which the cassette layer does not cover at all.
+  #
+  # It cannot be a merge gate — it spends money and needs keys CI deliberately
+  # does without — so it runs here instead. `continue-on-error` is not set: a
+  # red scheduled job is the entire mechanism.
+  live:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r backend/requirements.txt
+
+      # Every one of these tests skips itself when its key is absent, which is
+      # a second way to rot unnoticed: a green run that asserted nothing. So
+      # the keys are checked here, where a missing one fails with a name.
+      - name: Check the keys are present
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          AZURE_SPEECH_KEY: ${{ secrets.AZURE_SPEECH_KEY }}
+          AZURE_SPEECH_REGION: ${{ secrets.AZURE_SPEECH_REGION }}
+        run: |
+          missing=
+          for name in ANTHROPIC_API_KEY AZURE_SPEECH_KEY AZURE_SPEECH_REGION; do
+            printenv "$name" | grep -q . || missing="$missing $name"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::live suite would skip silently — missing:$missing"
+            exit 1
+          fi
+
+      # `-rs` so a skip is named rather than folded into the summary count. An
+      # Azure 401 surfaces here first, and it usually means the subscription
+      # lapsed rather than the code broke.
+      - name: Run the live suite
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          AZURE_SPEECH_KEY: ${{ secrets.AZURE_SPEECH_KEY }}
+          AZURE_SPEECH_REGION: ${{ secrets.AZURE_SPEECH_REGION }}
+        run: pytest -m live -rs
