@@ -1,0 +1,59 @@
+{
+  "key": "aa05a993375efd42f0a2e8821a06c3bc5c082ebc9a2180ce3c8a8dfb84679387",
+  "model": "claude-opus-5",
+  "recorded_at": "2026-08-25T04:42:02+00:00",
+  "samples": [
+    {
+      "parsed_output": {
+        "coherence": "on_track",
+        "slots_filled": [
+          "self_name",
+          "partner_name"
+        ],
+        "slots_filled_previously": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 2073,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 32,
+        "output_tokens": 134
+      }
+    },
+    {
+      "parsed_output": {
+        "coherence": "on_track",
+        "slots_filled": [
+          "self_name",
+          "partner_name"
+        ],
+        "slots_filled_previously": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2073,
+        "input_tokens": 32,
+        "output_tokens": 131
+      }
+    },
+    {
+      "parsed_output": {
+        "coherence": "on_track",
+        "slots_filled": [
+          "self_name",
+          "partner_name"
+        ],
+        "slots_filled_previously": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2073,
+        "input_tokens": 32,
+        "output_tokens": 112
+      }
+    }
+  ],
+  "summary": "claude-opus-5 → GraderResult: zao shang hao wo jiao xiao ming ni jiao shen me ming zi"
+}

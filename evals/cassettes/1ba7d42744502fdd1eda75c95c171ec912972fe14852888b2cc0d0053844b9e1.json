@@ -1,0 +1,24 @@
+{
+  "key": "1ba7d42744502fdd1eda75c95c171ec912972fe14852888b2cc0d0053844b9e1",
+  "model": "claude-sonnet-5",
+  "recorded_at": "2026-08-25T04:44:01+00:00",
+  "samples": [
+    {
+      "parsed_output": {
+        "coherence": "on_track",
+        "slots_filled": [
+          "wellbeing"
+        ],
+        "slots_filled_previously": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2073,
+        "input_tokens": 39,
+        "output_tokens": 421
+      }
+    }
+  ],
+  "summary": "claude-sonnet-5 → GraderResult: 我很好，你呢？"
+}

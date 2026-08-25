@@ -1,0 +1,50 @@
+{
+  "key": "7d72ef69a306324f6862a7a0687a264ec7dd1b874fa68cbf3665b894e383ae81",
+  "model": "claude-sonnet-5",
+  "recorded_at": "2026-08-25T04:44:20+00:00",
+  "samples": [
+    {
+      "parsed_output": {
+        "coherence": "off_track",
+        "slots_filled": [],
+        "slots_filled_previously": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2082,
+        "input_tokens": 48,
+        "output_tokens": 121
+      }
+    },
+    {
+      "parsed_output": {
+        "coherence": "off_track",
+        "slots_filled": [],
+        "slots_filled_previously": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2082,
+        "input_tokens": 48,
+        "output_tokens": 69
+      }
+    },
+    {
+      "parsed_output": {
+        "coherence": "off_track",
+        "slots_filled": [],
+        "slots_filled_previously": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2082,
+        "input_tokens": 48,
+        "output_tokens": 113
+      }
+    }
+  ],
+  "summary": "claude-sonnet-5 → GraderResult: wo bu zhi dao zen me shuo zhe ge dong xi um sorry"
+}

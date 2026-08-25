@@ -1,0 +1,901 @@
+{
+  "recorded": true,
+  "repeat": 3,
+  "max_tokens": 4096,
+  "settings": [
+    {
+      "model": "claude-opus-5",
+      "effort": "medium",
+      "max_tokens": 4096
+    },
+    {
+      "model": "claude-opus-5",
+      "effort": "low",
+      "max_tokens": 4096
+    },
+    {
+      "model": "claude-sonnet-5",
+      "effort": "medium",
+      "max_tokens": 4096
+    },
+    {
+      "model": "claude-sonnet-5",
+      "effort": "low",
+      "max_tokens": 4096
+    }
+  ],
+  "observations": [
+    {
+      "setting_id": "claude-opus-5/low",
+      "case_id": "clean-slot-fill",
+      "coherence": "on_track",
+      "slots_filled": [
+        "recommendation"
+      ],
+      "latency_ms": 2795.7086669999994,
+      "output_tokens": 56,
+      "input_tokens": 16
+    },
+    {
+      "setting_id": "claude-opus-5/low",
+      "case_id": "clean-slot-fill",
+      "coherence": "on_track",
+      "slots_filled": [
+        "recommendation"
+      ],
+      "latency_ms": 2950.0246660000043,
+      "output_tokens": 61,
+      "input_tokens": 16
+    },
+    {
+      "setting_id": "claude-opus-5/low",
+      "case_id": "clean-slot-fill",
+      "coherence": "on_track",
+      "slots_filled": [
+        "recommendation"
+      ],
+      "latency_ms": 2964.939666999996,
+      "output_tokens": 62,
+      "input_tokens": 16
+    },
+    {
+      "setting_id": "claude-opus-5/low",
+      "case_id": "derailed-input",
+      "coherence": "on_track",
+      "slots_filled": [],
+      "latency_ms": 3233.1742499999905,
+      "output_tokens": 93,
+      "input_tokens": 48
+    },
+    {
+      "setting_id": "claude-opus-5/low",
+      "case_id": "derailed-input",
+      "coherence": "on_track",
+      "slots_filled": [],
+      "latency_ms": 3130.542792,
+      "output_tokens": 85,
+      "input_tokens": 48
+    },
+    {
+      "setting_id": "claude-opus-5/low",
+      "case_id": "derailed-input",
+      "coherence": "on_track",
+      "slots_filled": [],
+      "latency_ms": 2479.2179579999924,
+      "output_tokens": 22,
+      "input_tokens": 48
+    },
+    {
+      "setting_id": "claude-opus-5/low",
+      "case_id": "earned-under-annotated",
+      "coherence": "on_track",
+      "slots_filled": [
+        "self_name",
+        "partner_name"
+      ],
+      "latency_ms": 2752.8778749999956,
+      "output_tokens": 70,
+      "input_tokens": 32
+    },
+    {
+      "setting_id": "claude-opus-5/low",
+      "case_id": "earned-under-annotated",
+      "coherence": "on_track",
+      "slots_filled": [
+        "self_name",
+        "partner_name"
+      ],
+      "latency_ms": 2869.3520420000027,
+      "output_tokens": 67,
+      "input_tokens": 32
+    },
+    {
+      "setting_id": "claude-opus-5/low",
+      "case_id": "earned-under-annotated",
+      "coherence": "on_track",
+      "slots_filled": [
+        "self_name",
+        "partner_name"
+      ],
+      "latency_ms": 3222.137583999995,
+      "output_tokens": 87,
+      "input_tokens": 32
+    },
+    {
+      "setting_id": "claude-opus-5/low",
+      "case_id": "elliptical-ni-ne",
+      "coherence": "on_track",
+      "slots_filled": [
+        "self_name",
+        "wellbeing"
+      ],
+      "latency_ms": 4869.788708000002,
+      "output_tokens": 286,
+      "input_tokens": 39
+    },
+    {
+      "setting_id": "claude-opus-5/low",
+      "case_id": "elliptical-ni-ne",
+      "coherence": "on_track",
+      "slots_filled": [],
+      "latency_ms": 2371.6337080000044,
+      "output_tokens": 22,
+      "input_tokens": 39
+    },
+    {
+      "setting_id": "claude-opus-5/low",
+      "case_id": "elliptical-ni-ne",
+      "coherence": "on_track",
+      "slots_filled": [],
+      "latency_ms": 2553.92599999999,
+      "output_tokens": 22,
+      "input_tokens": 39
+    },
+    {
+      "setting_id": "claude-opus-5/low",
+      "case_id": "nonsequitur-slot-fill",
+      "coherence": "drifting",
+      "slots_filled": [
+        "recommendation"
+      ],
+      "latency_ms": 3704.483207999999,
+      "output_tokens": 59,
+      "input_tokens": 29
+    },
+    {
+      "setting_id": "claude-opus-5/low",
+      "case_id": "nonsequitur-slot-fill",
+      "coherence": "drifting",
+      "slots_filled": [
+        "recommendation"
+      ],
+      "latency_ms": 2960.3565419999995,
+      "output_tokens": 60,
+      "input_tokens": 29
+    },
+    {
+      "setting_id": "claude-opus-5/low",
+      "case_id": "nonsequitur-slot-fill",
+      "coherence": "drifting",
+      "slots_filled": [
+        "recommendation"
+      ],
+      "latency_ms": 2784.9485840000057,
+      "output_tokens": 60,
+      "input_tokens": 29
+    },
+    {
+      "setting_id": "claude-opus-5/low",
+      "case_id": "order-after-answers",
+      "coherence": "on_track",
+      "slots_filled": [
+        "order"
+      ],
+      "latency_ms": 2476.9710830000095,
+      "output_tokens": 26,
+      "input_tokens": 63
+    },
+    {
+      "setting_id": "claude-opus-5/low",
+      "case_id": "order-after-answers",
+      "coherence": "on_track",
+      "slots_filled": [
+        "order"
+      ],
+      "latency_ms": 2721.0431660000013,
+      "output_tokens": 24,
+      "input_tokens": 63
+    },
+    {
+      "setting_id": "claude-opus-5/low",
+      "case_id": "order-after-answers",
+      "coherence": "on_track",
+      "slots_filled": [
+        "order"
+      ],
+      "latency_ms": 2429.5313340000175,
+      "output_tokens": 34,
+      "input_tokens": 63
+    },
+    {
+      "setting_id": "claude-opus-5/low",
+      "case_id": "wandering-no-slot",
+      "coherence": "off_track",
+      "slots_filled": [],
+      "latency_ms": 2651.939750000011,
+      "output_tokens": 22,
+      "input_tokens": 28
+    },
+    {
+      "setting_id": "claude-opus-5/low",
+      "case_id": "wandering-no-slot",
+      "coherence": "off_track",
+      "slots_filled": [],
+      "latency_ms": 2620.144084000003,
+      "output_tokens": 22,
+      "input_tokens": 28
+    },
+    {
+      "setting_id": "claude-opus-5/low",
+      "case_id": "wandering-no-slot",
+      "coherence": "drifting",
+      "slots_filled": [],
+      "latency_ms": 2589.513459000017,
+      "output_tokens": 35,
+      "input_tokens": 28
+    },
+    {
+      "setting_id": "claude-opus-5/medium",
+      "case_id": "clean-slot-fill",
+      "coherence": "on_track",
+      "slots_filled": [
+        "recommendation"
+      ],
+      "latency_ms": 2977.3753749999996,
+      "output_tokens": 29,
+      "input_tokens": 16
+    },
+    {
+      "setting_id": "claude-opus-5/medium",
+      "case_id": "clean-slot-fill",
+      "coherence": "on_track",
+      "slots_filled": [
+        "recommendation"
+      ],
+      "latency_ms": 3082.721833000001,
+      "output_tokens": 78,
+      "input_tokens": 16
+    },
+    {
+      "setting_id": "claude-opus-5/medium",
+      "case_id": "clean-slot-fill",
+      "coherence": "on_track",
+      "slots_filled": [
+        "recommendation"
+      ],
+      "latency_ms": 3411.6051669999906,
+      "output_tokens": 77,
+      "input_tokens": 16
+    },
+    {
+      "setting_id": "claude-opus-5/medium",
+      "case_id": "derailed-input",
+      "coherence": "on_track",
+      "slots_filled": [],
+      "latency_ms": 4862.256208,
+      "output_tokens": 190,
+      "input_tokens": 48
+    },
+    {
+      "setting_id": "claude-opus-5/medium",
+      "case_id": "derailed-input",
+      "coherence": "on_track",
+      "slots_filled": [],
+      "latency_ms": 3495.9645839999994,
+      "output_tokens": 124,
+      "input_tokens": 48
+    },
+    {
+      "setting_id": "claude-opus-5/medium",
+      "case_id": "derailed-input",
+      "coherence": "on_track",
+      "slots_filled": [],
+      "latency_ms": 4497.529750000012,
+      "output_tokens": 174,
+      "input_tokens": 48
+    },
+    {
+      "setting_id": "claude-opus-5/medium",
+      "case_id": "earned-under-annotated",
+      "coherence": "on_track",
+      "slots_filled": [
+        "self_name",
+        "partner_name"
+      ],
+      "latency_ms": 3680.4112920000007,
+      "output_tokens": 134,
+      "input_tokens": 32
+    },
+    {
+      "setting_id": "claude-opus-5/medium",
+      "case_id": "earned-under-annotated",
+      "coherence": "on_track",
+      "slots_filled": [
+        "self_name",
+        "partner_name"
+      ],
+      "latency_ms": 3356.532125000001,
+      "output_tokens": 131,
+      "input_tokens": 32
+    },
+    {
+      "setting_id": "claude-opus-5/medium",
+      "case_id": "earned-under-annotated",
+      "coherence": "on_track",
+      "slots_filled": [
+        "self_name",
+        "partner_name"
+      ],
+      "latency_ms": 3156.523833999998,
+      "output_tokens": 112,
+      "input_tokens": 32
+    },
+    {
+      "setting_id": "claude-opus-5/medium",
+      "case_id": "elliptical-ni-ne",
+      "coherence": "on_track",
+      "slots_filled": [
+        "wellbeing"
+      ],
+      "latency_ms": 10259.585125000001,
+      "output_tokens": 679,
+      "input_tokens": 39
+    },
+    {
+      "setting_id": "claude-opus-5/medium",
+      "case_id": "elliptical-ni-ne",
+      "coherence": "on_track",
+      "slots_filled": [
+        "self_name",
+        "wellbeing"
+      ],
+      "latency_ms": 6848.533500000002,
+      "output_tokens": 373,
+      "input_tokens": 39
+    },
+    {
+      "setting_id": "claude-opus-5/medium",
+      "case_id": "elliptical-ni-ne",
+      "coherence": "on_track",
+      "slots_filled": [],
+      "latency_ms": 2441.9735000000032,
+      "output_tokens": 22,
+      "input_tokens": 39
+    },
+    {
+      "setting_id": "claude-opus-5/medium",
+      "case_id": "nonsequitur-slot-fill",
+      "coherence": "drifting",
+      "slots_filled": [
+        "recommendation"
+      ],
+      "latency_ms": 4218.804583000001,
+      "output_tokens": 129,
+      "input_tokens": 29
+    },
+    {
+      "setting_id": "claude-opus-5/medium",
+      "case_id": "nonsequitur-slot-fill",
+      "coherence": "drifting",
+      "slots_filled": [
+        "recommendation"
+      ],
+      "latency_ms": 4228.964833,
+      "output_tokens": 149,
+      "input_tokens": 29
+    },
+    {
+      "setting_id": "claude-opus-5/medium",
+      "case_id": "nonsequitur-slot-fill",
+      "coherence": "drifting",
+      "slots_filled": [
+        "recommendation"
+      ],
+      "latency_ms": 4013.933084,
+      "output_tokens": 118,
+      "input_tokens": 29
+    },
+    {
+      "setting_id": "claude-opus-5/medium",
+      "case_id": "order-after-answers",
+      "coherence": "on_track",
+      "slots_filled": [
+        "order"
+      ],
+      "latency_ms": 3349.1748339999995,
+      "output_tokens": 26,
+      "input_tokens": 63
+    },
+    {
+      "setting_id": "claude-opus-5/medium",
+      "case_id": "order-after-answers",
+      "coherence": "on_track",
+      "slots_filled": [
+        "order"
+      ],
+      "latency_ms": 3143.5080830000006,
+      "output_tokens": 26,
+      "input_tokens": 63
+    },
+    {
+      "setting_id": "claude-opus-5/medium",
+      "case_id": "order-after-answers",
+      "coherence": "on_track",
+      "slots_filled": [
+        "order"
+      ],
+      "latency_ms": 2674.4105000000077,
+      "output_tokens": 26,
+      "input_tokens": 63
+    },
+    {
+      "setting_id": "claude-opus-5/medium",
+      "case_id": "wandering-no-slot",
+      "coherence": "off_track",
+      "slots_filled": [],
+      "latency_ms": 2860.151500000004,
+      "output_tokens": 22,
+      "input_tokens": 28
+    },
+    {
+      "setting_id": "claude-opus-5/medium",
+      "case_id": "wandering-no-slot",
+      "coherence": "drifting",
+      "slots_filled": [],
+      "latency_ms": 6112.059665999994,
+      "output_tokens": 304,
+      "input_tokens": 28
+    },
+    {
+      "setting_id": "claude-opus-5/medium",
+      "case_id": "wandering-no-slot",
+      "coherence": "drifting",
+      "slots_filled": [],
+      "latency_ms": 3826.428500000006,
+      "output_tokens": 147,
+      "input_tokens": 28
+    },
+    {
+      "setting_id": "claude-sonnet-5/low",
+      "case_id": "clean-slot-fill",
+      "coherence": "on_track",
+      "slots_filled": [
+        "recommendation"
+      ],
+      "latency_ms": 2165.6395409999905,
+      "output_tokens": 27,
+      "input_tokens": 16
+    },
+    {
+      "setting_id": "claude-sonnet-5/low",
+      "case_id": "clean-slot-fill",
+      "coherence": "on_track",
+      "slots_filled": [
+        "recommendation"
+      ],
+      "latency_ms": 2880.218124999999,
+      "output_tokens": 27,
+      "input_tokens": 16
+    },
+    {
+      "setting_id": "claude-sonnet-5/low",
+      "case_id": "clean-slot-fill",
+      "coherence": "on_track",
+      "slots_filled": [
+        "recommendation"
+      ],
+      "latency_ms": 2422.9680419999795,
+      "output_tokens": 27,
+      "input_tokens": 16
+    },
+    {
+      "setting_id": "claude-sonnet-5/low",
+      "case_id": "derailed-input",
+      "coherence": "drifting",
+      "slots_filled": [],
+      "latency_ms": 3633.031625000001,
+      "output_tokens": 110,
+      "input_tokens": 48
+    },
+    {
+      "setting_id": "claude-sonnet-5/low",
+      "case_id": "derailed-input",
+      "coherence": "off_track",
+      "slots_filled": [],
+      "latency_ms": 3185.3447919999667,
+      "output_tokens": 70,
+      "input_tokens": 48
+    },
+    {
+      "setting_id": "claude-sonnet-5/low",
+      "case_id": "derailed-input",
+      "coherence": "drifting",
+      "slots_filled": [],
+      "latency_ms": 3226.1995409999713,
+      "output_tokens": 101,
+      "input_tokens": 48
+    },
+    {
+      "setting_id": "claude-sonnet-5/low",
+      "case_id": "earned-under-annotated",
+      "coherence": "on_track",
+      "slots_filled": [
+        "self_name",
+        "partner_name"
+      ],
+      "latency_ms": 2237.684916999996,
+      "output_tokens": 31,
+      "input_tokens": 32
+    },
+    {
+      "setting_id": "claude-sonnet-5/low",
+      "case_id": "earned-under-annotated",
+      "coherence": "on_track",
+      "slots_filled": [
+        "self_name",
+        "partner_name"
+      ],
+      "latency_ms": 2573.8068339999813,
+      "output_tokens": 72,
+      "input_tokens": 32
+    },
+    {
+      "setting_id": "claude-sonnet-5/low",
+      "case_id": "earned-under-annotated",
+      "coherence": "on_track",
+      "slots_filled": [
+        "self_name",
+        "partner_name"
+      ],
+      "latency_ms": 2413.1223750000004,
+      "output_tokens": 70,
+      "input_tokens": 32
+    },
+    {
+      "setting_id": "claude-sonnet-5/low",
+      "case_id": "elliptical-ni-ne",
+      "coherence": "on_track",
+      "slots_filled": [
+        "wellbeing"
+      ],
+      "latency_ms": 4535.615374999992,
+      "output_tokens": 257,
+      "input_tokens": 39
+    },
+    {
+      "setting_id": "claude-sonnet-5/low",
+      "case_id": "elliptical-ni-ne",
+      "coherence": "on_track",
+      "slots_filled": [],
+      "latency_ms": 4519.788708000022,
+      "output_tokens": 259,
+      "input_tokens": 39
+    },
+    {
+      "setting_id": "claude-sonnet-5/low",
+      "case_id": "elliptical-ni-ne",
+      "coherence": "on_track",
+      "slots_filled": [
+        "wellbeing"
+      ],
+      "latency_ms": 3914.773749999995,
+      "output_tokens": 190,
+      "input_tokens": 39
+    },
+    {
+      "setting_id": "claude-sonnet-5/low",
+      "case_id": "nonsequitur-slot-fill",
+      "coherence": "drifting",
+      "slots_filled": [
+        "recommendation"
+      ],
+      "latency_ms": 3270.6310840000015,
+      "output_tokens": 80,
+      "input_tokens": 29
+    },
+    {
+      "setting_id": "claude-sonnet-5/low",
+      "case_id": "nonsequitur-slot-fill",
+      "coherence": "drifting",
+      "slots_filled": [
+        "recommendation"
+      ],
+      "latency_ms": 2410.5057909999914,
+      "output_tokens": 27,
+      "input_tokens": 29
+    },
+    {
+      "setting_id": "claude-sonnet-5/low",
+      "case_id": "nonsequitur-slot-fill",
+      "coherence": "drifting",
+      "slots_filled": [
+        "recommendation"
+      ],
+      "latency_ms": 2378.190000000018,
+      "output_tokens": 27,
+      "input_tokens": 29
+    },
+    {
+      "setting_id": "claude-sonnet-5/low",
+      "case_id": "order-after-answers",
+      "coherence": "on_track",
+      "slots_filled": [
+        "order"
+      ],
+      "latency_ms": 2668.7581250000108,
+      "output_tokens": 24,
+      "input_tokens": 63
+    },
+    {
+      "setting_id": "claude-sonnet-5/low",
+      "case_id": "order-after-answers",
+      "coherence": "on_track",
+      "slots_filled": [
+        "order"
+      ],
+      "latency_ms": 2687.483082999961,
+      "output_tokens": 58,
+      "input_tokens": 63
+    },
+    {
+      "setting_id": "claude-sonnet-5/low",
+      "case_id": "order-after-answers",
+      "coherence": "on_track",
+      "slots_filled": [
+        "order"
+      ],
+      "latency_ms": 2339.6501249999915,
+      "output_tokens": 24,
+      "input_tokens": 63
+    },
+    {
+      "setting_id": "claude-sonnet-5/low",
+      "case_id": "wandering-no-slot",
+      "coherence": "off_track",
+      "slots_filled": [],
+      "latency_ms": 3022.534500000006,
+      "output_tokens": 70,
+      "input_tokens": 28
+    },
+    {
+      "setting_id": "claude-sonnet-5/low",
+      "case_id": "wandering-no-slot",
+      "coherence": "off_track",
+      "slots_filled": [],
+      "latency_ms": 2909.2942500000163,
+      "output_tokens": 71,
+      "input_tokens": 28
+    },
+    {
+      "setting_id": "claude-sonnet-5/low",
+      "case_id": "wandering-no-slot",
+      "coherence": "off_track",
+      "slots_filled": [],
+      "latency_ms": 2747.2467919999985,
+      "output_tokens": 60,
+      "input_tokens": 28
+    },
+    {
+      "setting_id": "claude-sonnet-5/medium",
+      "case_id": "clean-slot-fill",
+      "coherence": "on_track",
+      "slots_filled": [
+        "recommendation"
+      ],
+      "latency_ms": 2600.9286249999946,
+      "output_tokens": 39,
+      "input_tokens": 16
+    },
+    {
+      "setting_id": "claude-sonnet-5/medium",
+      "case_id": "clean-slot-fill",
+      "coherence": "on_track",
+      "slots_filled": [
+        "recommendation"
+      ],
+      "latency_ms": 3232.67287500002,
+      "output_tokens": 81,
+      "input_tokens": 16
+    },
+    {
+      "setting_id": "claude-sonnet-5/medium",
+      "case_id": "clean-slot-fill",
+      "coherence": "on_track",
+      "slots_filled": [
+        "recommendation"
+      ],
+      "latency_ms": 4805.236791999988,
+      "output_tokens": 215,
+      "input_tokens": 16
+    },
+    {
+      "setting_id": "claude-sonnet-5/medium",
+      "case_id": "derailed-input",
+      "coherence": "off_track",
+      "slots_filled": [],
+      "latency_ms": 3908.356375000011,
+      "output_tokens": 121,
+      "input_tokens": 48
+    },
+    {
+      "setting_id": "claude-sonnet-5/medium",
+      "case_id": "derailed-input",
+      "coherence": "off_track",
+      "slots_filled": [],
+      "latency_ms": 2971.6812499999887,
+      "output_tokens": 69,
+      "input_tokens": 48
+    },
+    {
+      "setting_id": "claude-sonnet-5/medium",
+      "case_id": "derailed-input",
+      "coherence": "off_track",
+      "slots_filled": [],
+      "latency_ms": 3873.5413329999915,
+      "output_tokens": 113,
+      "input_tokens": 48
+    },
+    {
+      "setting_id": "claude-sonnet-5/medium",
+      "case_id": "earned-under-annotated",
+      "coherence": "on_track",
+      "slots_filled": [
+        "self_name",
+        "partner_name"
+      ],
+      "latency_ms": 2967.986499999995,
+      "output_tokens": 81,
+      "input_tokens": 32
+    },
+    {
+      "setting_id": "claude-sonnet-5/medium",
+      "case_id": "earned-under-annotated",
+      "coherence": "on_track",
+      "slots_filled": [
+        "self_name",
+        "partner_name"
+      ],
+      "latency_ms": 2741.972666999999,
+      "output_tokens": 98,
+      "input_tokens": 32
+    },
+    {
+      "setting_id": "claude-sonnet-5/medium",
+      "case_id": "earned-under-annotated",
+      "coherence": "on_track",
+      "slots_filled": [
+        "self_name",
+        "partner_name"
+      ],
+      "latency_ms": 2284.4812919999813,
+      "output_tokens": 88,
+      "input_tokens": 32
+    },
+    {
+      "setting_id": "claude-sonnet-5/medium",
+      "case_id": "elliptical-ni-ne",
+      "coherence": "on_track",
+      "slots_filled": [
+        "wellbeing"
+      ],
+      "latency_ms": 5766.002374999999,
+      "output_tokens": 421,
+      "input_tokens": 39
+    },
+    {
+      "setting_id": "claude-sonnet-5/medium",
+      "case_id": "nonsequitur-slot-fill",
+      "coherence": "drifting",
+      "slots_filled": [
+        "recommendation"
+      ],
+      "latency_ms": 3470.1174580000043,
+      "output_tokens": 82,
+      "input_tokens": 29
+    },
+    {
+      "setting_id": "claude-sonnet-5/medium",
+      "case_id": "nonsequitur-slot-fill",
+      "coherence": "drifting",
+      "slots_filled": [
+        "recommendation"
+      ],
+      "latency_ms": 3614.2164999999977,
+      "output_tokens": 100,
+      "input_tokens": 29
+    },
+    {
+      "setting_id": "claude-sonnet-5/medium",
+      "case_id": "nonsequitur-slot-fill",
+      "coherence": "drifting",
+      "slots_filled": [
+        "recommendation"
+      ],
+      "latency_ms": 2879.1094999999987,
+      "output_tokens": 74,
+      "input_tokens": 29
+    },
+    {
+      "setting_id": "claude-sonnet-5/medium",
+      "case_id": "order-after-answers",
+      "coherence": "on_track",
+      "slots_filled": [
+        "order"
+      ],
+      "latency_ms": 3574.0885419999986,
+      "output_tokens": 109,
+      "input_tokens": 63
+    },
+    {
+      "setting_id": "claude-sonnet-5/medium",
+      "case_id": "order-after-answers",
+      "coherence": "on_track",
+      "slots_filled": [
+        "order"
+      ],
+      "latency_ms": 3492.1996670000226,
+      "output_tokens": 79,
+      "input_tokens": 63
+    },
+    {
+      "setting_id": "claude-sonnet-5/medium",
+      "case_id": "order-after-answers",
+      "coherence": "on_track",
+      "slots_filled": [
+        "order"
+      ],
+      "latency_ms": 3272.856332999993,
+      "output_tokens": 92,
+      "input_tokens": 63
+    },
+    {
+      "setting_id": "claude-sonnet-5/medium",
+      "case_id": "wandering-no-slot",
+      "coherence": "off_track",
+      "slots_filled": [],
+      "latency_ms": 2955.2968749999877,
+      "output_tokens": 71,
+      "input_tokens": 28
+    },
+    {
+      "setting_id": "claude-sonnet-5/medium",
+      "case_id": "wandering-no-slot",
+      "coherence": "off_track",
+      "slots_filled": [],
+      "latency_ms": 2941.287750000015,
+      "output_tokens": 71,
+      "input_tokens": 28
+    },
+    {
+      "setting_id": "claude-sonnet-5/medium",
+      "case_id": "wandering-no-slot",
+      "coherence": "off_track",
+      "slots_filled": [],
+      "latency_ms": 2994.6511249999903,
+      "output_tokens": 67,
+      "input_tokens": 28
+    }
+  ],
+  "failures": [
+    {
+      "setting_id": "claude-sonnet-5/medium",
+      "case_id": "elliptical-ni-ne",
+      "error": "grader timed out after 15s"
+    },
+    {
+      "setting_id": "claude-sonnet-5/medium",
+      "case_id": "elliptical-ni-ne",
+      "error": "grader timed out after 15s"
+    }
+  ]
+}

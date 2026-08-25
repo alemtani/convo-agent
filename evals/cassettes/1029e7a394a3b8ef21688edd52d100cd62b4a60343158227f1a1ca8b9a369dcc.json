@@ -1,0 +1,54 @@
+{
+  "key": "1029e7a394a3b8ef21688edd52d100cd62b4a60343158227f1a1ca8b9a369dcc",
+  "model": "claude-sonnet-5",
+  "recorded_at": "2026-08-25T04:45:41+00:00",
+  "samples": [
+    {
+      "parsed_output": {
+        "coherence": "on_track",
+        "slots_filled": [
+          "wellbeing"
+        ],
+        "slots_filled_previously": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2073,
+        "input_tokens": 39,
+        "output_tokens": 257
+      }
+    },
+    {
+      "parsed_output": {
+        "coherence": "on_track",
+        "slots_filled": [],
+        "slots_filled_previously": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2073,
+        "input_tokens": 39,
+        "output_tokens": 259
+      }
+    },
+    {
+      "parsed_output": {
+        "coherence": "on_track",
+        "slots_filled": [
+          "wellbeing"
+        ],
+        "slots_filled_previously": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2073,
+        "input_tokens": 39,
+        "output_tokens": 190
+      }
+    }
+  ],
+  "summary": "claude-sonnet-5 → GraderResult: 我很好，你呢？"
+}

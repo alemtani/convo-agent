@@ -1,0 +1,56 @@
+{
+  "key": "4173e1f654425195ec5f6a9989c7115726354c02246793876ab64896e772317b",
+  "model": "claude-sonnet-5",
+  "recorded_at": "2026-08-25T04:45:46+00:00",
+  "samples": [
+    {
+      "parsed_output": {
+        "coherence": "on_track",
+        "slots_filled": [
+          "order"
+        ],
+        "slots_filled_previously": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2082,
+        "input_tokens": 63,
+        "output_tokens": 24
+      }
+    },
+    {
+      "parsed_output": {
+        "coherence": "on_track",
+        "slots_filled": [
+          "order"
+        ],
+        "slots_filled_previously": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2082,
+        "input_tokens": 63,
+        "output_tokens": 58
+      }
+    },
+    {
+      "parsed_output": {
+        "coherence": "on_track",
+        "slots_filled": [
+          "order"
+        ],
+        "slots_filled_previously": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2082,
+        "input_tokens": 63,
+        "output_tokens": 24
+      }
+    }
+  ],
+  "summary": "claude-sonnet-5 → GraderResult: 我要一个鱼和一杯茶。"
+}

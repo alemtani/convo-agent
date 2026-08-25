@@ -1,0 +1,56 @@
+{
+  "key": "969d7d8cd99d925954a23778d3615f25f32b71619042f8559519838c62c26d53",
+  "model": "claude-sonnet-5",
+  "recorded_at": "2026-08-25T04:44:16+00:00",
+  "samples": [
+    {
+      "parsed_output": {
+        "coherence": "on_track",
+        "slots_filled": [
+          "recommendation"
+        ],
+        "slots_filled_previously": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 2082,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 16,
+        "output_tokens": 39
+      }
+    },
+    {
+      "parsed_output": {
+        "coherence": "on_track",
+        "slots_filled": [
+          "recommendation"
+        ],
+        "slots_filled_previously": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2082,
+        "input_tokens": 16,
+        "output_tokens": 81
+      }
+    },
+    {
+      "parsed_output": {
+        "coherence": "on_track",
+        "slots_filled": [
+          "recommendation"
+        ],
+        "slots_filled_previously": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2082,
+        "input_tokens": 16,
+        "output_tokens": 215
+      }
+    }
+  ],
+  "summary": "claude-sonnet-5 → GraderResult: 请问，什么菜最好吃？"
+}
