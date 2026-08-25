@@ -44,6 +44,34 @@
     ],
     "rationale": "After learning the recommended dish and the drinks, the learner orders one of each."
   },
+  "milk-and-biscuits": {
+    "coherence": "on_track",
+    "credit_ok": true,
+    "slots_established": [
+      "recommendation",
+      "drinks",
+      "order"
+    ],
+    "rationale": "Asks which dish is best, asks what there is to drink, and orders a drink and a food in one turn."
+  },
+  "computer-work-ni-ne": {
+    "coherence": "on_track",
+    "credit_ok": true,
+    "slots_established": [
+      "self_job",
+      "partner_origin",
+      "partner_job"
+    ],
+    "rationale": "States a job and 你呢 asks both origin and job back. They did not state their own origin."
+  },
+  "clip-and-tea": {
+    "coherence": "on_track",
+    "credit_ok": true,
+    "slots_established": [
+      "order"
+    ],
+    "rationale": "Orders a dish and a drink after both answers. 夹子 is close to 饺子; 茶 is the drink just offered."
+  },
   "wandering-no-slot": {
     "coherence": "drifting",
     "credit_ok": false,

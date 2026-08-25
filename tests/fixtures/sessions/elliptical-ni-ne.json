@@ -2,6 +2,10 @@
   "id": "elliptical-ni-ne",
   "topic_id": "greetings",
   "sketch": "The classmate is cheerful and unhurried, walking to their first class. It is a bright morning and the path is full of students.",
+  "opening_line": {
+    "zh": "你好！",
+    "pinyin": "nǐ hǎo!"
+  },
   "dialogue": [
     {
       "role": "user",

@@ -8,8 +8,8 @@ workers assemble. The code is in [`../cassette/`](../cassette/).
 ```json
 {
   "key": "e3b0c442…",
-  "model": "claude-sonnet-5",
-  "summary": "claude-sonnet-5 → ConversationResult: 请问，什么菜最好吃？",
+  "model": "claude-opus-5",
+  "summary": "claude-opus-5 → GraderResult: 请问，什么菜最好吃？",
   "recorded_at": "2026-08-24T00:00:00+00:00",
   "samples": [
     {"stop_reason": "end_turn", "parsed_output": {…}, "usage": {…}}

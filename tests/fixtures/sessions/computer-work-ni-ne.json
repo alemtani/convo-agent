@@ -1,0 +1,16 @@
+{
+  "id": "computer-work-ni-ne",
+  "topic_id": "self-intro",
+  "sketch": "The stranger is a quiet listener and lets the other person go first. It is a small language-exchange meetup in a cafe, late afternoon, two empty cups on the table.",
+  "opening_line": {
+    "zh": "你好！你是哪国人？你做什么工作？",
+    "pinyin": "nǐ hǎo! nǐ shì nǎ guó rén? nǐ zuò shénme gōngzuò?"
+  },
+  "dialogue": [],
+  "learner_turn": "我做电脑工作，你呢",
+  "state": {
+    "filled_at": {},
+    "consecutive_closes": 0
+  },
+  "notes": "Stream A table, second miss. The partner asked origin and job; the learner stated a job and bounced 你呢. That bounce asks both questions back. 电脑 is out of band; the job is still a job."
+}

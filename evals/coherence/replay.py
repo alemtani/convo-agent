@@ -1,41 +1,33 @@
-"""Replay the recorded cases through the conversation worker and record the tags.
+"""Replay the recorded cases through the grader and record the tags.
 
 Runs off **cassettes** by default (`evals/cassette/`): a key with no recording
 is an error, not a live call. `--record` is the only thing that spends money,
 and what it buys is committed. Its output is still a report rather than an
 assertion — but a report that costs nothing to reproduce.
 
-Each case is replayed `--repeat` times, because `coherence` is a model's output
-and not a function — one run tells you what happened once. Every run is its own
-row in `observations.json`, and `matrix.py` reads them all.
+Each case is replayed `--repeat` times, because `coherence` and `slots_filled`
+are a model's output and not a function — one run tells you what happened once.
+Every run is its own row in `observations.json`, and `matrix.py` reads them all.
 
-Deliberately built on the same seam the text turn uses (`orchestrator.run_text_turn`
-calls exactly this): same KB block, same sketch, same pressure hint, same
-`turn` derivation. A measurement taken through a different path than the one
-that ships would measure something else.
+V2 moved both fields onto `GraderResult`. This runner calls the grader, not the
+converser: a measurement taken through a different path than the one that
+ships would measure something else. Turn 1 still needs the opening line the
+client resubmits, because that line is never in `dialogue`.
 
     python -m evals.coherence.replay --repeat 3               # free, off cassettes
     python -m evals.coherence.replay --record --samples 3     # live; costs money
     python -m evals.coherence.replay --case nonsequitur-slot-fill --out /tmp/obs.json
-
-**This runner is stale as of V2** and raises `AttributeError` before it reaches
-the network: `termination.pressure_hint` is now `closing_hint`, and `coherence`
-and `slots_filled` moved off the converser's annotation onto the grader
-(`backend/models.py:GraderResult`). Repointing it — and giving the fixtures the
-opening line a turn-1 grade needs — is A1's first job. The cassette wiring below
-is ready for it, and no cassette has been recorded through it yet for exactly
-this reason: a recording of a call the app no longer makes is worse than none.
 """
 import argparse
 import asyncio
 import json
 import os
 from dataclasses import asdict
-from typing import List
+from typing import List, Optional
 
 from backend import config, kb, orchestrator, termination
 from backend.models import SessionState
-from backend.workers import conversation
+from backend.workers import grader as grader_worker
 from evals import cassette
 from evals.coherence.cases import Case, CaseError, load_cases, load_gold, paired
 from evals.coherence.matrix import Observation
@@ -43,32 +35,46 @@ from evals.coherence.matrix import Observation
 CASES_DIR = os.path.join("tests", "fixtures", "sessions")
 DEFAULT_OUT = os.path.join("evals", "coherence", "observations.json")
 
+# Eval recording is not the learner-facing turn. The live bound is 15s so a
+# phone is not left staring at a dead mic; a cassette that times out is a hole
+# in the gate, so this runner waits longer than the app does.
+_GRADE_TIMEOUT_S = 60.0
+
 
 # The orchestrator's own rule, imported rather than restated. A second copy of
-# "which turn is this?" is a second thing that can drift, and the hint the
-# partner sees is computed from it — so a replay that counted differently would
+# "which turn is this?" is a second thing that can drift, and the window the
+# grader sees is computed from it — so a replay that counted differently would
 # measure a turn the app never takes.
 _turn_index = orchestrator._turn_index
 
 
+def _opening_zh(case: Case) -> Optional[str]:
+    """The 汉字 the grader is prefixed with on turn 1, or `None`."""
+    line = case.opening_line
+    if not line:
+        return None
+    zh = (line.get("zh") or "").strip()
+    return zh or None
+
+
 async def replay_case(case: Case, *, client=None) -> Observation:
-    """One live turn for one case. Raises `ConversationError` like the real path."""
+    """One grade for one case. Raises `GraderError` like the real path."""
     scenario = kb.load_scenario(case.topic_id)
     state = SessionState(**case.state) if case.state else SessionState()
     turn = _turn_index(case.dialogue)
-    _reply, annotation, _reading, _usage = await conversation.respond(
-        kb_block=kb.load_kb_block(case.topic_id),
-        sketch=case.sketch,
+    grade, _usage = await grader_worker.grade(
+        scenario=scenario,
         dialogue=list(case.dialogue),
         user_text=case.learner_turn,
-        forgiveness_level=config.FORGIVENESS_LEVEL_DEFAULT,
-        hint=termination.pressure_hint(state, scenario=scenario, turn=turn),
+        opening_line=_opening_zh(case),
+        window=termination.grading_window(state, turn=turn),
+        timeout=_GRADE_TIMEOUT_S,
         client=client,
     )
     return Observation(
         case_id=case.id,
-        coherence=annotation.coherence,
-        slots_filled=tuple(annotation.slots_filled),
+        coherence=grade.coherence,
+        slots_filled=tuple(grade.slots_filled),
     )
 
 
@@ -85,13 +91,16 @@ async def replay_all(
     is 21 paid calls, and losing all of them to a timeout on the last one is a
     bill for nothing — so failures are reported and skipped, and `on_run` gets
     every observation as it lands, for a caller that wants to checkpoint.
+
+    A cassette miss is not a failed call. It is a stale key, and it stops the
+    run rather than being counted as one lost observation.
     """
     observations = []
     for run in range(1, repeat + 1):
         for case in cases:
             try:
                 observation = await replay_case(case, client=client)
-            except conversation.ConversationError as exc:
+            except grader_worker.GraderError as exc:
                 print(f"run {run}/{repeat}  {case.id:<24} FAILED: {exc}")
                 continue
             observations.append(observation)
@@ -131,7 +140,7 @@ def main() -> None:
         with open(args.out, "w", encoding="utf-8") as handle:
             json.dump(
                 {
-                    "model": config.CONVERSATION_MODEL,
+                    "model": config.GRADER_MODEL,
                     "repeat": args.repeat,
                     "observations": [asdict(o) for o in observations],
                 },

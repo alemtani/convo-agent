@@ -13,7 +13,7 @@ that judges should not also be the party with a stake in the answer.
 import json
 import os
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 COHERENCE_TAGS = ("on_track", "drifting", "off_track")
 
@@ -29,13 +29,33 @@ class CaseError(Exception):
     """A case set that cannot be trusted: malformed, mislabelled, or unpaired."""
 
 
+def _opening_line(raw) -> Optional[dict]:
+    """Normalise the wire shape to `{zh, pinyin}` or `None`.
+
+    A bare string is accepted as `zh` so a fixture written by hand is not
+    rejected for missing pinyin the grader never reads.
+    """
+    if not raw:
+        return None
+    if isinstance(raw, str):
+        zh = raw.strip()
+        return {"zh": zh, "pinyin": ""} if zh else None
+    zh = (raw.get("zh") or "").strip()
+    if not zh:
+        return None
+    return {"zh": zh, "pinyin": raw.get("pinyin") or ""}
+
+
 @dataclass(frozen=True)
 class Case:
     """One recorded learner turn, in enough context to replay it.
 
     Mirrors what `/api/turn/text` submits — the client holds the transcript, so
-    a replay is the same shape as a turn: topic, sketch, prior dialogue, and the
-    words the learner just said.
+    a replay is the same shape as a turn: topic, sketch, prior dialogue, the
+    words the learner just said, and the opening line a turn-1 grade is judged
+    against. The opening line is never in `dialogue` (`docs/SCENARIOS.md`,
+    "Definition of a turn"), so without it the grader sees the learner's first
+    words and nothing they answered.
     """
 
     id: str
@@ -45,6 +65,9 @@ class Case:
     learner_turn: str
     notes: str = ""
     state: dict = field(default_factory=dict)
+    # Utterance dict `{zh, pinyin}` as the client resubmits it, or `None` when
+    # the case is not turn 1. The grader only reads `zh`.
+    opening_line: Optional[dict] = None
 
 
 @dataclass(frozen=True)
@@ -88,6 +111,7 @@ def load_cases(directory: str) -> List[Case]:
                 learner_turn=payload["learner_turn"],
                 notes=payload.get("notes", ""),
                 state=payload.get("state", {}),
+                opening_line=_opening_line(payload.get("opening_line")),
             )
         )
     return cases

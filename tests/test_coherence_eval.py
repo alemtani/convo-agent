@@ -1,12 +1,13 @@
-"""V0: the pure logic under the `coherence` measurement (`docs/VALIDITY.md`).
+"""V0/A1: the logic under the `coherence` measurement (`docs/VALIDITY.md`).
 
 Two halves, both deterministic and both tested here: loading a recorded case
 set with its gold labels held *separately* from the transcripts, and turning a
 set of observed tags into a gate recommendation — including the recommendation
 that no gate is safe.
 
-The live half (replaying cases through the conversation worker) is a script,
-not a test: it costs money and its output is a report, not an assertion.
+Replay itself runs off cassettes (`evals/cassettes/`). A1's dense-turn cases
+assert slot credit against those recordings. Two of them fail, on purpose,
+until A3 rewrites the grader prompt.
 """
 import json
 
@@ -442,6 +443,14 @@ def test_report_distinguishes_a_gate_that_never_fires_from_one_that_misjudges():
 
 CASES_DIR = "tests/fixtures/sessions"
 
+# Stream A table. Two of these fail on the committed cassettes; that is A1.
+# A3 makes them pass. clip-and-tea already credits `order` on this grader.
+A1_DENSE_CASES = (
+    "milk-and-biscuits",
+    "computer-work-ni-ne",
+    "clip-and-tea",
+)
+
 
 def test_the_shipped_corpus_pairs_with_its_gold_labels():
     """Guard the real fixtures, not just tmp_path copies of their shape."""
@@ -451,18 +460,57 @@ def test_the_shipped_corpus_pairs_with_its_gold_labels():
     paired(cases, load_gold(f"{CASES_DIR}/gold.json"))
 
 
+def test_the_corpus_includes_the_recorded_multi_slot_misses():
+    ids = {case.id for case in load_cases(CASES_DIR)}
+    assert set(A1_DENSE_CASES) <= ids
+
+
 def test_every_case_carries_the_dialogue_shape_the_client_actually_sends():
     """The measurement is worthless if it replays a history no client submits.
 
     The live client sends `[]` on turn 1 and strict `user`/`partner` pairs after
-    it — the opening line lives in the sketch and is never part of `dialogue`.
+    it — the opening line is its own field and is never part of `dialogue`.
     A fixture with a leading partner turn builds a different `messages` array
-    than production and shifts the pressure hint with it.
+    than production.
     """
     for case in load_cases(CASES_DIR):
         roles = [turn["role"] for turn in case.dialogue]
         assert len(roles) % 2 == 0, f"{case.id}: dangling turn in {roles}"
         assert roles == ["user", "partner"] * (len(roles) // 2), f"{case.id}: {roles}"
+
+
+def test_every_turn_one_case_carries_the_opening_line_the_grade_is_judged_against():
+    """On turn 1 `dialogue` is empty, so without this field the grader sees
+    the learner's words and nothing they answered.
+    """
+    for case in load_cases(CASES_DIR):
+        if case.dialogue:
+            continue
+        assert case.opening_line and case.opening_line.get("zh"), (
+            f"{case.id}: turn 1 with no opening_line"
+        )
+
+
+def test_load_cases_reads_the_opening_line(tmp_path):
+    _write_case(
+        tmp_path,
+        "a-case",
+        opening_line={"zh": "你好！", "pinyin": "nǐ hǎo!"},
+    )
+
+    assert load_cases(str(tmp_path))[0].opening_line == {
+        "zh": "你好！",
+        "pinyin": "nǐ hǎo!",
+    }
+
+
+def test_load_cases_accepts_a_bare_opening_string(tmp_path):
+    """A fixture written by hand should not be rejected for missing pinyin
+    the grader never reads.
+    """
+    _write_case(tmp_path, "a-case", opening_line="你好！")
+
+    assert load_cases(str(tmp_path))[0].opening_line["zh"] == "你好！"
 
 
 def test_no_case_claims_a_slot_was_filled_on_a_turn_not_yet_taken():
@@ -492,6 +540,55 @@ def test_replay_derives_the_turn_index_the_orchestrator_does():
 
     for case in load_cases(CASES_DIR):
         assert replayed(case.dialogue) == shipped(case.dialogue), case.id
+
+
+def test_replay_does_not_call_the_retired_pressure_hint():
+    """The name that raised before this runner reached the network."""
+    import inspect
+
+    from evals.coherence import replay
+
+    source = inspect.getsource(replay)
+    assert "pressure_hint" not in source
+    assert "grader_worker.grade" in source
+
+
+async def test_replay_reads_coherence_and_slots_from_the_grader(monkeypatch):
+    """V2 moved both off the converser. A replay that still reads the annotation
+    raises before it reaches the network (`termination.pressure_hint` is gone
+    too). The measurement has to come from `GraderResult`.
+    """
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+
+    from backend.models import GraderResult
+    from evals.coherence.cases import Case
+    from evals.coherence.replay import replay_case
+
+    recorded = GraderResult(
+        coherence="drifting", slots_filled=["recommendation", "drinks"]
+    )
+    grade = AsyncMock(return_value=(recorded, SimpleNamespace()))
+    monkeypatch.setattr("backend.workers.grader.grade", grade)
+
+    observation = await replay_case(
+        Case(
+            id="packed",
+            topic_id="food-ordering",
+            sketch="A brisk server.",
+            dialogue=(),
+            learner_turn="什么菜最好吃？有什么喝的？",
+            opening_line={"zh": "你好！你要点什么？", "pinyin": "nǐ hǎo!"},
+        )
+    )
+
+    assert observation.coherence == "drifting"
+    assert observation.slots_filled == ("recommendation", "drinks")
+    assert grade.await_count == 1
+    kwargs = grade.await_args.kwargs
+    assert kwargs["user_text"] == "什么菜最好吃？有什么喝的？"
+    assert kwargs["opening_line"] == "你好！你要点什么？"
+    assert kwargs["dialogue"] == []
 
 
 # --- what a failed measurement is allowed to claim ---------------------------
@@ -653,3 +750,32 @@ def _gold_with_slots(case_id, slots, credit_ok=True):
         slots_established=slots,
         rationale="",
     )
+
+
+# --- A1: the recorded multi-slot misses --------------------------------------
+#
+# Fail-to-pass. The current grader under-credits two of these. A3 rewrites the
+# `slots_filled` instruction so they go green. Do not xfail: a skipped case is
+# a bug that comes back.
+
+
+@pytest.mark.parametrize("case_id", A1_DENSE_CASES)
+async def test_a_dense_turn_is_credited_for_every_slot_it_established(case_id):
+    """One utterance, several slots, credit for every one.
+
+    The live sessions in `docs/streams/grading.md` packed a turn and got
+    credit for fewer facts than they established. These cases are that record.
+    They stay red until A3.
+    """
+    from evals import cassette
+    from evals.coherence.replay import replay_case
+
+    case = next(c for c in load_cases(CASES_DIR) if c.id == case_id)
+    expected = set(load_gold(f"{CASES_DIR}/gold.json")[case_id].slots_established)
+    client = cassette.CassetteClient()
+    for _ in range(3):
+        observation = await replay_case(case, client=client)
+        assert set(observation.slots_filled) == expected, (
+            f"{case_id}: credited {list(observation.slots_filled)}, "
+            f"expected {sorted(expected)}"
+        )
