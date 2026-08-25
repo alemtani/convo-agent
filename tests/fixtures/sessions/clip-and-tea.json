@@ -1,5 +1,5 @@
 {
-  "id": "order-after-answers",
+  "id": "clip-and-tea",
   "topic_id": "food-ordering",
   "sketch": "The server is brisk and a little busy — short answers, no small talk. It is lunchtime and most tables are full. A pot of tea sits on the counter.",
   "opening_line": {
@@ -14,8 +14,8 @@
     },
     {
       "role": "partner",
-      "zh": "鱼最好吃。",
-      "pinyin": "yú zuì hǎochī."
+      "zh": "饺子最好吃。",
+      "pinyin": "jiǎozi zuì hǎochī."
     },
     {
       "role": "user",
@@ -28,7 +28,7 @@
       "pinyin": "yǒu chá, yě yǒu shuǐ."
     }
   ],
-  "learner_turn": "我要一个鱼和一杯茶。",
+  "learner_turn": "好的，那我要一个夹子和一杯茶",
   "state": {
     "filled_at": {
       "recommendation": 1,
@@ -36,5 +36,5 @@
     },
     "consecutive_closes": 0
   },
-  "notes": "The dependent inform slot, taken in order and on the back of both answers."
+  "notes": "Stream A table, third miss. Ordered a dish and a drink after both answers; credited neither. 夹子 is a near-miss for 饺子 (the dish just recommended). The order slot is one fact that names two things, and missing both is two of the four slot-credits the table records."
 }

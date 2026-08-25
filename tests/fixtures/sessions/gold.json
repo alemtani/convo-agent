@@ -49,5 +49,33 @@
       "order"
     ],
     "rationale": "Orders a dish and a drink after hearing both answers, so the dependency is genuinely satisfied."
+  },
+  "milk-and-biscuits": {
+    "coherence": "on_track",
+    "credit_ok": true,
+    "slots_established": [
+      "recommendation",
+      "drinks",
+      "order"
+    ],
+    "rationale": "One turn asks which dish is best, asks what there is to drink, and orders a drink and a food. Three facts in one breath. 饼干 is out of band; the order is still an order."
+  },
+  "computer-work-ni-ne": {
+    "coherence": "on_track",
+    "credit_ok": true,
+    "slots_established": [
+      "self_job",
+      "partner_origin",
+      "partner_job"
+    ],
+    "rationale": "States a job and 你呢 bounces both questions the partner just asked — origin and job. They did not state their own origin. 电脑 is out of band; the job is still a job."
+  },
+  "clip-and-tea": {
+    "coherence": "on_track",
+    "credit_ok": true,
+    "slots_established": [
+      "order"
+    ],
+    "rationale": "After hearing the recommended dish and the drinks, the learner orders one of each. 夹子 is a near-miss for 饺子; the drink is 茶. The order slot is one fact that names two things."
   }
 }

@@ -145,11 +145,12 @@ plan above, both found in review:
   named parts: `max_tokens`, `thinking`, `output_config.effort` and any dial
   added later all shape the output, so all of them are hashed. An allow-list
   would have replayed a recording made at a different setting and said nothing.
-- **No cassette was recorded.** `evals/coherence/replay.py` is stale as of V2 —
-  it calls `termination.pressure_hint` (now `closing_hint`) and reads
+- **No cassette was recorded in A0.** `evals/coherence/replay.py` was stale as
+  of V2 — it called `termination.pressure_hint` (now `closing_hint`) and read
   `coherence` / `slots_filled` off the converser's annotation, which V2 moved to
-  the grader — so it raises before reaching the network. A recording of a call
-  the app no longer makes is worse than no recording. **A1 repoints it first.**
+  the grader — so it raised before reaching the network. A recording of a call
+  the app no longer makes is worse than no recording. **A1 repointed it and
+  recorded the first cassettes.**
 
 That staleness is not an isolated slip. The `live` suite has the same disease
 (A0.6), and both rotted for the same reason: nothing forced the spec and the
@@ -215,13 +216,38 @@ two different kinds of test:
 So: behavioral tests move onto cassettes and become required; a small `live` set
 stays genuinely live, stays out of CI, and is what the scheduled job exercises.
 
-### A1 — The failing cases
+### A1 — The failing cases — **shipped, this PR**
 
 The record of the bug, written before anything is fixed. Fail-to-pass cases from
 the four real sessions above.
 
 They are written before the cuts even though the fix lands after, because a bug
 with no case is a bug that comes back.
+
+**What shipped, and what it taught us.** `evals/coherence/replay.py` now calls
+the grader, not the converser. Fixtures carry `opening_line`. Ten cassettes live
+under `evals/cassettes/`, three samples each — the first recordings in the repo.
+
+Three cases from the table. Two are strict xfails, and that is the point:
+
+| case | Gold | Credited (3/3) |
+| --- | --- | --- |
+| `milk-and-biscuits` | `recommendation`, `drinks`, `order` | `recommendation`, `drinks` — `order` dropped |
+| `computer-work-ni-ne` | `self_job`, `partner_origin`, `partner_job` | `self_job`, `partner_job` — `你呢` did not bounce origin |
+| `clip-and-tea` | `order` | `order` — already green on this grader |
+
+Two corrections to the table above:
+
+- The food-ordering row quoted `你好，你要一个牛奶和三个饼干`. That clause is the
+  order. "Expected 3 slots" only holds if the two asks are in the same breath,
+  so the fixture packs them. Exact `你要一个牛奶和三个饼干` alone is one slot
+  (`order`), and even that is often credited as none.
+- `clip-and-tea` does not reproduce the live miss of 0. Opus 5 already credits
+  `order` for 夹子 + 茶 after both answers. Do not treat that green as A3 done.
+
+The two misses are `strict` xfails so CI stays a merge gate. A3 removes the
+mark. An unexpected pass fails the build — that is how we notice the fix
+landed early.
 
 ### A2 — The cuts
 
@@ -238,6 +264,14 @@ a direction nobody intended.
 
 Rewrite the `slots_filled` instruction so multi-fill is the leading rule, not a
 subordinate clause. A1's cases go green.
+
+**The two xfails come off in this PR.** `tests/test_coherence_eval.py` marks
+`milk-and-biscuits` and `computer-work-ni-ne` with `xfail(strict=True)` so A1
+could merge. Remove both marks. The tests must pass as ordinary asserts.
+Leaving an xfail on a now-green test is a silent skip of the whole point of
+A1. `clip-and-tea` is already a real pass; keep it that way.
+
+The prompt change invalidates cassette keys. Re-record the affected cases.
 
 ### A4 — Coherence moves to the partner, as a gate
 
@@ -334,8 +368,8 @@ Needs a server-side token and a rate limit. The client never sees the token.
 ## Kickoff prompts
 
 One per step, each runnable as written. **A0 is done (PR #86)** — its prompt is
-retired. A0.5, A0.6 and A1 are independent of each other and can run in parallel,
-in separate worktrees.
+retired. **A1 is done (this PR)** — its prompt is retired. A0.5, A0.6 and A2 are
+independent of each other and can run in parallel, in separate worktrees.
 
 Every one of these ends the same way, so it is said once here: work in a git
 worktree, write the failing test first, branch from `main`, conventional commits,
@@ -392,22 +426,54 @@ Wire the remaining live set into .github/workflows/rerecord.yml — the schedule
 job that already spends money — so it cannot rot unnoticed again.
 ```
 
-### A1 — the failing cases
+### A2 — the cuts
 
 ```
-Read docs/streams/grading.md. Start Stream A at A1: the failing cases, written
-before anything is fixed.
+Read docs/streams/grading.md. Start Stream A at A2: the cuts.
 
-First, repoint evals/coherence/replay.py — it is stale as of V2 and raises
-before it reaches the network. termination.pressure_hint is now closing_hint,
-and coherence / slots_filled moved off the converser's annotation onto the
-grader (GraderResult). The fixtures also need the opening line that a turn-1
-grade is judged against; tests/fixtures/sessions/*.json carry none.
+A1 recorded the multi-slot misses as strict xfails. Do not fix the grader yet.
+Cuts come first because every cut changes a prompt, and every prompt change
+invalidates cassettes. Doing them together is one re-record wave instead of
+four, and a trimmed prompt is a cleaner baseline to measure the A3 multi-slot
+fix against.
 
-Then write fail-to-pass cases from the four real misses in the spec's table —
-turns that filled several slots and got credit for fewer. Record their cassettes
-(python -m evals.coherence.replay --record --samples 3) and commit them. These
-are the first real cassettes in the repo; A0 deliberately recorded none.
+Cut, in this PR:
 
-Do not fix the grader in this PR. The cases go red and stay red until A3.
+- `topic_tags`, `should_give_feedback`, `grammar_notes` — model, prompt,
+  frontend. Decide the notes panel: verdict-derived, or gone.
+  `frontend/index.html` renders `grammar_notes`, so dropping it is not free.
+- `depends_on` — model, four `topic.md` files (via the `kb-topic` skill, never
+  by hand), `validate.py` cycle check, `termination.py` guard,
+  `docs/SCENARIOS.md`.
+- The partner prompt, trimmed to persona, scene, band ceiling, pinyin reading.
+
+Re-run the full eval set after (`python -m evals.coherence.replay --record
+--samples 3` for keys that moved, then `pytest`). This is the change most
+likely to move numbers in a direction nobody intended. A1's two xfails
+must still fail; clip-and-tea must stay green.
+
+Do not start A3 in this PR.
+```
+
+### A3 — the multi-slot fix
+
+```
+Read docs/streams/grading.md. Start Stream A at A3: the multi-slot fix.
+
+Rewrite the slots_filled instruction in prompts.py:_GRADER_PROMPT_TEMPLATE so
+multi-fill is the leading rule, not a subordinate clause.
+
+A1 recorded two misses as strict xfails in tests/test_coherence_eval.py
+(A1_DENSE_CASES):
+
+- milk-and-biscuits — drops order
+- computer-work-ni-ne — 你呢 bounce drops partner_origin
+
+Remove both xfail marks in this PR. The tests must pass as ordinary asserts.
+Do not leave an xfail on a passing test — that skips the whole point of A1.
+clip-and-tea is already green; do not break it.
+
+The prompt change invalidates cassette keys. Re-record the affected cases
+(python -m evals.coherence.replay --record --samples 3) and run the default
+suite. It must be green with zero xfails on these three cases.
 ```

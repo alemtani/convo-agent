@@ -2,6 +2,10 @@
   "id": "clean-slot-fill",
   "topic_id": "food-ordering",
   "sketch": "The server is brisk and a little busy — short answers, no small talk. It is lunchtime and most tables are full. A pot of tea sits on the counter.",
+  "opening_line": {
+    "zh": "你好！你要点什么？",
+    "pinyin": "nǐ hǎo! nǐ yào diǎn shénme?"
+  },
   "dialogue": [],
   "learner_turn": "请问，什么菜最好吃？",
   "state": {

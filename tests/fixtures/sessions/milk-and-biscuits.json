@@ -1,0 +1,16 @@
+{
+  "id": "milk-and-biscuits",
+  "topic_id": "food-ordering",
+  "sketch": "The server is brisk and a little busy — short answers, no small talk. It is lunchtime and most tables are full. A pot of tea sits on the counter.",
+  "opening_line": {
+    "zh": "你好！你要点什么？",
+    "pinyin": "nǐ hǎo! nǐ yào diǎn shénme?"
+  },
+  "dialogue": [],
+  "learner_turn": "你好，什么菜最好吃？有什么喝的？你要一个牛奶和三个饼干",
+  "state": {
+    "filled_at": {},
+    "consecutive_closes": 0
+  },
+  "notes": "Stream A table, first miss. One breath, three slots; the live run credited one. The table quoted 你好，你要一个牛奶和三个饼干 — the two asks are what makes it three facts, packed with the order. 饼干 is out of band (包子 is the in-band bun); the order is still an order."
+}
