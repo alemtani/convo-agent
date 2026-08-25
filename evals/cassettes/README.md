@@ -30,6 +30,7 @@ same answers every time.
 
 ```bash
 python -m evals.coherence.replay --record --samples 3   # tops up missing samples
+pytest -m cassette --record --samples 3                 # the pytest evals
 ```
 
 A key with a full cassette costs nothing even under `--record`. Change a prompt

@@ -200,8 +200,11 @@ Coefficients live in `kb/zh/pacing.json`.
 - Verification is tiered. Pure logic: real TDD. Prompt cache: assert the
   assembled request is byte-identical across turns, breakpoint after the
   stable block. Claude/Azure: contract tests on the request we build and
-  the recorded response we parse — never exact model text. Live API
-  behavior: `@pytest.mark.live`, excluded from the default run.
+  the recorded response we parse — never exact model text. Behavioral
+  evals (structural invariants over model output) run off cassettes in
+  the default gate. Contact tests — `cache_read_input_tokens > 0`, Azure
+  STT/PA/TTS — stay `@pytest.mark.live`, excluded from the default run,
+  and run on the scheduled re-record job.
 - **Evals judge model behavior, and they run off cassettes.**
   `evals/cassette/` records each Anthropic call once, keyed on
   `sha256(model + system + tools + messages + params)`, and commits it to
@@ -242,8 +245,9 @@ uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 ```bash
-pytest -q                          # default gate
-pytest -m live                     # real keys, costs money (and stale — see A0.6)
+pytest -q                          # default gate (includes cassette-backed evals)
+pytest -m cassette --record --samples 3   # record missing eval cassettes; costs money
+pytest -m live                     # contact tests: cache_read, Azure STT/PA/TTS
 python -m evals.coherence.replay --repeat 3            # free, off cassettes
 python -m evals.coherence.replay --record --samples 3  # live; costs money
 pytest -m smoke tests/smoke        # needs Playwright Chromium

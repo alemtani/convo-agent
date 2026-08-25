@@ -268,10 +268,9 @@ async def test_live_speech_on_both_sides_of_a_pause_is_transcribed(gap_s):
     more. Asserts coverage, not exact text: a distinctive character from each
     half has to reach the transcript.
     """
-    from backend import config
+    from tests.helpers import require_live_keys
 
-    if not (config.AZURE_SPEECH_KEY and config.AZURE_SPEECH_REGION):
-        pytest.skip("Azure Speech credentials not configured")
+    require_live_keys("AZURE_SPEECH_KEY")
 
     wav = _spliced_halves("我想要一杯咖啡", "谢谢你老师", gap_s)
 

@@ -126,8 +126,8 @@ needs a case drawn from a real session, not one written from imagination.
   exists; nothing reads it. See [`AGENTS.md`](AGENTS.md).
 - CORS also allows `http://localhost:3000` for a separately-hosted frontend
 
-576 tests in the default gate; 105 more sit behind `live` / `smoke` markers
-(real keys, or Playwright).
+619 tests in the default gate (including cassette-backed evals); 111 more sit
+behind `live` / `smoke` markers (real Azure/Anthropic contact, or Playwright).
 
 ## Setup
 

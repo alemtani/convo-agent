@@ -56,3 +56,50 @@ def client_from_args(args) -> CassetteClient:
         samples=getattr(args, "samples", 1),
         refresh=refresh,
     )
+
+
+def add_pytest_options(parser) -> None:
+    """Register the same flags on a pytest parser.
+
+    Pytest's default `--samples` is 3, not the CLI's 1: the pytest evals are
+    the merge gate, and a single recording is a lucky draw. The CLI stays at 1
+    because `replay.py --repeat` is what walks the distribution there.
+    """
+    group = parser.getgroup("cassettes")
+    group.addoption(
+        "--record",
+        action="store_true",
+        default=False,
+        help="make real API calls for keys that are missing samples, and "
+        "record them. Costs money. Without it, a miss is an error.",
+    )
+    group.addoption(
+        "--samples",
+        action="store",
+        type=int,
+        default=3,
+        help="samples to hold per key when recording (default: 3).",
+    )
+    group.addoption(
+        "--refresh",
+        action="store_true",
+        default=False,
+        help="with --record, replace each cassette instead of topping it up.",
+    )
+    group.addoption(
+        "--cassettes",
+        action="store",
+        default=str(CassetteStore.default_root()),
+        help="cassette directory (default: evals/cassettes)",
+    )
+
+
+def client_from_pytest_config(config) -> CassetteClient:
+    """The client the pytest flags describe. Same object the CLI builds."""
+    class _Args:
+        record = config.getoption("record")
+        samples = config.getoption("samples")
+        refresh = config.getoption("refresh")
+        cassettes = config.getoption("cassettes")
+
+    return client_from_args(_Args)

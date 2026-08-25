@@ -271,10 +271,9 @@ async def test_live_assess_returns_structural_scores():
 
     import azure.cognitiveservices.speech as speechsdk
 
-    from backend import config
+    from tests.helpers import require_live_keys
 
-    if not (config.AZURE_SPEECH_KEY and config.AZURE_SPEECH_REGION):
-        pytest.skip("Azure Speech credentials not configured")
+    require_live_keys("AZURE_SPEECH_KEY")
 
     ref = "你好老师"
     with tempfile.NamedTemporaryFile(suffix=".wav") as tmp:

@@ -14,8 +14,8 @@ should return about 1/0.9 as many bytes as an unmodified one.
 """
 import pytest
 
-from backend import config
 from backend.speech import tts
+from tests.helpers import require_live_keys
 
 pytestmark = pytest.mark.live
 
@@ -23,8 +23,7 @@ LINE = "你好！很高兴认识你。"
 
 
 def _require_azure():
-    if not config.AZURE_SPEECH_KEY:
-        pytest.skip("not configured: AZURE_SPEECH_KEY")
+    require_live_keys("AZURE_SPEECH_KEY")
 
 
 async def test_live_synthesis_returns_playable_mp3():

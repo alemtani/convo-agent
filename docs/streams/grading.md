@@ -151,11 +151,11 @@ plan above, both found in review:
   the grader — so it raises before reaching the network. A recording of a call
   the app no longer makes is worse than no recording. **A1 repoints it first.**
 
-That staleness is not an isolated slip. The `live` suite has the same disease
-(A0.6), and both rotted for the same reason: nothing forced the spec and the
-code to be reconciled at the moment they diverged. Hence the standing rule in
-`AGENTS.md` — the stream doc's kickoff prompt is updated in the same PR as the
-work it describes.
+That staleness is not an isolated slip. The `live` suite had the same disease
+(A0.6, shipped below), and both rotted for the same reason: nothing forced the
+spec and the code to be reconciled at the moment they diverged. Hence the
+standing rule in `AGENTS.md` — the stream doc's kickoff prompt is updated in
+the same PR as the work it describes.
 
 ### A0.5 — Interception, so an end-to-end eval is free too
 
@@ -189,17 +189,17 @@ works. Either order.
 different SDK and a different shape. "Free end-to-end" means the text harness
 until someone writes an Azure layer, and the audio path is not that.
 
-### A0.6 — Repair the `live` suite and put it in CI
+### A0.6 — Repair the `live` suite and put it in CI — **shipped**
 
-`tests/test_conversation_live.py` unpacks five values from
-`conversation.respond`, which has returned four since the grader split. It fails
-at the first call. It cannot have passed since that change landed, and nothing
-noticed, because the suite is excluded from the default run and nobody runs it
-by hand.
+`tests/test_conversation_live.py` unpacked five values from
+`conversation.respond`, which has returned four since the grader split. It
+failed at the first call. It cannot have passed since that change landed, and
+nothing noticed, because the suite is excluded from the default run and nobody
+runs it by hand.
 
 An excluded suite rots. That is the finding, and it is worth more than the fix.
 
-**Split the marker rather than promoting it wholesale.** The six live files are
+**Split the marker rather than promoting it wholesale.** The six live files were
 two different kinds of test:
 
 - **Behavioral** — structural invariants over model output
@@ -214,6 +214,41 @@ two different kinds of test:
 
 So: behavioral tests move onto cassettes and become required; a small `live` set
 stays genuinely live, stays out of CI, and is what the scheduled job exercises.
+
+**What shipped, and what the rot actually was.** Eight Anthropic live tests, all
+red before any assertion, run 2026-08-24 against `main`:
+
+| File | Failure | Since |
+| --- | --- | --- |
+| `test_conversation_live.py` (all 6) | `ValueError: not enough values to unpack (expected 5, got 4)` | V2 (#76), 2026-08-21 |
+| `test_session_live.py` (both) | `TypeError: generate() missing 1 required positional argument: 'scenario'` | same |
+
+The call completed. Money was spent. Then the unpack failed. Three more diseases
+sat behind that first error, and would have been next:
+
+- **Wrong worker.** The three slot tests read `annotation.slots_filled`. Those
+  fields live on `GraderResult` now. A `request` slot fills on the ask. Even a
+  four-value unpack would have `AttributeError`'d.
+- **Wrong KB block.** The live files called `kb.load_kb_block` (includes the
+  rubric). Production uses `load_converser_block`. They were proving a prefix
+  the app no longer sends.
+- **Partial update.** `test_session_live.py` already unpacked four values from
+  `respond` — someone fixed the arity in one file and not the other, and never
+  ran either. `generate()` in the same file stayed stale.
+
+Behavioral half: `tests/test_{conversation,session,grader,turn}_eval.py`,
+`pytest.mark.cassette`, in the default gate. Contact half stays `@pytest.mark.live`.
+`.github/workflows/rerecord.yml` now has two jobs — `cassettes` re-records, `contact`
+runs `pytest -m live`. A missing secret fails the job rather than skip-as-pass.
+These are the first committed cassettes; A0 recorded none on purpose.
+
+Two corrections to the plan above:
+
+- The spec named only the five-value unpack. `sketch.generate`'s new `scenario`
+  argument, the grader move, and `load_converser_block` were the same class of
+  rot, in the same files, and would have been the next red after the unpack.
+- `tests/conftest.py` is a parent of the smoke job, which does not install
+  pydantic. The `evals` import is deferred so collection there does not explode.
 
 ### A1 — The failing cases
 
@@ -324,8 +359,8 @@ Needs a server-side token and a rate limit. The client never sees the token.
 
 - The cassette suite runs in CI, spends nothing, and is a merge gate.
 - An eval can drive the real server end-to-end without spending anything.
-- The `live` suite runs — the behavioral half in CI, the contact half on a
-  schedule. Neither can rot unnoticed again.
+- The `live` suite runs — the behavioral half in CI (A0.6), the contact half
+  on a schedule (A0.6). Neither can rot unnoticed again.
 - All four recorded misses pass.
 - The grader returns slots and nothing else.
 - The partner prompt fits on one screen.
@@ -333,9 +368,9 @@ Needs a server-side token and a rate limit. The client never sees the token.
 
 ## Kickoff prompts
 
-One per step, each runnable as written. **A0 is done (PR #86)** — its prompt is
-retired. A0.5, A0.6 and A1 are independent of each other and can run in parallel,
-in separate worktrees.
+One per step, each runnable as written. **A0 is done (PR #86)** and **A0.6 is
+done** — those prompts are retired. A0.5 and A1 are independent of each other
+and can run in parallel, in separate worktrees.
 
 Every one of these ends the same way, so it is said once here: work in a git
 worktree, write the failing test first, branch from `main`, conventional commits,
@@ -370,27 +405,7 @@ the text harness, not the audio path.
 
 ### A0.6 — repair the `live` suite
 
-```
-Read docs/streams/grading.md. Start Stream A at A0.6: repair the live suite and
-put it in CI.
-
-tests/test_conversation_live.py unpacks five values from conversation.respond,
-which has returned four since the grader split. It fails at the first call and
-has not passed in a long time, because the suite is excluded from the default
-run and nobody runs it by hand. Fix every stale live test, and report what you
-found: the rot is the finding, the fix is the easy part.
-
-Then split the marker rather than promoting it wholesale. Behavioral tests —
-structural invariants over model output — move onto the A0 cassette layer, run
-in CI for free, and become a merge gate. Contact tests stay live and stay out of
-CI: cache_read_input_tokens > 0 exists to prove the real API cached our prefix,
-and replaying a recorded 850 proves only that someone once wrote 850 into a JSON
-file. test_stt, test_pronunciation and test_tts_live are Azure, which the
-cassette layer does not cover at all.
-
-Wire the remaining live set into .github/workflows/rerecord.yml — the scheduled
-job that already spends money — so it cannot rot unnoticed again.
-```
+Retired. Shipped above. The next prompts are A0.5 and A1.
 
 ### A1 — the failing cases
 

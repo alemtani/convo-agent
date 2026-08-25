@@ -6,6 +6,13 @@ name: re-record cassettes
 # The alternative — a probabilistic live call on every PR — buys freshness with
 # the one property the cassette layer exists to give CI: determinism. A build
 # that is green 90% of the time is worse than one that is honestly stale.
+#
+# Two jobs, because they fail independently:
+#   - `cassettes` re-records Anthropic evals. A red here means the model no
+#     longer says what the gate asserts.
+#   - `contact` runs the remaining `live` tests (cache_read_input_tokens,
+#     Azure STT/PA/TTS). A skipped live test is how this suite rotted; missing
+#     secrets fail the job rather than skip it.
 on:
   schedule:
     # Weekly, Monday 06:00 UTC. The eval corpus is small and the models do not
@@ -17,9 +24,9 @@ permissions:
   contents: read
 
 jobs:
-  rerecord:
+  cassettes:
     runs-on: ubuntu-latest
-    # The only job in this repo that spends money. It needs the key that the
+    # One of two jobs in this repo that spends money. It needs the key that the
     # test job deliberately does without, and it never runs on a pull request.
     steps:
       - uses: actions/checkout@v4
@@ -33,12 +40,29 @@ jobs:
       - name: Install dependencies
         run: pip install -r backend/requirements.txt
 
+      - name: Require Anthropic
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "::error::ANTHROPIC_API_KEY is not set"
+            exit 1
+          fi
+
       # `--refresh` replaces each recording rather than topping it up: the diff
       # against what is committed is the entire output of this job, and an
       # appended sample would bury it.
-      - name: Re-record against live
+      - name: Re-record cassette-backed evals
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: pytest -m cassette --record --refresh --samples 3
+
+      - name: Re-record coherence eval
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        # Stale as of V2 (A1's first job). Kept here so A1 does not have to
+        # re-add the step; `continue-on-error` comes off when replay.py runs.
+        continue-on-error: true
         run: python -m evals.coherence.replay --record --refresh --samples 3
 
       - name: Show what moved
@@ -56,3 +80,39 @@ jobs:
       # is evidence and evidence does not update itself.
       - name: Fail if the recording moved
         run: git diff --exit-code -- evals/cassettes
+
+  contact:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r backend/requirements.txt
+
+      - name: Require Anthropic and Azure
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          AZURE_SPEECH_KEY: ${{ secrets.AZURE_SPEECH_KEY }}
+        run: |
+          missing=
+          [ -n "$ANTHROPIC_API_KEY" ] || missing="$missing ANTHROPIC_API_KEY"
+          [ -n "$AZURE_SPEECH_KEY" ] || missing="$missing AZURE_SPEECH_KEY"
+          if [ -n "$missing" ]; then
+            echo "::error::missing secrets:$missing"
+            echo "A skipped live test is how this suite rotted."
+            exit 1
+          fi
+
+      - name: Run contact tests against live APIs
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          AZURE_SPEECH_KEY: ${{ secrets.AZURE_SPEECH_KEY }}
+          AZURE_SPEECH_REGION: ${{ secrets.AZURE_SPEECH_REGION }}
+          GITHUB_ACTIONS: "true"
+        run: pytest -m live

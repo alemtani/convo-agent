@@ -1,0 +1,50 @@
+{
+  "key": "5aba640953ac5aedcd90fcfd69e9aa214b6167e699a2097f940d2ed13c810712",
+  "model": "claude-opus-5",
+  "recorded_at": "2026-08-25T04:45:49+00:00",
+  "samples": [
+    {
+      "parsed_output": {
+        "coherence": "on_track",
+        "slots_filled": [],
+        "slots_filled_previously": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2073,
+        "input_tokens": 33,
+        "output_tokens": 22
+      }
+    },
+    {
+      "parsed_output": {
+        "coherence": "on_track",
+        "slots_filled": [],
+        "slots_filled_previously": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2073,
+        "input_tokens": 33,
+        "output_tokens": 22
+      }
+    },
+    {
+      "parsed_output": {
+        "coherence": "on_track",
+        "slots_filled": [],
+        "slots_filled_previously": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2073,
+        "input_tokens": 33,
+        "output_tokens": 22
+      }
+    }
+  ],
+  "summary": "claude-opus-5 → GraderResult: 你好。"
+}

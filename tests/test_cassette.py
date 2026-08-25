@@ -481,3 +481,38 @@ def test_refresh_without_record_is_refused():
     # yesterday's recording still agrees with yesterday's recording.
     with pytest.raises(SystemExit):
         cassette.cli.client_from_args(_parse(["--refresh"]))
+
+
+class _PytestConfig:
+    """Stand-in for pytest's `config`, which is `getoption` rather than attrs."""
+
+    def __init__(self, **opts):
+        self._opts = opts
+
+    def getoption(self, name, default=None):
+        return self._opts.get(name, default)
+
+
+def test_pytest_config_builds_a_replay_client(tmp_path):
+    """The pytest fixture has to produce the same client the CLI does.
+
+    Two builders that disagreed about `--record` would mean CI replayed while
+    the scheduled job thought it was recording, or the reverse.
+    """
+    client = cassette.cli.client_from_pytest_config(
+        _PytestConfig(
+            record=False, samples=3, refresh=False, cassettes=str(tmp_path)
+        )
+    )
+    assert client.record is False
+    assert client.samples == 3
+    assert client.store.root == tmp_path
+
+
+def test_pytest_config_record_and_refresh_reach_the_client(tmp_path):
+    client = cassette.cli.client_from_pytest_config(
+        _PytestConfig(
+            record=True, samples=3, refresh=True, cassettes=str(tmp_path)
+        )
+    )
+    assert (client.record, client.samples, client.refresh) == (True, 3, True)

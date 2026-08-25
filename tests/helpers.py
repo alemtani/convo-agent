@@ -8,7 +8,31 @@ streams and the frontend dispatches on `stage`. Keeping a second, collected
 contract alive in a request-path module meant its merge semantics constrained the
 streaming one for the benefit of tests alone.
 """
-from backend import orchestrator
+import os
+
+import pytest
+
+from backend import config, orchestrator
+
+
+def require_live_keys(*names: str) -> None:
+    """Skip locally, fail in CI, when a contact test is missing credentials.
+
+    Skip-as-pass is how the live suite rotted: an excluded run with no keys
+    looks green. On GitHub Actions a missing secret is a configuration error.
+    """
+    missing = [name for name in names if not getattr(config, name)]
+    if not missing:
+        return
+    msg = "not configured: " + ", ".join(missing)
+    if os.environ.get("GITHUB_ACTIONS"):
+        pytest.fail(msg + " (a skipped live test is how this suite rotted)")
+    pytest.skip(msg)
+
+
+def cassette_draw_count(client) -> int:
+    """How many times to call so a recording fills `--samples` and a replay sees them."""
+    return max(1, getattr(client, "samples", 1))
 
 
 async def collect_audio_turn(

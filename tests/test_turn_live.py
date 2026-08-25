@@ -15,7 +15,7 @@ from anthropic import AsyncAnthropic
 
 from backend import config
 from backend.pinyin import tone_numbers
-from tests.helpers import collect_audio_turn
+from tests.helpers import collect_audio_turn, require_live_keys
 
 pytestmark = pytest.mark.live
 
@@ -23,16 +23,7 @@ _FIXTURE = os.path.join(os.path.dirname(__file__), "fixtures", "greeting.wav")
 
 
 def _client():
-    missing = [
-        name
-        for name, value in (
-            ("ANTHROPIC_API_KEY", config.ANTHROPIC_API_KEY),
-            ("AZURE_SPEECH_KEY", config.AZURE_SPEECH_KEY),
-        )
-        if not value
-    ]
-    if missing:
-        pytest.skip(f"not configured: {', '.join(missing)}")
+    require_live_keys("ANTHROPIC_API_KEY", "AZURE_SPEECH_KEY")
     if not os.path.exists(_FIXTURE):
         pytest.skip(f"recorded greeting WAV missing: {_FIXTURE}")
     return AsyncAnthropic(api_key=config.ANTHROPIC_API_KEY)
@@ -47,7 +38,7 @@ async def test_live_audio_turn_transcribes_replies_and_scores_tones():
 
     # The turn ran to completion rather than failing in-band.
     assert "error" not in seen, seen.get("error")
-    assert set(seen) >= {"transcript", "score", "reply", "done"}
+    assert set(seen) >= {"transcript", "score", "reply", "state", "done"}
 
     # Real STT produced something, and the worker produced a real partner reply.
     assert seen["transcript"].transcript.zh, "STT recognized nothing from the WAV"
