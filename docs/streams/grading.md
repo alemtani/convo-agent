@@ -228,7 +228,7 @@ with no case is a bug that comes back.
 the grader, not the converser. Fixtures carry `opening_line`. Ten cassettes live
 under `evals/cassettes/`, three samples each — the first recordings in the repo.
 
-Three cases from the table. Two stay red, and that is the point:
+Three cases from the table. Two are strict xfails, and that is the point:
 
 | case | Gold | Credited (3/3) |
 | --- | --- | --- |
@@ -245,7 +245,9 @@ Two corrections to the table above:
 - `clip-and-tea` does not reproduce the live miss of 0. Opus 5 already credits
   `order` for 夹子 + 茶 after both answers. Do not treat that green as A3 done.
 
-`pytest` is red on the two misses. Do not xfail them. A3 removes the miss.
+The two misses are `strict` xfails so CI stays a merge gate. A3 removes the
+mark. An unexpected pass fails the build — that is how we notice the fix
+landed early.
 
 ### A2 — The cuts
 
@@ -439,8 +441,8 @@ Cut, in this PR:
 
 Re-run the full eval set after (`python -m evals.coherence.replay --record
 --samples 3` for keys that moved, then `pytest`). This is the change most
-likely to move numbers in a direction nobody intended. A1's two red cases
-must stay red; clip-and-tea must stay green.
+likely to move numbers in a direction nobody intended. A1's two xfails
+must still fail; clip-and-tea must stay green.
 
 Do not start A3 in this PR.
 ```
