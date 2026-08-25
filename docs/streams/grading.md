@@ -279,7 +279,7 @@ of these cuts touch the grader prompt. A1's two xfails still fail;
 `clip-and-tea` stays green. That is the point of cutting before A3: the
 baseline did not shift.
 
-### A3 — The multi-slot fix
+### A3 — The multi-slot fix — **shipped, this PR**
 
 Rewrite the `slots_filled` instruction so multi-fill is the leading rule, not a
 subordinate clause. A1's cases go green.
@@ -291,6 +291,35 @@ Leaving an xfail on a now-green test is a silent skip of the whole point of
 A1. `clip-and-tea` is already a real pass; keep it that way.
 
 The prompt change invalidates cassette keys. Re-record the affected cases.
+
+**What shipped, and what it taught us.** Three changes to the instruction, all
+of them about *where* a rule sits rather than what it says:
+
+- The leading sentence is now "one turn usually fills more than one slot", and
+  the instruction is a **loop over the slot list** — take each slot in turn and
+  ask whether this utterance established it. The old text asked for "the slots
+  the final turn established", which reads as one search with one answer.
+- The scoping rules — nothing from earlier turns, nothing this turn did not
+  establish — moved into their own paragraph *after* the loop. They were the
+  same sentence as the multi-fill hint, and the hint lost.
+- The 你呢 example now says the bounce asks back **both** of what the partner
+  asked. The old example bounced one question, which is the case that already
+  worked.
+
+All three cases pass on all three samples. Slot accuracy over the corpus went
+**20/30 → 27/30 exact**, missed credit **6 → 0**. The three remaining spurious
+runs are all `nonsequitur-slot-fill`, the deliberate gaming case, unchanged
+from the A1 baseline and blocked by the recommended `on_track` gate. The
+coherence matrix did not move at all: 21/21 on `on_track`, same single
+`drifting`→`off_track` flip, same three `derailed-input` misreads.
+
+That last number is the one worth keeping. **Nothing pushed the grader toward
+crediting more.** Credit went up only where gold said it was owed.
+
+Every cassette key changed — the grader prefix is part of the key — so all ten
+recordings were re-made and the ten stale ones deleted. A recording of a prompt
+that no longer exists cannot be hit and cannot be read; leaving it is a
+cassette directory nobody can reason about.
 
 ### A4 — Coherence moves to the partner, as a gate
 
@@ -387,9 +416,10 @@ Needs a server-side token and a rate limit. The client never sees the token.
 ## Kickoff prompts
 
 One per step, each runnable as written. **A0 is done (PR #86)** — its prompt is
-retired. **A1 is done (PR #90)** — its prompt is retired. **A2 is done (this
-PR)** — its prompt is retired. A0.5 and A0.6 remain independent of A3 and
-can run in parallel, in separate worktrees.
+retired. **A1 is done (PR #90)** — its prompt is retired. **A2 is done (PR
+#91)** — its prompt is retired. **A3 is done (this PR)** — its prompt is
+retired. A0.5 and A0.6 remain independent and can run in parallel, in separate
+worktrees.
 
 Every one of these ends the same way, so it is said once here: work in a git
 worktree, write the failing test first, branch from `main`, conventional commits,
@@ -446,25 +476,33 @@ Wire the remaining live set into .github/workflows/rerecord.yml — the schedule
 job that already spends money — so it cannot rot unnoticed again.
 ```
 
-### A3 — the multi-slot fix
+### A4 — coherence moves to the partner
 
 ```
-Read docs/streams/grading.md. Start Stream A at A3: the multi-slot fix.
+Read docs/streams/grading.md. Start Stream A at A4: coherence moves to the
+partner, as a gate.
 
-Rewrite the slots_filled instruction in prompts.py:_GRADER_PROMPT_TEMPLATE so
-multi-fill is the leading rule, not a subordinate clause.
+Add a binary coherence field to ConverserAnnotation. Remove `coherence` from
+_GRADER_PROMPT_TEMPLATE and from GraderResult. The grader is then a
+slots-only worker, which is the point of the step.
 
-A1 recorded two misses as strict xfails in tests/test_coherence_eval.py
-(A1_DENSE_CASES):
+Three tags collapse to two. `drifting` counts as incoherent — that is a
+deliberate cost, not an oversight, and it means a legitimate topic change gets
+caught. Remap tests/fixtures/sessions/gold.json (and gold.second-opinion.json)
+as an explicit reviewed change, never a relabelling pass.
 
-- milk-and-biscuits — drops order
-- computer-work-ni-ne — 你呢 bounce drops partner_origin
+The gate lives in orchestrator._advance_or_echo, where the two concurrent
+branches meet, as a new argument to that pure function. It blocks credit for
+the incoherent turn and never removes credit already earned — with the single
+exception of slots_filled_previously on the owed-turn recovery path. Delete the
+out-of-date comment at orchestrator.py:431 while you are in there.
 
-Remove both xfail marks in this PR. The tests must pass as ordinary asserts.
-Do not leave an xfail on a passing test — that skips the whole point of A1.
-clip-and-tea is already green; do not break it.
+The A1 dense cases in tests/test_coherence_eval.py must stay green as ordinary
+asserts. Both prompts change, so every cassette key changes: re-record
+(python -m evals.coherence.replay --record --samples 3), delete the stale
+recordings, and run the default suite. A3's numbers are the baseline to beat —
+27/30 exact slot accuracy, 0 missed.
 
-The prompt change invalidates cassette keys. Re-record the affected cases
-(python -m evals.coherence.replay --record --samples 3) and run the default
-suite. It must be green with zero xfails on these three cases.
+This changes what the learner sees on the HUD, so raise a tunnel and take a
+real turn on the phone before the PR is ready.
 ```
