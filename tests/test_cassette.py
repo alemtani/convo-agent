@@ -78,23 +78,49 @@ def test_same_request_same_key_whatever_the_dict_order():
         {"messages": [{"role": "user", "content": "再见"}]},
         {"max_tokens": 2048},
         {"output_config": {"effort": "low"}},
+        {"thinking": {"type": "disabled"}},
         {"tools": [{"name": "lookup"}]},
         {"output_format": ConversationResult},
+        {"extra_headers": {"anthropic-beta": "some-beta-2026-01-01"}},
+        {"extra_body": {"top_k": 5}},
+        {"temperature": 0.7},
     ],
-    ids=["model", "system", "messages", "params", "effort", "tools", "schema"],
+    ids=[
+        "model",
+        "system",
+        "messages",
+        "max_tokens",
+        "effort",
+        "thinking",
+        "tools",
+        "schema",
+        "beta-header",
+        "extra_body",
+        "a-param-no-worker-sends-yet",
+    ],
 )
 def test_every_input_that_changes_the_answer_changes_the_key(overrides):
+    """Sampling dials, `thinking`, betas — anything that shapes the output.
+
+    `params` is a **deny-list**: everything that is not the request's spine and
+    not `timeout` is hashed, including fields no worker sends today. That is the
+    property under test. An allow-list would silently drop the next dial someone
+    adds, and the eval would answer a question nobody asked.
+    """
     assert cassette.request_key(_request()) != cassette.request_key(
         _request(**overrides)
     )
 
 
-def test_timeout_is_transport_and_stays_out_of_the_key():
-    # The worker passes its deadline alongside the request. Tuning it must not
-    # invalidate every cassette in the repo — it cannot change the answer.
+def test_timeout_is_the_only_thing_left_out_of_the_key():
+    # The worker passes its deadline alongside the request. A deadline aborts a
+    # call; it cannot change what the model says. Tuning one must not invalidate
+    # every cassette recorded under it — and it is the *only* exemption, which
+    # is what this asserts.
     assert cassette.request_key(_request(timeout=30.0)) == cassette.request_key(
         _request()
     )
+    assert cassette.NOT_IN_KEY == frozenset({"timeout"})
 
 
 def test_the_output_schema_travels_as_its_json_schema():

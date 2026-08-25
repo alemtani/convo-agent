@@ -15,6 +15,16 @@ Two consequences worth stating out loud:
 - **A param we cannot serialize is an error, never a skip.** Hashing around an
   unknown object would file two different requests under one cassette, and the
   eval would then report an answer to a question nobody asked.
+
+**Everything in the payload is in the key.** `params` is a deny-list, not an
+allow-list: `max_tokens`, `thinking`, `output_config.effort`, a beta header, a
+sampling dial no worker sends yet — all of it shapes the output, so all of it is
+hashed, including fields added after this file was written. The single exemption
+is `timeout`, which aborts a call rather than changing what it says.
+
+An allow-list here would be the quiet failure mode this whole layer exists to
+prevent: the next dial someone adds would not change the key, the eval would
+replay a recording made at a different setting, and nothing would say so.
 """
 import hashlib
 import json
@@ -27,16 +37,18 @@ class CassetteError(Exception):
     """A request this layer cannot key, store, or replay."""
 
 
-# Settings that govern how the call travels, not what it asks. `timeout` is the
-# live one: every worker passes its own deadline, and tuning a deadline must not
-# invalidate every cassette in the repo.
-TRANSPORT_KWARGS = frozenset(
-    {"timeout", "extra_headers", "extra_query", "extra_body"}
-)
+# The one exemption, and it earns it: a deadline aborts a call, it cannot change
+# what the call says. Every worker passes its own from config, so hashing it
+# would invalidate every cassette in the repo the day one is tuned.
+#
+# Nothing else belongs here. `extra_headers` carries beta flags and `extra_body`
+# merges into the JSON payload — both change the answer, so both are hashed.
+NOT_IN_KEY = frozenset({"timeout"})
 
-# Named separately from the rest of `params` because they are the request's
-# spine, and a key whose shape mirrors the spec (`model + system + tools +
-# messages + params`) is a key a reader can check.
+# The request's spine, named because the key's shape mirrors the spec
+# (`model + system + tools + messages + params`) and a reader should be able to
+# check that. This is NOT an allow-list: every kwarg that is not here and not
+# `timeout` still lands in `params` and is hashed. See the module docstring.
 _SPINE = ("model", "system", "messages", "tools", "output_format")
 
 
@@ -47,11 +59,15 @@ def canonical_request(request: Dict[str, Any]) -> Dict[str, Any]:
     wire: `messages.parse` renders the Pydantic model into a tool schema, and
     the schema carries the field descriptions and docstrings that are, in this
     codebase, a real part of the prompt (`backend/models.py`).
+
+    `params` is everything else the caller sent, `timeout` excepted — sampling
+    dials, `thinking`, `output_config.effort`, betas, and whatever a worker
+    starts sending next week.
     """
     params = {
         name: value
         for name, value in request.items()
-        if name not in _SPINE and name not in TRANSPORT_KWARGS
+        if name not in _SPINE and name not in NOT_IN_KEY
     }
     return {
         "model": request.get("model"),

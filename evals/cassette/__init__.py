@@ -26,7 +26,7 @@ from evals.cassette.client import (
     CassetteMiss,
 )
 from evals.cassette.key import (
-    TRANSPORT_KWARGS,
+    NOT_IN_KEY,
     CassetteError,
     canonical_request,
     request_key,
@@ -40,7 +40,7 @@ __all__ = [
     "CassetteError",
     "CassetteMiss",
     "CassetteStore",
-    "TRANSPORT_KWARGS",
+    "NOT_IN_KEY",
     "USAGE_FIELDS",
     "canonical_request",
     "request_key",
