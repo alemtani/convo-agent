@@ -31,6 +31,7 @@ from evals.cassette.key import (
     canonical_request,
     request_key,
 )
+from evals.cassette.install import install, uninstall, worker_modules
 from evals.cassette.store import Cassette, CassetteStore
 
 __all__ = [
@@ -40,8 +41,11 @@ __all__ = [
     "CassetteError",
     "CassetteMiss",
     "CassetteStore",
+    "install",
     "NOT_IN_KEY",
     "USAGE_FIELDS",
     "canonical_request",
+    "uninstall",
+    "worker_modules",
     "request_key",
 ]

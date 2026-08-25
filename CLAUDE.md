@@ -174,6 +174,11 @@ it pass. Verification is tiered by how deterministic the code is:
   replayed by request hash) so the suite is a merge gate that spends nothing. A
   key with no recording fails the run; only `--record` calls the API, and
   freshness is a scheduled job's problem (`.github/workflows/rerecord.yml`).
+  An eval that drives the **real server** end-to-end runs
+  `uvicorn evals.server:app`, which calls `cassette.install()` to seed each
+  worker's module-global client before importing the app. The differentiator is
+  the entrypoint, never a flag inside `backend/`. Azure is not covered, so this
+  means the text harness, not the audio path.
 - **Frontend behavior — a browser, deterministically.** `tests/smoke/` drives
   `frontend/index.html` in Chromium (`@pytest.mark.smoke`) to pin the races that
   clicking around is worst at catching: mic frames lost before the button turns

@@ -157,7 +157,7 @@ code to be reconciled at the moment they diverged. Hence the standing rule in
 `AGENTS.md` — the stream doc's kickoff prompt is updated in the same PR as the
 work it describes.
 
-### A0.5 — Interception, so an end-to-end eval is free too
+### A0.5 — Interception, so an end-to-end eval is free too — **shipped, PR TBD**
 
 A0 covers the seam where a caller passes `client=`: the workers, the
 orchestrator, `replay.py`. It does **not** cover a run against a live server.
@@ -184,6 +184,25 @@ of its own rather than a footnote in a cassette PR.
 
 **Not a blocker for A1**, which runs at the worker seam where `client=` already
 works. Either order.
+
+**What shipped.** `evals/cassette/install.py` (`install()` / `uninstall()`) and
+`evals/server.py`. An eval run is `uvicorn evals.server:app`; `CASSETTE_RECORD=1`
+in front of it records, and `CASSETTE_DIR` / `CASSETTE_SAMPLES` /
+`CASSETTE_REFRESH` mirror the runner's flags. Those variables are read in
+`evals/server.py` and nowhere else, so they mean nothing to a production
+process. Three things the work settled:
+
+- **A moved seam is an error, not a skip.** `install()` raises if a worker holds
+  no module-global `_client`. Skipping it would leave that worker spending real
+  money on a run whose whole promise is that it does not, and the report would
+  be a bill rather than a red build.
+- **The proof lives in a subprocess.** "Importing `backend.main` installs
+  nothing" cannot be asserted in an interpreter other tests have already
+  dirtied, so `tests/test_cassette_install.py` asserts it in a fresh one — and
+  asserts the same way that `evals.server` serves the identical `app` object.
+- **A miss on a live server is a 500, and that is right.** `POST /api/turn/text`
+  against `evals.server` with nothing recorded raises `CassetteMiss` before any
+  network call. Verified by hand against a running server.
 
 **Azure stays real.** This layer wraps `messages.parse`; STT and PA are a
 different SDK and a different shape. "Free end-to-end" means the text harness
@@ -333,8 +352,8 @@ Needs a server-side token and a rate limit. The client never sees the token.
 
 ## Kickoff prompts
 
-One per step, each runnable as written. **A0 is done (PR #86)** — its prompt is
-retired. A0.5, A0.6 and A1 are independent of each other and can run in parallel,
+One per step, each runnable as written. **A0 and A0.5 are done** — their prompts
+are retired. A0.6 and A1 are independent of each other and can run in parallel,
 in separate worktrees.
 
 Every one of these ends the same way, so it is said once here: work in a git
@@ -343,30 +362,10 @@ open a PR explaining the *why* — and **update this document in the same PR**:
 mark what landed, correct what the work taught you, and leave the next prompt
 runnable.
 
-### A0.5 — interception
+### A0.5 — interception — **done, prompt retired**
 
-```
-Read docs/streams/grading.md. Start Stream A at A0.5: interception, so an
-end-to-end eval against the real server is free too.
-
-A0 (evals/cassette/) covers callers that pass client=. It does not cover a run
-against a live server: main.py threads no client, so each worker falls back to
-its module-global _get_client() and a real POST /api/turn/text spends money.
-
-Add cassette.install(), which seeds each worker's module-global _client, and
-evals/server.py, which calls install() and then exposes backend.main:app. An
-eval run is `uvicorn evals.server:app`. Do not add a flag inside backend/ — one
-misconfigured env var on fly.io would serve learners canned replies. The
-differentiator is which entrypoint was launched.
-
-This touches the critical path even though it adds no line to backend/:
-install() swaps the client object on the hot path at runtime. Say so plainly in
-the PR, and test that an ordinary `uvicorn backend.main:app` process is
-unaffected.
-
-Azure stays real — this layer wraps messages.parse, so "free end-to-end" means
-the text harness, not the audio path.
-```
+`evals/cassette/install.py` + `evals/server.py`. An eval run is
+`uvicorn evals.server:app`.
 
 ### A0.6 — repair the `live` suite
 
