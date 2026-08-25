@@ -191,6 +191,10 @@ Coefficients live in `kb/zh/pacing.json`.
   fenced prompt the next agent pastes. When a stream step ships,
   rewrite that prompt to the next open step **in the same PR**. A
   prompt that still names a finished step starts the wrong work.
+  Mark what landed and correct what the work taught you, too:
+  `evals/coherence/replay.py` and the `live` suite both rotted because
+  nothing forced the plan and the code to be reconciled at the moment
+  they diverged.
 - **Failing test first** for any deterministic logic. Then make it pass.
   Show the pytest output as evidence. Do not claim green without it.
 - Verification is tiered. Pure logic: real TDD. Prompt cache: assert the
@@ -198,6 +202,14 @@ Coefficients live in `kb/zh/pacing.json`.
   stable block. Claude/Azure: contract tests on the request we build and
   the recorded response we parse — never exact model text. Live API
   behavior: `@pytest.mark.live`, excluded from the default run.
+- **Evals judge model behavior, and they run off cassettes.**
+  `evals/cassette/` records each Anthropic call once, keyed on
+  `sha256(model + system + tools + messages + params)`, and commits it to
+  `evals/cassettes/`. Replay is the default and a key miss fails the run;
+  only `--record` spends. Change a prompt → keys change → re-record just
+  those. Freshness is a scheduled job
+  (`.github/workflows/rerecord.yml`), never a live call on a PR: a build
+  green 90% of the time is worse than one honestly stale.
 - Frontend races: `tests/smoke/` (Playwright, fake mic, stubbed fetch).
   Own requirements. Not in the default run because of Chromium, not
   because it is flaky. Install with
@@ -231,7 +243,9 @@ uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
 
 ```bash
 pytest -q                          # default gate
-pytest -m live                     # real keys, costs money
+pytest -m live                     # real keys, costs money (and stale — see A0.6)
+python -m evals.coherence.replay --repeat 3            # free, off cassettes
+python -m evals.coherence.replay --record --samples 3  # live; costs money
 pytest -m smoke tests/smoke        # needs Playwright Chromium
 python kb/zh/_tools/validate.py --all
 ```

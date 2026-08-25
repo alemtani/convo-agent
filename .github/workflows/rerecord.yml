@@ -1,0 +1,58 @@
+name: re-record cassettes
+
+# Cassettes are a recording of a model, and a model moves. This is where that
+# staleness is handled: on a schedule, against live, off the PR path entirely.
+#
+# The alternative — a probabilistic live call on every PR — buys freshness with
+# the one property the cassette layer exists to give CI: determinism. A build
+# that is green 90% of the time is worse than one that is honestly stale.
+on:
+  schedule:
+    # Weekly, Monday 06:00 UTC. The eval corpus is small and the models do not
+    # move faster than that.
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rerecord:
+    runs-on: ubuntu-latest
+    # The only job in this repo that spends money. It needs the key that the
+    # test job deliberately does without, and it never runs on a pull request.
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r backend/requirements.txt
+
+      # `--refresh` replaces each recording rather than topping it up: the diff
+      # against what is committed is the entire output of this job, and an
+      # appended sample would bury it.
+      - name: Re-record against live
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python -m evals.coherence.replay --record --refresh --samples 3
+
+      - name: Show what moved
+        run: git --no-pager diff --stat -- evals/cassettes
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rerecorded-cassettes
+          path: evals/cassettes
+
+      # A red scheduled job means "the model no longer says what the gate
+      # asserts". Someone reads the diff and decides whether the eval or the
+      # prompt is what changed; nothing is auto-committed, because a cassette
+      # is evidence and evidence does not update itself.
+      - name: Fail if the recording moved
+        run: git diff --exit-code -- evals/cassettes

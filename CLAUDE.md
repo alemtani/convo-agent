@@ -169,6 +169,11 @@ it pass. Verification is tiered by how deterministic the code is:
   `cache_read_input_tokens > 0` check are marked `@pytest.mark.live` — they need
   keys and cost money, so they are **excluded from the default run**. Invoke
   explicitly with `pytest -m live`.
+  Evals under `evals/` are a third thing again: they judge model *behavior*, and
+  they run off committed **cassettes** (`evals/cassette/`, recorded once and
+  replayed by request hash) so the suite is a merge gate that spends nothing. A
+  key with no recording fails the run; only `--record` calls the API, and
+  freshness is a scheduled job's problem (`.github/workflows/rerecord.yml`).
 - **Frontend behavior — a browser, deterministically.** `tests/smoke/` drives
   `frontend/index.html` in Chromium (`@pytest.mark.smoke`) to pin the races that
   clicking around is worst at catching: mic frames lost before the button turns
@@ -205,6 +210,33 @@ straight to `main`. The reviewer reads the diff and leaves inline comments; when
 addressing them, push fixes and **reply on each review thread**. Steps: branch
 from `main` → commit (conventional) → `git push -u` → `gh pr create` with a body
 explaining the *why*. This is the standing workflow, not just for large changes.
+
+**Start the work in a git worktree.** Several agents run in this repo at once,
+and one checkout means they share a branch, a working tree, and each other's
+half-finished edits. A worktree gives each one its own. Create it before the
+first edit — moving into one later means moving uncommitted work.
+
+From the primary checkout (same steps as `AGENTS.md`, kept in sync with it):
+
+```bash
+git fetch origin main
+git worktree add -b feat/<name> .claude/worktrees/<name> origin/main
+ln -sfn "$PWD/.env" .claude/worktrees/<name>/.env
+```
+
+Then work only inside `.claude/worktrees/<name>/`. Two things a fresh worktree
+does not inherit: `.env` (gitignored — copy or symlink it, or every real call
+500s) and `.venv` (use the primary checkout's interpreter). The PR is raised
+from the worktree's branch like any other.
+
+**Update the stream doc in the same PR as the work.** Work is planned in
+`docs/streams/*.md`, and each step ends in a copy-paste kickoff prompt. Before
+moving to the next step: mark what landed, correct what the work taught you, and
+leave the next prompt runnable as written. A spec that still asks for what you
+just shipped is how `evals/coherence/replay.py` and the `live` suite both rotted
+— nothing forced the plan and the code to be reconciled at the moment they
+diverged. This is not documentation housekeeping; the prompt is the interface
+the next agent starts from.
 
 ## Knowledge-base authoring (separate from the service)
 
