@@ -265,6 +265,14 @@ a direction nobody intended.
 Rewrite the `slots_filled` instruction so multi-fill is the leading rule, not a
 subordinate clause. A1's cases go green.
 
+**The two xfails come off in this PR.** `tests/test_coherence_eval.py` marks
+`milk-and-biscuits` and `computer-work-ni-ne` with `xfail(strict=True)` so A1
+could merge. Remove both marks. The tests must pass as ordinary asserts.
+Leaving an xfail on a now-green test is a silent skip of the whole point of
+A1. `clip-and-tea` is already a real pass; keep it that way.
+
+The prompt change invalidates cassette keys. Re-record the affected cases.
+
 ### A4 — Coherence moves to the partner, as a gate
 
 Add `coherence` to `ConverserAnnotation`. Remove it from the grader prompt and
@@ -423,7 +431,7 @@ job that already spends money — so it cannot rot unnoticed again.
 ```
 Read docs/streams/grading.md. Start Stream A at A2: the cuts.
 
-A1 recorded the multi-slot misses and left them red. Do not fix the grader yet.
+A1 recorded the multi-slot misses as strict xfails. Do not fix the grader yet.
 Cuts come first because every cut changes a prompt, and every prompt change
 invalidates cassettes. Doing them together is one re-record wave instead of
 four, and a trimmed prompt is a cleaner baseline to measure the A3 multi-slot
@@ -445,4 +453,27 @@ likely to move numbers in a direction nobody intended. A1's two xfails
 must still fail; clip-and-tea must stay green.
 
 Do not start A3 in this PR.
+```
+
+### A3 — the multi-slot fix
+
+```
+Read docs/streams/grading.md. Start Stream A at A3: the multi-slot fix.
+
+Rewrite the slots_filled instruction in prompts.py:_GRADER_PROMPT_TEMPLATE so
+multi-fill is the leading rule, not a subordinate clause.
+
+A1 recorded two misses as strict xfails in tests/test_coherence_eval.py
+(A1_DENSE_CASES):
+
+- milk-and-biscuits — drops order
+- computer-work-ni-ne — 你呢 bounce drops partner_origin
+
+Remove both xfail marks in this PR. The tests must pass as ordinary asserts.
+Do not leave an xfail on a passing test — that skips the whole point of A1.
+clip-and-tea is already green; do not break it.
+
+The prompt change invalidates cassette keys. Re-record the affected cases
+(python -m evals.coherence.replay --record --samples 3) and run the default
+suite. It must be green with zero xfails on these three cases.
 ```

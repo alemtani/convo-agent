@@ -79,12 +79,13 @@ cassettes. A1's dense-turn cases assert slot credit against those recordings.
 over 10 cases, off committed cassettes. Replay calls `grader.grade`, not the
 converser. Turn-1 fixtures carry `opening_line`.
 
-The slot misses A3 has to clear:
+The slot misses A3 has to clear. They are `strict` xfails in
+`tests/test_coherence_eval.py` (`A1_DENSE_CASES`). A3 removes those marks.
 
-| case | missed |
-| --- | --- |
-| `milk-and-biscuits` | `order` ×3 |
-| `computer-work-ni-ne` | `partner_origin` ×3 |
+| case | missed | A3 |
+| --- | --- | --- |
+| `milk-and-biscuits` | `order` ×3 | drop the xfail; the assert must pass |
+| `computer-work-ni-ne` | `partner_origin` ×3 | drop the xfail; the assert must pass |
 
 `clip-and-tea` already credits `order` on this grader. The V0 gaming turn
 (`nonsequitur-slot-fill`) is now tagged `drifting` and still credits
