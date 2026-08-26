@@ -545,18 +545,25 @@ def test_replay_derives_the_turn_index_the_orchestrator_does():
         assert replayed(case.dialogue) == shipped(case.dialogue), case.id
 
 
-def test_replay_refuses_to_prune_a_subset_run():
-    """`--case` reaches a handful of keys. Pruning off one deletes the rest."""
+def test_replay_refuses_a_used_manifest_from_a_subset_run():
+    """`--case` reaches a handful of keys. A manifest from one would tell the
+    sweep every other recording is stale.
+    """
     from evals.coherence import replay
 
     with pytest.raises(SystemExit, match="--case"):
-        replay._check_prune_is_a_full_sweep(prune=True, cases=["milk-and-biscuits"])
+        replay._check_manifest_is_a_full_sweep(
+            used_out="/tmp/used.json", cases=["milk-and-biscuits"]
+        )
 
 
-def test_replay_allows_a_prune_of_a_whole_run():
+def test_replay_allows_a_used_manifest_from_a_whole_run():
     from evals.coherence import replay
 
-    assert replay._check_prune_is_a_full_sweep(prune=True, cases=None) is None
+    assert (
+        replay._check_manifest_is_a_full_sweep(used_out="/tmp/used.json", cases=None)
+        is None
+    )
 
 
 def test_replay_does_not_call_the_retired_pressure_hint():

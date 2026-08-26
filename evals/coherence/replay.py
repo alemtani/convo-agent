@@ -48,15 +48,15 @@ _GRADE_TIMEOUT_S = 60.0
 _turn_index = orchestrator._turn_index
 
 
-def _check_prune_is_a_full_sweep(*, prune: bool, cases) -> None:
-    """Refuse `--prune` on a run that only visits some of the corpus.
+def _check_manifest_is_a_full_sweep(*, used_out, cases) -> None:
+    """Refuse `--used-out` on a run that only visits some of the corpus.
 
-    Prune keeps what the run reached. A `--case` run reaches a handful, so
-    pruning off one would delete every other recording in the store — the
-    expensive mistake, made silently.
+    The manifest is what `evals.cassette.sweep` keeps. A `--case` run reaches a
+    handful, so a manifest written from one would tell the sweep to delete
+    every other recording in the store — the expensive mistake, made silently.
     """
-    if prune and cases:
-        raise SystemExit("--prune needs the whole corpus; drop --case")
+    if used_out and cases:
+        raise SystemExit("--used-out needs the whole corpus; drop --case")
 
 
 def _opening_zh(case: Case) -> Optional[str]:
@@ -133,7 +133,9 @@ def main() -> None:
     parser.add_argument("--cases-dir", default=CASES_DIR)
     parser.add_argument("--out", default=DEFAULT_OUT)
     args = parser.parse_args()
-    _check_prune_is_a_full_sweep(prune=getattr(args, "prune", False), cases=args.case)
+    _check_manifest_is_a_full_sweep(
+        used_out=getattr(args, "used_out", None), cases=args.case
+    )
 
     cases = load_cases(args.cases_dir)
     # Pair even when replaying a subset: an unlabelled case is a hole in the
@@ -171,13 +173,8 @@ def main() -> None:
     write(observations)
     print(f"\nwrote {len(observations)} observations to {args.out}")
 
-    # After the write, never before: a prune that raised mid-run must not cost
-    # the observations the run already paid for.
-    if client.prune:
-        removed = client.store.prune(keep=client.used)
-        for key in removed:
-            print(f"pruned {key[:12]}… — no prompt in this tree produces it")
-        print(f"pruned {len(removed)} unreachable cassette(s)")
+    # After the write, never before: the observations are already paid for.
+    cassette.cli.write_used(args, client.used)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,16 @@
+{
+  "id": "greeting-only",
+  "topic_id": "food-ordering",
+  "sketch": "The server is brisk and a little busy — short answers, no small talk. It is lunchtime and most tables are full. A pot of tea sits on the counter.",
+  "opening_line": {
+    "zh": "你好！你要点什么？",
+    "pinyin": "nǐ hǎo! nǐ yào diǎn shénme?"
+  },
+  "dialogue": [],
+  "learner_turn": "你好",
+  "state": {
+    "filled_at": {},
+    "consecutive_closes": 0
+  },
+  "notes": "Constructed probe. The learner greets and asks nothing. `withholding` says the server names a good dish only when asked and does not make suggestions unasked, so a reply naming a dish or listing drinks takes a point off the board — the learner cannot ask for what they have already been told."
+}

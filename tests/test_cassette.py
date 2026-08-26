@@ -222,7 +222,11 @@ def test_prune_leaves_the_directory_alone_when_every_key_was_used(tmp_path):
 
 
 def test_prune_never_touches_a_file_that_is_not_a_cassette(tmp_path):
-    """`evals/cassettes/README.md` explains the directory. It is not a key."""
+    """`evals/cassettes/README.md` explains the directory. It is not a key.
+
+    Nor is a `.json` file that is not named for a sha256 digest — a manifest
+    parked in the directory would otherwise read as a stale recording.
+    """
     store = cassette.CassetteStore(tmp_path)
     live = cassette.request_key(_request())
     stale = cassette.request_key(_request(system=[{"type": "text", "text": "old"}]))
@@ -230,10 +234,13 @@ def test_prune_never_touches_a_file_that_is_not_a_cassette(tmp_path):
         store.append(key, _sample(), model="m", summary="s")
     readme = tmp_path / "README.md"
     readme.write_text("what this directory is", encoding="utf-8")
+    stray = tmp_path / "used.json"
+    stray.write_text('{"used": []}', encoding="utf-8")
 
     assert store.prune(keep={live}) == [stale]
 
     assert readme.exists()
+    assert stray.exists()
 
 
 def test_prune_refuses_to_empty_the_store(tmp_path):
@@ -572,18 +579,64 @@ def test_refresh_without_record_is_refused():
         cassette.cli.client_from_args(_parse(["--refresh"]))
 
 
-def test_prune_without_record_is_refused():
-    """A replay run touches only the keys its cases ask for.
+def test_a_runner_can_write_down_which_keys_it_reached(tmp_path):
+    """`--used-out` is what makes a sweep composable across runners.
 
-    Pruning off one would delete every cassette the run did not happen to
-    need — which, for `--case`, is nearly all of them.
+    One store, two runners (`evals.coherence` and `evals.turn`). Neither one
+    reaches the other's keys, so neither can decide alone what is stale.
     """
-    with pytest.raises(SystemExit):
-        cassette.cli.client_from_args(_parse(["--prune"]))
+    manifest = tmp_path / "used.json"
+    args = _parse(["--used-out", str(manifest), "--cassettes", str(tmp_path)])
+    assert args.used_out == str(manifest)
+
+    cassette.cli.write_used(args, {"bbb", "aaa"})
+
+    assert json.loads(manifest.read_text())["used"] == ["aaa", "bbb"]
 
 
-def test_prune_reaches_the_client(tmp_path):
-    client = cassette.cli.client_from_args(
-        _parse(["--record", "--prune", "--cassettes", str(tmp_path)])
-    )
-    assert client.prune is True
+def test_writing_the_manifest_is_a_no_op_when_it_was_not_asked_for(tmp_path):
+    cassette.cli.write_used(_parse(["--cassettes", str(tmp_path)]), {"aaa"})
+    assert list(tmp_path.iterdir()) == []
+
+
+# --- the sweep ------------------------------------------------------------
+
+
+def test_the_sweep_keeps_the_union_of_every_runner_that_reported(tmp_path):
+    """The whole point: a key one runner never reached is not stale if another
+    runner did reach it.
+    """
+    from evals.cassette import sweep
+
+    store = cassette.CassetteStore(tmp_path)
+    mine = cassette.request_key(_request())
+    theirs = cassette.request_key(_request(system=[{"type": "text", "text": "b"}]))
+    stale = cassette.request_key(_request(system=[{"type": "text", "text": "c"}]))
+    for key in (mine, theirs, stale):
+        store.append(key, _sample(), model="m", summary="s")
+
+    reports = tmp_path.parent / "reports"
+    reports.mkdir()
+    manifests = []
+    for name, keys in (("a.json", [mine]), ("b.json", [theirs])):
+        path = reports / name
+        path.write_text(json.dumps({"used": keys}), encoding="utf-8")
+        manifests.append(str(path))
+
+    removed = sweep.run(store=store, manifests=manifests)
+
+    assert removed == [stale]
+    assert sorted(store.keys()) == sorted([mine, theirs])
+
+
+def test_the_sweep_refuses_a_manifest_that_never_arrived(tmp_path):
+    """A runner that crashed writes no manifest. Sweeping on the ones that did
+    land would delete everything the dead runner was responsible for.
+    """
+    from evals.cassette import sweep
+
+    store = cassette.CassetteStore(tmp_path)
+    store.append(cassette.request_key(_request()), _sample(), model="m", summary="s")
+
+    with pytest.raises(cassette.CassetteError, match="missing"):
+        sweep.run(store=store, manifests=[str(tmp_path / "never-written.json")])

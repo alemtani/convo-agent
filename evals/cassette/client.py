@@ -50,7 +50,6 @@ class CassetteClient:
         record: bool = False,
         samples: int = 1,
         refresh: bool = False,
-        prune: bool = False,
         live=None,
     ):
         self.store = store if store is not None else CassetteStore(
@@ -59,9 +58,6 @@ class CassetteClient:
         self.record = record
         self.samples = samples
         self.refresh = refresh
-        # The client does not prune; it only carries the decision, because the
-        # runner is what knows whether its run was a full sweep.
-        self.prune = prune
         self.messages = _Messages(self)
         self._live = live
         self._cursor: Dict[str, int] = {}

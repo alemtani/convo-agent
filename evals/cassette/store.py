@@ -19,6 +19,15 @@ from evals.cassette.key import CassetteError
 
 FILENAME_SUFFIX = ".json"
 
+# A cassette is named for its key, which is a sha256 hex digest. Anything else
+# in the directory — a README, a manifest someone parked there — is not a
+# recording, and `prune` must never mistake one for a stale key.
+_KEY_CHARS = set("0123456789abcdef")
+
+
+def _is_key(stem: str) -> bool:
+    return len(stem) == 64 and set(stem) <= _KEY_CHARS
+
 
 @dataclass
 class Cassette:
@@ -144,7 +153,11 @@ class CassetteStore:
         if not self.root.exists():
             return iter(())
         return iter(
-            sorted(p.stem for p in self.root.glob(f"*{FILENAME_SUFFIX}"))
+            sorted(
+                p.stem
+                for p in self.root.glob(f"*{FILENAME_SUFFIX}")
+                if _is_key(p.stem)
+            )
         )
 
 
