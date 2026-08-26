@@ -885,7 +885,8 @@ def test_stream_asks_intermediaries_not_to_buffer():
 
 
 async def _stream(monkeypatch, *, slots_filled=(), learner_closed=False,
-                  state=None, transcript="你好", dialogue=None, capture=None):
+                  coherent=True, state=None, transcript="你好", dialogue=None,
+                  capture=None):
     """Drive one spoken turn with a stubbed tracker; return `{stage: event}`."""
 
     async def fake_respond(*, kb_block, sketch, dialogue, user_text,
@@ -895,7 +896,7 @@ async def _stream(monkeypatch, *, slots_filled=(), learner_closed=False,
             capture["hint"] = hint
         return (
             Utterance(zh="好。", pinyin="hǎo."),
-            TurnAnnotation(),
+            TurnAnnotation(coherent=coherent),
             None,
             _FakeUsage(),
         )
@@ -938,11 +939,60 @@ async def test_state_rides_its_own_event(monkeypatch):
     assert not hasattr(events["done"], "state")
 
 
-async def test_the_grade_rides_the_state_event_not_the_annotation(monkeypatch):
-    """`coherence` is the grader's judgment, so it travels with the grade."""
+async def test_coherence_rides_the_reply_not_the_state_event(monkeypatch):
+    """Each event carries what its own branch produced. A4 gave coherence back
+    to the converser, so it lands with the converser — and `state` is once again
+    the answer to one question, how far the learner has got."""
     events = await _stream(monkeypatch)
-    assert events["state"].coherence == "on_track"
-    assert not hasattr(events["reply"].annotation, "coherence")
+    assert events["reply"].annotation.coherent is True
+    assert not hasattr(events["state"], "coherence")
+
+
+async def test_the_gate_blocks_credit_on_a_streamed_turn(monkeypatch):
+    """The whole turn, not the pure function: the grader credited a slot and
+    the state event that reaches the client carries none."""
+    events = await _stream(monkeypatch, slots_filled=["self_name"], coherent=False)
+
+    assert events["reply"].annotation.coherent is False
+    assert events["state"].state.filled_at == {}
+
+
+async def test_the_gate_applies_when_the_grade_wins_the_race(monkeypatch):
+    """The ordering the gate depends on, asserted rather than assumed.
+
+    The grader is a short call and often lands first. A `StateEvent` emitted
+    then would have no annotation to gate on — so the grade is parked until the
+    reply flushes, and this test forces exactly that order.
+    """
+    reply_may_finish = asyncio.Event()
+
+    async def slow_respond(**kwargs):
+        await reply_may_finish.wait()
+        return (
+            Utterance(zh="好。", pinyin="hǎo."),
+            TurnAnnotation(coherent=False),
+            None,
+            _FakeUsage(),
+        )
+
+    async def fast_grade(**kwargs):
+        reply_may_finish.set()
+        return GraderResult(slots_filled=["self_name"]), None
+
+    monkeypatch.setattr(conversation, "respond", slow_respond)
+    monkeypatch.setattr(grader, "grade", fast_grade)
+
+    events = {}
+    async for event in orchestrator.stream_audio_turn(
+        b"FAKEWAV",
+        transcript=Utterance(zh="我叫小明", pinyin="wǒ jiào xiǎo míng"),
+        kb_block=kb.load_converser_block("greetings"),
+        scenario=kb.load_scenario("greetings"),
+        state=SessionState(),
+    ):
+        events[event.stage] = event
+
+    assert events["state"].state.filled_at == {}
 
 
 async def test_a_failed_grade_credits_nothing_and_records_the_debt(monkeypatch):
@@ -970,7 +1020,6 @@ async def test_a_failed_grade_credits_nothing_and_records_the_debt(monkeypatch):
 
     assert events["reply"].reply.zh == "好。"
     assert events["state"].state.filled_at == submitted.filled_at
-    assert events["state"].coherence is None
     assert "error" not in events
     # Turn 1 went ungraded, so the watermark sits behind it and turn 2 owes two.
     assert events["state"].state.last_graded_turn == 0
@@ -1159,7 +1208,7 @@ async def test_the_turn_reports_what_the_grade_cost(monkeypatch):
     cost was the entire reason for a separate model."""
     async def graded(**kwargs):
         return (
-            GraderResult(coherence="on_track"),
+            GraderResult(),
             SimpleNamespace(
                 input_tokens=900, output_tokens=120,
                 cache_read_input_tokens=512, cache_creation_input_tokens=0,

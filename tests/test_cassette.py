@@ -504,7 +504,7 @@ async def test_the_real_grader_replays_off_a_cassette(tmp_path):
     request = grader.build_request(
         scenario=scenario, dialogue=[], user_text="我要一杯茶", opening_line="您好"
     )
-    result = GraderResult(coherence="on_track", slots_filled=[])
+    result = GraderResult(slots_filled=["order"])
     store.append(
         cassette.request_key(request),
         {
@@ -524,7 +524,7 @@ async def test_the_real_grader_replays_off_a_cassette(tmp_path):
         client=cassette.CassetteClient(store),
     )
 
-    assert grade.coherence == "on_track"
+    assert grade.slots_filled == ["order"]
     assert usage.output_tokens == 20
 
 

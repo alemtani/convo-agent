@@ -45,7 +45,9 @@ should wait on. Live modules: `main.py`, `orchestrator.py`, `termination.py`,
 `profile.py` (Phases 7–8).
 
 Session state is client-held, like `sketch`: `termination.py` computes it from
-the **grader's** judgment and the client resubmits it every turn. It rides its
+the **grader's** judgment, gated by the **partner's** (`coherent` — a turn that
+did not follow from the partner's last line earns nothing), and the client
+resubmits it every turn. It rides its
 own `StateEvent` — not `ReplyEvent`, because the grader is a separate branch of
 the fan-out and holding the reply for it would spend the latency that split
 exists to protect; and not `DoneEvent`, which waits on the PA branch too. A

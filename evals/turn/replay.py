@@ -19,13 +19,16 @@ Two things it reports that the grader-only runner cannot:
   words, which is what production grades. The grader-only runner feeds it the
   fixture's 汉字 — a stand-in the real path never sees.
 
-  Note what is *not* here: `coherence` itself. `ConversationTurnResponse`
-  carries none — it is the grader's judgment, and it reaches the client only
-  through its consequence, whether the slot advanced. So coherence accuracy
-  stays the grader-only runner's measurement, judged against `gold.json`. A4
-  moves coherence onto the partner's annotation as a gate; on that day this
-  runner becomes the place it is observed, and `TurnObservation` grows the
-  field.
+- **Coherence**, since A4. It is the partner's own judgment, so this is the
+  only runner that can observe one: the grader-only runner holds the partner
+  still. `TurnObservation` carries the tag and `main` scores it against
+  `gold.json`.
+
+  Note that `slots_filled` here is what the turn *credited*, gate included — a
+  turn the partner called incoherent shows an empty list however the grader
+  graded it, which is what the learner sees. The grader's own answer, ungated,
+  is the other runner's measurement.
+
 - **Over-volunteering** (`withholding.py`): a `request` slot handed over before
   the learner asked is a point they can no longer earn.
 
@@ -45,7 +48,8 @@ from typing import List, Optional, Tuple
 from backend import config, kb, orchestrator
 from backend.models import SessionState, TextTurnRequest, Utterance
 from evals import cassette
-from evals.coherence.cases import Case, CaseError, load_cases
+from evals.coherence.cases import Case, CaseError, load_cases, load_gold, paired
+from evals.coherence.matrix import confusion
 from evals.turn import withholding
 
 CASES_DIR = os.path.join("tests", "fixtures", "sessions")
@@ -59,7 +63,11 @@ _TURN_TIMEOUT_S = 90.0
 
 @dataclass
 class TurnObservation:
-    """One whole turn, as the app would have produced it."""
+    """One whole turn, as the app would have produced it.
+
+    `coherence` is the tag string rather than the annotation's boolean, so it
+    lines up with `gold.json` and can be read straight into `matrix.confusion`.
+    """
 
     case_id: str
     reply_zh: str
@@ -67,6 +75,7 @@ class TurnObservation:
     slots_filled: Tuple[str, ...]
     volunteered: Tuple[str, ...]
     said_goodbye: bool
+    coherence: str
     status: str
 
 
@@ -109,6 +118,7 @@ async def replay_case(case: Case, *, client=None) -> TurnObservation:
         slots_filled=slots,
         volunteered=given_away,
         said_goodbye=response.annotation.learner_said_goodbye,
+        coherence="coherent" if response.annotation.coherent else "incoherent",
         status=response.state.status,
     )
 
@@ -132,7 +142,7 @@ async def replay_all(
             gave = list(observation.volunteered)
             print(
                 f"run {run}/{repeat}  {case.id:<24} "
-                f"slots={list(observation.slots_filled)}"
+                f"{observation.coherence:<10} slots={list(observation.slots_filled)}"
                 + (f"  VOLUNTEERED={gave}" if gave else "")
             )
             if on_run is not None:
@@ -154,6 +164,10 @@ def main() -> None:
         raise SystemExit("--used-out needs the whole corpus; drop --case")
 
     cases = load_cases(args.cases_dir)
+    # Pair before spending anything: an unlabelled case is a hole in the
+    # coherence matrix, and finding that out after the calls is too late.
+    gold = load_gold(os.path.join(args.cases_dir, "gold.json"))
+    paired(cases, gold)
     if args.case:
         wanted = set(args.case)
         unknown = sorted(wanted - {case.id for case in cases})
@@ -182,6 +196,18 @@ def main() -> None:
     )
     write(observations)
     print(f"\nwrote {len(observations)} observations to {args.out}")
+
+    # The partner's tag against a fair reader's, as a 2×2. Printed rather than
+    # asserted: this runner reports, and the gate it feeds is asserted in
+    # `tests/test_orchestrator.py` where it is a pure function.
+    counts = confusion(observations, gold)
+    print("\ncoherence — gold \\ observed")
+    for expected in ("coherent", "incoherent"):
+        row = "  ".join(
+            f"{seen}={counts[(expected, seen)]}"
+            for seen in ("coherent", "incoherent")
+        )
+        print(f"  {expected:<11} {row}")
 
     cassette.cli.write_used(args, client.used)
 

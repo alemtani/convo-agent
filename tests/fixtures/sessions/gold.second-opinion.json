@@ -1,6 +1,6 @@
 {
   "clean-slot-fill": {
-    "coherence": "on_track",
+    "coherence": "coherent",
     "credit_ok": true,
     "slots_established": [
       "recommendation"
@@ -8,13 +8,13 @@
     "rationale": "After the menu is offered, asking which dish is best is the recommendation request."
   },
   "derailed-input": {
-    "coherence": "off_track",
+    "coherence": "incoherent",
     "credit_ok": false,
     "slots_established": [],
-    "rationale": "The turn drops into English and neither answers the drink question nor asks anything in Chinese."
+    "rationale": "The turn drops into English and neither answers the drink question nor asks anything in Chinese. Tagged `off_track` under the three-tag scheme."
   },
   "earned-under-annotated": {
-    "coherence": "on_track",
+    "coherence": "coherent",
     "credit_ok": true,
     "slots_established": [
       "self_name",
@@ -23,7 +23,7 @@
     "rationale": "The pinyin returns the greeting, gives a name, and asks the partner's name."
   },
   "elliptical-ni-ne": {
-    "coherence": "on_track",
+    "coherence": "coherent",
     "credit_ok": true,
     "slots_established": [
       "wellbeing"
@@ -31,13 +31,13 @@
     "rationale": "The learner answers 你最近怎么样 and turns it back with 你呢, which is the wellbeing ask."
   },
   "nonsequitur-slot-fill": {
-    "coherence": "drifting",
+    "coherence": "incoherent",
     "credit_ok": false,
     "slots_established": [],
-    "rationale": "Asking which dish is best does not answer the drink question, so the recommendation phrase does not earn credit."
+    "rationale": "Asking which dish is best does not answer the drink question, so the recommendation phrase does not earn credit. Tagged `drifting` under the three-tag scheme; `drifting` counts as incoherent (A4)."
   },
   "order-after-answers": {
-    "coherence": "on_track",
+    "coherence": "coherent",
     "credit_ok": true,
     "slots_established": [
       "order"
@@ -45,7 +45,7 @@
     "rationale": "After learning the recommended dish and the drinks, the learner orders one of each."
   },
   "milk-and-biscuits": {
-    "coherence": "on_track",
+    "coherence": "coherent",
     "credit_ok": true,
     "slots_established": [
       "recommendation",
@@ -55,7 +55,7 @@
     "rationale": "Asks which dish is best, asks what there is to drink, and orders a drink and a food in one turn."
   },
   "computer-work-ni-ne": {
-    "coherence": "on_track",
+    "coherence": "coherent",
     "credit_ok": true,
     "slots_established": [
       "self_job",
@@ -65,7 +65,7 @@
     "rationale": "States a job and 你呢 asks both origin and job back. They did not state their own origin."
   },
   "clip-and-tea": {
-    "coherence": "on_track",
+    "coherence": "coherent",
     "credit_ok": true,
     "slots_established": [
       "order"
@@ -73,13 +73,13 @@
     "rationale": "Orders a dish and a drink after both answers. 夹子 is close to 饺子; 茶 is the drink just offered."
   },
   "wandering-no-slot": {
-    "coherence": "drifting",
+    "coherence": "incoherent",
     "credit_ok": false,
     "slots_established": [],
-    "rationale": "Saying they have three friends is in-band Chinese that does not answer the drink question or fill a slot."
+    "rationale": "Saying they have three friends is in-band Chinese that does not answer the drink question or fill a slot. Tagged `drifting` under the three-tag scheme; `drifting` counts as incoherent (A4)."
   },
   "owed-drinks-then-order": {
-    "coherence": "on_track",
+    "coherence": "coherent",
     "credit_ok": true,
     "slots_established": [
       "order"

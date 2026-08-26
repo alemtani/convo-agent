@@ -548,14 +548,22 @@ in the scene, and the learner has a clean shot at the missing slot.
 **Turn 3** — *谢谢。* (`xièxie` — "Thank you.")
 
 ```
-tracker    → slots_filled: []        no new slots
+grade      → slots_filled: []        no new slots
 state      → {item, quantity}        missing: [price]
-annotation → coherence: drifting
+annotation → coherent: true          a thank-you follows from 不客气's cue
+gate       → nothing to block        the turn established nothing anyway
 pressure   → unchanged: the transaction is still open
 ```
 
 > 不客气。
 > _bú kèqi._ — "You're welcome."
+
+An earlier version of this trace tagged the thank-you `drifting`, because it
+moved the goal along not at all. That is the confusion `coherent` must not
+make: it asks whether the turn followed from the partner's last line, never
+whether it was worth points. A turn can be perfectly coherent and earn nothing,
+which is this turn — and the gate (`docs/streams/grading.md` A4) only ever
+withholds credit the grader found.
 
 ---
 

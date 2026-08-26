@@ -1,32 +1,33 @@
-"""V0/A1: the logic under the `coherence` measurement (`docs/VALIDITY.md`).
+"""V0/A1: the logic under the grader's measurement (`docs/VALIDITY.md`).
 
 Two halves, both deterministic and both tested here: loading a recorded case
 set with its gold labels held *separately* from the transcripts, and turning a
-set of observed tags into a gate recommendation — including the recommendation
-that no gate is safe.
+set of observed grades into per-case slot accuracy.
+
+The gate-recommendation half is gone with A4, which ships the gate instead of
+searching for one. What is left of `coherence` here is the label schema — two
+tags, not three — and the 2×2 the *turn* runner fills, since the tag is the
+partner's judgment now and only that runner runs a partner.
 
 Replay itself runs off cassettes (`evals/cassettes/`). A1's dense-turn cases
 assert slot credit against those recordings, and all three pass since A3
 rewrote the grader's `slots_filled` instruction.
 """
 import json
+from types import SimpleNamespace
 
 import pytest
 
 from backend import termination
 from evals.coherence.cases import (
+    COHERENCE_TAGS,
     CaseError,
     Gold,
     load_cases,
     load_gold,
     paired,
 )
-from evals.coherence.matrix import (
-    Observation,
-    confusion,
-    evaluate_gates,
-    recommend,
-)
+from evals.coherence.matrix import Observation, confusion
 
 
 def _write_case(dirpath, case_id, **overrides):
@@ -68,7 +69,7 @@ def test_load_cases_reads_every_case_sorted_by_id(tmp_path):
 
 def test_load_cases_ignores_the_gold_file(tmp_path):
     _write_case(tmp_path, "only-case")
-    _write_gold(tmp_path, {"only-case": {"coherence": "drifting", "credit_ok": False}})
+    _write_gold(tmp_path, {"only-case": {"coherence": "incoherent", "credit_ok": False}})
 
     assert [c.id for c in load_cases(str(tmp_path))] == ["only-case"]
 
@@ -77,7 +78,7 @@ def test_load_cases_ignores_every_label_file_not_just_the_default_one(tmp_path):
     """A second opinion is a label set, not a case. It must not become one."""
     _write_case(tmp_path, "only-case")
     (tmp_path / "gold.second-opinion.json").write_text(
-        json.dumps({"only-case": {"coherence": "on_track", "credit_ok": True}}),
+        json.dumps({"only-case": {"coherence": "coherent", "credit_ok": True}}),
         encoding="utf-8",
     )
 
@@ -96,12 +97,12 @@ def test_load_gold_reads_labels_and_defaults_the_optional_fields(tmp_path):
         tmp_path,
         {
             "nonsequitur": {
-                "coherence": "drifting",
+                "coherence": "incoherent",
                 "credit_ok": False,
                 "slots_established": ["recommendation"],
                 "rationale": "answered nothing that was asked",
             },
-            "clean": {"coherence": "on_track", "credit_ok": True},
+            "clean": {"coherence": "coherent", "credit_ok": True},
         },
     )
 
@@ -109,7 +110,7 @@ def test_load_gold_reads_labels_and_defaults_the_optional_fields(tmp_path):
 
     assert gold["nonsequitur"] == Gold(
         case_id="nonsequitur",
-        coherence="drifting",
+        coherence="incoherent",
         credit_ok=False,
         slots_established=("recommendation",),
         rationale="answered nothing that was asked",
@@ -126,7 +127,7 @@ def test_load_gold_rejects_a_label_outside_the_schema(tmp_path):
 
 
 def test_load_gold_rejects_a_missing_credit_decision(tmp_path):
-    _write_gold(tmp_path, {"bad": {"coherence": "on_track"}})
+    _write_gold(tmp_path, {"bad": {"coherence": "coherent"}})
 
     with pytest.raises(CaseError, match="credit_ok"):
         load_gold(str(tmp_path / "gold.json"))
@@ -134,7 +135,7 @@ def test_load_gold_rejects_a_missing_credit_decision(tmp_path):
 
 def test_paired_rejects_a_case_with_no_label(tmp_path):
     _write_case(tmp_path, "unlabelled")
-    _write_gold(tmp_path, {"other": {"coherence": "on_track", "credit_ok": True}})
+    _write_gold(tmp_path, {"other": {"coherence": "coherent", "credit_ok": True}})
 
     with pytest.raises(CaseError, match="unlabelled"):
         paired(load_cases(str(tmp_path)), load_gold(str(tmp_path / "gold.json")))
@@ -145,8 +146,8 @@ def test_paired_rejects_a_label_with_no_case(tmp_path):
     _write_gold(
         tmp_path,
         {
-            "present": {"coherence": "on_track", "credit_ok": True},
-            "ghost": {"coherence": "on_track", "credit_ok": True},
+            "present": {"coherence": "coherent", "credit_ok": True},
+            "ghost": {"coherence": "coherent", "credit_ok": True},
         },
     )
 
@@ -157,186 +158,55 @@ def test_paired_rejects_a_label_with_no_case(tmp_path):
 # --- the matrix --------------------------------------------------------------
 
 
-def _gold(case_id, coherence, credit_ok):
+def _gold(case_id, coherence, credit_ok, slots_established=()):
     return Gold(
         case_id=case_id,
         coherence=coherence,
         credit_ok=credit_ok,
-        slots_established=(),
+        slots_established=tuple(slots_established),
         rationale="",
     )
 
 
+def _tagged(case_id, coherence):
+    """The shape `confusion` reads: a case id and a tag.
+
+    A stand-in for `evals.turn.replay.TurnObservation`, which is what produces
+    the tag since A4. Building one here would drag the whole turn — a reply, a
+    reading, a withholding judgment — into a test about counting.
+    """
+    return SimpleNamespace(case_id=case_id, coherence=coherence)
+
+
 def test_confusion_counts_gold_against_observed():
     gold = {
-        "a": _gold("a", "on_track", True),
-        "b": _gold("b", "drifting", False),
+        "a": _gold("a", "coherent", True),
+        "b": _gold("b", "incoherent", False),
     }
     observations = [
-        Observation(case_id="a", coherence="on_track", slots_filled=()),
-        Observation(case_id="a", coherence="drifting", slots_filled=()),
-        Observation(case_id="b", coherence="on_track", slots_filled=()),
+        _tagged("a", "coherent"),
+        _tagged("a", "incoherent"),
+        _tagged("b", "incoherent"),
     ]
 
     counts = confusion(observations, gold)
 
-    assert counts[("on_track", "on_track")] == 1
-    assert counts[("on_track", "drifting")] == 1
-    assert counts[("drifting", "on_track")] == 1
-    assert counts[("drifting", "off_track")] == 0
+    assert counts[("coherent", "coherent")] == 1
+    assert counts[("coherent", "incoherent")] == 1
+    assert counts[("incoherent", "incoherent")] == 1
+    # Zero-filled: an absent cell and an empty one read very differently.
+    assert counts[("incoherent", "coherent")] == 0
 
 
-def test_a_gate_blocks_gaming_when_the_tag_falls_outside_it():
-    gold = {"gaming": _gold("gaming", "drifting", False)}
-    observations = [
-        Observation(case_id="gaming", coherence="drifting", slots_filled=("recommendation",))
-    ]
+def test_the_tag_set_is_binary():
+    """Three tags collapsed to two in A4 (`docs/streams/grading.md`).
 
-    strict = _report(evaluate_gates(observations, gold), {"on_track"})
-
-    assert strict.gaming_blocked == 1
-    assert strict.gaming_total == 1
-    assert strict.rescues_suppressed == 0
-
-
-def test_a_gate_that_suppresses_an_earned_turn_is_not_safe():
-    """The A2 case: a turn the learner earned, tagged as if they had not."""
-    gold = {
-        "earned": _gold("earned", "on_track", True),
-        "gaming": _gold("gaming", "drifting", False),
-    }
-    observations = [
-        Observation(case_id="earned", coherence="drifting", slots_filled=()),
-        Observation(case_id="gaming", coherence="drifting", slots_filled=("order",)),
-    ]
-
-    strict = _report(evaluate_gates(observations, gold), {"on_track"})
-
-    assert strict.rescues_suppressed == 1
-    assert strict.safe is False
-
-
-def test_recommend_picks_the_strictest_safe_gate_that_blocks_something():
-    gold = {
-        "earned": _gold("earned", "on_track", True),
-        "gaming": _gold("gaming", "off_track", False),
-    }
-    observations = [
-        Observation(case_id="earned", coherence="on_track", slots_filled=()),
-        Observation(case_id="gaming", coherence="off_track", slots_filled=("order",)),
-    ]
-
-    assert recommend(evaluate_gates(observations, gold)).allow == frozenset({"on_track"})
-
-
-def test_recommend_prefers_a_looser_gate_over_suppressing_an_earned_turn():
-    gold = {
-        "earned": _gold("earned", "on_track", True),
-        "gaming": _gold("gaming", "off_track", False),
-    }
-    observations = [
-        Observation(case_id="earned", coherence="drifting", slots_filled=()),
-        Observation(case_id="gaming", coherence="off_track", slots_filled=("order",)),
-    ]
-
-    assert recommend(evaluate_gates(observations, gold)).allow == frozenset(
-        {"on_track", "drifting"}
-    )
-
-
-def test_recommend_reports_none_when_no_gate_is_safe():
-    """The outcome V0 is allowed to reach: the signal carries nothing."""
-    gold = {
-        "earned": _gold("earned", "on_track", True),
-        "gaming": _gold("gaming", "drifting", False),
-    }
-    observations = [
-        Observation(case_id="earned", coherence="off_track", slots_filled=()),
-        Observation(case_id="gaming", coherence="on_track", slots_filled=("order",)),
-    ]
-
-    assert recommend(evaluate_gates(observations, gold)) is None
-
-
-def test_recommend_reports_none_when_a_safe_gate_blocks_no_gaming():
-    """A gate that never fires is not a gate; shipping it is pure risk."""
-    gold = {
-        "earned": _gold("earned", "on_track", True),
-        "gaming": _gold("gaming", "drifting", False),
-    }
-    observations = [
-        Observation(case_id="earned", coherence="on_track", slots_filled=()),
-        Observation(case_id="gaming", coherence="on_track", slots_filled=("order",)),
-    ]
-
-    assert recommend(evaluate_gates(observations, gold)) is None
-
-
-def test_one_bad_run_out_of_many_makes_a_gate_unsafe():
-    """Stochastic tags: a gate that suppresses an earned turn 1 run in 3 is not safe."""
-    gold = {
-        "earned": _gold("earned", "on_track", True),
-        "gaming": _gold("gaming", "off_track", False),
-    }
-    observations = [
-        Observation(case_id="earned", coherence="on_track", slots_filled=()),
-        Observation(case_id="earned", coherence="on_track", slots_filled=()),
-        Observation(case_id="earned", coherence="drifting", slots_filled=()),
-        Observation(case_id="gaming", coherence="off_track", slots_filled=("order",)),
-    ]
-
-    strict = _report(evaluate_gates(observations, gold), {"on_track"})
-
-    assert strict.rescues_suppressed == 1
-    assert strict.rescues_total == 3
-    assert strict.safe is False
-    assert recommend(evaluate_gates(observations, gold)).allow == frozenset(
-        {"on_track", "drifting"}
-    )
-
-
-def _report(reports, allow):
-    return next(r for r in reports if r.allow == frozenset(allow))
-
-
-def test_gaming_counts_only_runs_where_credit_was_actually_granted():
-    """A wandering turn that credits nothing is not a gate's win.
-
-    Counting it would let a gate look useful for stopping something that was
-    never going to happen, and V1 would ship on that number.
+    The tags were built to measure. A gate has one consequence, so `drifting`
+    and `off_track` are the same answer to it — and a legitimate topic change
+    is caught along with the gaming, which is the cost that collapse was
+    accepted at.
     """
-    gold = {
-        "wandered": _gold("wandered", "drifting", False),
-        "gaming": _gold("gaming", "drifting", False),
-    }
-    observations = [
-        Observation(case_id="wandered", coherence="drifting", slots_filled=()),
-        Observation(
-            case_id="gaming", coherence="drifting", slots_filled=("recommendation",)
-        ),
-    ]
-
-    strict = _report(evaluate_gates(observations, gold), {"on_track"})
-
-    assert strict.gaming_total == 1
-    assert strict.gaming_blocked == 1
-
-
-def test_an_earned_turn_counts_as_a_rescue_even_when_the_tracker_credited_it():
-    """The gate sits under both paths, so a suppression is a suppression."""
-    gold = {"earned": _gold("earned", "on_track", True)}
-    observations = [
-        Observation(case_id="earned", coherence="drifting", slots_filled=("self_name",)),
-        Observation(case_id="earned", coherence="drifting", slots_filled=()),
-    ]
-
-    strict = _report(evaluate_gates(observations, gold), {"on_track"})
-
-    assert strict.rescues_total == 2
-    assert strict.rescues_suppressed == 2
-
-
-# --- the report --------------------------------------------------------------
+    assert COHERENCE_TAGS == ("coherent", "incoherent")
 
 
 def test_load_observations_reads_what_replay_wrote(tmp_path):
@@ -346,13 +216,13 @@ def test_load_observations_reads_what_replay_wrote(tmp_path):
     path.write_text(
         json.dumps(
             {
-                "model": "claude-sonnet-5",
-                "repeat": 1,
+                "model": "claude-opus-5",
+                "repeat": 2,
                 "observations": [
                     {
                         "case_id": "a",
-                        "coherence": "drifting",
                         "slots_filled": ["order"],
+                        "slots_filled_previously": ["drinks"],
                     }
                 ],
             }
@@ -362,82 +232,22 @@ def test_load_observations_reads_what_replay_wrote(tmp_path):
 
     run = load_observations(str(path))
 
-    assert run.model == "claude-sonnet-5"
+    # The model id travels with the numbers: the judgment is that model's.
+    assert run.model == "claude-opus-5"
+    assert run.repeat == 2
     assert run.observations == [
-        Observation(case_id="a", coherence="drifting", slots_filled=("order",))
+        Observation(
+            case_id="a",
+            slots_filled=("order",),
+            slots_filled_previously=("drinks",),
+        )
     ]
 
 
-def test_report_names_the_recommendation_and_shows_the_matrix():
-    from evals.coherence.report import render
-
-    gold = {
-        "earned": _gold("earned", "on_track", True),
-        "gaming": _gold("gaming", "off_track", False),
-    }
-    observations = [
-        Observation(case_id="earned", coherence="on_track", slots_filled=()),
-        Observation(case_id="gaming", coherence="off_track", slots_filled=("order",)),
-    ]
-
-    text = render(observations, gold, model="claude-sonnet-5")
-
-    assert "claude-sonnet-5" in text
-    assert "on_track" in text
-    assert "Recommended gate" in text
-
-
-def test_report_says_so_when_no_gate_is_safe():
-    from evals.coherence.report import render
-
-    gold = {
-        "earned": _gold("earned", "on_track", True),
-        "gaming": _gold("gaming", "drifting", False),
-    }
-    observations = [
-        Observation(case_id="earned", coherence="off_track", slots_filled=()),
-        Observation(case_id="gaming", coherence="on_track", slots_filled=("order",)),
-    ]
-
-    text = render(observations, gold, model="claude-sonnet-5")
-
-    assert "No safe gate" in text
-
-
-def test_report_lists_the_per_case_disagreements():
-    """The rows a reader needs: which case, what it deserved, what it got."""
-    from evals.coherence.report import render
-
-    gold = {"earned": _gold("earned", "on_track", True)}
-    observations = [
-        Observation(case_id="earned", coherence="drifting", slots_filled=()),
-    ]
-
-    text = render(observations, gold, model="claude-sonnet-5")
-
-    assert "earned" in text
-    assert "drifting" in text
-
-
-def test_report_distinguishes_a_gate_that_never_fires_from_one_that_misjudges():
-    """Two very different failures; a reader must not have to guess which happened."""
-    from evals.coherence.report import render
-
-    gold = {
-        "earned": _gold("earned", "on_track", True),
-        "gaming": _gold("gaming", "drifting", False),
-    }
-    never_fires = [
-        Observation(case_id="earned", coherence="on_track", slots_filled=()),
-        Observation(case_id="gaming", coherence="on_track", slots_filled=("order",)),
-    ]
-    misjudges = [
-        Observation(case_id="earned", coherence="off_track", slots_filled=()),
-        Observation(case_id="gaming", coherence="on_track", slots_filled=("order",)),
-    ]
-
-    assert "never fires" in render(never_fires, gold, model="m")
-    assert "never fires" not in render(misjudges, gold, model="m")
+def test_the_grader_runner_records_no_coherence():
+    """A4's shape. The grader is not asked, so an `Observation` has nowhere to
+    put a tag — a field here could only ever hold an invention."""
+    assert not hasattr(Observation(case_id="a"), "coherence")
 
 
 # --- the real corpus ---------------------------------------------------------
@@ -577,10 +387,10 @@ def test_replay_does_not_call_the_retired_pressure_hint():
     assert "grader_worker.grade" in source
 
 
-async def test_replay_reads_coherence_and_slots_from_the_grader(monkeypatch):
-    """V2 moved both off the converser. A replay that still reads the annotation
-    raises before it reaches the network (`termination.pressure_hint` is gone
-    too). The measurement has to come from `GraderResult`.
+async def test_replay_reads_the_credited_slots_from_the_grader(monkeypatch):
+    """V2 moved the grade off the converser, and A4 moved coherence back to it.
+    What this runner measures is what is left on `GraderResult`: which slots the
+    turn filled, read from the grader and from nothing else.
     """
     from types import SimpleNamespace
     from unittest.mock import AsyncMock
@@ -589,9 +399,7 @@ async def test_replay_reads_coherence_and_slots_from_the_grader(monkeypatch):
     from evals.coherence.cases import Case
     from evals.coherence.replay import replay_case
 
-    recorded = GraderResult(
-        coherence="drifting", slots_filled=["recommendation", "drinks"]
-    )
+    recorded = GraderResult(slots_filled=["recommendation", "drinks"])
     grade = AsyncMock(return_value=(recorded, SimpleNamespace()))
     monkeypatch.setattr("backend.workers.grader.grade", grade)
 
@@ -606,7 +414,6 @@ async def test_replay_reads_coherence_and_slots_from_the_grader(monkeypatch):
         )
     )
 
-    assert observation.coherence == "drifting"
     assert observation.slots_filled == ("recommendation", "drinks")
     assert grade.await_count == 1
     kwargs = grade.await_args.kwargs
@@ -646,7 +453,7 @@ def test_an_observation_carries_what_the_owed_turn_established():
     """
     from evals.coherence.matrix import Observation
 
-    assert Observation(case_id="a", coherence="on_track").slots_filled_previously == ()
+    assert Observation(case_id="a").slots_filled_previously == ()
 
 
 async def test_replay_reads_both_slot_lists_off_the_grader(monkeypatch):
@@ -658,7 +465,6 @@ async def test_replay_reads_both_slot_lists_off_the_grader(monkeypatch):
     from evals.coherence.replay import replay_case
 
     recorded = GraderResult(
-        coherence="on_track",
         slots_filled=["order"],
         slots_filled_previously=["drinks"],
     )
@@ -705,66 +511,10 @@ async def test_a_turn_settling_a_debt_credits_the_earlier_turn_separately():
 
 def test_load_gold_rejects_a_credit_decision_that_is_not_a_boolean(tmp_path):
     """`bool("false")` is `True`. A coerced label is a yes nobody wrote."""
-    _write_gold(tmp_path, {"bad": {"coherence": "on_track", "credit_ok": "false"}})
+    _write_gold(tmp_path, {"bad": {"coherence": "coherent", "credit_ok": "false"}})
 
     with pytest.raises(CaseError, match="credit_ok"):
         load_gold(str(tmp_path / "gold.json"))
-
-
-def test_load_observations_rejects_an_unknown_tag(tmp_path):
-    """An unknown tag falls outside every gate, including the open one."""
-    from evals.coherence.matrix import load_observations
-
-    path = tmp_path / "observations.json"
-    path.write_text(
-        json.dumps(
-            {
-                "model": "m",
-                "observations": [{"case_id": "a", "coherence": "on-track"}],
-            }
-        ),
-        encoding="utf-8",
-    )
-
-    with pytest.raises(CaseError, match="on-track"):
-        load_observations(str(path))
-
-
-def test_report_says_the_signal_is_both_silent_and_harsh_when_it_is():
-    """Silent on gaming *and* harsh on earned turns is its own finding."""
-    from evals.coherence.report import render
-
-    gold = {
-        "earned": _gold("earned", "on_track", True),
-        "gaming": _gold("gaming", "drifting", False),
-    }
-    observations = [
-        Observation(case_id="earned", coherence="off_track", slots_filled=()),
-        Observation(case_id="gaming", coherence="on_track", slots_filled=("order",)),
-    ]
-
-    text = render(observations, gold, model="m")
-
-    assert "harmful as well as silent" in text
-    assert "never fires" not in text
-
-
-def test_report_blames_suppression_only_when_a_gate_actually_blocks_gaming():
-    """The 'blocks gaming only by punishing rescues' sentence needs a useful gate."""
-    from evals.coherence.report import render
-
-    gold = {
-        "earned": _gold("earned", "on_track", True),
-        "gaming": _gold("gaming", "off_track", False),
-    }
-    observations = [
-        Observation(case_id="earned", coherence="off_track", slots_filled=()),
-        Observation(case_id="gaming", coherence="off_track", slots_filled=("order",)),
-    ]
-
-    text = render(observations, gold, model="m")
-
-    assert "also suppresses a turn the learner earned" in text
 
 
 # --- slot accuracy: the metric V2 is judged on -------------------------------
@@ -775,8 +525,8 @@ def test_slot_accuracy_counts_exact_agreement_per_case():
 
     gold = {"a": _gold_with_slots("a", ("self_name",))}
     observations = [
-        Observation(case_id="a", coherence="on_track", slots_filled=("self_name",)),
-        Observation(case_id="a", coherence="on_track", slots_filled=()),
+        Observation(case_id="a", slots_filled=("self_name",)),
+        Observation(case_id="a", slots_filled=()),
     ]
 
     (report,) = slot_accuracy(observations, gold)
@@ -792,12 +542,8 @@ def test_slot_accuracy_names_credit_the_learner_never_earned():
 
     gold = {"gaming": _gold_with_slots("gaming", ())}
     observations = [
-        Observation(
-            case_id="gaming", coherence="on_track", slots_filled=("recommendation",)
-        ),
-        Observation(
-            case_id="gaming", coherence="on_track", slots_filled=("recommendation",)
-        ),
+        Observation(case_id="gaming", slots_filled=("recommendation",)),
+        Observation(case_id="gaming", slots_filled=("recommendation",)),
     ]
 
     (report,) = slot_accuracy(observations, gold)
@@ -813,7 +559,7 @@ def test_slot_accuracy_names_credit_the_learner_earned_and_did_not_get():
 
     gold = {"earned": _gold_with_slots("earned", ("self_name", "partner_name"))}
     observations = [
-        Observation(case_id="earned", coherence="on_track", slots_filled=("self_name",)),
+        Observation(case_id="earned", slots_filled=("self_name",)),
     ]
 
     (report,) = slot_accuracy(observations, gold)
@@ -827,22 +573,18 @@ def test_slot_accuracy_ignores_the_order_slots_were_reported_in():
 
     gold = {"a": _gold_with_slots("a", ("partner_name", "self_name"))}
     observations = [
-        Observation(
-            case_id="a", coherence="on_track", slots_filled=("self_name", "partner_name")
-        ),
+        Observation(case_id="a", slots_filled=("self_name", "partner_name")),
     ]
 
     assert slot_accuracy(observations, gold)[0].exact == 1
 
 
-def test_report_scores_slots_against_gold_not_only_coherence():
+def test_report_scores_slots_against_gold():
     from evals.coherence.report import render
 
     gold = {"gaming": _gold_with_slots("gaming", (), credit_ok=False)}
     observations = [
-        Observation(
-            case_id="gaming", coherence="on_track", slots_filled=("recommendation",)
-        ),
+        Observation(case_id="gaming", slots_filled=("recommendation",)),
     ]
 
     text = render(observations, gold, model="m")
@@ -854,7 +596,7 @@ def test_report_scores_slots_against_gold_not_only_coherence():
 def _gold_with_slots(case_id, slots, credit_ok=True):
     return Gold(
         case_id=case_id,
-        coherence="on_track",
+        coherence="coherent",
         credit_ok=credit_ok,
         slots_established=slots,
         rationale="",

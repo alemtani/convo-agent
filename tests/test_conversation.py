@@ -158,13 +158,28 @@ def test_no_part_of_the_request_tells_the_partner_what_is_scored():
 
 
 def test_the_converser_is_not_asked_to_annotate_what_it_cannot_see():
-    """The system prompt taught `slots_filled`, `learner_closed` and
-    `coherence`. All three are the grader's now, and a prompt that still asks
-    for them would have the partner reasoning about a rubric it was not given —
-    the worst of both designs."""
+    """The system prompt taught `slots_filled` and `learner_closed`. Both are
+    the grader's now, and a prompt that still asked for them would have the
+    partner reasoning about a rubric it was not given — the worst of both
+    designs.
+
+    `coherent` is not one of them and is asked for by name (A4). It names no
+    slot and no goal, so answering it tells the partner nothing about what is
+    being scored — which is exactly why it could move back."""
     prompt = render_system_prompt(0.8)
-    for field in ("slots_filled", "learner_closed", "coherence"):
+    for field in ("slots_filled", "learner_closed"):
         assert field not in prompt
+    assert "`coherent`" in prompt
+
+
+def test_the_partner_is_told_not_to_judge_the_learners_chinese():
+    """The gate's failure direction is asymmetric: a turn wrongly called
+    incoherent silently costs a point the learner earned. The target learner is
+    HSK 1–2, so "I did not understand" must mean the turn went somewhere else,
+    never that the grammar was wrong."""
+    prompt = render_system_prompt(0.8).lower()
+    assert "beginner" in prompt
+    assert "followed" in prompt
 
 
 def test_the_partner_prompt_is_persona_scene_band_and_pinyin():

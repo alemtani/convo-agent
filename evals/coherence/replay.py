@@ -1,18 +1,23 @@
-"""Replay the recorded cases through the grader and record the tags.
+"""Replay the recorded cases through the grader and record what it credited.
 
 Runs off **cassettes** by default (`evals/cassette/`): a key with no recording
 is an error, not a live call. `--record` is the only thing that spends money,
 and what it buys is committed. Its output is still a report rather than an
 assertion — but a report that costs nothing to reproduce.
 
-Each case is replayed `--repeat` times, because `coherence` and `slots_filled`
-are a model's output and not a function — one run tells you what happened once.
-Every run is its own row in `observations.json`, and `matrix.py` reads them all.
+Each case is replayed `--repeat` times, because `slots_filled` is a model's
+output and not a function — one run tells you what happened once. Every run is
+its own row in `observations.json`, and `matrix.py` reads them all.
 
-V2 moved both fields onto `GraderResult`. This runner calls the grader, not the
-converser: a measurement taken through a different path than the one that
-ships would measure something else. Turn 1 still needs the opening line the
-client resubmits, because that line is never in `dialogue`.
+**Slots only, since A4.** Coherence went back to the partner, and this runner
+holds the partner still — which is exactly why it is the right instrument for
+the grader and the wrong one for the gate. The partner's tag is measured by
+`evals/turn/replay.py`, the runner that runs a partner.
+
+This runner calls the grader, not the converser: a measurement taken through a
+different path than the one that ships would measure something else. Turn 1
+still needs the opening line the client resubmits, because that line is never
+in `dialogue`.
 
     python -m evals.coherence.replay --repeat 3               # free, off cassettes
     python -m evals.coherence.replay --record --samples 3     # live; costs money
@@ -84,7 +89,6 @@ async def replay_case(case: Case, *, client=None) -> Observation:
     )
     return Observation(
         case_id=case.id,
-        coherence=grade.coherence,
         slots_filled=tuple(grade.slots_filled),
         slots_filled_previously=tuple(grade.slots_filled_previously),
     )
@@ -118,7 +122,7 @@ async def replay_all(
             observations.append(observation)
             print(
                 f"run {run}/{repeat}  {case.id:<24} "
-                f"{observation.coherence:<10} slots={list(observation.slots_filled)}"
+                f"slots={list(observation.slots_filled)}"
             )
             if on_run is not None:
                 on_run(observations)

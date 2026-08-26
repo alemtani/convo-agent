@@ -427,11 +427,21 @@ def test_pick_scenario_topic_raises_when_the_kb_is_empty(monkeypatch):
 # --- M2-C: session state on the text turn --------------------------------
 
 
-def _tracker_worker(monkeypatch, slots_filled=(), learner_closed=False, capture=None):
+def _tracker_worker(
+    monkeypatch,
+    slots_filled=(),
+    slots_filled_previously=(),
+    learner_closed=False,
+    coherent=True,
+    capture=None,
+):
     """Stub both calls of a text turn; record the kwargs the converser got.
 
     Two stubs since V2: the converser writes the reply and the grader judges it.
     The tracker result is the *grader's* now — the converser is not asked.
+
+    `coherent` is set on the reply stub rather than on the grade (A4): the
+    partner is the only party that knows what its own line meant.
     """
 
     async def fake_respond(*, kb_block, sketch, dialogue, user_text,
@@ -441,7 +451,7 @@ def _tracker_worker(monkeypatch, slots_filled=(), learner_closed=False, capture=
             capture.update(hint=hint, dialogue=dialogue)
         return (
             Utterance(zh="好。", pinyin="hǎo."),
-            TurnAnnotation(),
+            TurnAnnotation(coherent=coherent),
             Utterance(zh="我叫小明", pinyin="wǒ jiào xiǎo míng"),
             object(),
         )
@@ -449,7 +459,11 @@ def _tracker_worker(monkeypatch, slots_filled=(), learner_closed=False, capture=
     monkeypatch.setattr(conversation, "respond", fake_respond)
     monkeypatch.setattr(
         grader, "grade",
-        grade_stub(slots_filled=list(slots_filled), learner_closed=learner_closed),
+        grade_stub(
+            slots_filled=list(slots_filled),
+            slots_filled_previously=list(slots_filled_previously),
+            learner_closed=learner_closed,
+        ),
     )
 
 
@@ -593,6 +607,82 @@ async def test_start_session_rejects_a_topic_with_no_scenario(monkeypatch):
 
     with pytest.raises(kb.KbError):
         await orchestrator.start_session(topic_id="greetings")
+
+
+# --- A4: the coherence gate ----------------------------------------------
+#
+# The partner judges whether the learner's turn followed from what it just
+# said; the grader judges which slots that turn filled. `_advance_or_echo` is
+# where the two meet, and the gate is what it does with the first: an
+# incoherent turn earns nothing.
+
+
+async def test_an_incoherent_turn_earns_no_slot_credit(monkeypatch):
+    """The gaming case: a turn that ignores the partner and says something
+    scoreable. The grader still reports the slot — it is asked one question and
+    it answers it — and the gate is what declines to bank it."""
+    _tracker_worker(monkeypatch, slots_filled=["self_name"], coherent=False)
+
+    resp = await orchestrator.run_text_turn(_req())
+
+    assert resp.state.filled_at == {}
+
+
+async def test_a_coherent_turn_is_credited_exactly_as_before(monkeypatch):
+    """The gate is a gate, not a tax: nothing changes on a turn that followed."""
+    _tracker_worker(monkeypatch, slots_filled=["self_name"], coherent=True)
+
+    resp = await orchestrator.run_text_turn(_req())
+
+    assert resp.state.filled_at == {"self_name": 1}
+
+
+async def test_an_incoherent_turn_never_takes_back_credit_already_earned(monkeypatch):
+    """A gate, never a deduction. A learner watching 3/4 become 2/4 reads that
+    as a bug, and they are not wrong to: those points were really earned."""
+    _tracker_worker(monkeypatch, slots_filled=["partner_name"], coherent=False)
+
+    resp = await orchestrator.run_text_turn(
+        _req(
+            dialogue=[{"role": "user", "zh": "我叫小明"}, {"role": "partner", "zh": "你好"}],
+            state=SessionState(filled_at={"self_name": 1}),
+        )
+    )
+
+    assert resp.state.filled_at == {"self_name": 1}
+
+
+async def test_an_incoherent_turn_cancels_the_credit_it_owed_earlier_turns(monkeypatch):
+    """The single exception, and why it is one: `slots_filled_previously` is
+    credit read off a turn that did not follow, for turns whose own coherence
+    nobody recorded. The learner has never seen it, so withholding it is not a
+    point taken away in front of them."""
+    _tracker_worker(
+        monkeypatch,
+        slots_filled=["partner_name"],
+        slots_filled_previously=["self_name"],
+        coherent=False,
+    )
+
+    resp = await orchestrator.run_text_turn(
+        _req(
+            dialogue=[{"role": "user", "zh": "我叫小明"}, {"role": "partner", "zh": "你好"}],
+            state=SessionState(last_graded_turn=0),
+        )
+    )
+
+    assert resp.state.filled_at == {}
+
+
+async def test_an_incoherent_turn_is_still_a_graded_turn(monkeypatch):
+    """The watermark moves. A blocked turn is judged, not owed — leaving it in
+    debt would hand the next turn's window a second chance to credit exactly
+    what the gate just refused."""
+    _tracker_worker(monkeypatch, slots_filled=["self_name"], coherent=False)
+
+    resp = await orchestrator.run_text_turn(_req())
+
+    assert resp.state.last_graded_turn == 1
 
 
 # --- the seam the stubs cannot see ---------------------------------------

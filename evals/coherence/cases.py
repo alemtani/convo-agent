@@ -15,7 +15,13 @@ import os
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 
-COHERENCE_TAGS = ("on_track", "drifting", "off_track")
+# Two tags since A4, where three collapsed into two: `on_track` → `coherent`,
+# and both `drifting` and `off_track` → `incoherent`. The three tags were built
+# to *measure* — to find out whether the signal separated gaming from earned
+# credit at all. It does, so it is a gate now, and a gate has one consequence:
+# `drifting` and `off_track` mean the same thing to it. A legitimate topic
+# change is caught by that collapse. It is a real cost, taken deliberately.
+COHERENCE_TAGS = ("coherent", "incoherent")
 
 GOLD_FILENAME = "gold.json"
 
@@ -77,7 +83,11 @@ class Gold:
     `coherence` is the tag a fair reader would give. `credit_ok` is the separate
     and more important question: **may this turn earn slot credit?** They are not
     the same field. A turn can wander and still establish a fact, and the whole
-    risk V1 carries is a gate that reads the first and decides the second.
+    risk the gate carries is that it reads the first and decides the second.
+
+    Since A4 the tag is the **partner's** judgment, so it is scored from
+    `evals/turn` — the runner that runs a partner — rather than from the
+    grader-only runner next door, which no longer produces one.
     """
 
     case_id: str

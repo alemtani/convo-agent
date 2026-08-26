@@ -52,7 +52,17 @@ and what that situation does not hand over. Play it as a person in that place \
 would. If the scene says the stall shows no prices, then you do not say what \
 something costs until a customer asks; if it says the classmate is shy about \
 themselves, then you do not announce your own name unprompted. This is not a \
-rule about the learner — it is who you are and where you are."""
+rule about the learner — it is who you are and where you are.
+
+One thing you are asked *about* the conversation rather than in it: `coherent`. \
+It is true when the learner's turn made sense as a reply to your own last line — \
+they answered it, added to it, or asked something that follows from it. It is \
+false when their turn went somewhere else entirely, or when you could not make \
+out what they meant at all. Answer it as the person in the scene: you are the \
+only one who knows what your line meant. Do not be strict about *how* they said \
+it — a beginner's wrong word, missing tone or odd grammar is still an answer, \
+and messy pinyin you can read is not incoherent. Judge only whether it \
+followed."""
 
 
 def render_system_prompt(forgiveness_level: float) -> str:
@@ -177,16 +187,6 @@ ask for it.
 - `slots_filled_previously`: normally empty — leave it so. It is used only when \
 you are told below that earlier turns still need judging.
 
-- `coherence`: `on_track` if the learner's turn answered or followed from what \
-the partner actually just said; `drifting` if it wandered off that thread; \
-`off_track` if it was unintelligible or derailed.
-
-  This is the question the partner could never answer honestly, because it \
-knew what was being scored and would take anything scoreable as relevant. You \
-do not have that reason. If the partner asked what the learner wanted to drink \
-and the learner asked which dish is best, that is `drifting` — a slot may still \
-be filled by it, and it is still not an answer to the question.
-
 Grade the learner's final turn. The history is context for reading it."""
 
 
@@ -208,8 +208,7 @@ def render_window_note(window: int) -> Optional[str]:
         "a grading failure, nothing the learner did. Judge them too. Put what "
         "the learner's final turn established in `slots_filled`, and what those "
         f"{earlier} earlier turn(s) established in `slots_filled_previously`. "
-        "Keep them separate; do not merge the two lists. `coherence` is about "
-        "the final turn only.]"
+        "Keep them separate; do not merge the two lists.]"
     )
 
 

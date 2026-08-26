@@ -97,7 +97,7 @@ def build_request(
     # On turn 1 `dialogue` is empty, because the partner's opening line costs the
     # learner none of their budget and so is never part of it. The learner's
     # first words are a response to that line and to nothing else, so without it
-    # coherence on turn 1 is judged against nothing.
+    # a turn-1 slot is judged with nothing to have answered.
     #
     # It rides as a prefix on the first *user* message rather than as an
     # assistant turn of its own: the Messages API requires `messages[0]` to be
