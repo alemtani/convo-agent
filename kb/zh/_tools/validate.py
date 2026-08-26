@@ -19,7 +19,7 @@ Checks (ERROR fails the run; WARN is advisory):
       · every `expressible_with` word ∈ target_vocab, at/below the ceiling   ERROR
       · more than one slot — substance                                      ERROR
       · at least one `request` slot — an obstacle                           ERROR
-      · no duplicate slot ids, unknown `depends_on`, or dependency cycle     ERROR
+      · no duplicate slot ids                                                ERROR
       · a `max_turns` override is ≥ the derived cap and states a reason      ERROR
       · `situation` / `goal` are non-empty and ASCII                         ERROR
       · a `request` slot requires ASCII `withholding` prose — the scene must
@@ -124,29 +124,6 @@ def tokenize(run, lexicon):
     return matched, leftover
 
 
-def _cycle(slots):
-    """Return a slot id on a `depends_on` cycle, or None. Iterative DFS."""
-    graph = {s.id: [d for d in s.depends_on] for s in slots}
-    state = {}  # 0 = visiting, 1 = done
-    for start in graph:
-        if state.get(start):
-            continue
-        stack = [(start, iter(graph[start]))]
-        state[start] = 0
-        while stack:
-            node, deps = stack[-1]
-            nxt = next(deps, None)
-            if nxt is None:
-                state[node] = 1
-                stack.pop()
-            elif state.get(nxt) == 0:
-                return nxt
-            elif nxt in graph and state.get(nxt) is None:
-                state[nxt] = 0
-                stack.append((nxt, iter(graph[nxt])))
-    return None
-
-
 def scenario_errors(scenario, target_vocab, hsk, ceiling):
     """The six authoring rules for a scenario block (docs/SCENARIOS.md)."""
     errors = []
@@ -175,19 +152,14 @@ def scenario_errors(scenario, target_vocab, hsk, ceiling):
         errors.append("no request slots — the learner never has to extract "
                       "anything. This is a vocabulary drill, not a scenario.")
 
-    # 4. a well-formed slot graph.
+    # 4. unique slot ids. `depends_on` used to live here as a graph check;
+    #    A2 removed the field, so leftover YAML fails at parse as an unknown
+    #    key rather than as a cycle.
     seen = set()
     for slot in scenario.slots:
         if slot.id in seen:
             errors.append(f"duplicate slot id '{slot.id}'")
         seen.add(slot.id)
-    for slot in scenario.slots:
-        for dep in slot.depends_on:
-            if dep not in seen:
-                errors.append(f"slot '{slot.id}' depends_on unknown slot '{dep}'")
-    on_cycle = _cycle(scenario.slots)
-    if on_cycle:
-        errors.append(f"depends_on cycle through slot '{on_cycle}'")
 
     # 5. a pacing override may buy room; it may never starve the goal, and it
     #    must say why (the derivation is the default, not an opinion to ignore).

@@ -29,7 +29,6 @@ FRUIT = kb.Scenario(
             id="price",
             kind="request",
             description="Find out what they cost",
-            depends_on=("item",),
         ),
     ),
     max_turns=6,
@@ -205,18 +204,6 @@ def test_an_inherited_unknown_id_is_dropped(caplog):
 
 
 # --- Guards --------------------------------------------------------------
-
-
-def test_depends_on_violation_logs_an_error_but_keeps_the_fill(caplog):
-    """`price` before `item` is a hallucination signal, not a learner mistake.
-
-    The fill is still recorded: dropping it would fail a learner because our
-    extractor misfired, which is the wrong direction to be wrong in.
-    """
-    with caplog.at_level(logging.ERROR):
-        state = advance(filled=["price"], turn=1)
-    assert state.filled_at == {"price": 1}
-    assert any(r.levelno >= logging.ERROR for r in caplog.records)
 
 
 def test_everything_at_once_is_info_not_an_error(caplog):

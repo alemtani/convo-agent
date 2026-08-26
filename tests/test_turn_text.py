@@ -28,7 +28,7 @@ def _reply():
     return ConversationTurnResponse(
         transcript=Utterance(zh="我叫小明", pinyin="wǒ jiào xiǎo míng"),
         reply=Utterance(zh="你好！你叫什么名字？", pinyin="nǐ hǎo! nǐ jiào shénme míngzi?"),
-        annotation=TurnAnnotation(topic_tags=["greetings"]),
+        annotation=TurnAnnotation(),
     )
 
 
@@ -58,7 +58,10 @@ def test_turn_text_returns_reply_and_annotation(monkeypatch):
     # a typed turn exactly like a spoken one.
     assert body["transcript"] == {"zh": "我叫小明", "pinyin": "wǒ jiào xiǎo míng"}
     assert body["reply"] == {"zh": "你好！你叫什么名字？", "pinyin": "nǐ hǎo! nǐ jiào shénme míngzi?"}
-    assert body["annotation"]["topic_tags"] == ["greetings"]
+    assert body["annotation"]["learner_said_goodbye"] is False
+    assert "topic_tags" not in body["annotation"]
+    assert "grammar_notes" not in body["annotation"]
+    assert "should_give_feedback" not in body["annotation"]
     # The route forwarded the client-held transcript to the orchestrator.
     assert captured["topic_id"] == "greetings"
     assert captured["dialogue"][0].zh == "你好"

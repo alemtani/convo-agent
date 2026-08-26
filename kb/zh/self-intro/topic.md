@@ -53,7 +53,7 @@ country without learning the characters.
 **Scenario.** Four slots — two `inform`, two `request` — so the turn cap derives
 to 8 (`docs/SCENARIOS.md`). The obstacle is symmetric: the learner must both give
 their own two facts and pull the partner's two out, and no packing lets them know
-a country they were never told. No slot declares `depends_on`: the four facts are
-independent, and any order the learner picks is a real conversation.
-`expressible_with` names the vocab that *can* express each slot; it is a hint to
-the extractor, never a string matcher.
+a country they were never told. The four facts are independent, and any order
+the learner picks is a real conversation. `expressible_with` names the vocab
+that *can* express each slot; it is a hint to the extractor, never a string
+matcher.

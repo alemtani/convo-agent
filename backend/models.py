@@ -324,9 +324,13 @@ class ToneError(BaseModel):
 # a person in a scene and becomes a proctor who wants you to pass. They are
 # `GraderResult`'s now and the converser is given no place to say them.
 #
-# What stayed: `grammar_notes`, a verdict input about the learner's Chinese
-# rather than about the rubric, produced by the call that already read their
-# sentence in order to answer it.
+# What then went (A2, `docs/streams/grading.md`): `grammar_notes`,
+# `topic_tags`, and `should_give_feedback`. Tags and the coaching flag were
+# consumed by nothing. Grammar notes were a coach's question — is this slip
+# worth teaching later — and the partner is not the coach. The notes panel
+# went with them rather than moving to the verdict: inventing a new coaching
+# job is not a cut. Tone errors still reach the card because Azure measured
+# them, not because the partner judged them.
 #
 # `tone_errors` is absent for a different reason: tone is never the model's
 # judgment. The server fills it from Azure PA accuracy or from typed tone digits.
@@ -334,11 +338,8 @@ class ToneError(BaseModel):
 # turn spent output tokens rendering `"tone_errors":[]` and then had it
 # overwritten. `TurnAnnotation` is the wire shape that carries it.
 class ConverserAnnotation(BaseModel):
-    """Notes on one learner turn, alongside the partner's reply."""
+    """Whether the learner said goodbye on this turn."""
 
-    grammar_notes: List[str] = []
-    topic_tags: List[str] = []
-    should_give_feedback: bool = False
     learner_said_goodbye: bool = False
 
 
@@ -387,11 +388,7 @@ class GraderResult(BaseModel):
 
 
 class TurnAnnotation(ConverserAnnotation):
-    """The converser's read on one learner turn — logged silently, surfaced later.
-
-    `grammar_notes`/`tone_errors`/`topic_tags` accumulate the per-turn signal the
-    (Phase 4) feedback worker consumes. `should_give_feedback` is the worker's
-    hint that enough has accrued to interrupt for a coaching round.
+    """The converser's read on one learner turn — logged silently.
 
     Extends the model-facing shape with the one field the server owns.
 
@@ -439,8 +436,8 @@ class TurnAnnotation(ConverserAnnotation):
 # partner the criteria in its cached prefix by exactly the route the system
 # prompt was stripped to close (V2, `docs/VALIDITY.md`).
 class ConversationResult(BaseModel):
-    """The partner's reply, notes on the turn, and the learner's own words as
-    you understood them."""
+    """The partner's reply, whether the learner said goodbye, and the
+    learner's own words as you understood them."""
 
     partner_response: Utterance
     turn_annotation: ConverserAnnotation
@@ -460,7 +457,7 @@ class ConversationResult(BaseModel):
 # turn after the first. That same rendering is why neither schema may carry the
 # rubric; see `ConversationResult`.
 class SpokenConversationResult(BaseModel):
-    """The partner's reply, and notes on the turn."""
+    """The partner's reply, and whether the learner said goodbye."""
 
     partner_response: Utterance
     turn_annotation: ConverserAnnotation
@@ -689,9 +686,9 @@ class VerdictRequest(BaseModel):
     expensive thing in the app to abuse. A real session cannot approach these
     limits — the turn cap tops out well under 20 turns.
 
-    `notes` is the per-turn tone/grammar signal the client accumulated, rolled
-    up rather than re-derived: the annotations already happened, once, on turns
-    that are over.
+    `notes` is the per-turn tone signal the client accumulated from Azure
+    (and typed digits). Grammar notes used to ride along from the partner;
+    A2 dropped them. The partner is not the coach.
     """
 
     topic_id: str

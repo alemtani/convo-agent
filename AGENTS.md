@@ -83,9 +83,11 @@ The last product work on `main` is the A2 progress HUD (slots filled and
 turns used, counts only). A2's floor, verdict copy, and gender pin are
 still open. Stream B B0 is the timings HUD: every branch now has a number.
 
-Stream A A1 (eval, this track): `evals/coherence/replay.py` grades through
-the grader, fixtures carry `opening_line`, and the first cassettes are
-committed. Two dense-turn cases are strict xfails until A3
+Stream A A2 (eval, this track): dead `ConverserAnnotation` fields are
+gone (`topic_tags`, `should_give_feedback`, `grammar_notes`). The notes
+panel went with them — tone errors still reach the verdict. `depends_on`
+is gone. The partner prompt is persona, scene, band ceiling, and pinyin
+reading. Two dense-turn cases remain strict xfails until A3
 (`milk-and-biscuits` drops `order`; `computer-work-ni-ne` drops
 `partner_origin`). Do not treat `clip-and-tea` going green as the
 multi-slot fix.

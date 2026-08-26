@@ -17,7 +17,6 @@ scenario:
       kind: request
       description: "Find out their name"
       expressible_with: [你, 叫, 什么, 名字]
-      depends_on: [self_name]
     - id: wellbeing
       kind: request
       description: "Find out how they have been lately"

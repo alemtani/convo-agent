@@ -123,9 +123,10 @@ the sketch model** — the authored prose reaches the converser verbatim, in
 this is the one place where that softness would cost credit.
 
 **What moves to the grader:** `slots_filled`, `learner_closed`, `coherence`.
-**What stays on the converser:** `grammar_notes` — a live verdict input about
-the learner's Chinese rather than about the rubric — plus the unused fields,
-which moving buys nothing.
+**What stays on the converser:** `learner_said_goodbye` — noticing that
+someone is leaving needs no rubric. `grammar_notes`, `topic_tags`, and
+`should_give_feedback` went in A2: the partner is not the coach, and the
+notes panel went with the field rather than becoming a new verdict job.
 
 ### The sequence
 

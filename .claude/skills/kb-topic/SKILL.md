@@ -57,7 +57,6 @@ scenario:
       kind: request           # the learner must extract this
       description: "Find out what they cost"
       expressible_with: [多少, 钱]
-      depends_on: [item]
   withholding: "Nothing at the stall carries a price tag. The vendor is busy and says little: they name a price only when a customer asks for one."
 ```
 
@@ -97,8 +96,8 @@ Authoring rules, all enforced by `validate.py`:
    `n_slots + n_request_slots + 2`, with the coefficients in `kb/zh/pacing.json`
    — retune pacing there, never per topic. An override needs `max_turns` **and**
    `max_turns_reason`, and may only ever raise the cap.
-6. `depends_on` is optional and feeds one consumer: the tracker's sanity guard
-   (a price credited before the item was named is a hallucination signal).
+6. Do not author `depends_on`. The field is gone (A2). Leftover YAML fails
+   as an unknown slot key.
 
 ## Add a new topic
 

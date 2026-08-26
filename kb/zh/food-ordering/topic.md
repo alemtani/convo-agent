@@ -21,7 +21,6 @@ scenario:
       kind: inform
       description: "Order a dish and a drink"
       expressible_with: [要, 点, 菜, 个, 杯]
-      depends_on: [recommendation, drinks]
 ---
 
 # Ordering food (点菜)
@@ -46,11 +45,9 @@ those.
 
 **Scenario.** Two `request` slots and one `inform`, so the turn cap derives to
 7 (`docs/SCENARIOS.md`). Both requests are real obstacles: the server names no
-dish as best and lists no drinks until asked. The `order` slot depends on both,
-so a tracker that credits an order before the learner has heard either answer
-is flagged. `expressible_with` names the vocab that *can* express each slot; it
-is a hint to the extractor and a handle for `validate.py`, never a string
-matcher.
+dish as best and lists no drinks until asked. `expressible_with` names the
+vocab that *can* express each slot; it is a hint to the extractor and a
+handle for `validate.py`, never a string matcher.
 
 **Why the order slot comes last.** The goal is deliberately not "order food" on
 its own. A learner can order from a menu they can already read, and learn

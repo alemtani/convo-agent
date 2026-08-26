@@ -57,7 +57,7 @@ async def test_run_text_turn_loads_kb_and_calls_worker(monkeypatch):
         )
         return (
             Utterance(zh="你好！你叫什么名字？", pinyin="nǐ hǎo! nǐ jiào shénme míngzi?"),
-            TurnAnnotation(topic_tags=["greetings"]),
+            TurnAnnotation(),
             Utterance(zh="我叫小明", pinyin="wǒ jiào xiǎo míng"),
             object(),
         )
@@ -74,7 +74,7 @@ async def test_run_text_turn_loads_kb_and_calls_worker(monkeypatch):
 
     assert isinstance(resp, ConversationTurnResponse)
     assert resp.reply.zh == "你好！你叫什么名字？"
-    assert resp.annotation.topic_tags == ["greetings"]
+    assert resp.annotation.learner_said_goodbye is False
 
     # The orchestrator passes the client-held sketch straight through and owns
     # only the forgiveness default; it loads the real KB.
@@ -217,7 +217,7 @@ def _worker_reply(annotation=None, reading=None):
                            want_reading=True, hint=None, client=None):
         return (
             Utterance(zh="你好！你叫什么名字？", pinyin="nǐ hǎo! nǐ jiào shénme míngzi?"),
-            annotation or TurnAnnotation(topic_tags=["greetings"]),
+            annotation or TurnAnnotation(),
             reading or Utterance(zh="你好", pinyin="nǐ hǎo"),
             object(),
         )
@@ -614,7 +614,7 @@ async def test_a_text_turn_runs_the_real_workers_against_a_faked_sdk():
     """
     conversation_reply = ConversationResult(
         partner_response=Utterance(zh="你好！", pinyin="nǐ hǎo!"),
-        turn_annotation=ConverserAnnotation(topic_tags=["greetings"]),
+        turn_annotation=ConverserAnnotation(),
         user_reading=Utterance(zh="我叫小明", pinyin="wǒ jiào xiǎo míng"),
     )
     grade = GraderResult(coherence="on_track", slots_filled=["self_name"])

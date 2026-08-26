@@ -230,6 +230,12 @@ anybody looked:
 | `sketch.generate("greetings", client=…)` | `scenario` became a required positional | `TypeError` in 2 tests |
 | `kb.load_kb_block` fed to the converser | V2 blindness (`load_converser_block`) | nothing — and that is the bad one |
 
+A2 (PR #91) supplied the sharpest evidence for the claim, by accident. It edited
+this very file — swapping `topic_tags` for `learner_said_goodbye` in
+`test_live_reply_is_valid_structured_output` — two lines below an unpack that
+raises `ValueError` before either assertion is reached. The file was maintained
+without ever being run.
+
 The last row is the finding worth keeping. The first three are loud: the test
 dies before the network. The fourth is silent — it passes, spends money, and
 measures the cache behaviour of a prefix the app stopped building. A test that
@@ -265,6 +271,12 @@ Where it landed:
 - `.github/workflows/rerecord.yml` gains a `live` job on the weekly schedule,
   and a step that re-records the behavior cases alongside the coherence ones.
 
+Merging A2 then demonstrated the layer doing its job: the trimmed partner prompt
+moved the converser key, one cassette missed, and the build went red rather than
+replaying a recording of a prompt that no longer exists. Re-recorded, and the
+superseded cassette deleted — the grader and sketch keys did not move, because
+A2 did not touch those prompts.
+
 ### A1 — The failing cases — **shipped, PR #90**
 
 The record of the bug, written before anything is fixed. Fail-to-pass cases from
@@ -298,7 +310,7 @@ The two misses are `strict` xfails so CI stays a merge gate. A3 removes the
 mark. An unexpected pass fails the build — that is how we notice the fix
 landed early.
 
-### A2 — The cuts
+### A2 — The cuts — **shipped, this PR**
 
 - `topic_tags`, `should_give_feedback`, `grammar_notes` — model, prompt,
   frontend. Decide the notes panel: verdict-derived, or gone.
@@ -308,6 +320,25 @@ landed early.
 
 Re-run the full eval set after. This is the change most likely to move numbers in
 a direction nobody intended.
+
+**What shipped, and what it taught us.** The notes panel is gone, not
+verdict-derived. Grammar coaching is a coach's job, and inventing that job
+on the verdict worker is not a cut. Tone errors still reach the card
+because Azure measured them. `learner_said_goodbye` stays; it drives
+termination and anyone notices a goodbye.
+
+`depends_on` is an unknown slot key. The cycle check went with it. The
+packed-utterance info log remains.
+
+The partner prompt no longer interpolates `forgiveness_level`. The worker
+still takes the arg so the orchestrator contract does not move. Reciprocity
+and stay-in-character went too: the scene block already says what the
+place does not hand over.
+
+The coherence eval keys did not move. Replay talks to the grader, and none
+of these cuts touch the grader prompt. A1's two xfails still fail;
+`clip-and-tea` stays green. That is the point of cutting before A3: the
+baseline did not shift.
 
 ### A3 — The multi-slot fix
 
@@ -416,9 +447,9 @@ Needs a server-side token and a rate limit. The client never sees the token.
 
 ## Kickoff prompts
 
-One per step, each runnable as written. **A0 (PR #86), A1 (PR #90) and A0.6
-(this PR) are done** — their prompts are retired. A0.5 and A2 are independent
-of each other and can run in parallel, in separate worktrees.
+One per step, each runnable as written. **A0 (PR #86), A1 (PR #90), A2 (PR #91)
+and A0.6 (this PR) are done** — their prompts are retired. A0.5 and A3 are
+independent of each other and can run in parallel, in separate worktrees.
 
 Every one of these ends the same way, so it is said once here: work in a git
 worktree, write the failing test first, branch from `main`, conventional commits,
@@ -456,35 +487,6 @@ the text harness, not the audio path.
 Retired: shipped. The `live` marker now means "a recording cannot stand in for
 this call", the behavioral half is a merge gate off cassettes, and the weekly
 job runs what is left.
-
-### A2 — the cuts
-
-```
-Read docs/streams/grading.md. Start Stream A at A2: the cuts.
-
-A1 recorded the multi-slot misses as strict xfails. Do not fix the grader yet.
-Cuts come first because every cut changes a prompt, and every prompt change
-invalidates cassettes. Doing them together is one re-record wave instead of
-four, and a trimmed prompt is a cleaner baseline to measure the A3 multi-slot
-fix against.
-
-Cut, in this PR:
-
-- `topic_tags`, `should_give_feedback`, `grammar_notes` — model, prompt,
-  frontend. Decide the notes panel: verdict-derived, or gone.
-  `frontend/index.html` renders `grammar_notes`, so dropping it is not free.
-- `depends_on` — model, four `topic.md` files (via the `kb-topic` skill, never
-  by hand), `validate.py` cycle check, `termination.py` guard,
-  `docs/SCENARIOS.md`.
-- The partner prompt, trimmed to persona, scene, band ceiling, pinyin reading.
-
-Re-run the full eval set after (`python -m evals.coherence.replay --record
---samples 3` for keys that moved, then `pytest`). This is the change most
-likely to move numbers in a direction nobody intended. A1's two xfails
-must still fail; clip-and-tea must stay green.
-
-Do not start A3 in this PR.
-```
 
 ### A3 — the multi-slot fix
 
