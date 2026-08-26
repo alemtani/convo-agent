@@ -1,0 +1,47 @@
+{
+  "key": "b7407001a9d659dcaf2953a707c7f7b3e7016ce5a518e83ef49c39631690eb04",
+  "model": "claude-sonnet-5",
+  "recorded_at": "2026-08-26T05:10:49+00:00",
+  "samples": [
+    {
+      "parsed_output": {
+        "rationale": "The line only recommends the fish dish; it says nothing about what drinks are available, so the drinks fact was not stated outright.",
+        "volunteered": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 587,
+        "output_tokens": 102
+      }
+    },
+    {
+      "parsed_output": {
+        "rationale": "The line only recommends the fish dish; it says nothing about what drinks are available, so the drinks fact is not stated outright.",
+        "volunteered": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 587,
+        "output_tokens": 111
+      }
+    },
+    {
+      "parsed_output": {
+        "rationale": "The line only states that the fish is the best dish, which is a food recommendation. It does not mention or state what drinks are available, so the 'drinks' fact was not volunteered.",
+        "volunteered": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 587,
+        "output_tokens": 114
+      }
+    }
+  ],
+  "summary": "claude-sonnet-5 → WithholdingVerdict: The partner's line:\n鱼最好吃。"
+}

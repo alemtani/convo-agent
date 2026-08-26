@@ -95,13 +95,12 @@ The fixture corpus lives in [`tests/fixtures/sessions/`](tests/fixtures/sessions
 transcripts. A second-opinion label set exists; that labeller had repo access,
 so it is corroboration, not independence.
 
-The replay harness ([`evals/coherence/replay.py`](evals/coherence/replay.py))
-calls through the same seam the orchestrator uses, so the eval cannot drift
-from production. [`tests/test_coherence_eval.py`](tests/test_coherence_eval.py)
-tests the eval framework itself, including assertions about the shipped
-corpus (pairing, wire shape). The replay is a script, not a test: its output
-is a report, and a report is not an assertion. Nothing in `pytest -q` spends
-tokens.
+The grader-only harness ([`evals/coherence/replay.py`](evals/coherence/replay.py))
+holds the partner still. The turn harness ([`evals/turn/replay.py`](evals/turn/replay.py))
+drives `orchestrator.run_text_turn`, so one cassette-backed run covers the
+reply, the grade computed against that reply, and whether that reply gave
+away a `request` slot. Both replay off committed cassettes; a key miss
+fails CI. Nothing in `pytest -q` spends tokens.
 
 A measurement that killed a feature: V0 measured the converser's `coherence`
 tag against gold and found no threshold that could gate on it safely. No gate

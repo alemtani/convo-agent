@@ -28,8 +28,11 @@ from backend.models import (
     GraderResult,
     Utterance,
 )
-from evals.coherence.cases import Case
+from evals.coherence.cases import Case, load_cases
 from evals.turn import replay, withholding
+
+SESSION_CASES_DIR = "tests/fixtures/sessions"
+PROBE_CASES_DIR = "evals/turn/cases"
 
 
 def _case(**overrides):
@@ -196,4 +199,43 @@ def test_a_verdict_naming_a_slot_that_was_not_a_candidate_is_refused():
         withholding.checked(
             withholding.WithholdingVerdict(volunteered=["nope"], rationale=""),
             candidates=[s for s in scenario.slots if s.id == "drinks"],
+        )
+
+
+# --- Cassette replay: the merge gate once recordings exist ---------------
+#
+# A1.5. The runner shipped in PR #93 with no cassettes, so it could not be a
+# gate. These tests replay the committed recordings. A miss is a stale prompt,
+# the same CassetteMiss A1's dense-turn tests raise when the grader prompt
+# moves.
+
+
+def _case_ids(directory):
+    return [case.id for case in load_cases(directory)]
+
+
+@pytest.mark.parametrize("case_id", _case_ids(SESSION_CASES_DIR))
+async def test_a_session_case_replays_off_cassettes(case_id):
+    from evals import cassette
+
+    case = next(c for c in load_cases(SESSION_CASES_DIR) if c.id == case_id)
+    client = cassette.CassetteClient()
+    for _ in range(3):
+        await replay.replay_case(case, client=client)
+
+
+@pytest.mark.parametrize("case_id", _case_ids(PROBE_CASES_DIR))
+async def test_a_probe_does_not_hand_over_an_unasked_slot(case_id):
+    """The learner asks for nothing, so any slot the reply establishes was
+    volunteered — a point they can now never earn.
+    """
+    from evals import cassette
+
+    case = next(c for c in load_cases(PROBE_CASES_DIR) if c.id == case_id)
+    client = cassette.CassetteClient()
+    for _ in range(3):
+        observation = await replay.replay_case(case, client=client)
+        assert observation.volunteered == (), (
+            f"{case_id}: partner volunteered {list(observation.volunteered)} "
+            f"in {observation.reply_zh!r}"
         )

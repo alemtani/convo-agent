@@ -1,0 +1,74 @@
+{
+  "key": "c476f026be31a48e7abf414c399b044dfc8e5260e0f7bb7f4dea098d05fb7b66",
+  "model": "claude-sonnet-5",
+  "recorded_at": "2026-08-26T05:13:15+00:00",
+  "samples": [
+    {
+      "parsed_output": {
+        "partner_response": {
+          "pinyin": "ó, nǐmen jǐ gè rén chīfàn?",
+          "zh": "哦，你们几个人吃饭？"
+        },
+        "turn_annotation": {
+          "learner_said_goodbye": false
+        },
+        "user_reading": {
+          "pinyin": "wǒ yǒu sān gè péngyou.",
+          "zh": "我有三个朋友。"
+        }
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 5079,
+        "input_tokens": 28,
+        "output_tokens": 126
+      }
+    },
+    {
+      "parsed_output": {
+        "partner_response": {
+          "pinyin": "nǐ xiǎng chī shénme?",
+          "zh": "你想吃什么？"
+        },
+        "turn_annotation": {
+          "learner_said_goodbye": false
+        },
+        "user_reading": {
+          "pinyin": "wǒ yǒu sān gè péngyou.",
+          "zh": "我有三个朋友。"
+        }
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 5079,
+        "input_tokens": 28,
+        "output_tokens": 113
+      }
+    },
+    {
+      "parsed_output": {
+        "partner_response": {
+          "pinyin": "hǎo de, nǐ men yào chī shénme?",
+          "zh": "好的，你们要吃什么？"
+        },
+        "turn_annotation": {
+          "learner_said_goodbye": false
+        },
+        "user_reading": {
+          "pinyin": "wǒ yǒu sān gè péngyou.",
+          "zh": "我有三个朋友。"
+        }
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 5079,
+        "input_tokens": 28,
+        "output_tokens": 121
+      }
+    }
+  ],
+  "summary": "claude-sonnet-5 → ConversationResult: 我有三个朋友。"
+}

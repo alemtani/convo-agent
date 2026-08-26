@@ -1,0 +1,23 @@
+{
+  "key": "c70677d3ac52b0156acd771b85222b804c35cd45113c2eaa992bad9652bc0b6a",
+  "model": "claude-sonnet-5",
+  "recorded_at": "2026-08-26T05:12:37+00:00",
+  "samples": [
+    {
+      "parsed_output": {
+        "rationale": "The server's line states outright that the drink options are tea or water, directly revealing the drinks fact without being asked. It says nothing about which dish is good, so recommendation is not volunteered.",
+        "volunteered": [
+          "drinks"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 609,
+        "output_tokens": 138
+      }
+    }
+  ],
+  "summary": "claude-sonnet-5 → WithholdingVerdict: The partner's line:\n没关系，你要喝茶还是水？"
+}

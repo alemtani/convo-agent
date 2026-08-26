@@ -1,0 +1,74 @@
+{
+  "key": "67cfebd06446507c1ee9d0e4729efd45cd19aef6dda2da33b90fd8d87177b0fb",
+  "model": "claude-sonnet-5",
+  "recorded_at": "2026-08-26T05:12:04+00:00",
+  "samples": [
+    {
+      "parsed_output": {
+        "partner_response": {
+          "pinyin": "yú zuì hǎochī.",
+          "zh": "鱼最好吃。"
+        },
+        "turn_annotation": {
+          "learner_said_goodbye": false
+        },
+        "user_reading": {
+          "pinyin": "qǐngwèn, shénme cài zuì hǎochī?",
+          "zh": "请问，什么菜最好吃？"
+        }
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 5079,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 16,
+        "output_tokens": 119
+      }
+    },
+    {
+      "parsed_output": {
+        "partner_response": {
+          "pinyin": "yú zuì hǎochī.",
+          "zh": "鱼最好吃。"
+        },
+        "turn_annotation": {
+          "learner_said_goodbye": false
+        },
+        "user_reading": {
+          "pinyin": "qǐngwèn, shénme cài zuì hǎochī?",
+          "zh": "请问，什么菜最好吃？"
+        }
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 5079,
+        "input_tokens": 16,
+        "output_tokens": 119
+      }
+    },
+    {
+      "parsed_output": {
+        "partner_response": {
+          "pinyin": "yú zuì hǎochī.",
+          "zh": "鱼最好吃。"
+        },
+        "turn_annotation": {
+          "learner_said_goodbye": false
+        },
+        "user_reading": {
+          "pinyin": "qǐngwèn, shénme cài zuì hǎochī?",
+          "zh": "请问，什么菜最好吃？"
+        }
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 5079,
+        "input_tokens": 16,
+        "output_tokens": 119
+      }
+    }
+  ],
+  "summary": "claude-sonnet-5 → ConversationResult: 请问，什么菜最好吃？"
+}

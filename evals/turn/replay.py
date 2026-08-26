@@ -2,6 +2,8 @@
 
     python -m evals.turn.replay                 # replays; a miss is an error
     python -m evals.turn.replay --record --samples 3
+    python -m evals.turn.replay --cases-dir evals/turn/cases
+    python -m evals.turn.replay --record --samples 3 --cases-dir evals/turn/cases
 
 `evals/coherence/replay.py` calls `grader.grade` directly. That is the right
 instrument for measuring the judge — it holds the partner still — but it means

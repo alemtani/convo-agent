@@ -73,6 +73,9 @@ worth more than any case written from imagination.
 Pure logic is tested in `tests/test_coherence_eval.py`. Replay runs off
 cassettes. A1's dense-turn cases assert slot credit against those recordings.
 
+The partner itself is measured by [`evals/turn/`](../turn/), which drives
+the whole turn rather than `grader.grade` alone.
+
 ## A1 / the V2 re-run
 
 [`RESULTS.md`](RESULTS.md) is now the **grader** on `claude-opus-5`, 30 runs

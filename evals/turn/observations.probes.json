@@ -1,0 +1,62 @@
+{
+  "conversation_model": "claude-sonnet-5",
+  "grader_model": "claude-opus-5",
+  "judge_model": "claude-sonnet-5",
+  "repeat": 3,
+  "observations": [
+    {
+      "case_id": "greeting-only",
+      "reply_zh": "你好，几位？",
+      "reading_zh": "你好",
+      "slots_filled": [],
+      "volunteered": [],
+      "said_goodbye": false,
+      "status": "active"
+    },
+    {
+      "case_id": "i-am-hungry",
+      "reply_zh": "你要吃什么？",
+      "reading_zh": "我很饿。",
+      "slots_filled": [],
+      "volunteered": [],
+      "said_goodbye": false,
+      "status": "active"
+    },
+    {
+      "case_id": "greeting-only",
+      "reply_zh": "你好，要吃什么？",
+      "reading_zh": "你好",
+      "slots_filled": [],
+      "volunteered": [],
+      "said_goodbye": false,
+      "status": "active"
+    },
+    {
+      "case_id": "i-am-hungry",
+      "reply_zh": "你想吃什么？",
+      "reading_zh": "我很饿。",
+      "slots_filled": [],
+      "volunteered": [],
+      "said_goodbye": false,
+      "status": "active"
+    },
+    {
+      "case_id": "greeting-only",
+      "reply_zh": "你好，要吃什么？",
+      "reading_zh": "你好",
+      "slots_filled": [],
+      "volunteered": [],
+      "said_goodbye": false,
+      "status": "active"
+    },
+    {
+      "case_id": "i-am-hungry",
+      "reply_zh": "你想吃什么？",
+      "reading_zh": "我很饿。",
+      "slots_filled": [],
+      "volunteered": [],
+      "said_goodbye": false,
+      "status": "active"
+    }
+  ]
+}

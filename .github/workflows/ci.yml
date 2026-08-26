@@ -56,6 +56,33 @@ jobs:
       - name: Run frontend smoke tests
         run: pytest -m smoke tests/smoke
 
+  # Cassette replay. Spends nothing: a key miss fails the job rather than
+  # calling Anthropic. The pytest job already walks a few of these cases as
+  # asserts; this job walks the whole corpus so a stale prompt cannot hide
+  # in a case the parametrized tests do not name.
+  eval:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r backend/requirements.txt
+
+      - name: Replay coherence eval
+        run: python -m evals.coherence.replay --repeat 3
+
+      - name: Replay turn eval
+        run: python -m evals.turn.replay --repeat 3
+
+      - name: Replay turn probes
+        run: python -m evals.turn.replay --repeat 3 --cases-dir evals/turn/cases --out evals/turn/observations.probes.json
+
   # Deploy lives in this workflow rather than its own so it can gate on the
   # suites with a plain `needs:`. A separate workflow would have to use
   # `workflow_run`, which fires on completion regardless of conclusion and
@@ -65,7 +92,7 @@ jobs:
   # they create resources and handle credentials. Only `fly deploy` is automated,
   # and it needs exactly one repo secret, FLY_API_TOKEN.
   deploy:
-    needs: [test, smoke]
+    needs: [test, smoke, eval]
     # Merges only. A `pull_request` build must never reach production, and this
     # workflow runs on both triggers.
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'

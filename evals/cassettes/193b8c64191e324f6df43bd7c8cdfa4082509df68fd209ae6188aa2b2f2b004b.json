@@ -1,0 +1,21 @@
+{
+  "key": "193b8c64191e324f6df43bd7c8cdfa4082509df68fd209ae6188aa2b2f2b004b",
+  "model": "claude-sonnet-5",
+  "recorded_at": "2026-08-26T05:11:20+00:00",
+  "samples": [
+    {
+      "parsed_output": {
+        "rationale": "The server's line ('No worries, what would you like to eat?') is simply a prompt for the customer's order. It does not state a recommended dish or list any drinks; both facts remain unasked and unrevealed.",
+        "volunteered": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 605,
+        "output_tokens": 110
+      }
+    }
+  ],
+  "summary": "claude-sonnet-5 → WithholdingVerdict: The partner's line:\n没事，你要吃什么？"
+}

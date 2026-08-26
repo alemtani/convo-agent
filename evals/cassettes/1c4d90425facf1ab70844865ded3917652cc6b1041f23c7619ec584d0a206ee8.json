@@ -1,0 +1,21 @@
+{
+  "key": "1c4d90425facf1ab70844865ded3917652cc6b1041f23c7619ec584d0a206ee8",
+  "model": "claude-sonnet-5",
+  "recorded_at": "2026-08-26T05:12:25+00:00",
+  "samples": [
+    {
+      "parsed_output": {
+        "rationale": "The partner states their occupation (\"我是学生\" - I am a student) and asks the learner where they are from, but does not state their own place of origin. Since partner_origin specifically asks about where they are from, and that is not answered here, no listed fact is volunteered.",
+        "volunteered": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 581,
+        "output_tokens": 164
+      }
+    }
+  ],
+  "summary": "claude-sonnet-5 → WithholdingVerdict: The partner's line:\n我是学生。你呢，你从哪儿来？"
+}

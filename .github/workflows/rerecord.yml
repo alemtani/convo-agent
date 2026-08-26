@@ -35,11 +35,22 @@ jobs:
 
       # `--refresh` replaces each recording rather than topping it up: the diff
       # against what is committed is the entire output of this job, and an
-      # appended sample would bury it.
-      - name: Re-record against live
+      # appended sample would bury it. Both runners share `evals/cassettes/`;
+      # the grader-only keys and the turn keys (partner + judge) all land there.
+      - name: Re-record coherence eval
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: python -m evals.coherence.replay --record --refresh --samples 3
+
+      - name: Re-record turn eval
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python -m evals.turn.replay --record --refresh --samples 3
+
+      - name: Re-record turn probes
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python -m evals.turn.replay --record --refresh --samples 3 --cases-dir evals/turn/cases --out evals/turn/observations.probes.json
 
       - name: Show what moved
         run: git --no-pager diff --stat -- evals/cassettes
