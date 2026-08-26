@@ -47,6 +47,11 @@ class Observation:
     case_id: str
     coherence: str
     slots_filled: Tuple[str, ...] = ()
+    # What an **owed** turn established, when this grade settled a debt. Scored
+    # by nothing here on purpose: the matrix asks about the turn under test.
+    # It is recorded because `slots_filled` alone cannot tell a grader that
+    # merged the two lists from one that dropped the earlier turn entirely.
+    slots_filled_previously: Tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -240,6 +245,9 @@ def load_observations(path: str) -> Run:
                 case_id=entry["case_id"],
                 coherence=entry["coherence"],
                 slots_filled=tuple(entry.get("slots_filled", ())),
+                slots_filled_previously=tuple(
+                    entry.get("slots_filled_previously", ())
+                ),
             )
             for entry in payload["observations"]
         ],

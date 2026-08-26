@@ -77,5 +77,13 @@
       "order"
     ],
     "rationale": "After hearing the recommended dish and the drinks, the learner orders one of each. 夹子 is a near-miss for 饺子; the drink is 茶. The order slot is one fact that names two things."
+  },
+  "owed-drinks-then-order": {
+    "coherence": "on_track",
+    "credit_ok": true,
+    "slots_established": [
+      "order"
+    ],
+    "rationale": "The final turn orders one of each after both answers, so `order` and nothing else. `drinks` was established on the ungraded turn 2 and is settled separately."
   }
 }

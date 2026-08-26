@@ -148,6 +148,10 @@ def main() -> None:
     parser.add_argument("--cases-dir", default=CASES_DIR)
     parser.add_argument("--out", default=DEFAULT_OUT)
     args = parser.parse_args()
+    # Same rule as the grader runner: a manifest written from a `--case` run
+    # would tell the sweep every other recording in the shared store is stale.
+    if getattr(args, "used_out", None) and args.case:
+        raise SystemExit("--used-out needs the whole corpus; drop --case")
 
     cases = load_cases(args.cases_dir)
     if args.case:
@@ -178,6 +182,8 @@ def main() -> None:
     )
     write(observations)
     print(f"\nwrote {len(observations)} observations to {args.out}")
+
+    cassette.cli.write_used(args, client.used)
 
 
 if __name__ == "__main__":

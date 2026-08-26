@@ -36,10 +36,36 @@ jobs:
       # `--refresh` replaces each recording rather than topping it up: the diff
       # against what is committed is the entire output of this job, and an
       # appended sample would bury it.
-      - name: Re-record against live
+      #
+      # `--samples 5` is what the dense-case gate needs to judge a *rate* rather
+      # than a draw (`tests/test_coherence_eval.py`, DENSE_SAMPLES). Recording
+      # fewer would make the gate cycle a short cassette and count the repeats.
+      - name: Re-record the grader cases
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: python -m evals.coherence.replay --record --refresh --samples 3
+        run: >
+          python -m evals.coherence.replay --record --refresh --samples 5
+          --used-out "$RUNNER_TEMP/used-coherence.json"
+
+      - name: Re-record the turn cases
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: >
+          python -m evals.turn.replay --record --refresh --samples 5
+          --used-out "$RUNNER_TEMP/used-turn.json"
+
+      # One store, two runners. Neither reaches the other's keys, so neither can
+      # decide alone what is stale — a runner that deleted what *it* did not
+      # touch would take the other runner's whole corpus with it. The sweep
+      # takes the union, and refuses if a manifest is missing, because a runner
+      # that crashed must not read as "reached nothing".
+      #
+      # This is the only place it runs: the scheduled job is the one context
+      # where every runner sweeps the whole corpus in the same pass.
+      - name: Sweep recordings nothing reaches any more
+        run: >
+          python -m evals.cassette.sweep
+          --used "$RUNNER_TEMP/used-coherence.json" "$RUNNER_TEMP/used-turn.json"
 
       - name: Show what moved
         run: git --no-pager diff --stat -- evals/cassettes
