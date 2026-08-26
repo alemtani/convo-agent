@@ -292,34 +292,95 @@ A1. `clip-and-tea` is already a real pass; keep it that way.
 
 The prompt change invalidates cassette keys. Re-record the affected cases.
 
-**What shipped, and what it taught us.** Three changes to the instruction, all
-of them about *where* a rule sits rather than what it says:
+**What shipped, and what it taught us.** Four changes to the grader's
+`slots_filled` instruction, all of them about *where* a rule sits rather than
+what it says:
 
 - The leading sentence is now "one turn usually fills more than one slot", and
   the instruction is a **loop over the slot list** — take each slot in turn and
   ask whether this utterance established it. The old text asked for "the slots
   the final turn established", which reads as one search with one answer.
-- The scoping rules — nothing from earlier turns, nothing this turn did not
-  establish — moved into their own paragraph *after* the loop. They were the
-  same sentence as the multi-fill hint, and the hint lost.
-- The 你呢 example now says the bounce asks back **both** of what the partner
-  asked. The old example bounced one question, which is the case that already
-  worked.
+- The scoping rules moved into their own paragraph *after* the loop, and they
+  are scoped to the **field**: "only what this turn established goes in
+  `slots_filled`". The first draft said "judge this turn, and only this turn",
+  which flatly contradicted `render_window_note` ("judge them too") and was
+  resolved only by the note landing later in the message. Review caught it.
+- A **beginner-slip** rule: a wrong pronoun, a missing measure word, a
+  near-miss word does not unmake what the learner did. Naming the slip is the
+  coach's job at the end of the session, not the grader's.
+- The 你呢 example bounces back **both** of what the partner asked.
 
-All three cases pass on all three samples. Slot accuracy over the corpus went
-**20/30 → 27/30 exact**, missed credit **6 → 0**. The three remaining spurious
-runs are all `nonsequitur-slot-fill`, the deliberate gaming case, unchanged
-from the A1 baseline and blocked by the recommended `on_track` gate. The
-coherence matrix did not move at all: 21/21 on `on_track`, same single
-`drifting`→`off_track` flip, same three `derailed-input` misreads.
+### The thing this step actually taught us
 
-That last number is the one worth keeping. **Nothing pushed the grader toward
-crediting more.** Credit went up only where gold said it was owed.
+**A1's test asserted a lucky draw, and A3 shipped green on one.**
 
-Every cassette key changed — the grader prefix is part of the key — so all ten
-recordings were re-made and the ten stale ones deleted. A recording of a prompt
-that no longer exists cannot be hit and cannot be read; leaving it is a
-cassette directory nobody can reason about.
+The first version of this PR reported "all three cases pass on all three
+samples" and that was true. Measured at ten draws, the same prompt got
+`milk-and-biscuits` right 7/10 and `computer-work-ni-ne` 7/10. The test replays
+the first three committed recordings, so it goes green iff those three happened
+to be right — about one time in eight at a true rate of 0.5. A gate you pass by
+luck is worse than no gate, because it is read as evidence.
+
+A0 already said this: *"record N samples per key, store all N, and assert
+against the distribution rather than one draw."* A1 asserted one draw, three
+times. The lesson is not that A1 was careless — it is that **a stochastic
+property tested by replaying a fixed recording looks deterministic**, and
+nothing about a green run tells you which it was.
+
+So the dense gate is now a **rate**: `DENSE_SAMPLES = 5`, `DENSE_MIN_EXACT = 4`,
+with the observed rate in the failure message so 4/5 does not read like 5/5.
+Five rather than ten because the numbers say so — at a true rate of 0.95, a 4/5
+gate false-fails 2% of the time, and the extra five draws buy power to catch a
+*mediocre* case rather than protection for a good one. Re-recording is the only
+thing that spends money, so the sample count is the weekly job's bill and not
+every PR's; CI replays a fixed recording and never re-draws.
+
+### What `milk-and-biscuits` was really about
+
+It sat at 5–7/10 while every other case was 10/10. The cause was not the
+multi-slot rule. The learner wrote **你要一个牛奶和三个饼干** — "*you* want one
+milk and three biscuits". Same turn with 我要 instead: 5/5. The grader was
+wobbling on whether a sentence that assigns the wanting to the server is an
+order at all, which is a fair reading.
+
+That is what the beginner-slip rule fixes, and it is a rule about the product
+rather than about this fixture: the target learner is HSK 1–2 and *will* say 你
+for 我. Whether a fact got across is the grader's question; whether it was said
+correctly is the verdict card's.
+
+### Numbers
+
+Five draws over eleven cases, against the same gold:
+
+| | A1 baseline | A3 |
+| --- | --- | --- |
+| dense cases at the 4/5 gate | 0/3 pass | **3/3 pass** |
+| missed credit | 6 (of 30) | **0** (of 55) |
+| spurious credit | 4 (of 30) | 6 (of 55) — same rate, same two cases |
+
+Every spurious run is `nonsequitur-slot-fill` (the deliberate gaming case, which
+the recommended `on_track` gate blocks) or the single `self_name` on
+`elliptical-ni-ne` that was there at baseline. **Nothing pushed the grader
+toward crediting more.** Credit went up only where gold said it was owed.
+
+### Two things that came out of review
+
+**The owed-turn path had no coverage at all.** Every case had
+`last_graded_turn: None`, so `grading_window` was 1 across the whole corpus and
+`render_window_note` was prompt nobody had ever measured — which is why the
+first draft's contradiction with it went unnoticed. New fixture
+`owed-drinks-then-order`: watermark at turn 1, turn 3 under test, so the grade
+owes turn 2. `Observation` now carries `slots_filled_previously`, because
+`slots_filled` alone cannot tell a grader that *merged* the two lists from one
+that dropped the earlier turn. 5/5 exact.
+
+**Stale cassettes are the scheduled job's problem, not a PR's.** A prompt edit
+changes every key, and the recordings under the old ones become unreachable —
+no code can produce that key again, and the filename is a hash. The first draft
+of this PR deleted them by hand. They are kept now, and
+`.github/workflows/rerecord.yml` sweeps them with a new `--prune`, which refuses
+to run without `--record`, refuses a `--case` subset, and refuses to empty a
+store. Pruning belongs where the whole corpus is swept, and nowhere else.
 
 ### A4 — Coherence moves to the partner, as a gate
 
@@ -497,11 +558,13 @@ the incoherent turn and never removes credit already earned — with the single
 exception of slots_filled_previously on the owed-turn recovery path. Delete the
 out-of-date comment at orchestrator.py:431 while you are in there.
 
-The A1 dense cases in tests/test_coherence_eval.py must stay green as ordinary
-asserts. Both prompts change, so every cassette key changes: re-record
-(python -m evals.coherence.replay --record --samples 3), delete the stale
-recordings, and run the default suite. A3's numbers are the baseline to beat —
-27/30 exact slot accuracy, 0 missed.
+The A1 dense cases in tests/test_coherence_eval.py are a rate, not a run:
+DENSE_MIN_EXACT of DENSE_SAMPLES draws must be exact. Keep them passing. Both
+prompts change, so every cassette key changes: re-record
+(python -m evals.coherence.replay --record --samples 5) and run the default
+suite. Do not delete the stale recordings by hand — the weekly job prunes them.
+A3's numbers are the baseline to beat: 3/3 dense cases at the 4/5 gate, 0
+missed credit over 55 runs.
 
 This changes what the learner sees on the HUD, so raise a tunnel and take a
 real turn on the phone before the PR is ready.

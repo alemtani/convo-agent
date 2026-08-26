@@ -1,0 +1,88 @@
+{
+  "key": "77ef4ca2a77db4cd2834633ef93169378be1b78017fcacd59a92f520cd645988",
+  "model": "claude-opus-5",
+  "recorded_at": "2026-08-26T04:55:34+00:00",
+  "samples": [
+    {
+      "parsed_output": {
+        "coherence": "drifting",
+        "slots_filled": [
+          "recommendation"
+        ],
+        "slots_filled_previously": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2290,
+        "input_tokens": 29,
+        "output_tokens": 79
+      }
+    },
+    {
+      "parsed_output": {
+        "coherence": "drifting",
+        "slots_filled": [
+          "recommendation"
+        ],
+        "slots_filled_previously": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2290,
+        "input_tokens": 29,
+        "output_tokens": 77
+      }
+    },
+    {
+      "parsed_output": {
+        "coherence": "drifting",
+        "slots_filled": [
+          "recommendation"
+        ],
+        "slots_filled_previously": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2290,
+        "input_tokens": 29,
+        "output_tokens": 77
+      }
+    },
+    {
+      "parsed_output": {
+        "coherence": "drifting",
+        "slots_filled": [
+          "recommendation"
+        ],
+        "slots_filled_previously": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2290,
+        "input_tokens": 29,
+        "output_tokens": 75
+      }
+    },
+    {
+      "parsed_output": {
+        "coherence": "drifting",
+        "slots_filled": [
+          "recommendation"
+        ],
+        "slots_filled_previously": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2290,
+        "input_tokens": 29,
+        "output_tokens": 74
+      }
+    }
+  ],
+  "summary": "claude-opus-5 → GraderResult: 什么菜最好吃？"
+}

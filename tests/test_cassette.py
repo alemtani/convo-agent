@@ -193,6 +193,64 @@ def test_the_store_lists_what_it_holds(tmp_path):
     assert list(store.keys()) == [key]
 
 
+def test_prune_removes_a_recording_nothing_can_reach(tmp_path):
+    """A prompt edit changes the key, and the old file is then unreachable.
+
+    Nothing can produce that key again, and the filename is a hash, so it
+    cannot be read either. It is not evidence any more; it is a file no one
+    can reason about.
+    """
+    store = cassette.CassetteStore(tmp_path)
+    live = cassette.request_key(_request())
+    stale = cassette.request_key(_request(system=[{"type": "text", "text": "old"}]))
+    for key in (live, stale):
+        store.append(key, _sample(), model="m", summary="s")
+
+    removed = store.prune(keep={live})
+
+    assert removed == [stale]
+    assert list(store.keys()) == [live]
+
+
+def test_prune_leaves_the_directory_alone_when_every_key_was_used(tmp_path):
+    store = cassette.CassetteStore(tmp_path)
+    key = cassette.request_key(_request())
+    store.append(key, _sample(), model="m", summary="s")
+
+    assert store.prune(keep={key}) == []
+    assert list(store.keys()) == [key]
+
+
+def test_prune_never_touches_a_file_that_is_not_a_cassette(tmp_path):
+    """`evals/cassettes/README.md` explains the directory. It is not a key."""
+    store = cassette.CassetteStore(tmp_path)
+    live = cassette.request_key(_request())
+    stale = cassette.request_key(_request(system=[{"type": "text", "text": "old"}]))
+    for key in (live, stale):
+        store.append(key, _sample(), model="m", summary="s")
+    readme = tmp_path / "README.md"
+    readme.write_text("what this directory is", encoding="utf-8")
+
+    assert store.prune(keep={live}) == [stale]
+
+    assert readme.exists()
+
+
+def test_prune_refuses_to_empty_the_store(tmp_path):
+    """`keep` being empty means the run recorded nothing — a crash, a typo'd
+    `--case`, an API outage. Deleting the whole corpus because a run failed is
+    the one mistake that costs real money to undo.
+    """
+    store = cassette.CassetteStore(tmp_path)
+    key = cassette.request_key(_request())
+    store.append(key, _sample(), model="m", summary="s")
+
+    with pytest.raises(cassette.CassetteError, match="keep nothing"):
+        store.prune(keep=set())
+
+    assert list(store.keys()) == [key]
+
+
 # --- The client ----------------------------------------------------------
 
 
@@ -321,6 +379,37 @@ async def test_refresh_replaces_the_recording_instead_of_appending(tmp_path):
     await client.messages.parse(**_request())
 
     assert [s["parsed_output"]["value"] for s in store.load(key).samples] == ["fresh"]
+
+
+async def test_the_client_remembers_every_key_it_used(tmp_path):
+    """What `--prune` keeps. A hit counts as much as a recording: the key is
+    reachable either way, and only a key nothing reached is stale.
+    """
+    store = cassette.CassetteStore(tmp_path)
+    replayed = cassette.request_key(_request())
+    store.append(replayed, _sample(), model="m", summary="s")
+    fresh_request = _request(system=[{"type": "text", "text": "a new prompt"}])
+    client = cassette.CassetteClient(store, record=True, live=_Live(_response("new")))
+
+    await client.messages.parse(**_request())
+    await client.messages.parse(**fresh_request)
+
+    assert client.used == {replayed, cassette.request_key(fresh_request)}
+
+
+async def test_a_missed_key_is_not_counted_as_used(tmp_path):
+    """A miss raises, so the run is not a sweep and its key was never reached.
+
+    Counting it would let a failed run's key survive a prune while every key
+    it never got to did not.
+    """
+    store = cassette.CassetteStore(tmp_path)
+    client = cassette.CassetteClient(store)
+
+    with pytest.raises(cassette.CassetteMiss):
+        await client.messages.parse(**_request())
+
+    assert client.used == set()
 
 
 async def test_a_request_without_a_schema_is_out_of_scope(tmp_path):
@@ -481,3 +570,20 @@ def test_refresh_without_record_is_refused():
     # yesterday's recording still agrees with yesterday's recording.
     with pytest.raises(SystemExit):
         cassette.cli.client_from_args(_parse(["--refresh"]))
+
+
+def test_prune_without_record_is_refused():
+    """A replay run touches only the keys its cases ask for.
+
+    Pruning off one would delete every cassette the run did not happen to
+    need — which, for `--case`, is nearly all of them.
+    """
+    with pytest.raises(SystemExit):
+        cassette.cli.client_from_args(_parse(["--prune"]))
+
+
+def test_prune_reaches_the_client(tmp_path):
+    client = cassette.cli.client_from_args(
+        _parse(["--record", "--prune", "--cassettes", str(tmp_path)])
+    )
+    assert client.prune is True

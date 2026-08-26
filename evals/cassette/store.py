@@ -15,6 +15,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, Iterator, List, Optional
 
+from evals.cassette.key import CassetteError
+
 FILENAME_SUFFIX = ".json"
 
 
@@ -110,6 +112,32 @@ class CassetteStore:
                 sort_keys=True,
             )
             handle.write("\n")
+
+    def prune(self, *, keep) -> List[str]:
+        """Delete every recorded key not in `keep`; return what went, sorted.
+
+        A prompt edit changes the key, so the recording made under the old one
+        becomes unreachable: nothing can produce that key again, and the
+        filename is a hash, so no one can read it either. It stops being
+        evidence and becomes a file the directory cannot be reasoned about
+        around.
+
+        Only ever safe after a run that swept **every** key — the scheduled
+        re-record job. A partial run (`--case`) touches a handful and would
+        delete the rest, which is why `--prune` is refused without `--record`
+        and refused alongside `--case`.
+        """
+        keep = set(keep)
+        if not keep:
+            # A run that reached no key at all did not sweep anything: it
+            # crashed, or `--case` matched nothing, or the API was down. The
+            # corpus costs real money to rebuild, so this is the one place the
+            # layer refuses rather than doing as it is told.
+            raise CassetteError("refusing to prune a store down to keep nothing")
+        removed = [key for key in self.keys() if key not in keep]
+        for key in removed:
+            self.path_for(key).unlink()
+        return removed
 
     def keys(self) -> Iterator[str]:
         """Every recorded key, sorted. What the re-record job iterates."""

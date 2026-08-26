@@ -13,6 +13,7 @@ import json
 
 import pytest
 
+from backend import termination
 from evals.coherence.cases import (
     CaseError,
     Gold,
@@ -544,6 +545,20 @@ def test_replay_derives_the_turn_index_the_orchestrator_does():
         assert replayed(case.dialogue) == shipped(case.dialogue), case.id
 
 
+def test_replay_refuses_to_prune_a_subset_run():
+    """`--case` reaches a handful of keys. Pruning off one deletes the rest."""
+    from evals.coherence import replay
+
+    with pytest.raises(SystemExit, match="--case"):
+        replay._check_prune_is_a_full_sweep(prune=True, cases=["milk-and-biscuits"])
+
+
+def test_replay_allows_a_prune_of_a_whole_run():
+    from evals.coherence import replay
+
+    assert replay._check_prune_is_a_full_sweep(prune=True, cases=None) is None
+
+
 def test_replay_does_not_call_the_retired_pressure_hint():
     """The name that raised before this runner reached the network."""
     import inspect
@@ -591,6 +606,91 @@ async def test_replay_reads_coherence_and_slots_from_the_grader(monkeypatch):
     assert kwargs["user_text"] == "什么菜最好吃？有什么喝的？"
     assert kwargs["opening_line"] == "你好！你要点什么？"
     assert kwargs["dialogue"] == []
+
+
+# --- the owed-turn path ------------------------------------------------------
+#
+# The prefix says only this turn goes in `slots_filled`. `render_window_note`
+# says judge the earlier ones too. Those two have to compose, and until A3 the
+# corpus could not tell you whether they did: every case had
+# `last_graded_turn: None`, so `grading_window` was 1 everywhere.
+
+
+def test_the_corpus_exercises_a_turn_that_owes_an_earlier_grade():
+    """Without one case where the window is wider than 1, the note that settles
+    a grading debt is prompt nobody has ever measured.
+    """
+    from backend.models import SessionState
+    from evals.coherence.replay import _turn_index
+
+    windows = []
+    for case in load_cases(CASES_DIR):
+        state = SessionState(**case.state) if case.state else SessionState()
+        windows.append(
+            termination.grading_window(state, turn=_turn_index(case.dialogue))
+        )
+
+    assert max(windows) > 1, "no case makes the grader settle an earlier turn"
+
+
+def test_an_observation_carries_what_the_owed_turn_established():
+    """`slots_filled` alone cannot see the bug. A grader that merged the two
+    lists, or dropped the earlier one, looks identical on that field.
+    """
+    from evals.coherence.matrix import Observation
+
+    assert Observation(case_id="a", coherence="on_track").slots_filled_previously == ()
+
+
+async def test_replay_reads_both_slot_lists_off_the_grader(monkeypatch):
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+
+    from backend.models import GraderResult
+    from evals.coherence.cases import Case
+    from evals.coherence.replay import replay_case
+
+    recorded = GraderResult(
+        coherence="on_track",
+        slots_filled=["order"],
+        slots_filled_previously=["drinks"],
+    )
+    grade = AsyncMock(return_value=(recorded, SimpleNamespace()))
+    monkeypatch.setattr("backend.workers.grader.grade", grade)
+
+    observation = await replay_case(
+        Case(
+            id="owed",
+            topic_id="food-ordering",
+            sketch="A brisk server.",
+            dialogue=(),
+            learner_turn="我要一个鱼",
+            opening_line={"zh": "你好！", "pinyin": "nǐ hǎo!"},
+        )
+    )
+
+    assert observation.slots_filled == ("order",)
+    assert observation.slots_filled_previously == ("drinks",)
+
+
+async def test_a_turn_settling_a_debt_credits_the_earlier_turn_separately():
+    """The A3 regression guard. The prefix's "only this turn" paragraph must
+    not talk the grader out of `slots_filled_previously`, and the earlier
+    turn's slots must not be merged into `slots_filled` either.
+    """
+    from evals import cassette
+    from evals.coherence.replay import replay_case
+
+    case = next(c for c in load_cases(CASES_DIR) if c.id == "owed-drinks-then-order")
+    client = cassette.CassetteClient()
+    for _ in range(3):
+        observation = await replay_case(case, client=client)
+        assert set(observation.slots_filled) == {"order"}, (
+            f"final turn credited {list(observation.slots_filled)}"
+        )
+        assert set(observation.slots_filled_previously) == {"drinks"}, (
+            f"owed turn credited {list(observation.slots_filled_previously)}"
+        )
 
 
 # --- what a failed measurement is allowed to claim ---------------------------
@@ -756,18 +856,42 @@ def _gold_with_slots(case_id, slots, credit_ok=True):
 
 # --- A1: the recorded multi-slot misses --------------------------------------
 #
-# The bug A3 fixed, kept as the guard against it coming back. Three samples per
-# case, not one: the grader is a model, and a rule that only holds on a lucky
-# draw has not landed.
+# The bug A3 fixed, kept as the guard against it coming back.
+#
+# **A rate, not a run.** `slots_filled` is a model's output, so a case has a
+# success *rate* and not a result. A1 asserted three consecutive exact matches
+# against the committed recording, which is one draw asserted three times: at a
+# true rate of 0.5 that goes green about one time in eight, and it did — A3
+# reported "3/3 on all three cases" off a prompt whose real rate on
+# `milk-and-biscuits` was nearer 6/10. A gate you pass by luck is worse than no
+# gate, because it is read as evidence.
+#
+# So the corpus records `DENSE_SAMPLES` draws and the gate is `DENSE_MIN_EXACT`
+# of them. Five and four: at a true rate of 0.95 that false-fails 2% of the
+# time, and ten samples buys more power to catch a *mediocre* case rather than
+# more protection for a good one. Re-recording is the only thing that spends
+# money, so the sample count is the weekly job's bill, not every PR's.
+#
+# The observed rate goes in the failure message on purpose. A case that scrapes
+# through at 4/5 must not read the same as one at 5/5.
+
+DENSE_SAMPLES = 5
+DENSE_MIN_EXACT = 4
+
+A1_DENSE_CASES = (
+    "milk-and-biscuits",
+    "computer-work-ni-ne",
+    "clip-and-tea",
+)
 
 
 @pytest.mark.parametrize("case_id", A1_DENSE_CASES)
 async def test_a_dense_turn_is_credited_for_every_slot_it_established(case_id):
-    """One utterance, several slots, credit for every one.
+    """One utterance, several slots, credit for every one — most of the time.
 
-    The live sessions in `docs/streams/grading.md` packed a turn and got
-    credit for fewer facts than they established. These cases are that record,
-    and A3's rewritten `slots_filled` instruction is what makes them pass.
+    The live sessions in `docs/streams/grading.md` packed a turn and got credit
+    for fewer facts than they established. These cases are that record, and
+    A3's rewritten `slots_filled` instruction is what moves them.
     """
     from evals import cassette
     from evals.coherence.replay import replay_case
@@ -775,9 +899,26 @@ async def test_a_dense_turn_is_credited_for_every_slot_it_established(case_id):
     case = next(c for c in load_cases(CASES_DIR) if c.id == case_id)
     expected = set(load_gold(f"{CASES_DIR}/gold.json")[case_id].slots_established)
     client = cassette.CassetteClient()
-    for _ in range(3):
-        observation = await replay_case(case, client=client)
-        assert set(observation.slots_filled) == expected, (
-            f"{case_id}: credited {list(observation.slots_filled)}, "
-            f"expected {sorted(expected)}"
-        )
+
+    credited = [
+        set((await replay_case(case, client=client)).slots_filled)
+        for _ in range(DENSE_SAMPLES)
+    ]
+    exact = sum(1 for slots in credited if slots == expected)
+
+    # A cassette holding fewer draws than the gate asks for would *cycle*, and
+    # the repeats would be counted as independent samples. The rate would then
+    # be computed from a recording that never measured one.
+    (key,) = client.used
+    recorded = len(client.store.load(key).samples)
+    assert recorded >= DENSE_SAMPLES, (
+        f"{case_id}: cassette holds {recorded} samples, gate needs "
+        f"{DENSE_SAMPLES}; re-record with --samples {DENSE_SAMPLES}"
+    )
+
+    misses = [sorted(slots) for slots in credited if slots != expected]
+    assert exact >= DENSE_MIN_EXACT, (
+        f"{case_id}: {exact}/{DENSE_SAMPLES} exact, "
+        f"need {DENSE_MIN_EXACT}. Expected {sorted(expected)}; "
+        f"missed draws credited {misses}"
+    )

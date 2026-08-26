@@ -36,10 +36,20 @@ jobs:
       # `--refresh` replaces each recording rather than topping it up: the diff
       # against what is committed is the entire output of this job, and an
       # appended sample would bury it.
+      #
+      # `--samples 5` is what the dense-case gate needs to judge a *rate* rather
+      # than a draw (`tests/test_coherence_eval.py`, DENSE_SAMPLES). Recording
+      # fewer would make the gate cycle a short cassette and count the repeats.
+      #
+      # `--prune` deletes recordings this sweep never reached. A prompt edit
+      # changes the key, and the old file is then unreachable — no code can
+      # produce that key again, and the filename is a hash, so nobody can read
+      # it either. This is the only place it runs: it is safe here because the
+      # job replays the whole corpus, and `--prune` refuses a `--case` subset.
       - name: Re-record against live
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: python -m evals.coherence.replay --record --refresh --samples 3
+        run: python -m evals.coherence.replay --record --refresh --prune --samples 5
 
       - name: Show what moved
         run: git --no-pager diff --stat -- evals/cassettes

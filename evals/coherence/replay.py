@@ -48,6 +48,17 @@ _GRADE_TIMEOUT_S = 60.0
 _turn_index = orchestrator._turn_index
 
 
+def _check_prune_is_a_full_sweep(*, prune: bool, cases) -> None:
+    """Refuse `--prune` on a run that only visits some of the corpus.
+
+    Prune keeps what the run reached. A `--case` run reaches a handful, so
+    pruning off one would delete every other recording in the store — the
+    expensive mistake, made silently.
+    """
+    if prune and cases:
+        raise SystemExit("--prune needs the whole corpus; drop --case")
+
+
 def _opening_zh(case: Case) -> Optional[str]:
     """The 汉字 the grader is prefixed with on turn 1, or `None`."""
     line = case.opening_line
@@ -75,6 +86,7 @@ async def replay_case(case: Case, *, client=None) -> Observation:
         case_id=case.id,
         coherence=grade.coherence,
         slots_filled=tuple(grade.slots_filled),
+        slots_filled_previously=tuple(grade.slots_filled_previously),
     )
 
 
@@ -121,6 +133,7 @@ def main() -> None:
     parser.add_argument("--cases-dir", default=CASES_DIR)
     parser.add_argument("--out", default=DEFAULT_OUT)
     args = parser.parse_args()
+    _check_prune_is_a_full_sweep(prune=getattr(args, "prune", False), cases=args.case)
 
     cases = load_cases(args.cases_dir)
     # Pair even when replaying a subset: an unlabelled case is a hole in the
@@ -157,6 +170,14 @@ def main() -> None:
     )
     write(observations)
     print(f"\nwrote {len(observations)} observations to {args.out}")
+
+    # After the write, never before: a prune that raised mid-run must not cost
+    # the observations the run already paid for.
+    if client.prune:
+        removed = client.store.prune(keep=client.used)
+        for key in removed:
+            print(f"pruned {key[:12]}… — no prompt in this tree produces it")
+        print(f"pruned {len(removed)} unreachable cassette(s)")
 
 
 if __name__ == "__main__":

@@ -1,0 +1,50 @@
+{
+  "key": "20147114fcc78f3e42f450f7e92b4a6cc394b6fce008b12901aaca64164223d9",
+  "model": "claude-opus-5",
+  "recorded_at": "2026-08-25T04:52:56+00:00",
+  "samples": [
+    {
+      "parsed_output": {
+        "coherence": "off_track",
+        "slots_filled": [],
+        "slots_filled_previously": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2082,
+        "input_tokens": 28,
+        "output_tokens": 22
+      }
+    },
+    {
+      "parsed_output": {
+        "coherence": "drifting",
+        "slots_filled": [],
+        "slots_filled_previously": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2082,
+        "input_tokens": 28,
+        "output_tokens": 86
+      }
+    },
+    {
+      "parsed_output": {
+        "coherence": "drifting",
+        "slots_filled": [],
+        "slots_filled_previously": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2082,
+        "input_tokens": 28,
+        "output_tokens": 77
+      }
+    }
+  ],
+  "summary": "claude-opus-5 → GraderResult: 我有三个朋友。"
+}

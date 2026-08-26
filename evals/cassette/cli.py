@@ -37,6 +37,12 @@ def add_arguments(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
         "What the scheduled re-record job runs, so the diff is the news.",
     )
     group.add_argument(
+        "--prune",
+        action="store_true",
+        help="with --record, delete recordings this run never reached. A "
+        "prompt edit changes the key, and the old file is then unreachable.",
+    )
+    group.add_argument(
         "--cassettes",
         default=str(CassetteStore.default_root()),
         help="cassette directory (default: evals/cassettes)",
@@ -50,9 +56,15 @@ def client_from_args(args) -> CassetteClient:
     refresh = getattr(args, "refresh", False)
     if refresh and not record:
         raise SystemExit("--refresh does nothing without --record")
+    prune = getattr(args, "prune", False)
+    if prune and not record:
+        # A replay run reaches only the keys its cases ask for, so pruning off
+        # one deletes every cassette the run did not happen to need.
+        raise SystemExit("--prune is only safe on a --record sweep")
     return CassetteClient(
         CassetteStore(getattr(args, "cassettes", None) or CassetteStore.default_root()),
         record=record,
         samples=getattr(args, "samples", 1),
         refresh=refresh,
+        prune=prune,
     )
