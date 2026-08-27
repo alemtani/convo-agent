@@ -564,22 +564,27 @@ def _advance_or_echo(state, *, scenario, grade, learner_closed, coherent, turn):
     `state.filled_at`, so a point the learner watched themselves earn is never
     clawed back (a score going down reads as a bug).
 
-    `slots_filled_previously` is the exception — credit owed to an earlier turn
-    whose grade failed, so the learner never saw it. Withholding it takes nothing
-    away in front of anyone, so the gate drops it too.
+    The gate is **this turn's**, not the session's. `slots_filled_previously` is
+    credit owed to earlier turns whose grade failed, and the gate does not touch
+    it: a non-sequitur now must not cancel points the learner earned on a turn
+    that came before it. It is dropped only when there is no grade at all —
+    nothing to settle. Gating it on each earlier turn's *own* coherence would be
+    more correct still, but those flags were never persisted; that needs the
+    per-turn coherence state the end-of-session challenge ("I'm done") also wants.
 
     The turn still counts as **graded**: leaving a blocked turn in debt would
     hand the next window a second chance to credit what the gate just refused.
     """
-    blocked = grade is None or not coherent
+    graded = grade is not None
+    this_turn_blocked = not graded or not coherent
     return termination.advance(
         state,
         scenario=scenario,
-        slots_filled=[] if blocked else grade.slots_filled,
-        slots_filled_previously=[] if blocked else grade.slots_filled_previously,
+        slots_filled=[] if this_turn_blocked else grade.slots_filled,
+        slots_filled_previously=[] if not graded else grade.slots_filled_previously,
         learner_closed=learner_closed,
         turn=turn,
-        graded=grade is not None,
+        graded=graded,
     )
 
 

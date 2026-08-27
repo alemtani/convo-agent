@@ -652,11 +652,11 @@ async def test_an_incoherent_turn_never_takes_back_credit_already_earned(monkeyp
     assert resp.state.filled_at == {"self_name": 1}
 
 
-async def test_an_incoherent_turn_cancels_the_credit_it_owed_earlier_turns(monkeypatch):
-    """The single exception, and why it is one: `slots_filled_previously` is
-    credit read off a turn that did not follow, for turns whose own coherence
-    nobody recorded. The learner has never seen it, so withholding it is not a
-    point taken away in front of them."""
+async def test_an_incoherent_turn_keeps_the_credit_it_owed_earlier_turns(monkeypatch):
+    """The gate is this turn's, not the session's. `slots_filled_previously` is
+    credit owed to an earlier turn whose grade failed; a non-sequitur now must
+    not cancel points the learner earned on a turn that came before it. This
+    turn's own slot is still gated — only the owed credit survives."""
     _tracker_worker(
         monkeypatch,
         slots_filled=["partner_name"],
@@ -671,7 +671,8 @@ async def test_an_incoherent_turn_cancels_the_credit_it_owed_earlier_turns(monke
         )
     )
 
-    assert resp.state.filled_at == {}
+    # Owed `self_name` survives; this turn's incoherent `partner_name` does not.
+    assert resp.state.filled_at == {"self_name": 2}
 
 
 async def test_an_incoherent_turn_is_still_a_graded_turn(monkeypatch):

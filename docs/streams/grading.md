@@ -503,9 +503,13 @@ Points already earned are never taken back. A learner watching 3/4 become 2/4
 reads that as a bug, not a judgment — and the gate at the moment of the gamed
 turn already catches what retroactive cancellation was for.
 
-The one exception is the owed-turn recovery path, where a turn is credited before
-its coherence is known. `slots_filled_previously` is the only place a
-cancellation is both meaningful and invisible to the learner mid-session.
+**The gate is this turn's, not the session's.** It applies to `slots_filled`
+only. `slots_filled_previously` — credit owed to earlier turns whose grade
+failed — is never dropped for *this* turn being incoherent: those turns are not
+this one, and a non-sequitur now must not cancel points earned before it (raised
+in review, PR #97). Gating owed credit on each earlier turn's *own* coherence
+would be more correct, but those flags are not persisted — future work, and the
+same per-turn coherence state the end-of-session challenge ("I'm done") needs.
 
 **Where it lives: `_advance_or_echo`.** The grader and converser are concurrent
 (`asyncio.wait(..., FIRST_COMPLETED)`) so neither is reliably first, and the gate
