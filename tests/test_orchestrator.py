@@ -707,7 +707,7 @@ async def test_a_text_turn_runs_the_real_workers_against_a_faked_sdk():
         turn_annotation=ConverserAnnotation(),
         user_reading=Utterance(zh="我叫小明", pinyin="wǒ jiào xiǎo míng"),
     )
-    grade = GraderResult(coherence="on_track", slots_filled=["self_name"])
+    grade = GraderResult(slots_filled=["self_name"])
 
     def _message(parsed):
         return SimpleNamespace(

@@ -169,7 +169,7 @@ SESSION_START = {
 TURN_TEXT = {
     "transcript": {"zh": "你好", "pinyin": "nǐ hǎo"},
     "reply": {"zh": "你好！很高兴认识你。", "pinyin": "nǐ hǎo! hěn gāoxìng rènshi nǐ."},
-    "annotation": {"tone_errors": []},
+    "annotation": {"tone_errors": [], "coherent": True},
     "timings": {**TIMINGS, "stt_ms": None, "pa_ms": None},   # no speech on a typed turn
     "usage": USAGE,
 }
@@ -202,7 +202,7 @@ TURN_AUDIO = [
     {
         "stage": "reply",
         "reply": {"zh": "你好！", "pinyin": "nǐ hǎo!"},
-        "annotation": {"tone_errors": []},
+        "annotation": {"tone_errors": [], "coherent": True},
         "timings": {**TIMINGS, "total_ms": None},
         "elapsed_ms": 1240.0,
     },
@@ -212,7 +212,6 @@ TURN_AUDIO = [
     {
         "stage": "state",
         "state": {"filled_at": {}, "status": "active"},
-        "coherence": "on_track",
         "timings": {**TIMINGS, "total_ms": None},
         "elapsed_ms": 1245.0,
     },

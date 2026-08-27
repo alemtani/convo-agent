@@ -580,6 +580,19 @@ in the corpus are `nonsequitur-slot-fill`, which gold labels incoherent — the
 gaming turn V0 built this whole track around. The grader still credits
 `recommendation` on all five draws, and the learner now sees none of them.
 
+**A0.6 landed first, and the rebase found two things it left.** The behavioral
+suite (`tests/test_worker_behavior.py`) asserts the partner's annotation, so its
+cassettes were re-recorded here too, and its "the partner never reports
+coherence" test was inverted — it passed on the new code by accident, because
+the field is `coherent` and it looked for `coherence`. A test that documents the
+opposite of what the code does is worse than no test.
+
+The second is a defect in the weekly job. `--samples 5` is a ceiling and
+`--repeat` is how many times a run visits each case, so at the default
+`--repeat 3` the scheduled re-record wrote three draws into a cassette the dense
+gate demands five of. It has been recording shallow since A3. Both steps now
+pass `--repeat 5`.
+
 **What is not yet measured: the partner's tag itself.** Scoring `coherent`
 against gold needs the turn runner's cassettes, which are A1.5's outstanding
 work. `TurnObservation` carries the tag and `evals.turn.replay` prints the 2×2

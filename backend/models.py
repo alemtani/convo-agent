@@ -780,9 +780,9 @@ class TextTurnRequest(BaseModel):
     # in `dialogue` — it costs the learner none of their turn budget
     # (`docs/SCENARIOS.md`, "Definition of a turn") — but the grader has to see
     # it, because on turn 1 it is the *only* thing the learner's words are a
-    # response to. Without it, coherence on the turn most likely to be answering
-    # a greeting is judged against nothing at all. Optional: a session started
-    # before this field existed simply grades turn 1 without it.
+    # response to. Without it, the turn most likely to be answering a greeting
+    # is graded against nothing at all. Optional: a session started before this
+    # field existed simply grades turn 1 without it.
     opening_line: Optional[Utterance] = None
 
     @field_validator("text")

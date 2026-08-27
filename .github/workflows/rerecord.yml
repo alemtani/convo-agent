@@ -46,19 +46,30 @@ jobs:
       # `--samples 5` is what the dense-case gate needs to judge a *rate* rather
       # than a draw (`tests/test_coherence_eval.py`, DENSE_SAMPLES). Recording
       # fewer would make the gate cycle a short cassette and count the repeats.
+      #
+      # **`--repeat 5` is what actually buys those five draws.** `--samples` is a
+      # ceiling — how deep a key may get — and `--repeat` is how many times the
+      # run visits each case, so a key can only ever hold as many samples as it
+      # was visited. At the default `--repeat 3` this job recorded three and the
+      # dense gate then failed its own depth check. The two numbers must move
+      # together.
       - name: Re-record the grader cases
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: >
           python -m evals.coherence.replay --record --refresh --samples 5
-          --used-out "$RUNNER_TEMP/used-coherence.json"
+          --repeat 5 --used-out "$RUNNER_TEMP/used-coherence.json"
 
+      # Same pairing as above: `--repeat` is what fills the depth `--samples`
+      # allows. Nothing asserts a depth of 5 on turn observations yet — A1.5
+      # records the first ones — but a corpus recorded shallower than it claims
+      # is the failure this comment exists to stop repeating.
       - name: Re-record the turn cases
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: >
           python -m evals.turn.replay --record --refresh --samples 5
-          --used-out "$RUNNER_TEMP/used-turn.json"
+          --repeat 5 --used-out "$RUNNER_TEMP/used-turn.json"
 
       # The A0.6 behavioral evals: the same layer, a different corpus. `--samples
       # 5` matches `tests/test_worker_behavior.py:DRAWS`, which refuses to run

@@ -63,6 +63,7 @@ async def test_the_partner_reply_parses_into_the_shape_the_client_renders(client
         assert reply.zh and reply.pinyin
         assert isinstance(annotation, ConverserAnnotation)
         assert isinstance(annotation.learner_said_goodbye, bool)
+        assert isinstance(annotation.coherent, bool)
         # The reading is the seam that lets a beginner type pinyin; it is asked
         # for here (`want_reading` defaults to True) so it must come back.
         assert reading is not None and reading.zh
@@ -74,14 +75,19 @@ async def test_the_partner_reply_parses_into_the_shape_the_client_renders(client
 async def test_the_partner_is_never_asked_to_judge_the_goal(client):
     """V2's blindness, seen from the output side.
 
-    `coherence` and `slots_filled` moved to the grader. A converser that still
-    reported them would mean the split had come undone — and it is the reason
-    the live version of this test raised: it read both off the annotation.
+    `slots_filled` is the grader's and must never come back on an annotation: a
+    converser that reported it would mean the split had come undone, and it is
+    the reason the live version of this test raised.
+
+    Coherence is a different case and no longer belongs on that list. A4 gave it
+    back to the partner as `coherent`, because it asks what the partner meant by
+    its own last line rather than what the rubric wants — it names no slot and
+    no goal, so answering it reveals nothing about what is being scored.
     """
     _reply, annotation, _reading, _usage = (await _draws(client, "converser-reply"))[0]
 
-    assert not hasattr(annotation, "coherence")
     assert not hasattr(annotation, "slots_filled")
+    assert isinstance(annotation.coherent, bool)
 
 
 async def test_the_sketch_worker_produces_an_opening_line_and_flavour(client):

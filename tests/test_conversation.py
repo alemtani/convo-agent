@@ -541,7 +541,7 @@ def test_prior_dialogue_turns_never_carry_a_hint():
 
 def test_the_tracker_fields_default_to_a_no_op():
     """A turn that establishes nothing must parse, not fail — most turns do."""
-    grade = GraderResult(coherence="on_track")
+    grade = GraderResult()
     assert grade.slots_filled == []
     assert grade.slots_filled_previously == []
 
