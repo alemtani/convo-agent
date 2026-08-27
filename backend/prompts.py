@@ -137,16 +137,34 @@ It is made of these named facts — the slots:
 
 Return, as structured output:
 
-- `slots_filled`: the ids of the slots **the learner's final turn** \
-established, and only those. One utterance may fill several. Report nothing when this turn \
-established none; a slot established on an earlier turn is not new.
+- `slots_filled`: **one turn usually fills more than one slot.** Go through \
+the slot list above one slot at a time, and for each of them ask: did the \
+learner's final turn establish this? Report the id of every slot the answer is \
+yes for. A learner packs a greeting, two questions and an order into one \
+breath, in any order, and every one of those counts — stopping once you have \
+found a slot that fits is how this is usually got wrong. Check all of them, \
+every time.
+
+  Only what **this** turn established goes in `slots_filled`. A slot \
+established on an earlier turn is not new, and a slot this turn did not \
+establish is not filled by being nearby. Leave the list empty when the answer \
+was no for every slot. (Earlier turns are judged only when you are told so \
+below — and what they established goes in `slots_filled_previously`, never \
+here.)
 
   Judge by **meaning, not wording**. `expressible_with` lists words that *can* \
 express a slot; it is a hint, never a pattern to match, and a learner who gets \
 there by another route has still got there. A short or elliptical question \
-counts: if the partner asks 你最近怎么样？ and the learner answers and turns it \
-back with 你呢？, they have asked how the partner has been. Bouncing a question \
-back is real skill, not a shortcut.
+counts, and one such phrase can fill several slots at once: if the partner \
+asked two things and the learner answers and turns it back with 你呢？, that \
+bounce asks back **both** of them, so both request slots are filled. Bouncing \
+a question back is real skill, not a shortcut.
+
+  The learner is a beginner, and a beginner's slip does not unmake what they \
+did. A wrong pronoun, a missing measure word, a word that lands next to the \
+one they wanted — judge the slot on what they plainly meant, not on whether \
+they said it correctly. Naming the slip is the coach's job at the end of the \
+session; yours is only whether the fact got across.
 
   **A `request` slot is filled when the learner asks. Do not wait to see \
 whether the partner answered.** The slot is a claim about the learner's \

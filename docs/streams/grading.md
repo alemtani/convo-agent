@@ -158,38 +158,6 @@ code to be reconciled at the moment they diverged. Hence the standing rule in
 `AGENTS.md` — the stream doc's kickoff prompt is updated in the same PR as the
 work it describes.
 
-### A0.5 — Interception, so an end-to-end eval is free too
-
-A0 covers the seam where a caller passes `client=`: the workers, the
-orchestrator, `replay.py`. It does **not** cover a run against a live server.
-`main.py` threads no client, so each worker falls back to its module-global
-`_get_client()` and a real `POST /api/turn/text` spends real money. Today there
-is no way to say "this run is an eval" at all.
-
-**Never a flag inside `backend/`.** `if os.environ["CASSETTES"]` on the hot path
-means one misconfigured variable on fly.io serves learners canned replies, and
-it puts eval code in the production import path. **The differentiator is which
-entrypoint you launched**, which is a thing that cannot ship to production.
-
-- `cassette.install()` seeds each worker's module-global `_client`. All four
-  workers already resolve `client or _get_client()` off a module global, so this
-  is a real seam.
-- `evals/server.py` calls `install()` and then exposes `backend.main:app`. An
-  eval run is `uvicorn evals.server:app`; the ordinary
-  `uvicorn backend.main:app` is unchanged and cannot be installed into.
-
-**Its own step because it touches the critical path.** The diff adds no line to
-`backend/`, but `install()` swaps the client object sitting on the hot path at
-runtime — production module state, mutated by eval code. That is worth a review
-of its own rather than a footnote in a cassette PR.
-
-**Not a blocker for A1**, which runs at the worker seam where `client=` already
-works. Either order.
-
-**Azure stays real.** This layer wraps `messages.parse`; STT and PA are a
-different SDK and a different shape. "Free end-to-end" means the text harness
-until someone writes an Azure layer, and the audio path is not that.
-
 ### A0.6 — Repair the `live` suite and put it in CI — **shipped, this PR**
 
 `tests/test_conversation_live.py` unpacks five values from
@@ -277,6 +245,21 @@ replaying a recording of a prompt that no longer exists. Re-recorded, and the
 superseded cassette deleted — the grader and sketch keys did not move, because
 A2 did not touch those prompts.
 
+Merging A1.5 and A3 did it twice more, and taught the step two things it did not
+know when it was written:
+
+- **A gate that loops must prove its cassette is deep enough.** These tests
+  assert over five draws. A replay *cycles* the samples it has, so a cassette
+  recorded at `--samples 1` would hand back the same answer five times and read
+  as five passes. `_draws` now checks the recorded depth, the same guard A3 put
+  on the dense cases — and for the same reason: a rate computed from a recording
+  that never measured one.
+- **Every recording step must come before the sweep.** `evals.cassette.sweep`
+  deletes what no manifest claims, so the behavior runner needed `--used-out`
+  like the other two. Without it the scheduled job would have deleted this
+  corpus every week and silently re-bought it — the exact bill the layer exists
+  to avoid. One store, three runners now.
+
 ### A1 — The failing cases — **shipped, PR #90**
 
 The record of the bug, written before anything is fixed. Fail-to-pass cases from
@@ -310,7 +293,50 @@ The two misses are `strict` xfails so CI stays a merge gate. A3 removes the
 mark. An unexpected pass fails the build — that is how we notice the fix
 landed early.
 
-### A2 — The cuts — **shipped, this PR**
+### A1.5 — The turn runner, so the *partner* is measured too — **code shipped (PR #93); cassettes outstanding**
+
+Every eval in the repo called `grader.grade` directly. That measures the judge
+and never the thing being judged: the partner's prompt had no coverage at all,
+which is how A2 cut three annotation fields and a third of the system prompt
+with nothing to replay.
+
+`evals/turn/replay.py` drives `orchestrator.run_text_turn`, which threads **one**
+client into `conversation.respond` and `grader.grade` alike — so a single
+cassette-backed run covers the reply, the grade computed against that reply, and
+the state it advances to. The grader-only runner stays: it holds the partner
+still, which is what A3 needs while the grader prompt moves.
+
+**Over-volunteering is the headline check** (`evals/turn/withholding.py`). The
+partner handing over a `request` slot before the learner asks does not help
+them — it removes a point from the board, because you cannot ask for what you
+have already been told and repeating yourself to a partner does not work. It was
+seen twice in real sessions. `withholding` in `topic.md` is the authored
+constraint against it and nothing had ever checked that the partner honours it.
+
+Only unasked, unfilled `request` slots are candidates: a partner answering what
+the learner just asked is the scene working. That composition — the grade and
+the reply from the same call — is why the check belongs on this runner.
+
+Two things the work settled:
+
+- **The turn runner cannot observe `coherence`.** `ConversationTurnResponse`
+  carries none: it is the grader's judgment, and it reaches the client only
+  through its consequence, whether the slot advanced. So coherence accuracy
+  stays the grader-only runner's measurement against `gold.json` — until **A4**
+  puts the field on the partner's annotation, at which point this runner becomes
+  where it is observed and `TurnObservation` grows the field.
+- **Probes are not recordings.** `evals/turn/cases/` holds constructed red-team
+  turns (the learner asks nothing, so anything the reply establishes was
+  volunteered) and is kept apart from `tests/fixtures/sessions/`, which holds
+  real turns from real sessions. A fabricated turn filed among recordings is a
+  lie a later reader cannot detect. Probes carry no gold: gold answers what the
+  *learner* deserved, and a probe asks about the partner.
+
+**Cassettes are not recorded yet.** The runner is a merge gate only once they
+are, and recording spends money — one wave, two calls per case plus a judge call
+where there is a candidate slot.
+
+### A2 — The cuts — **shipped, PR #91**
 
 - `topic_tags`, `should_give_feedback`, `grammar_notes` — model, prompt,
   frontend. Decide the notes panel: verdict-derived, or gone.
@@ -340,7 +366,7 @@ of these cuts touch the grader prompt. A1's two xfails still fail;
 `clip-and-tea` stays green. That is the point of cutting before A3: the
 baseline did not shift.
 
-### A3 — The multi-slot fix
+### A3 — The multi-slot fix — **shipped, PR #95**
 
 Rewrite the `slots_filled` instruction so multi-fill is the leading rule, not a
 subordinate clause. A1's cases go green.
@@ -352,6 +378,108 @@ Leaving an xfail on a now-green test is a silent skip of the whole point of
 A1. `clip-and-tea` is already a real pass; keep it that way.
 
 The prompt change invalidates cassette keys. Re-record the affected cases.
+
+**What shipped, and what it taught us.** Four changes to the grader's
+`slots_filled` instruction, all of them about *where* a rule sits rather than
+what it says:
+
+- The leading sentence is now "one turn usually fills more than one slot", and
+  the instruction is a **loop over the slot list** — take each slot in turn and
+  ask whether this utterance established it. The old text asked for "the slots
+  the final turn established", which reads as one search with one answer.
+- The scoping rules moved into their own paragraph *after* the loop, and they
+  are scoped to the **field**: "only what this turn established goes in
+  `slots_filled`". The first draft said "judge this turn, and only this turn",
+  which flatly contradicted `render_window_note` ("judge them too") and was
+  resolved only by the note landing later in the message. Review caught it.
+- A **beginner-slip** rule: a wrong pronoun, a missing measure word, a
+  near-miss word does not unmake what the learner did. Naming the slip is the
+  coach's job at the end of the session, not the grader's.
+- The 你呢 example bounces back **both** of what the partner asked.
+
+### The thing this step actually taught us
+
+**A1's test asserted a lucky draw, and A3 shipped green on one.**
+
+The first version of this PR reported "all three cases pass on all three
+samples" and that was true. Measured at ten draws, the same prompt got
+`milk-and-biscuits` right 7/10 and `computer-work-ni-ne` 7/10. The test replays
+the first three committed recordings, so it goes green iff those three happened
+to be right — about one time in eight at a true rate of 0.5. A gate you pass by
+luck is worse than no gate, because it is read as evidence.
+
+A0 already said this: *"record N samples per key, store all N, and assert
+against the distribution rather than one draw."* A1 asserted one draw, three
+times. The lesson is not that A1 was careless — it is that **a stochastic
+property tested by replaying a fixed recording looks deterministic**, and
+nothing about a green run tells you which it was.
+
+So the dense gate is now a **rate**: `DENSE_SAMPLES = 5`, `DENSE_MIN_EXACT = 4`,
+with the observed rate in the failure message so 4/5 does not read like 5/5.
+Five rather than ten because the numbers say so — at a true rate of 0.95, a 4/5
+gate false-fails 2% of the time, and the extra five draws buy power to catch a
+*mediocre* case rather than protection for a good one. Re-recording is the only
+thing that spends money, so the sample count is the weekly job's bill and not
+every PR's; CI replays a fixed recording and never re-draws.
+
+### What `milk-and-biscuits` was really about
+
+It sat at 5–7/10 while every other case was 10/10. The cause was not the
+multi-slot rule. The learner wrote **你要一个牛奶和三个饼干** — "*you* want one
+milk and three biscuits". Same turn with 我要 instead: 5/5. The grader was
+wobbling on whether a sentence that assigns the wanting to the server is an
+order at all, which is a fair reading.
+
+That is what the beginner-slip rule fixes, and it is a rule about the product
+rather than about this fixture: the target learner is HSK 1–2 and *will* say 你
+for 我. Whether a fact got across is the grader's question; whether it was said
+correctly is the verdict card's.
+
+### Numbers
+
+Five draws over eleven cases, against the same gold:
+
+| | A1 baseline | A3 |
+| --- | --- | --- |
+| dense cases at the 4/5 gate | 0/3 pass | **3/3 pass** |
+| missed credit | 6 (of 30) | **0** (of 55) |
+| spurious credit | 4 (of 30) | 6 (of 55) — same rate, same two cases |
+
+Every spurious run is `nonsequitur-slot-fill` (the deliberate gaming case, which
+the recommended `on_track` gate blocks) or the single `self_name` on
+`elliptical-ni-ne` that was there at baseline. **Nothing pushed the grader
+toward crediting more.** Credit went up only where gold said it was owed.
+
+### Two things that came out of review
+
+**The owed-turn path had no coverage at all.** Every case had
+`last_graded_turn: None`, so `grading_window` was 1 across the whole corpus and
+`render_window_note` was prompt nobody had ever measured — which is why the
+first draft's contradiction with it went unnoticed. New fixture
+`owed-drinks-then-order`: watermark at turn 1, turn 3 under test, so the grade
+owes turn 2. `Observation` now carries `slots_filled_previously`, because
+`slots_filled` alone cannot tell a grader that *merged* the two lists from one
+that dropped the earlier turn. 5/5 exact.
+
+**Stale cassettes are the scheduled job's problem, not a PR's.** A prompt edit
+changes every key, and the recordings under the old ones become unreachable —
+no code can produce that key again, and the filename is a hash. The first draft
+of this PR deleted them by hand. They are kept now, and
+`.github/workflows/rerecord.yml` sweeps them.
+
+**The sweep is not a flag on a runner, and that is the point.** A1.5 (PR #93)
+gave the store a second writer: `evals.turn.replay` records the whole turn,
+`evals.coherence.replay` records the grader alone, and **neither reaches the
+other's keys**. A `--prune` that deleted what its own run did not touch would
+therefore delete the other runner's entire corpus — which is exactly what this
+PR's first draft would have shipped, armed to fire the moment A1.5 records.
+
+So each runner writes down what it reached (`--used-out`) and
+`evals.cassette.sweep` takes the **union**. A missing manifest is an error, not
+an empty set: a runner that crashed must not read as "reached nothing".
+`--used-out` is refused alongside `--case` for the same reason, and
+`store.keys()` now only counts filenames that are actual sha256 digests, so a
+manifest or a README parked in the directory can never read as a stale key.
 
 ### A4 — Coherence moves to the partner, as a gate
 
@@ -436,8 +564,8 @@ Needs a server-side token and a rate limit. The client never sees the token.
 
 ## Done when
 
-- The cassette suite runs in CI, spends nothing, and is a merge gate.
-- An eval can drive the real server end-to-end without spending anything.
+- The cassette suite runs in CI, spends nothing, and is a merge gate — the
+  grader's cases and the partner's alike.
 - ~~The `live` suite runs — the behavioral half in CI, the contact half on a
   schedule. Neither can rot unnoticed again.~~ **Done (A0.6).**
 - All four recorded misses pass.
@@ -447,9 +575,9 @@ Needs a server-side token and a rate limit. The client never sees the token.
 
 ## Kickoff prompts
 
-One per step, each runnable as written. **A0 (PR #86), A1 (PR #90), A2 (PR #91)
-and A0.6 (this PR) are done** — their prompts are retired. A0.5 and A3 are
-independent of each other and can run in parallel, in separate worktrees.
+One per step, each runnable as written. **A0 (PR #86), A1 (PR #90), A2 (PR #91),
+A3 (PR #95) and A0.6 (this PR) are done** — their prompts are retired. A1.5 is
+what runs next.
 
 Every one of these ends the same way, so it is said once here: work in a git
 worktree, write the failing test first, branch from `main`, conventional commits,
@@ -457,29 +585,41 @@ open a PR explaining the *why* — and **update this document in the same PR**:
 mark what landed, correct what the work taught you, and leave the next prompt
 runnable.
 
-### A0.5 — interception
+### A1.5 — record the turn runner's cassettes
 
 ```
-Read docs/streams/grading.md. Start Stream A at A0.5: interception, so an
-end-to-end eval against the real server is free too.
+Read docs/streams/grading.md. Finish Stream A at A1.5: the turn runner is
+merged (PR #93) but records nothing, so it is not a gate yet.
 
-A0 (evals/cassette/) covers callers that pass client=. It does not cover a run
-against a live server: main.py threads no client, so each worker falls back to
-its module-global _get_client() and a real POST /api/turn/text spends money.
+`evals/turn/replay.py` drives `orchestrator.run_text_turn` — one client threads
+into both workers, so one run covers the reply, the grade computed against that
+reply, and the state it advances to. `evals/turn/withholding.py` then asks
+whether the reply gave away a `request` slot the learner had not asked for.
 
-Add cassette.install(), which seeds each worker's module-global _client, and
-evals/server.py, which calls install() and then exposes backend.main:app. An
-eval run is `uvicorn evals.server:app`. Do not add a flag inside backend/ — one
-misconfigured env var on fly.io would serve learners canned replies. The
-differentiator is which entrypoint was launched.
+Record and commit the cassettes. This spends money, one wave:
 
-This touches the critical path even though it adds no line to backend/:
-install() swaps the client object on the hot path at runtime. Say so plainly in
-the PR, and test that an ordinary `uvicorn backend.main:app` process is
-unaffected.
+    python -m evals.turn.replay --record --samples 3
+    python -m evals.turn.replay --record --samples 3 --cases-dir evals/turn/cases
 
-Azure stays real — this layer wraps messages.parse, so "free end-to-end" means
-the text harness, not the audio path.
+Two calls per case, plus a judge call wherever a candidate slot exists. The
+second command is the red-team probes, which are the point: on `greeting-only`
+and `i-am-hungry` the learner asks for nothing, so any slot the partner's reply
+establishes was volunteered — a point the learner can now never earn.
+
+Then report what the recording found, which is the actual deliverable:
+
+- Does the partner honour `withholding`? It was seen breaking it twice in real
+  sessions and nothing has ever checked it.
+- Did A2's trimmed prompt (PR #91) change the partner in a way nobody was
+  watching? A third of the system prompt went with no partner-side eval in
+  existence. This is the first look.
+
+Wire the runner into the CI eval job beside the coherence one, and into
+`.github/workflows/rerecord.yml` so it cannot go stale unnoticed.
+
+If a probe shows the partner volunteering, do **not** fix it in this PR. Write
+it up: it is either a prompt bug for its own change or an authoring bug in
+`withholding`, and which one it is deserves deciding on its own.
 ```
 
 ### A0.6 — repair the `live` suite
@@ -488,25 +628,35 @@ Retired: shipped. The `live` marker now means "a recording cannot stand in for
 this call", the behavioral half is a merge gate off cassettes, and the weekly
 job runs what is left.
 
-### A3 — the multi-slot fix
+### A4 — coherence moves to the partner
 
 ```
-Read docs/streams/grading.md. Start Stream A at A3: the multi-slot fix.
+Read docs/streams/grading.md. Start Stream A at A4: coherence moves to the
+partner, as a gate.
 
-Rewrite the slots_filled instruction in prompts.py:_GRADER_PROMPT_TEMPLATE so
-multi-fill is the leading rule, not a subordinate clause.
+Add a binary coherence field to ConverserAnnotation. Remove `coherence` from
+_GRADER_PROMPT_TEMPLATE and from GraderResult. The grader is then a
+slots-only worker, which is the point of the step.
 
-A1 recorded two misses as strict xfails in tests/test_coherence_eval.py
-(A1_DENSE_CASES):
+Three tags collapse to two. `drifting` counts as incoherent — that is a
+deliberate cost, not an oversight, and it means a legitimate topic change gets
+caught. Remap tests/fixtures/sessions/gold.json (and gold.second-opinion.json)
+as an explicit reviewed change, never a relabelling pass.
 
-- milk-and-biscuits — drops order
-- computer-work-ni-ne — 你呢 bounce drops partner_origin
+The gate lives in orchestrator._advance_or_echo, where the two concurrent
+branches meet, as a new argument to that pure function. It blocks credit for
+the incoherent turn and never removes credit already earned — with the single
+exception of slots_filled_previously on the owed-turn recovery path. Delete the
+out-of-date comment at orchestrator.py:431 while you are in there.
 
-Remove both xfail marks in this PR. The tests must pass as ordinary asserts.
-Do not leave an xfail on a passing test — that skips the whole point of A1.
-clip-and-tea is already green; do not break it.
+The A1 dense cases in tests/test_coherence_eval.py are a rate, not a run:
+DENSE_MIN_EXACT of DENSE_SAMPLES draws must be exact. Keep them passing. Both
+prompts change, so every cassette key changes: re-record
+(python -m evals.coherence.replay --record --samples 5) and run the default
+suite. Do not delete the stale recordings by hand — the weekly job prunes them.
+A3's numbers are the baseline to beat: 3/3 dense cases at the 4/5 gate, 0
+missed credit over 55 runs.
 
-The prompt change invalidates cassette keys. Re-record the affected cases
-(python -m evals.coherence.replay --record --samples 3) and run the default
-suite. It must be green with zero xfails on these three cases.
+This changes what the learner sees on the HUD, so raise a tunnel and take a
+real turn on the phone before the PR is ready.
 ```

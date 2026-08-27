@@ -18,10 +18,15 @@ from backend.models import ConverserAnnotation, SketchResult, Utterance
 from evals import cassette
 from evals.behavior import cases
 
-# Three draws, because a slot decision is a model's output and not a function.
-# The cassette holds three samples and a replay walks them, so this asserts the
-# invariant held on every recorded draw rather than on a lucky one.
-DRAWS = 3
+# Five draws, matching what the scheduled job records (`--samples 5`). A slot
+# decision is a model's output and not a function, so one draw says only what
+# happened once.
+#
+# Unlike the dense cases in `test_coherence_eval.py`, these are asserted at
+# **every** draw rather than as a rate. They are invariants, not measurements
+# with a known miss rate: a bare 你好 must never credit a slot, and a reply must
+# always parse. A rate gate on those would be a licence to be wrong sometimes.
+DRAWS = 5
 
 
 @pytest.fixture
@@ -30,8 +35,21 @@ def client():
 
 
 async def _draws(client, case_id):
+    """`DRAWS` results for one case — and proof they are `DRAWS` real draws.
+
+    A replay *cycles* the samples it has, so a cassette recorded at
+    `--samples 1` would hand the same answer back five times and read as five
+    passes. The depth check is what makes the loop mean what it says.
+    """
     case = cases.BY_ID[case_id]
-    return [await case.run(client) for _ in range(DRAWS)]
+    results = [await case.run(client) for _ in range(DRAWS)]
+    (key,) = client.used
+    recorded = len(client.store.load(key).samples)
+    assert recorded >= DRAWS, (
+        f"{case_id}: cassette holds {recorded} samples, this asserts over "
+        f"{DRAWS}; re-record with --samples {DRAWS}"
+    )
+    return results
 
 
 async def test_the_partner_reply_parses_into_the_shape_the_client_renders(client):

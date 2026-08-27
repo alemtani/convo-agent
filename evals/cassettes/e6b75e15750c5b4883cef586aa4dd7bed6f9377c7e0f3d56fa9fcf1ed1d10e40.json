@@ -1,7 +1,7 @@
 {
   "key": "e6b75e15750c5b4883cef586aa4dd7bed6f9377c7e0f3d56fa9fcf1ed1d10e40",
   "model": "claude-sonnet-5",
-  "recorded_at": "2026-08-25T05:56:53+00:00",
+  "recorded_at": "2026-08-27T03:34:34+00:00",
   "samples": [
     {
       "parsed_output": {
@@ -49,6 +49,38 @@
         "cache_read_input_tokens": 0,
         "input_tokens": 4227,
         "output_tokens": 141
+      }
+    },
+    {
+      "parsed_output": {
+        "opening_line": {
+          "pinyin": "nǐ hǎo!",
+          "zh": "你好！"
+        },
+        "sketch": "Play a friendly but shy classmate on campus in the morning, happy to chat and answer questions but never volunteering your own name or bringing up how you've been. The morning is a bit chilly, a few other students are walking to class with coffee cups, and you're both headed the same direction. Keep replies short and a little bashful, and be quick to turn questions back to the learner."
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 4227,
+        "output_tokens": 157
+      }
+    },
+    {
+      "parsed_output": {
+        "opening_line": {
+          "pinyin": "nǐ hǎo!",
+          "zh": "你好！"
+        },
+        "sketch": "Play a friendly but shy classmate who is happy to chat and answer questions but never offers their own name or brings up how they've been unless asked directly. It's a cool, sunny morning on campus, a few other students are walking to class in the background. Keep replies short and a little bashful, and always turn questions back to the learner with 你呢."
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 4227,
+        "output_tokens": 146
       }
     }
   ],

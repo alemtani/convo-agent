@@ -1,7 +1,7 @@
 {
   "key": "7246e5a10bbbef111f0273dc59833ced4c850276fc5bf8ec97ca94dbf40c23f2",
   "model": "claude-sonnet-5",
-  "recorded_at": "2026-08-26T04:03:24+00:00",
+  "recorded_at": "2026-08-27T03:34:26+00:00",
   "samples": [
     {
       "parsed_output": {
@@ -67,6 +67,50 @@
         "cache_read_input_tokens": 4385,
         "input_tokens": 6,
         "output_tokens": 104
+      }
+    },
+    {
+      "parsed_output": {
+        "partner_response": {
+          "pinyin": "nǐ hǎo! wǒ jiào xiǎomíng, nǐ jiào shénme míngzi?",
+          "zh": "你好！我叫小明，你叫什么名字？"
+        },
+        "turn_annotation": {
+          "learner_said_goodbye": false
+        },
+        "user_reading": {
+          "pinyin": "nǐ hǎo",
+          "zh": "你好"
+        }
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 4385,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 6,
+        "output_tokens": 133
+      }
+    },
+    {
+      "parsed_output": {
+        "partner_response": {
+          "pinyin": "nǐ hǎo! wǒ jiào xiǎomíng, nǐ jiào shénme míngzi?",
+          "zh": "你好！我叫小明，你叫什么名字？"
+        },
+        "turn_annotation": {
+          "learner_said_goodbye": false
+        },
+        "user_reading": {
+          "pinyin": "nǐ hǎo",
+          "zh": "你好"
+        }
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 4385,
+        "input_tokens": 6,
+        "output_tokens": 133
       }
     }
   ],

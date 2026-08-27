@@ -19,7 +19,7 @@ those. Freshness against the live model is a scheduled job's problem
 (`.github/workflows/rerecord.yml`), never a per-PR probabilistic call — CI stays
 deterministic.
 """
-from evals.cassette import cli
+from evals.cassette import cli, sweep
 from evals.cassette.client import (
     USAGE_FIELDS,
     CassetteClient,

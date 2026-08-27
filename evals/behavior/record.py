@@ -10,6 +10,12 @@ prompt change, before the build tells you.
 `--refresh` replaces each recording rather than topping it up, which is what
 the scheduled job runs (`.github/workflows/rerecord.yml`): the diff against
 what is committed is the entire output.
+
+`--used-out` writes the keys this run reached, for `evals.cassette.sweep`. One
+store, three runners: this one, `evals.coherence.replay` and
+`evals.turn.replay`. None of them reaches the others' keys, so none may prune
+alone — the sweep takes the union. A run that skipped this flag and let the
+sweep proceed would have its whole corpus deleted as unreachable.
 """
 import argparse
 import asyncio
@@ -48,6 +54,11 @@ def main() -> None:
     samples = max(1, args.samples) if args.record else 1
     failures = asyncio.run(run_all(client, samples=samples))
     print(f"\n{client.hits} replayed, {client.recorded} recorded, {failures} failed")
+    # This runner always visits the whole corpus — there is no `--case` — so the
+    # manifest is always a full sweep of what it owns. Written even on failure:
+    # a key that was reached is reached, and reporting fewer would invite the
+    # sweep to delete a recording that is still in use.
+    cassette.cli.write_used(args, client.used)
     if failures:
         raise SystemExit(1)
 

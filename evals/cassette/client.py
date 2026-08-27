@@ -62,6 +62,10 @@ class CassetteClient:
         self._live = live
         self._cursor: Dict[str, int] = {}
         self._refreshed = set()
+        # Every key this run reached, replayed or recorded. `--prune` keeps
+        # exactly these; a key nothing reached is one no prompt can produce
+        # any more. A miss is not in here, because it raised.
+        self.used = set()
         self.hits = 0
         self.recorded = 0
 
@@ -87,6 +91,7 @@ class CassetteClient:
                 )
             return await self._record(key, request)
 
+        self.used.add(key)
         self.hits += 1
         sample = cassette.samples[self._cursor.get(key, 0) % len(cassette.samples)]
         self._cursor[key] = self._cursor.get(key, 0) + 1
@@ -107,6 +112,7 @@ class CassetteClient:
             replace=replace,
         )
         self._refreshed.add(key)
+        self.used.add(key)
         self.recorded += 1
         return response
 
