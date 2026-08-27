@@ -613,7 +613,7 @@ against `gold.json`; it prints nothing until there is something to replay. Until
 then the gate is asserted where it is deterministic — `_advance_or_echo`, in
 `tests/test_orchestrator.py` — and its accuracy is an open question.
 
-### A5 — The grader's input window — **shipped, PR #TBD**
+### A5 — The grader's input window — **shipped, PR #98**
 
 Send the partner's last line, the learner's turn, and the filled-slot set.
 
@@ -714,7 +714,7 @@ Needs a server-side token and a rate limit. The client never sees the token.
 ## Kickoff prompts
 
 One per step, each runnable as written. **A0 (PR #86), A1 (PR #90), A2 (PR #91),
-A3 (PR #95), A0.6 (PR #92), A4 (PR #97) and A5 (PR #TBD) are done** — their
+A3 (PR #95), A0.6 (PR #92), A4 (PR #97) and A5 (PR #98) are done** — their
 prompts are retired. A1.5 is still outstanding: the turn runner records nothing,
 so the partner's `coherent` tag — a gate on the learner's credit since A4 — has
 never been measured. A6 is the next grade change.
