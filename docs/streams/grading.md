@@ -613,7 +613,7 @@ against `gold.json`; it prints nothing until there is something to replay. Until
 then the gate is asserted where it is deterministic — `_advance_or_echo`, in
 `tests/test_orchestrator.py` — and its accuracy is an open question.
 
-### A5 — The grader's input window
+### A5 — The grader's input window — **shipped, PR #TBD**
 
 Send the partner's last line, the learner's turn, and the filled-slot set.
 
@@ -622,6 +622,52 @@ The window shrinks what goes *after* the breakpoint.
 
 `render_window_note` and the owed-turn recovery path must keep working: a turn
 settling a debt needs the earlier turns it never judged.
+
+**What shipped, and what it taught us.** `build_request` now sends the grader
+only the tail of `dialogue` — `2*window - 1` entries — instead of the whole
+transcript. On a healthy turn (`window == 1`) that is one line: the partner's
+last, folded into the learner's turn. On an owed turn it is that pair per turn
+still owed a grade. What the transcript used to carry about earlier progress —
+which slots are already filled — is now sent directly, as
+`render_filled_note`, a volatile note riding the messages after the breakpoint.
+
+Three things the work settled:
+
+- **The frozen prefix did not move, so most cassettes did not either.** A5 edits
+  only what goes *after* the breakpoint, so `render_grader_prompt` is
+  byte-identical and the cache invariant holds. Better still, a turn-1 case has
+  no history to cut and nothing filled, so its whole request is byte-identical
+  and its A4 cassette is still valid — proof, not assertion, that A5 does not
+  touch those turns. Only the seven history-bearing cases (and one behavioral
+  grader case) re-recorded. `_prefix_text` keeps the turn-1 opener's
+  string-join shape precisely so that stays true.
+
+- **The window opens on an assistant turn, which the API will not take first.**
+  The partner's last line leads the tail, but `messages[0]` must be `user`. It
+  folds into the learner turn it precedes — the same shape turn 1 has always
+  used for the opening line — so the fix was a fold, not a new message role.
+
+- **`elliptical-ni-ne` recovered.** A4's two misses were both on 我很好，你呢？,
+  the turn where "did it follow?" and "did it fill the slot?" are one question.
+  A5 cuts the learner's earlier self-introduction (already filled, and a
+  distraction) while keeping the partner's 你最近怎么样？ — the line the bounce
+  answers. The case went 5/5. That is a thin measurement (5 draws cannot
+  separate a real fix from a lucky wave) and does **not** retire the dedicated
+  你呢 step the A5 kickoff still describes below; it is one clean wave, not a
+  proof.
+
+### Numbers
+
+Five draws over eleven cases, same gold, same replay:
+
+| | A4 | A5 |
+| --- | --- | --- |
+| dense cases at the 4/5 gate | 3/3 pass (5/5 each) | **3/3 pass** (5/5 each) |
+| missed credit | 2 (of 55) | **0** (of 55) |
+| spurious credit | 0 (of 55) | **0** (of 55) |
+
+Both of A4's misses were `wellbeing` on `elliptical-ni-ne`; A5 has none. Nothing
+regressed.
 
 ### A6 — The verdict reviews the session
 
@@ -668,10 +714,10 @@ Needs a server-side token and a rate limit. The client never sees the token.
 ## Kickoff prompts
 
 One per step, each runnable as written. **A0 (PR #86), A1 (PR #90), A2 (PR #91),
-A3 (PR #95), A0.6 (PR #92) and A4 (PR #97) are done** — their prompts are
-retired. A1.5 is what runs next, and A4 gave it a second deliverable: the
-partner's `coherent` tag is a gate on the learner's credit and nothing has
-measured it.
+A3 (PR #95), A0.6 (PR #92), A4 (PR #97) and A5 (PR #TBD) are done** — their
+prompts are retired. A1.5 is still outstanding: the turn runner records nothing,
+so the partner's `coherent` tag — a gate on the learner's credit since A4 — has
+never been measured. A6 is the next grade change.
 
 Every one of these ends the same way, so it is said once here: work in a git
 worktree, write the failing test first, branch from `main`, conventional commits,
@@ -729,44 +775,54 @@ job runs what is left.
 
 ### A5 — the grader's input window
 
+Retired: shipped. The grader reads the window (`2*window - 1` tail entries),
+never the whole transcript, and `render_filled_note` sends the filled-slot set
+that the transcript used to carry. Turn-1 cases stayed byte-identical, so only
+history-bearing cassettes re-recorded. 0 missed of 55, `elliptical-ni-ne`
+recovered to 5/5 — but that is one thin wave, so the 你呢 measurement below is
+**not** retired with it.
+
+**Still owed from A5's known issue — the `elliptical-ni-ne` 你呢 nudge.** A5
+took the case to 5/5 by cutting the distracting self-introduction, but 5 draws
+cannot tell a fix from a lucky wave. 我很好，你呢？ is the turn where "did it
+follow?" and "did it fill the slot?" are the same question — 你呢 alone carries
+the `wellbeing` request. A targeted 你呢 nudge tried during A4 review showed no
+recovery at 5 draws, which is noise, not evidence. Doing this right is its own
+step: measure the case alone at ~20–30 draws for a real baseline, *then* test
+candidate nudges (prompt, or the slot's own `description`/`expressible_with`)
+against it. Do it only if a wider wave shows the case is still soft; A5's clean
+wave may already have settled it.
+
+### A6 — the verdict reviews the session
+
 ```
-Read docs/streams/grading.md. Start Stream A at A5: shrink what the grader
-reads.
+Read docs/streams/grading.md. Start Stream A at A6: let the verdict re-grade the
+whole session with hindsight.
 
-It is sent the whole dialogue for context. Since A4 it has exactly one job —
-which of these named facts did this turn establish — and for that it needs the
-partner's last line, the learner's turn, and the set of slots already filled.
-Ten turns of history is ten chances to credit something from turn 3, and it is
-Stream B's largest single latency lever (latency.md B1).
+`feedback.settle_outstanding_grades` already re-grades the last unsettled turn
+before the card is written, and the verdict worker already holds the whole
+transcript. Extend it to review every turn, not only the owed ones. The grader
+at turn 3 did not know what turn 5 would clarify; the end-of-session pass does.
 
-Keep the frozen prefix byte-identical: the cache invariant test still applies,
-and the window shrinks what goes *after* the breakpoint, never before it.
+**Review may add credit and may never remove it. Non-negotiable.** The card is
+read after a session the learner already watched live. A card that takes away a
+point they saw themselves earn is indistinguishable from a bug, and they cannot
+tell a correction from a defect. So the pass unions new credit into `filled_at`
+and never deletes — the same one-way rule `settle_outstanding_grades` already
+follows (it moves only `filled_at`, never `status`/`end_reason`).
 
-`render_window_note` and the owed-turn recovery path must keep working — a turn
-settling a debt needs the earlier turns it never judged, so the window is not a
-fixed two messages. `owed-drinks-then-order` is the fixture that covers it.
+Write the failing test first: a session whose turn 3 was graded empty but which
+a later turn makes legible, and assert the verdict pass credits it and that no
+already-earned slot is ever dropped. This is deterministic logic over recorded
+turns, so it is real red-green TDD, not an eval.
 
-The prompt changes, so every cassette key changes: re-record
-(python -m evals.coherence.replay --record --samples 5 --repeat 5) and run the
-default suite. A4's numbers are the baseline: 3/3 dense cases at the 4/5 gate,
-2 missed credit over 55 runs, both of them `wellbeing` on `elliptical-ni-ne`.
-That case is the one to watch — it is the smallest window in the corpus and the
-one where cutting history is most likely to help or most likely to hurt. Do not
-delete stale recordings by hand; the weekly job prunes them.
+The prompt the recovery pass sends may change; if it does, re-record the
+affected cassettes (the grader keys, off `evals/coherence/replay.py`) and run
+the default suite. Do not delete stale recordings by hand; the weekly job prunes
+them.
 
-**Known issue — the `elliptical-ni-ne` miss.** 我很好，你呢？ is the turn where
-"did it follow?" and "did it fill the slot?" are the same question — 你呢 alone
-carries the `wellbeing` request. The grader misses it ~2/5. A5 keeps the
-partner's last line in the window, so shrinking will not remove the context the
-bounce needs; the miss is a grader-reasoning gap, not a missing-data one. A
-targeted 你呢 nudge in the `slots_filled` instruction was tried during A4 review
-and showed **no recovery at 5 draws** — 5 draws cannot even separate 2 misses
-from 3, so it read as noise. Doing this right needs its own step: measure the
-case alone at ~20–30 draws for a real baseline, *then* test candidate nudges
-(prompt, or the slot's own `description`/`expressible_with`) against it. Do not
-bolt a wording change onto A5 without that measurement.
-
-This changes latency and the grade, not the HUD's shape — but a session on the
-phone is still the only thing that says the shorter window reads the same
-conversation, so raise a tunnel and take a real turn before the PR is ready.
+This changes the grade, not the HUD's shape — but a session on the phone is
+still the only thing that says the end-of-session review reads a real
+conversation the way a fair reader would, so raise a tunnel and take a real
+session to its card before the PR is ready.
 ```

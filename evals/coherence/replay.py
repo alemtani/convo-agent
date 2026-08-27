@@ -84,6 +84,7 @@ async def replay_case(case: Case, *, client=None) -> Observation:
         user_text=case.learner_turn,
         opening_line=_opening_zh(case),
         window=termination.grading_window(state, turn=turn),
+        filled_slots=sorted(state.filled),
         timeout=_GRADE_TIMEOUT_S,
         client=client,
     )
