@@ -50,7 +50,7 @@ def grade_stub(**fields):
     """
     from backend.models import GraderResult
 
-    result = GraderResult(coherence=fields.pop("coherence", "on_track"), **fields)
+    result = GraderResult(**fields)
 
     async def _grade(**_kwargs):
         # `(grade, usage)`, matching the real worker: the turn reports what the

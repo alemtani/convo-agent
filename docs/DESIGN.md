@@ -250,8 +250,8 @@ Rules that protect the cache:
 ### Role-scoped inputs (cost + clarity)
 
 - The **feedback worker never sees raw transcript** — only the accumulated compact
-  annotations (coherence tag, grammar notes, tone errors, topic tags) the client
-  sends up. Cheaper and clearer.
+  annotations the client sends up (tone errors, the goodbye, the coherence flag).
+  Cheaper and clearer.
 - Only the active topic(s) enter context, never the whole `kb/` corpus.
 
 ### Structured outputs
@@ -262,12 +262,9 @@ The conversation worker returns validated JSON (`output_config.format`):
 {
   "partner_response": {"zh": "你今天怎么样？", "pinyin": "nǐ jīntiān zěnmeyàng?"},
   "turn_annotation": {
-    "coherence": "on_track",
-    "grammar_notes": [],
-    "tone_errors": [{"syllable": "ma", "expected": 3, "said": 1}],
-    "topic_tags": ["greetings"]
-  },
-  "should_give_feedback": false
+    "learner_said_goodbye": false,
+    "coherent": true
+  }
 }
 ```
 
@@ -519,7 +516,7 @@ Notation: **[C]** client · **[S]** stateless backend · **[Claude]** · **[Azur
 ### Critical A — unintelligible / off-topic input
 
 5–7 as above, but STT is garbled and PA sparse. **[Claude]**, per the forgiveness rules
-in the cached prefix, returns `"对不起，你能再说一次吗？"`, `coherence: "derailing"`. Client
+in the cached prefix, returns `"对不起，你能再说一次吗？"`, `coherent: false`. Client
 shows the gentle re-ask; your retry re-enters at step 5. Nothing persisted.
 
 ### Critical B — wrong tone, right word in context (dual-path)

@@ -109,7 +109,8 @@ async def run_text_turn(
     tone_errors = typed_pinyin.tone_errors_from_typed(req.text, reading.zh)
     state = _advance_or_echo(
         req.state, scenario=scenario, grade=grade,
-        learner_closed=annotation.learner_said_goodbye, turn=turn,
+        learner_closed=annotation.learner_said_goodbye,
+        coherent=annotation.coherent, turn=turn,
     )
     annotation = TurnAnnotation.from_worker(annotation, tone_errors)
 
@@ -416,22 +417,23 @@ async def stream_audio_turn(
                             state=_advance_or_echo(
                                 state, scenario=scenario, grade=pending_grade,
                                 learner_closed=annotation.learner_said_goodbye,
+                                coherent=annotation.coherent,
                                 turn=turn,
-                            ),
-                            coherence=(
-                                pending_grade.coherence if pending_grade else None
                             ),
                             **_at_emit(timer),
                         )
                 else:
                     grade, grader_usage = task.result()
-                    # **Held until the reply lands.** The client commits the turn
-                    # to `dialogue` on `reply` and adopts state on `state`; if a
+                    # **Held until the reply lands.** Two reasons, and either
+                    # alone would be enough. The client commits the turn to
+                    # `dialogue` on `reply` and adopts state on `state`; if a
                     # grade goes out and the converser then fails, the learner
                     # keeps a credited slot — or a completed session — for a turn
                     # that never entered the history the next grade will read.
-                    # The grader usually wins the race, so this is the common
-                    # order, not the exceptional one.
+                    # And since A4 the gate is the converser's judgment, so a
+                    # state event emitted before the reply would have no gate to
+                    # apply. Parking the grade is what makes the annotation
+                    # certain to exist by the time `_advance_or_echo` runs.
                     if not reply_sent:
                         pending_grade, have_grade = grade, True
                         pending_grader_usage = grader_usage
@@ -447,9 +449,9 @@ async def stream_audio_turn(
                         state=_advance_or_echo(
                             state, scenario=scenario, grade=grade,
                             learner_closed=annotation.learner_said_goodbye,
+                            coherent=annotation.coherent,
                             turn=turn,
                         ),
-                        coherence=grade.coherence if grade else None,
                         **_at_emit(timer),
                     )
 
@@ -546,27 +548,43 @@ async def _grade_or_degrade(
         return None, None
 
 
-def _advance_or_echo(state, *, scenario, grade, learner_closed, turn):
-    """Advance the session, whether or not a grade landed.
+def _advance_or_echo(state, *, scenario, grade, learner_closed, coherent, turn):
+    """Advance the session, whether or not a grade landed — and gate it (A4).
 
-    A missing grade is **not** a graded turn that established nothing. It leaves
-    the watermark where it was, so the next turn's window covers this one and the
-    credit the learner earned arrives late rather than never. Slots are the only
-    thing owed.
+    A missing grade is not a graded turn that established nothing: it leaves the
+    watermark where it was, so the next window covers this turn and earned credit
+    arrives late rather than never. `learner_closed` and `coherent` both come
+    from the converser, which cannot fail without the reply also failing, so a
+    close still lands on time through a total grader outage.
 
-    `learner_closed` comes from the converser, which cannot fail independently of
-    the reply — no reply, no turn, no state event — so a close is applied on time
-    even through a total grader outage, and `consecutive_closes` stays exact
-    while slots are outstanding.
+    **The gate.** The two workers race, so this function — where they meet — is
+    the only place the gate can live. `coherent` is `False` when the turn did not
+    follow from the partner's last line, and such a turn earns nothing. It is a
+    gate, never a deduction: it withholds this turn's credit but cannot touch
+    `state.filled_at`, so a point the learner watched themselves earn is never
+    clawed back (a score going down reads as a bug).
+
+    The gate is **this turn's**, not the session's. `slots_filled_previously` is
+    credit owed to earlier turns whose grade failed, and the gate does not touch
+    it: a non-sequitur now must not cancel points the learner earned on a turn
+    that came before it. It is dropped only when there is no grade at all —
+    nothing to settle. Gating it on each earlier turn's *own* coherence would be
+    more correct still, but those flags were never persisted; that needs the
+    per-turn coherence state the end-of-session challenge ("I'm done") also wants.
+
+    The turn still counts as **graded**: leaving a blocked turn in debt would
+    hand the next window a second chance to credit what the gate just refused.
     """
+    graded = grade is not None
+    this_turn_blocked = not graded or not coherent
     return termination.advance(
         state,
         scenario=scenario,
-        slots_filled=grade.slots_filled if grade else [],
-        slots_filled_previously=grade.slots_filled_previously if grade else [],
+        slots_filled=[] if this_turn_blocked else grade.slots_filled,
+        slots_filled_previously=[] if not graded else grade.slots_filled_previously,
         learner_closed=learner_closed,
         turn=turn,
-        graded=grade is not None,
+        graded=graded,
     )
 
 

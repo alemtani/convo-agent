@@ -474,7 +474,6 @@ async def test_an_outstanding_debt_is_settled_before_the_card(monkeypatch):
         assert kwargs["window"] == 2
         return (
             GraderResult(
-                coherence="on_track",
                 slots_filled=["wellbeing"],
                 slots_filled_previously=["self_name", "partner_name"],
             ),
@@ -531,7 +530,7 @@ async def test_the_recovery_pass_hands_the_grader_a_live_turns_shape(monkeypatch
 
     async def capture(**kwargs):
         captured.update(kwargs)
-        return GraderResult(coherence="on_track"), None
+        return GraderResult(), None
 
     monkeypatch.setattr(grader, "grade", capture)
     dialogue = [
@@ -560,7 +559,7 @@ async def test_the_recovery_pass_does_not_rewrite_how_the_session_ended(monkeypa
     ending — `stuck`, `closed`, `ungraded` — with a fresh evaluation of a
     finished session. Only the credit is new."""
     async def late(**kwargs):
-        return GraderResult(coherence="on_track", slots_filled=["self_name"]), None
+        return GraderResult(slots_filled=["self_name"]), None
 
     monkeypatch.setattr(grader, "grade", late)
     req = VerdictRequest(

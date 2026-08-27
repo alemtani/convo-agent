@@ -158,7 +158,7 @@ code to be reconciled at the moment they diverged. Hence the standing rule in
 `AGENTS.md` — the stream doc's kickoff prompt is updated in the same PR as the
 work it describes.
 
-### A0.6 — Repair the `live` suite and put it in CI — **shipped, this PR**
+### A0.6 — Repair the `live` suite and put it in CI — **shipped, PR #92**
 
 `tests/test_conversation_live.py` unpacks five values from
 `conversation.respond`, which has returned four since the grader split. It fails
@@ -319,12 +319,12 @@ the reply from the same call — is why the check belongs on this runner.
 
 Two things the work settled:
 
-- **The turn runner cannot observe `coherence`.** `ConversationTurnResponse`
-  carries none: it is the grader's judgment, and it reaches the client only
-  through its consequence, whether the slot advanced. So coherence accuracy
-  stays the grader-only runner's measurement against `gold.json` — until **A4**
-  puts the field on the partner's annotation, at which point this runner becomes
-  where it is observed and `TurnObservation` grows the field.
+- **The turn runner cannot observe `coherence`** — *settled by A4.* At the time
+  `ConversationTurnResponse` carried none: it was the grader's judgment, and it
+  reached the client only through its consequence. A4 put the field on the
+  partner's annotation, so this runner is now the only place it can be observed;
+  `TurnObservation` carries the tag and `main` scores it against `gold.json`. It
+  scores nothing until these cassettes exist.
 - **Probes are not recordings.** `evals/turn/cases/` holds constructed red-team
   turns (the learner asks nothing, so anything the reply establishes was
   volunteered) and is kept apart from `tests/fixtures/sessions/`, which holds
@@ -481,7 +481,7 @@ an empty set: a runner that crashed must not read as "reached nothing".
 `store.keys()` now only counts filenames that are actual sha256 digests, so a
 manifest or a README parked in the directory can never read as a stale key.
 
-### A4 — Coherence moves to the partner, as a gate
+### A4 — Coherence moves to the partner, as a gate — **shipped, PR #97**
 
 Add `coherence` to `ConverserAnnotation`. Remove it from the grader prompt and
 `GraderResult`.
@@ -503,9 +503,13 @@ Points already earned are never taken back. A learner watching 3/4 become 2/4
 reads that as a bug, not a judgment — and the gate at the moment of the gamed
 turn already catches what retroactive cancellation was for.
 
-The one exception is the owed-turn recovery path, where a turn is credited before
-its coherence is known. `slots_filled_previously` is the only place a
-cancellation is both meaningful and invisible to the learner mid-session.
+**The gate is this turn's, not the session's.** It applies to `slots_filled`
+only. `slots_filled_previously` — credit owed to earlier turns whose grade
+failed — is never dropped for *this* turn being incoherent: those turns are not
+this one, and a non-sequitur now must not cancel points earned before it (raised
+in review, PR #97). Gating owed credit on each earlier turn's *own* coherence
+would be more correct, but those flags are not persisted — future work, and the
+same per-turn coherence state the end-of-session challenge ("I'm done") needs.
 
 **Where it lives: `_advance_or_echo`.** The grader and converser are concurrent
 (`asyncio.wait(..., FIRST_COMPLETED)`) so neither is reliably first, and the gate
@@ -520,6 +524,94 @@ ordering logic.
 
 (The comment at `orchestrator.py:431` claiming the grader usually wins the race
 is out of date. Delete it while you are in there.)
+
+**What shipped, and what it taught us.** `ConverserAnnotation.coherent: bool`,
+defaulting to `True`. `GraderResult` is `slots_filled` and
+`slots_filled_previously` and nothing else. `StateEvent` lost its `coherence`
+field — the tag ships on `reply` now, with the branch that produced it.
+
+Four things the work settled:
+
+- **The default is the generous one, and that is a design decision.** The gate's
+  two errors are not symmetric. A turn wrongly called incoherent silently costs
+  a point the learner earned and they cannot tell it happened; a turn wrongly
+  called coherent costs them nothing they can see. So a partner that omits the
+  field is read as having understood, and the gate is only ever closed by a
+  partner that says so out loud.
+
+- **The prompt has to say "do not judge their Chinese".** The target learner is
+  HSK 1–2 and will say the wrong pronoun, drop a measure word, and send
+  untoned run-together pinyin. A partner asked "did that follow?" without that
+  instruction would answer "no" to a beginner's grammar, which is the exact
+  failure the generous default exists to avoid. It is the same rule A3 wrote
+  into the grader as the beginner-slip paragraph, arriving on the other worker.
+
+- **Docstrings are prompt, and the removal notice is the trap.** The first draft
+  explained on `GraderResult` itself which field had moved and why — text
+  `messages.parse` renders into the request as the schema `description`, so the
+  grader would have been told about coherence in the act of documenting that it
+  no longer judges it. It lives in a comment above the class now, the same place
+  `ConverserAnnotation`'s reasoning already lived.
+
+- **Prompt wording moved the numbers more than the field removal did.** Three
+  55-run waves were recorded. The first two carried a closing "and nothing
+  else" and a schema docstring that said "no other question"; both scored worse
+  on missed credit (2 and 4 of 55) than the third, which is the minimal diff —
+  the coherence bullet deleted, every other word of A3's prompt left alone.
+  Restrictive language aimed at a field that no longer exists costs credit
+  somewhere else. The lesson generalises: when removing an instruction, remove
+  it; do not replace it with a sentence about its absence.
+
+### Numbers
+
+Five draws over eleven cases, same replay. The gold was reframed in review (see
+below), so the spurious row is scored against the reframed labels:
+
+| | A3 | A4 |
+| --- | --- | --- |
+| dense cases at the 4/5 gate | 3/3 pass | **3/3 pass** (5/5 each) |
+| missed credit | 0 (of 55) | **2** (of 55) |
+| spurious credit | 6 (of 55) | **0** (of 55) — see the gold reframe below |
+
+**The regression is real and it is one case.** Both misses are `wellbeing` on
+`elliptical-ni-ne` — 我很好，你呢？, where the slot rides entirely on 你呢
+bouncing one question back. All three waves showed it, so it is not one unlucky
+draw: taking the coherence bullet out of the grader's prompt cost something on
+the turn where "did this answer what was asked?" and "did this fill the slot?"
+are the same question. Nothing else in the corpus moved.
+
+**The gold was reframed in review, and spurious credit went to zero.** The
+grader still credits `recommendation` on all five draws of the gaming turn
+(`nonsequitur-slot-fill`), but that is the *right* answer now: a goal-blind
+grader is a pure extractor, so it credits the fact the words state and leaves
+coherence to the partner. Gold credits it too (`slots_established:
+[recommendation]`), so slot accuracy reads those five draws as exact, not
+spurious. The gaming turn is caught by the gate — gold still labels it
+incoherent and the learner sees no credit — and whether the partner tags it so
+is scored against gold in `evals/turn`, not here. This is why the grader's slot
+numbers did not "improve" against the old gold: the grader was never the party
+that should suppress the gaming turn, and scoring it as if it were hid a clean
+extractor behind a coherence failure that was always the gate's to catch.
+
+**A0.6 landed first, and the rebase found two things it left.** The behavioral
+suite (`tests/test_worker_behavior.py`) asserts the partner's annotation, so its
+cassettes were re-recorded here too, and its "the partner never reports
+coherence" test was inverted — it passed on the new code by accident, because
+the field is `coherent` and it looked for `coherence`. A test that documents the
+opposite of what the code does is worse than no test.
+
+The second is a defect in the weekly job. `--samples 5` is a ceiling and
+`--repeat` is how many times a run visits each case, so at the default
+`--repeat 3` the scheduled re-record wrote three draws into a cassette the dense
+gate demands five of. It has been recording shallow since A3. Both steps now
+pass `--repeat 5`.
+
+**What is not yet measured: the partner's tag itself.** Scoring `coherent`
+against gold needs the turn runner's cassettes, which are A1.5's outstanding
+work. `TurnObservation` carries the tag and `evals.turn.replay` prints the 2×2
+against `gold.json`; it prints nothing until there is something to replay. Until
+then the gate is asserted where it is deterministic — `_advance_or_echo`, in
+`tests/test_orchestrator.py` — and its accuracy is an open question.
 
 ### A5 — The grader's input window
 
@@ -569,15 +661,17 @@ Needs a server-side token and a rate limit. The client never sees the token.
 - ~~The `live` suite runs — the behavioral half in CI, the contact half on a
   schedule. Neither can rot unnoticed again.~~ **Done (A0.6).**
 - All four recorded misses pass.
-- The grader returns slots and nothing else.
+- ✅ The grader returns slots and nothing else (A4).
 - The partner prompt fits on one screen.
 - A learner can file a bug, or contest a grade, in three taps.
 
 ## Kickoff prompts
 
 One per step, each runnable as written. **A0 (PR #86), A1 (PR #90), A2 (PR #91),
-A3 (PR #95) and A0.6 (this PR) are done** — their prompts are retired. A1.5 is
-what runs next.
+A3 (PR #95), A0.6 (PR #92) and A4 (PR #97) are done** — their prompts are
+retired. A1.5 is what runs next, and A4 gave it a second deliverable: the
+partner's `coherent` tag is a gate on the learner's credit and nothing has
+measured it.
 
 Every one of these ends the same way, so it is said once here: work in a git
 worktree, write the failing test first, branch from `main`, conventional commits,
@@ -610,6 +704,11 @@ Then report what the recording found, which is the actual deliverable:
 
 - Does the partner honour `withholding`? It was seen breaking it twice in real
   sessions and nothing has ever checked it.
+- Does the partner's `coherent` agree with a fair reader? A4 made that tag a
+  gate on the learner's credit and shipped it unmeasured, because measuring it
+  needs exactly these recordings. The runner already prints the 2×2 against
+  `gold.json`; this is the first time it has anything to print. A tag that
+  fires on a coherent turn is a point the learner earned and did not get.
 - Did A2's trimmed prompt (PR #91) change the partner in a way nobody was
   watching? A third of the system prompt went with no partner-side eval in
   existence. This is the first look.
@@ -628,35 +727,46 @@ Retired: shipped. The `live` marker now means "a recording cannot stand in for
 this call", the behavioral half is a merge gate off cassettes, and the weekly
 job runs what is left.
 
-### A4 — coherence moves to the partner
+### A5 — the grader's input window
 
 ```
-Read docs/streams/grading.md. Start Stream A at A4: coherence moves to the
-partner, as a gate.
+Read docs/streams/grading.md. Start Stream A at A5: shrink what the grader
+reads.
 
-Add a binary coherence field to ConverserAnnotation. Remove `coherence` from
-_GRADER_PROMPT_TEMPLATE and from GraderResult. The grader is then a
-slots-only worker, which is the point of the step.
+It is sent the whole dialogue for context. Since A4 it has exactly one job —
+which of these named facts did this turn establish — and for that it needs the
+partner's last line, the learner's turn, and the set of slots already filled.
+Ten turns of history is ten chances to credit something from turn 3, and it is
+Stream B's largest single latency lever (latency.md B1).
 
-Three tags collapse to two. `drifting` counts as incoherent — that is a
-deliberate cost, not an oversight, and it means a legitimate topic change gets
-caught. Remap tests/fixtures/sessions/gold.json (and gold.second-opinion.json)
-as an explicit reviewed change, never a relabelling pass.
+Keep the frozen prefix byte-identical: the cache invariant test still applies,
+and the window shrinks what goes *after* the breakpoint, never before it.
 
-The gate lives in orchestrator._advance_or_echo, where the two concurrent
-branches meet, as a new argument to that pure function. It blocks credit for
-the incoherent turn and never removes credit already earned — with the single
-exception of slots_filled_previously on the owed-turn recovery path. Delete the
-out-of-date comment at orchestrator.py:431 while you are in there.
+`render_window_note` and the owed-turn recovery path must keep working — a turn
+settling a debt needs the earlier turns it never judged, so the window is not a
+fixed two messages. `owed-drinks-then-order` is the fixture that covers it.
 
-The A1 dense cases in tests/test_coherence_eval.py are a rate, not a run:
-DENSE_MIN_EXACT of DENSE_SAMPLES draws must be exact. Keep them passing. Both
-prompts change, so every cassette key changes: re-record
-(python -m evals.coherence.replay --record --samples 5) and run the default
-suite. Do not delete the stale recordings by hand — the weekly job prunes them.
-A3's numbers are the baseline to beat: 3/3 dense cases at the 4/5 gate, 0
-missed credit over 55 runs.
+The prompt changes, so every cassette key changes: re-record
+(python -m evals.coherence.replay --record --samples 5 --repeat 5) and run the
+default suite. A4's numbers are the baseline: 3/3 dense cases at the 4/5 gate,
+2 missed credit over 55 runs, both of them `wellbeing` on `elliptical-ni-ne`.
+That case is the one to watch — it is the smallest window in the corpus and the
+one where cutting history is most likely to help or most likely to hurt. Do not
+delete stale recordings by hand; the weekly job prunes them.
 
-This changes what the learner sees on the HUD, so raise a tunnel and take a
-real turn on the phone before the PR is ready.
+**Known issue — the `elliptical-ni-ne` miss.** 我很好，你呢？ is the turn where
+"did it follow?" and "did it fill the slot?" are the same question — 你呢 alone
+carries the `wellbeing` request. The grader misses it ~2/5. A5 keeps the
+partner's last line in the window, so shrinking will not remove the context the
+bounce needs; the miss is a grader-reasoning gap, not a missing-data one. A
+targeted 你呢 nudge in the `slots_filled` instruction was tried during A4 review
+and showed **no recovery at 5 draws** — 5 draws cannot even separate 2 misses
+from 3, so it read as noise. Doing this right needs its own step: measure the
+case alone at ~20–30 draws for a real baseline, *then* test candidate nudges
+(prompt, or the slot's own `description`/`expressible_with`) against it. Do not
+bolt a wording change onto A5 without that measurement.
+
+This changes latency and the grade, not the HUD's shape — but a session on the
+phone is still the only thing that says the shorter window reads the same
+conversation, so raise a tunnel and take a real turn before the PR is ready.
 ```

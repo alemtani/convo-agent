@@ -48,22 +48,23 @@ def _case(**overrides):
 class _Client:
     """One fake standing in for every worker, exactly as the real seam does."""
 
-    def __init__(self, reply="您好！", volunteered=(), slots=()):
+    def __init__(self, reply="您好！", volunteered=(), slots=(), coherent=True):
         self.schemas = []
         self.reply = reply
         self.volunteered = tuple(volunteered)
         self.slots = tuple(slots)
+        self.coherent = coherent
         self.messages = SimpleNamespace(parse=self._parse)
 
     async def _parse(self, **request):
         schema = request["output_format"]
         self.schemas.append(schema)
         if schema is GraderResult:
-            parsed = GraderResult(coherence="on_track", slots_filled=list(self.slots))
+            parsed = GraderResult(slots_filled=list(self.slots))
         elif schema is ConversationResult:
             parsed = ConversationResult(
                 partner_response=Utterance(zh=self.reply, pinyin=""),
-                turn_annotation=ConverserAnnotation(),
+                turn_annotation=ConverserAnnotation(coherent=self.coherent),
                 user_reading=Utterance(zh="你好", pinyin="nǐ hǎo"),
             )
         elif schema is withholding.WithholdingVerdict:
@@ -104,10 +105,26 @@ async def test_the_observation_carries_the_reply_the_grader_judged():
     observation = await replay.replay_case(_case(), client=client)
     assert observation.reply_zh == "我们有茶。"
     assert observation.reading_zh == "你好"
-    # No `coherence`: the turn response carries none — it is the grader's, and
-    # the client sees only its consequence. Coherence accuracy stays the
-    # grader-only runner's job until A4 puts the field on the annotation.
-    assert not hasattr(observation, "coherence")
+    # `coherence` is here since A4: it is the partner's own judgment, and this
+    # is the only runner that runs a partner. Recorded as the tag string so it
+    # lines up with `gold.json`.
+    assert observation.coherence == "coherent"
+
+
+async def test_the_observation_records_the_gated_credit_the_learner_would_see():
+    """A turn the partner did not follow earns nothing, and this runner reports
+    what the app credited rather than what the grader said.
+
+    That is the split between the two runners: `evals/coherence` measures the
+    grader's answer, ungated, because it holds the partner still. This one
+    measures the turn — the gate included.
+    """
+    client = _Client(slots=["recommendation"], coherent=False)
+
+    observation = await replay.replay_case(_case(), client=client)
+
+    assert observation.coherence == "incoherent"
+    assert observation.slots_filled == ()
 
 
 # --- Over-volunteering ---------------------------------------------------

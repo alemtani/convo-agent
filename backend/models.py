@@ -228,15 +228,14 @@ class StateEvent(TurnEvent):
     reply — a session that has ended can say so without waiting for the partner
     to finish a line nobody will read.
 
-    `coherence` rides here rather than on the reply's annotation because it is
-    the grader's judgment, not the converser's. The converser was asked for it
-    for the whole of M2 and could never answer honestly: it knew what was being
-    scored, so it took anything scoreable as relevant.
+    It carries the state and nothing else. `coherence` rode here while it was
+    the grader's judgment; A4 gave it back to the converser, so it ships on
+    `reply` with the rest of that annotation and this event is once again the
+    answer to one question — how far the learner has got.
     """
 
     stage: Literal["state"] = "state"
     state: "SessionState"
-    coherence: Optional[Literal["on_track", "drifting", "off_track"]] = None
 
 
 class DoneEvent(TurnEvent):
@@ -311,38 +310,34 @@ class ToneError(BaseModel):
     index: Optional[int] = None
 
 
-# `ConverserAnnotation`'s docstring is deliberately short, and the reasoning for
-# its shape lives out here in comments. Pydantic emits a model's docstring as the
-# JSON-schema `description`, and `messages.parse` renders that schema into the
-# request — so anything written inside the class is text the conversation worker
-# reads. A docstring explaining which rubric fields moved to the grader, and why,
-# would teach the partner the rubric in the act of documenting its removal.
+# This docstring is prompt: Pydantic emits it as the JSON-schema `description`
+# and `messages.parse` renders the schema into the request, so the conversation
+# worker reads whatever is inside the class. Design rationale stays out here,
+# where the model never sees it.
 #
-# What moved (V2, `docs/VALIDITY.md`): `slots_filled`, `learner_closed` and
-# `coherence` were folded in here to avoid a second call. The cost was
-# epistemic — a partner that can see the checkbox behind a question stops being
-# a person in a scene and becomes a proctor who wants you to pass. They are
-# `GraderResult`'s now and the converser is given no place to say them.
+# `coherent` is the converser's again (A4, `docs/streams/grading.md`). It lived
+# on the grader through V2, but coherence asks what the partner meant by its own
+# last line, and goal-blindness makes the partner the only party who can answer.
+# Binary, because the gate it feeds has one consequence.
 #
-# What then went (A2, `docs/streams/grading.md`): `grammar_notes`,
-# `topic_tags`, and `should_give_feedback`. Tags and the coaching flag were
-# consumed by nothing. Grammar notes were a coach's question — is this slip
-# worth teaching later — and the partner is not the coach. The notes panel
-# went with them rather than moving to the verdict: inventing a new coaching
-# job is not a cut. Tone errors still reach the card because Azure measured
-# them, not because the partner judged them.
-#
-# `tone_errors` is absent for a different reason: tone is never the model's
-# judgment. The server fills it from Azure PA accuracy or from typed tone digits.
-# It used to be in the schema with the prompt insisting it stay empty, so every
-# turn spent output tokens rendering `"tone_errors":[]` and then had it
-# overwritten. `TurnAnnotation` is the wire shape that carries it.
+# It defaults to `True` because the failure is asymmetric: a turn wrongly marked
+# incoherent silently costs the learner a point they cannot see they earned; a
+# turn wrongly marked coherent costs nothing. An omitted field reads as understood.
 class ConverserAnnotation(BaseModel):
-    """Whether the learner said goodbye on this turn."""
+    """What the partner noticed about the learner's turn: whether they said
+    goodbye, and whether their turn followed from what the partner just said."""
 
     learner_said_goodbye: bool = False
+    coherent: bool = True
 
 
+# Same rule as `ConverserAnnotation`: this docstring is prompt, so what the class
+# no longer holds is documented out here where the grader cannot read it.
+#
+# `coherence` is gone (A4): it moved to `ConverserAnnotation.coherent`, and
+# `orchestrator._advance_or_echo` is where the grade and the gate meet.
+# `learner_closed` is not here either — noticing someone is leaving needs no
+# rubric, so the converser owns it and a close still lands through a grader outage.
 class GraderResult(BaseModel):
     """What the *grader* judges — the scoring half, on its own call (V2).
 
@@ -373,16 +368,13 @@ class GraderResult(BaseModel):
     every healthy turn.
 
     Both default to crediting nothing, so a partial grade cannot advance a
-    session by accident. `coherence` deliberately has **no default**: it is the
-    judgment, and a grader that omitted it should fail validation and degrade to
-    an unchanged state rather than have an opinion invented for it.
+    session by accident.
 
     **`learner_closed` is not here.** Noticing that someone is leaving needs no
     rubric, so it is the converser's observation (`ConverserAnnotation`), which
     means a close is applied on time even through a total grader outage.
     """
 
-    coherence: Literal["on_track", "drifting", "off_track"]
     slots_filled: List[str] = []
     slots_filled_previously: List[str] = []
 
@@ -392,11 +384,11 @@ class TurnAnnotation(ConverserAnnotation):
 
     Extends the model-facing shape with the one field the server owns.
 
-    It carries **no `coherence`**, and that is a wire fact rather than an
-    oversight: coherence is the grader's judgment now, and this annotation ships
-    on the `reply` event, which fires the moment the converser lands. There is no
-    grade to merge in yet. The grader's output rides `state` instead, so each
-    event carries what its own branch produced.
+    It carries `coherent` again (A4): the field is the converser's, so it lands
+    with the converser, on the `reply` event that fires the moment that branch
+    resolves. Each event still carries what its own branch produced — which is
+    the rule that put coherence on `state` while the grader owned it, and the
+    same rule that brings it back here now.
     """
 
     tone_errors: List[ToneError] = []
@@ -749,9 +741,9 @@ class TextTurnRequest(BaseModel):
     # in `dialogue` — it costs the learner none of their turn budget
     # (`docs/SCENARIOS.md`, "Definition of a turn") — but the grader has to see
     # it, because on turn 1 it is the *only* thing the learner's words are a
-    # response to. Without it, coherence on the turn most likely to be answering
-    # a greeting is judged against nothing at all. Optional: a session started
-    # before this field existed simply grades turn 1 without it.
+    # response to. Without it, the turn most likely to be answering a greeting
+    # is graded against nothing at all. Optional: a session started before this
+    # field existed simply grades turn 1 without it.
     opening_line: Optional[Utterance] = None
 
     @field_validator("text")

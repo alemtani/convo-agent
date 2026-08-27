@@ -82,11 +82,26 @@ def test_the_learners_turn_and_the_history_ride_after_the_breakpoint():
     assert "你叫什么名字？" in str(req["messages"])
 
 
-def test_the_previous_partner_turn_is_what_the_gaming_check_needs():
-    """*Did the learner respond to what was actually said?* is legible from the
-    partner's previous turn and the learner's — and from nothing else."""
+def test_the_previous_partner_turn_is_what_the_slot_judgment_needs():
+    """A slot is filled by an answer to something. Whether 你呢 bounced a
+    question back is legible from the partner's previous turn and the learner's
+    — and from nothing else."""
     req = _build()
     assert "你好！" in str(req["messages"])
+
+
+def test_the_grader_is_never_asked_whether_the_turn_followed():
+    """A4. Coherence is a question about what the partner meant by its own last
+    line, and the partner is the only party that knows. Leaving the instruction
+    here would spend tokens on a field `GraderResult` has nowhere to put."""
+    text = _system_text(_build())
+    assert "coherence" not in text
+    assert "on_track" not in text
+    schema = _build()["output_format"].model_json_schema()
+    assert "coherence" not in schema["properties"]
+    # And not smuggled in through the docstring, which `messages.parse` renders
+    # into the request as the schema `description`.
+    assert "coherence" not in str(schema).lower()
 
 
 def test_the_grader_is_constrained_to_the_grade_and_nothing_else():
@@ -118,7 +133,7 @@ def _fake_client(parsed_output, *, stop_reason="end_turn"):
 
 async def test_grade_parses_a_recorded_response():
     recorded = GraderResult(
-        coherence="on_track", slots_filled=["partner_name"], learner_closed=False
+        slots_filled=["partner_name"]
     )
     client, parse = _fake_client(recorded)
 
@@ -163,7 +178,7 @@ async def test_a_timeout_is_a_grader_error_not_a_five_hundred():
 
 
 async def test_the_grader_is_given_the_timeout_that_bounds_it():
-    client, parse = _fake_client(GraderResult(coherence="on_track"))
+    client, parse = _fake_client(GraderResult())
     await grader.grade(
         scenario=SCENARIO, dialogue=[], user_text="你好", client=client
     )
