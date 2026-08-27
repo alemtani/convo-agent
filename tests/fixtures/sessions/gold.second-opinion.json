@@ -11,7 +11,7 @@
     "coherence": "incoherent",
     "credit_ok": false,
     "slots_established": [],
-    "rationale": "The turn drops into English and neither answers the drink question nor asks anything in Chinese. Tagged `off_track` under the three-tag scheme."
+    "rationale": "The turn drops into English and neither answers the drink question nor asks anything in Chinese."
   },
   "earned-under-annotated": {
     "coherence": "coherent",
@@ -33,8 +33,10 @@
   "nonsequitur-slot-fill": {
     "coherence": "incoherent",
     "credit_ok": false,
-    "slots_established": [],
-    "rationale": "Asking which dish is best does not answer the drink question, so the recommendation phrase does not earn credit. Tagged `drifting` under the three-tag scheme; `drifting` counts as incoherent (A4)."
+    "slots_established": [
+      "recommendation"
+    ],
+    "rationale": "Asking which dish is best states a recommendation, so the goal-blind extractor credits it, but it does not answer the drink question, so the turn is incoherent and the gate blocks the credit."
   },
   "order-after-answers": {
     "coherence": "coherent",
@@ -76,7 +78,7 @@
     "coherence": "incoherent",
     "credit_ok": false,
     "slots_established": [],
-    "rationale": "Saying they have three friends is in-band Chinese that does not answer the drink question or fill a slot. Tagged `drifting` under the three-tag scheme; `drifting` counts as incoherent (A4)."
+    "rationale": "Saying they have three friends is in-band Chinese that does not answer the drink question or fill a slot."
   },
   "owed-drinks-then-order": {
     "coherence": "coherent",

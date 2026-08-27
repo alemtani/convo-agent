@@ -560,13 +560,14 @@ Four things the work settled:
 
 ### Numbers
 
-Five draws over eleven cases, same gold, same replay:
+Five draws over eleven cases, same replay. The gold was reframed in review (see
+below), so the spurious row is scored against the reframed labels:
 
 | | A3 | A4 |
 | --- | --- | --- |
 | dense cases at the 4/5 gate | 3/3 pass | **3/3 pass** (5/5 each) |
 | missed credit | 0 (of 55) | **2** (of 55) |
-| spurious credit | 6 (of 55) | 5 (of 55) |
+| spurious credit | 6 (of 55) | **0** (of 55) — see the gold reframe below |
 
 **The regression is real and it is one case.** Both misses are `wellbeing` on
 `elliptical-ni-ne` — 我很好，你呢？, where the slot rides entirely on 你呢
@@ -575,10 +576,18 @@ draw: taking the coherence bullet out of the grader's prompt cost something on
 the turn where "did this answer what was asked?" and "did this fill the slot?"
 are the same question. Nothing else in the corpus moved.
 
-**The gate more than pays for it end-to-end.** Five of the six spurious credits
-in the corpus are `nonsequitur-slot-fill`, which gold labels incoherent — the
-gaming turn V0 built this whole track around. The grader still credits
-`recommendation` on all five draws, and the learner now sees none of them.
+**The gold was reframed in review, and spurious credit went to zero.** The
+grader still credits `recommendation` on all five draws of the gaming turn
+(`nonsequitur-slot-fill`), but that is the *right* answer now: a goal-blind
+grader is a pure extractor, so it credits the fact the words state and leaves
+coherence to the partner. Gold credits it too (`slots_established:
+[recommendation]`), so slot accuracy reads those five draws as exact, not
+spurious. The gaming turn is caught by the gate — gold still labels it
+incoherent and the learner sees no credit — and whether the partner tags it so
+is scored against gold in `evals/turn`, not here. This is why the grader's slot
+numbers did not "improve" against the old gold: the grader was never the party
+that should suppress the gaming turn, and scoring it as if it were hid a clean
+extractor behind a coherence failure that was always the gate's to catch.
 
 **A0.6 landed first, and the rebase found two things it left.** The behavioral
 suite (`tests/test_worker_behavior.py`) asserts the partner's annotation, so its

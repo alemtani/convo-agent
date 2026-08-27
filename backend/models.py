@@ -310,49 +310,19 @@ class ToneError(BaseModel):
     index: Optional[int] = None
 
 
-# `ConverserAnnotation`'s docstring is deliberately short, and the reasoning for
-# its shape lives out here in comments. Pydantic emits a model's docstring as the
-# JSON-schema `description`, and `messages.parse` renders that schema into the
-# request — so anything written inside the class is text the conversation worker
-# reads. A docstring explaining which rubric fields moved to the grader, and why,
-# would teach the partner the rubric in the act of documenting its removal.
+# This docstring is prompt: Pydantic emits it as the JSON-schema `description`
+# and `messages.parse` renders the schema into the request, so the conversation
+# worker reads whatever is inside the class. Design rationale stays out here,
+# where the model never sees it.
 #
-# What moved (V2, `docs/VALIDITY.md`): `slots_filled`, `learner_closed` and
-# `coherence` were folded in here to avoid a second call. The cost was
-# epistemic — a partner that can see the checkbox behind a question stops being
-# a person in a scene and becomes a proctor who wants you to pass. They are
-# `GraderResult`'s now and the converser is given no place to say them.
+# `coherent` is the converser's again (A4, `docs/streams/grading.md`). It lived
+# on the grader through V2, but coherence asks what the partner meant by its own
+# last line, and goal-blindness makes the partner the only party who can answer.
+# Binary, because the gate it feeds has one consequence.
 #
-# What then went (A2, `docs/streams/grading.md`): `grammar_notes`,
-# `topic_tags`, and `should_give_feedback`. Tags and the coaching flag were
-# consumed by nothing. Grammar notes were a coach's question — is this slip
-# worth teaching later — and the partner is not the coach. The notes panel
-# went with them rather than moving to the verdict: inventing a new coaching
-# job is not a cut. Tone errors still reach the card because Azure measured
-# them, not because the partner judged them.
-#
-# `tone_errors` is absent for a different reason: tone is never the model's
-# judgment. The server fills it from Azure PA accuracy or from typed tone digits.
-# It used to be in the schema with the prompt insisting it stay empty, so every
-# turn spent output tokens rendering `"tone_errors":[]` and then had it
-# overwritten. `TurnAnnotation` is the wire shape that carries it.
-#
-# What came *back* (A4, `docs/streams/grading.md`): `coherent`. It was the
-# converser's for the whole of M2, moved to the grader in V2 because a partner
-# that could see the rubric took anything scoreable as relevant — and moves back
-# now that goal-blindness has removed that reason. Coherence is a question about
-# what the partner just said and whether the reply followed from it, and the
-# partner is the only party that knows what it meant.
-#
-# **Binary, where the grader's was three tags.** The tags were built to measure.
-# Now that the answer is a gate, `drifting` has no consequence distinct from
-# `off_track`, so it is not a distinction worth asking a model to draw.
-#
-# It defaults to `True` — understood — because the failure it protects against
-# is asymmetric. A turn wrongly marked incoherent silently costs the learner a
-# point they earned, and they cannot tell that happened; a turn wrongly marked
-# coherent costs them nothing. So a model that omits the field is read as having
-# understood, and the gate is only ever closed by a partner that says so.
+# It defaults to `True` because the failure is asymmetric: a turn wrongly marked
+# incoherent silently costs the learner a point they cannot see they earned; a
+# turn wrongly marked coherent costs nothing. An omitted field reads as understood.
 class ConverserAnnotation(BaseModel):
     """What the partner noticed about the learner's turn: whether they said
     goodbye, and whether their turn followed from what the partner just said."""
@@ -361,22 +331,13 @@ class ConverserAnnotation(BaseModel):
     coherent: bool = True
 
 
-# Same rule as `ConverserAnnotation`: this docstring is rendered into the
-# request as the schema `description`, so it is prompt. What the class no longer
-# holds is written out here instead, where the grader cannot read it.
+# Same rule as `ConverserAnnotation`: this docstring is prompt, so what the class
+# no longer holds is documented out here where the grader cannot read it.
 #
-# **`coherence` is gone** (A4, `docs/streams/grading.md`). Judging whether a
-# turn followed from the previous line is a question about what the partner
-# meant by that line, and the partner is the only party who knows. It was moved
-# here in V2 for a reason that has since expired: a partner that could see the
-# rubric took anything scoreable as relevant, and goal-blindness closed that
-# door. `ConverserAnnotation.coherent` is where it lives now, and
-# `orchestrator._advance_or_echo` is where the two judgments meet.
-#
-# **`learner_closed` is not here** for a related reason and never has been.
-# Noticing that someone is leaving needs no rubric, so it is the converser's
-# observation, which means a close is applied on time even through a total
-# grader outage.
+# `coherence` is gone (A4): it moved to `ConverserAnnotation.coherent`, and
+# `orchestrator._advance_or_echo` is where the grade and the gate meet.
+# `learner_closed` is not here either — noticing someone is leaving needs no
+# rubric, so the converser owns it and a close still lands through a grader outage.
 class GraderResult(BaseModel):
     """What the *grader* judges — the scoring half, on its own call (V2).
 

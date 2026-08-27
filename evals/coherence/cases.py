@@ -15,12 +15,9 @@ import os
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 
-# Two tags since A4, where three collapsed into two: `on_track` → `coherent`,
-# and both `drifting` and `off_track` → `incoherent`. The three tags were built
-# to *measure* — to find out whether the signal separated gaming from earned
-# credit at all. It does, so it is a gate now, and a gate has one consequence:
-# `drifting` and `off_track` mean the same thing to it. A legitimate topic
-# change is caught by that collapse. It is a real cost, taken deliberately.
+# A gate has one consequence, so coherence is binary (A4). The earlier three-tag
+# scheme existed to measure whether the signal separated gaming from earned
+# credit; it does, so `drifting` and `off_track` both fold into `incoherent`.
 COHERENCE_TAGS = ("coherent", "incoherent")
 
 GOLD_FILENAME = "gold.json"

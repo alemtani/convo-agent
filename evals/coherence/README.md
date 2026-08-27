@@ -60,11 +60,18 @@ the one underneath it: **is the tracker right?**
 | **Spurious** — credit not earned | **3** | `recommendation` on the gaming turn, all 3 runs |
 | **Missed** — credit earned, not given | **0** | none on this corpus |
 
-The whole tracker error on this corpus is the one failure `docs/VALIDITY.md`
-describes, and it is not occasional — it is **every single run**. That is the
-number V2's goal-blind grader has to move, and it is recorded here *before* the
-grader exists, so the grader cannot be marked against a standard written after
-it.
+At V0 the whole tracker error on this corpus is that one turn, on every run —
+the failure `docs/VALIDITY.md` describes, recorded before the grader existed so
+it could not be marked against a standard written after it.
+
+**A4 reframed what that number means.** The goal-blind grader still credits the
+gaming turn, and under A4 that is the *right* answer: the grader is a pure
+extractor, so it credits the fact the words state and leaves coherence to the
+partner. Gold credits it now too (`slots_established: [recommendation]`), so slot
+accuracy reads it as exact, not spurious. The gaming turn is caught by the gate
+instead, and whether the partner tags it incoherent is scored in `evals/turn`.
+V2 did not beat the V0 number by making the grader stricter; it dissolved it by
+splitting the question in two.
 
 **One thing this says to the accessibility track.** `missed` is zero, and
 `earned-under-annotated` — the messy-pinyin turn built specifically to provoke
@@ -108,8 +115,10 @@ unlucky draw. It is the smallest case in the corpus: 我很好，你呢？, wher
 whole slot rides on 你呢 bouncing one question back.
 
 The V0 gaming turn (`nonsequitur-slot-fill`) still credits `recommendation` on
-every run. That is now handled where it always belonged — gold labels it
-incoherent, and the gate blocks the credit before the learner sees it.
+every run — the right answer for a goal-blind extractor, so gold credits it too
+and slot accuracy reads it as exact. Coherence is the separate question: gold
+labels the turn incoherent, the gate blocks the credit before the learner sees
+it, and the partner's tag is scored in `evals/turn`.
 
 ## Re-running it
 

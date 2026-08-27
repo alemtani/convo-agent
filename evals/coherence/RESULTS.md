@@ -15,11 +15,11 @@ Does the tracker credit the facts the learner actually established? **Spurious**
 | earned-under-annotated | 5/5 | — | — |
 | elliptical-ni-ne | 3/5 | — | `wellbeing` ×2 |
 | milk-and-biscuits | 5/5 | — | — |
-| nonsequitur-slot-fill | 0/5 | `recommendation` ×5 | — |
+| nonsequitur-slot-fill | 5/5 | — | — |
 | order-after-answers | 5/5 | — | — |
 | owed-drinks-then-order | 5/5 | — | — |
 | wandering-no-slot | 5/5 | — | — |
-| **total** | **48/55** | **5** | **2** |
+| **total** | **53/55** | **0** | **2** |
 
 ## Per-case runs
 
@@ -32,7 +32,7 @@ Does the tracker credit the facts the learner actually established? **Spurious**
 | earned-under-annotated | self_name, partner_name | self_name, partner_name | — |
 | elliptical-ni-ne | wellbeing | wellbeing | — |
 | milk-and-biscuits | recommendation, drinks, order | recommendation, drinks, order | — |
-| nonsequitur-slot-fill | — | recommendation ⚠️ | — |
+| nonsequitur-slot-fill | recommendation | recommendation | — |
 | order-after-answers | order | order | — |
 | owed-drinks-then-order | order | order | drinks |
 | wandering-no-slot | — | — | — |
@@ -43,7 +43,7 @@ Does the tracker credit the facts the learner actually established? **Spurious**
 | earned-under-annotated | self_name, partner_name | self_name, partner_name | — |
 | elliptical-ni-ne | wellbeing | — ⚠️ | — |
 | milk-and-biscuits | recommendation, drinks, order | recommendation, drinks, order | — |
-| nonsequitur-slot-fill | — | recommendation ⚠️ | — |
+| nonsequitur-slot-fill | recommendation | recommendation | — |
 | order-after-answers | order | order | — |
 | owed-drinks-then-order | order | order | drinks |
 | wandering-no-slot | — | — | — |
@@ -54,7 +54,7 @@ Does the tracker credit the facts the learner actually established? **Spurious**
 | earned-under-annotated | self_name, partner_name | self_name, partner_name | — |
 | elliptical-ni-ne | wellbeing | wellbeing | — |
 | milk-and-biscuits | recommendation, drinks, order | recommendation, drinks, order | — |
-| nonsequitur-slot-fill | — | recommendation ⚠️ | — |
+| nonsequitur-slot-fill | recommendation | recommendation | — |
 | order-after-answers | order | order | — |
 | owed-drinks-then-order | order | order | drinks |
 | wandering-no-slot | — | — | — |
@@ -65,7 +65,7 @@ Does the tracker credit the facts the learner actually established? **Spurious**
 | earned-under-annotated | self_name, partner_name | self_name, partner_name | — |
 | elliptical-ni-ne | wellbeing | wellbeing | — |
 | milk-and-biscuits | recommendation, drinks, order | recommendation, drinks, order | — |
-| nonsequitur-slot-fill | — | recommendation ⚠️ | — |
+| nonsequitur-slot-fill | recommendation | recommendation | — |
 | order-after-answers | order | order | — |
 | owed-drinks-then-order | order | order | drinks |
 | wandering-no-slot | — | — | — |
@@ -76,7 +76,7 @@ Does the tracker credit the facts the learner actually established? **Spurious**
 | earned-under-annotated | self_name, partner_name | self_name, partner_name | — |
 | elliptical-ni-ne | wellbeing | — ⚠️ | — |
 | milk-and-biscuits | recommendation, drinks, order | recommendation, drinks, order | — |
-| nonsequitur-slot-fill | — | recommendation ⚠️ | — |
+| nonsequitur-slot-fill | recommendation | recommendation | — |
 | order-after-answers | order | order | — |
 | owed-drinks-then-order | order | order | drinks |
 | wandering-no-slot | — | — | — |

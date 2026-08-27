@@ -551,37 +551,25 @@ async def _grade_or_degrade(
 def _advance_or_echo(state, *, scenario, grade, learner_closed, coherent, turn):
     """Advance the session, whether or not a grade landed — and gate it (A4).
 
-    A missing grade is **not** a graded turn that established nothing. It leaves
-    the watermark where it was, so the next turn's window covers this one and the
-    credit the learner earned arrives late rather than never. Slots are the only
-    thing owed.
+    A missing grade is not a graded turn that established nothing: it leaves the
+    watermark where it was, so the next window covers this turn and earned credit
+    arrives late rather than never. `learner_closed` and `coherent` both come
+    from the converser, which cannot fail without the reply also failing, so a
+    close still lands on time through a total grader outage.
 
-    `learner_closed` and `coherent` both come from the converser, which cannot
-    fail independently of the reply — no reply, no turn, no state event — so a
-    close is applied on time even through a total grader outage, and
-    `consecutive_closes` stays exact while slots are outstanding.
+    **The gate.** The two workers race, so this function — where they meet — is
+    the only place the gate can live. `coherent` is `False` when the turn did not
+    follow from the partner's last line, and such a turn earns nothing. It is a
+    gate, never a deduction: it withholds this turn's credit but cannot touch
+    `state.filled_at`, so a point the learner watched themselves earn is never
+    clawed back (a score going down reads as a bug).
 
-    **The gate.** The two workers race, so neither branch can hold the judgment
-    that decides the other; this function is where they meet, and it is the only
-    place the gate can live. `coherent` is `False` when the learner's turn did
-    not follow from what the partner just said, and such a turn earns nothing —
-    the grader is asked one question and answers it honestly, and refusing to
-    bank the answer is a separate decision from making it.
+    `slots_filled_previously` is the exception — credit owed to an earlier turn
+    whose grade failed, so the learner never saw it. Withholding it takes nothing
+    away in front of anyone, so the gate drops it too.
 
-    It is a gate and never a deduction. It withholds this turn's credit; it
-    cannot touch `state.filled_at`, so a point the learner already watched
-    themselves earn can never be taken back. A learner reads a score going down
-    as a bug, and they cannot tell a correction from one.
-
-    `slots_filled_previously` is the single exception, and it is an exception
-    because both halves of that argument fail for it: the credit was read off a
-    turn that did not follow, and it is credit the learner has never seen — the
-    earlier grade failed, so nothing was ever displayed. Withholding it takes
-    nothing away in front of anyone.
-
-    The turn still counts as **graded**. It was judged; it earned nothing. A
-    blocked turn left in debt would hand the next turn's window a second chance
-    to credit exactly what the gate refused.
+    The turn still counts as **graded**: leaving a blocked turn in debt would
+    hand the next window a second chance to credit what the gate just refused.
     """
     blocked = grade is None or not coherent
     return termination.advance(

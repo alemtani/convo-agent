@@ -10,20 +10,22 @@
   "nonsequitur-slot-fill": {
     "coherence": "incoherent",
     "credit_ok": false,
-    "slots_established": [],
-    "rationale": "The partner asked what they wanted to drink. This answers nothing that was asked; it is a phrase that matches a criterion, not a question in a conversation. Tagged `drifting` under the three-tag scheme; `drifting` counts as incoherent (A4)."
+    "slots_established": [
+      "recommendation"
+    ],
+    "rationale": "Asks which dish is best when the partner asked about drinks. The words state a recommendation, so the goal-blind extractor credits it; the turn follows from nothing, so the partner marks it incoherent and the gate blocks the credit. The motivating turn of docs/VALIDITY.md: extract the fact, gate the credit."
   },
   "wandering-no-slot": {
     "coherence": "incoherent",
     "credit_ok": false,
     "slots_established": [],
-    "rationale": "In-band words, out-of-scene content. Nothing here establishes any authored fact. Tagged `drifting` under the three-tag scheme; `drifting` counts as incoherent (A4)."
+    "rationale": "In-band words, out-of-scene content. The turn states no authored fact, so the extractor credits nothing and the incoherent turn would earn nothing anyway."
   },
   "derailed-input": {
     "coherence": "incoherent",
     "credit_ok": false,
     "slots_established": [],
-    "rationale": "The learner is stuck and half in English. The right move is to ask them to repeat, not to credit anything. Tagged `off_track` under the three-tag scheme."
+    "rationale": "The learner is stuck and half in English. Nothing to credit; the right move is to ask them to repeat."
   },
   "elliptical-ni-ne": {
     "coherence": "coherent",

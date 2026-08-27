@@ -1,27 +1,16 @@
-"""Observed values versus gold labels: is the grader right, and is the gate?
+"""Observed values versus gold labels. Pure functions over recorded values;
+the runners call the models, this module decides what the numbers mean.
 
-Pure functions over recorded values. Nothing here calls a model; the runners
-produce the observations and this module decides what they mean.
+Two questions, asked of two workers since A4:
 
-Two questions, and since A4 they are asked of two different workers:
+- **`slot_accuracy`** — did the grader credit the facts the learner established?
+  Fed by `evals/coherence/replay.py` (the grader alone). The metric V2 is judged on.
+- **`confusion`** — does the partner's `coherent` agree with a fair reader? Fed
+  by `evals/turn/replay.py`, the only runner that runs a partner.
 
-- **`slot_accuracy`** — did the grader credit the facts the learner actually
-  established? Fed by `evals/coherence/replay.py`, which runs the grader alone.
-  This is the metric V2 is judged on.
-- **`confusion`** — does the partner's `coherent` agree with a fair reader?
-  Fed by `evals/turn/replay.py`, the only runner that runs a partner. The tag
-  is the partner's judgment now, so nothing else can produce one.
-
-**What used to be here, and why it is gone.** V0/V1 asked whether `coherence`
-could carry a gate and which of three candidate thresholds was both safe and
-useful. A4 answers it and ships the strict one, so `CANDIDATE_GATES`,
-`GateReport`, `evaluate_gates` and `recommend` went with the question. A
-recommender that searches a single candidate is not a measurement.
-
-The safety rule they encoded outlives them and is now enforced in the code
-rather than reported on: the gate withholds this turn's credit and can never
-reach `state.filled_at`, so no turn that already earned a point can lose it
-(`orchestrator._advance_or_echo`).
+The gate-search machinery (`CANDIDATE_GATES`, `evaluate_gates`, `recommend`) is
+gone: A4 answered the V0/V1 question of which threshold to ship, and a
+recommender over a single candidate is not a measurement.
 """
 from dataclasses import dataclass
 from typing import Dict, Iterable, List, Tuple
@@ -33,19 +22,16 @@ from evals.coherence.cases import COHERENCE_TAGS, Gold
 class Observation:
     """One replay of one case through the grader: which slots it credited.
 
-    A case is replayed several times because the answer is a model's output and
-    not a function. Every run is its own row here.
-
-    It carries no `coherence` since A4. The grader is not asked, so a field for
-    it here could only ever be filled with an invention.
+    A case is replayed several times because the answer is a model's output, not
+    a function. It carries no `coherence` since A4 — the grader is not asked.
     """
 
     case_id: str
     slots_filled: Tuple[str, ...] = ()
-    # What an **owed** turn established, when this grade settled a debt. Scored
-    # by nothing here on purpose: the matrix asks about the turn under test.
-    # It is recorded because `slots_filled` alone cannot tell a grader that
-    # merged the two lists from one that dropped the earlier turn entirely.
+    # What an owed turn established, when this grade settled a debt. Nothing here
+    # scores it (the matrix asks about the turn under test); it is recorded so a
+    # grader that merged the two lists is distinguishable from one that dropped
+    # the earlier turn.
     slots_filled_previously: Tuple[str, ...] = ()
 
 
@@ -68,20 +54,16 @@ def confusion(observations, gold: Dict[str, Gold]) -> Dict[Tuple[str, str], int]
 
 @dataclass(frozen=True)
 class SlotAccuracy:
-    """How one case's credited slots compare with the facts it actually established.
+    """How one case's credited slots compare with the facts it established.
 
-    The gate asks whether the turn may be credited at all. This asks the blunter
-    question underneath it: **is the tracker right?** Both failure directions are
-    named separately, because they are different bugs with different victims:
+    Both failure directions are named apart, being different bugs:
 
     - `spurious` — credited a slot gold says was never established. The false
-      positive this track exists to remove; the learner is told they did
-      something they did not do.
+      positive this track exists to remove.
     - `missed` — did not credit a slot gold says was established. The false
       negative `ACCESSIBILITY.md` A2 exists to remove.
 
-    Counted per run rather than per case, since the annotation is a model's
-    output and one clean run does not make a reliable tracker.
+    Counted per run, since one clean run does not make a reliable tracker.
     """
 
     case_id: str
@@ -100,13 +82,9 @@ def slot_accuracy(
 ) -> List["SlotAccuracy"]:
     """Score `slots_filled` against `gold.slots_established`, per case.
 
-    Set comparison, so the order the model happened to list ids in never counts
-    as a disagreement — `termination.advance` treats them as a set too.
-
-    This is the metric **V2 is judged on**, and the one that survived V1: "did
-    the grader credit the right facts?" is the question a goal-blind grader
-    exists to answer better. A3's numbers are the standing baseline — 3/3 dense
-    cases at the 4/5 gate, 0 missed credit over 55 runs.
+    Set comparison, so the order the model lists ids in never counts as a
+    disagreement — `termination.advance` treats them as a set too. This is the
+    metric V2 is judged on: did the goal-blind grader credit the right facts?
     """
     per_case: Dict[str, List[Observation]] = {}
     for observation in observations:
