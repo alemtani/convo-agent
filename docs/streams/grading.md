@@ -750,6 +750,18 @@ That case is the one to watch — it is the smallest window in the corpus and th
 one where cutting history is most likely to help or most likely to hurt. Do not
 delete stale recordings by hand; the weekly job prunes them.
 
+**Known issue — the `elliptical-ni-ne` miss.** 我很好，你呢？ is the turn where
+"did it follow?" and "did it fill the slot?" are the same question — 你呢 alone
+carries the `wellbeing` request. The grader misses it ~2/5. A5 keeps the
+partner's last line in the window, so shrinking will not remove the context the
+bounce needs; the miss is a grader-reasoning gap, not a missing-data one. A
+targeted 你呢 nudge in the `slots_filled` instruction was tried during A4 review
+and showed **no recovery at 5 draws** — 5 draws cannot even separate 2 misses
+from 3, so it read as noise. Doing this right needs its own step: measure the
+case alone at ~20–30 draws for a real baseline, *then* test candidate nudges
+(prompt, or the slot's own `description`/`expressible_with`) against it. Do not
+bolt a wording change onto A5 without that measurement.
+
 This changes latency and the grade, not the HUD's shape — but a session on the
 phone is still the only thing that says the shorter window reads the same
 conversation, so raise a tunnel and take a real turn before the PR is ready.
