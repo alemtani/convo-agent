@@ -35,11 +35,13 @@ spoken loop `POST /api/turn` → Azure STT → PA ∥ conversation worker (cache
 prefix) → merged `tone_errors`; the mic-free `POST /api/turn/text` harness;
 `POST /api/session`, the sketch worker's one call per session (opening line +
 flavour, plus the pinned scenario card — `docs/SCENARIOS.md`);
-`POST /api/verdict`, the end-of-session card; and `POST /api/tts` (M4). The last
-two both sit *beside* the loop rather than inside it, for the same reason: one
-speaks a line, one explains a finished session, and neither is something a turn
-should wait on. Live modules: `main.py`, `orchestrator.py`, `termination.py`,
-`kb.py`, `pinyin.py`, `tones.py`, `models.py`, `config.py`, `prompts.py`,
+`POST /api/verdict`, the end-of-session card; `POST /api/tts` (M4); and
+`POST /api/feedback` (A7), which files a bug — or one contested turn — as a
+GitHub issue. All three sit *beside* the loop rather than inside it, for the same
+reason: one speaks a line, one explains a finished session, one reports that the
+session was judged wrong, and none of them is something a turn should wait on.
+Live modules: `main.py`, `orchestrator.py`, `termination.py`, `kb.py`,
+`pinyin.py`, `tones.py`, `models.py`, `config.py`, `prompts.py`, `issues.py`,
 `workers/{conversation,grader,sketch,feedback}.py`,
 `speech/{stt,pronunciation,tts,_azure}.py`. Still planned: `db.py`,
 `profile.py` (Phases 7–8).
@@ -75,6 +77,7 @@ backend/
     stt.py             # Azure STT
     pronunciation.py   # Azure PA (two-pass)
     tts.py             # Azure TTS (slowed SSML, cached by line)
+  issues.py            # A7: a learner's report -> a GitHub issue (+ rate limit)
   kb.py                # load topic markdown, parse frontmatter
   profile.py           # covered-set + proficiency CRUD + selection weighting
   pinyin.py            # romanize recognized speech for display (pypinyin)

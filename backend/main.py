@@ -10,10 +10,12 @@ from fastapi.responses import JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import ValidationError
 
-from backend import auth, config, kb, orchestrator
+from backend import auth, config, issues, kb, orchestrator
 from backend.models import (
     ConversationTurnResponse,
     DialogueTurn,
+    FeedbackRequest,
+    FeedbackResponse,
     PasscodeRequest,
     SessionState,
     SessionStartRequest,
@@ -350,6 +352,61 @@ async def verdict(req: VerdictRequest) -> VerdictCard:
     except feedback.FeedbackError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
+
+@app.post("/api/feedback", response_model=FeedbackResponse)
+async def file_feedback(req: FeedbackRequest) -> FeedbackResponse:
+    """File a bug, or contest one turn's grade, as a GitHub issue (A7).
+
+    The recourse the app did not have. You cannot repeat yourself in a
+    conversation without it getting strange, so before this a turn graded wrong
+    stayed graded wrong and the learner watched it happen. Now the disagreement
+    leaves the phone: `backend/issues.py` renders it as an issue whose body is a
+    replayable eval case, and the fix is `write the failing case, then fix, then
+    close`.
+
+    Named `file_feedback`, not `feedback`: `workers.feedback` is the verdict
+    worker and is already imported here under that name — shadowing it made three
+    verdict tests fail with an AttributeError that pointed at this line.
+
+    Beside the turn loop, like `/api/verdict` and `/api/tts`, and for the sharper
+    version of the same reason — nothing about a report belongs on a path a
+    learner is waiting on.
+
+    Four refusals, four codes, because the client renders each one differently:
+
+    * **422** — the report itself is wrong: too big, or a contest naming a slot
+      or a turn this scenario does not have. Retrying it unchanged cannot work.
+    * **404** — no such topic. The scenario lookup is the same one the turn loop
+      does, so a typo'd `topic_id` fails here the way it fails there.
+    * **429** — the window is spent. `Retry-After` says when to come back. This
+      route writes to a **public repo** and is unauthenticated wherever
+      `APP_PASSCODE` is unset, so the limit is part of the feature.
+    * **503** — this deploy has no token. Nothing is broken; the button should
+      say so rather than offer a retry that can never succeed.
+
+    The token lives in the environment and never reaches the client — not in a
+    response, and not inside an error detail (`issues.create_issue` reports the
+    status, never the body).
+    """
+    try:
+        scenario = kb.load_scenario(req.topic_id)
+    except kb.KbError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    try:
+        return await issues.file_report(req, scenario)
+    except issues.InvalidContest as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except issues.RateLimited as exc:
+        raise HTTPException(
+            status_code=429,
+            detail=str(exc),
+            headers={"Retry-After": str(exc.retry_after)},
+        ) from exc
+    except issues.NotConfigured as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except issues.IssueError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 @app.post("/api/tts")
 async def tts_route(req: TtsRequest) -> Response:

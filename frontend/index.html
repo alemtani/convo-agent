@@ -221,6 +221,93 @@
     /* A reply with no audio form: the controls stay, visibly inert. */
     .bubble.partner .controls button:disabled { opacity: 0.35; cursor: default; }
 
+    /* Contesting a grade (A7). The flag rides the learner's own bubble because
+       the moment they notice a turn was graded wrong is the moment they are
+       looking at it — a control that lived only on the end-of-session card
+       would ask them to remember which turn it was. Quiet by default: it is
+       recourse, not a rating, and a thread of buttons reads as a survey. */
+    .bubble.user .contest {
+      display: block;
+      margin: 0.3rem 0 -0.15rem auto;
+      font-size: 0.75rem;
+      line-height: 1;
+      padding: 0.2rem 0.35rem;
+      border: 0;
+      border-radius: 0.4rem;
+      background: rgba(255, 255, 255, 0.22);
+      color: inherit;
+      opacity: 0.7;
+      cursor: pointer;
+    }
+    .bubble.user .contest:hover, .bubble.user .contest:focus { opacity: 1; }
+
+    /* The report sheet — one panel for both affordances, because filing a bug
+       and contesting a grade are one mechanism pointed at different scopes. */
+    #feedback {
+      position: fixed;
+      inset: 0;
+      z-index: 11;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 1.25rem;
+      background: rgba(0, 0, 0, 0.45);
+    }
+    #feedback:not([hidden]) { display: flex; }
+    #feedback-panel {
+      background: Canvas;
+      color: CanvasText;
+      border-radius: 0.75rem;
+      padding: 1.1rem;
+      width: 100%;
+      max-width: 28rem;
+      max-height: 85vh;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+    #feedback-title { font-weight: 700; }
+    #feedback-hint { margin: 0; font-size: 0.85rem; opacity: 0.75; }
+    #feedback-message {
+      width: 100%;
+      min-height: 6rem;
+      font: inherit;
+      font-size: 1rem;         /* >=16px or iOS Safari zooms the page on focus */
+      padding: 0.5rem;
+      border-radius: 0.5rem;
+      border: 1px solid rgba(127, 127, 127, 0.4);
+      background: transparent;
+      color: inherit;
+      resize: vertical;
+    }
+    /* `display` beats `[hidden]`, so the hidden state has to be said again —
+       otherwise the slot picker shows on a bug report, asking which part of a
+       goal the learner got across when nothing was graded. */
+    #feedback-slot-row { font-size: 0.85rem; display: grid; gap: 0.3rem; }
+    #feedback-slot-row[hidden] { display: none; }
+    #feedback-slot {
+      font: inherit;
+      font-size: 1rem;
+      padding: 0.4rem;
+      border-radius: 0.5rem;
+      border: 1px solid rgba(127, 127, 127, 0.4);
+      background: transparent;
+      color: inherit;
+    }
+    #feedback .actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
+    #feedback .actions button {
+      font: inherit;
+      padding: 0.5rem 0.9rem;
+      border-radius: 0.5rem;
+      border: 1px solid rgba(127, 127, 127, 0.4);
+      background: transparent;
+      color: inherit;
+      cursor: pointer;
+    }
+    #feedback-status { font-size: 0.85rem; min-height: 1.2em; }
+    #feedback-status a { color: inherit; }
+
     /* A turn in flight, shown as a bubble rather than a status line: the partner
        gets a dot-pulse placeholder, and your own echo is dimmed until the server
        confirms it. Both are upgraded in place — never removed and re-added. */
@@ -472,8 +559,28 @@
 
   <div id="info-panel" hidden>
     <div id="info-panel-content">
-      <p class="muted">Speak or type Mandarin (greetings). A real partner replies and remembers the conversation; spoken words come back with per-syllable tone scores (green good / amber ok / red off). The partner <strong>speaks its reply</strong> instead of writing it — that's the listening practice. Tap 🔊 to hear a line again, <strong>👁 Show text</strong> to see the words when you're stuck, or <strong>👁 Show all text</strong> below to reveal every reply at once. If you're stuck for good, <strong>I'm stuck</strong> ends the session and writes your feedback — that is a fine way to finish one. Under <strong>⋯</strong>: <strong>⌨️ Type instead</strong> lets you type <strong>pinyin</strong> — your words come back as 汉字 — and <strong>🔀 Try something else</strong> starts a different scenario. Add tone numbers (<code>ni3hao3</code>) and your tones get checked too.</p>
+      <p class="muted">Speak or type Mandarin (greetings). A real partner replies and remembers the conversation; spoken words come back with per-syllable tone scores (green good / amber ok / red off). The partner <strong>speaks its reply</strong> instead of writing it — that's the listening practice. Tap 🔊 to hear a line again, <strong>👁 Show text</strong> to see the words when you're stuck, or <strong>👁 Show all text</strong> below to reveal every reply at once. If you're stuck for good, <strong>I'm stuck</strong> ends the session and writes your feedback — that is a fine way to finish one. Under <strong>⋯</strong>: <strong>⌨️ Type instead</strong> lets you type <strong>pinyin</strong> — your words come back as 汉字 — <strong>🔀 Try something else</strong> starts a different scenario, and <strong>🐞 Report a problem</strong> files what went wrong. If a turn was marked as not counting when you think it did, tap <strong>⚑ graded wrong?</strong> on your own message — that files the turn itself, so it can be fixed. Add tone numbers (<code>ni3hao3</code>) and your tones get checked too.</p>
       <button id="info-close" type="button">Close</button>
+    </div>
+  </div>
+
+  <!-- A7: one sheet for both affordances. The learner types what went wrong;
+       everything else in the report is already in localStorage. -->
+  <div id="feedback" hidden>
+    <div id="feedback-panel" role="dialog" aria-modal="true" aria-labelledby="feedback-title">
+      <div id="feedback-title"></div>
+      <p id="feedback-hint"></p>
+      <label id="feedback-slot-row" hidden>
+        <span>Which part do you think you got across?</span>
+        <select id="feedback-slot"></select>
+      </label>
+      <textarea id="feedback-message" placeholder="What happened?"
+                aria-label="What happened?"></textarea>
+      <div class="actions">
+        <button id="feedback-cancel" type="button">Cancel</button>
+        <button id="feedback-send" type="button">Send</button>
+      </div>
+      <div id="feedback-status" role="status" aria-live="polite"></div>
     </div>
   </div>
 
@@ -517,6 +624,7 @@
         <div id="more-menu">
           <button id="mode" title="Switch to typing">⌨️ Type instead</button>
           <button id="reset" title="Start a different scenario">🔀 Try something else</button>
+          <button id="report" title="Tell us what went wrong">🐞 Report a problem</button>
         </div>
       </details>
     </div>
@@ -529,6 +637,17 @@
     const reset = document.getElementById("reset");
     const stuckBtn = document.getElementById("stuck-btn");
     const moreMenu = document.getElementById("more");
+    const reportBtn = document.getElementById("report");
+    const feedbackSheet = document.getElementById("feedback");
+    const feedbackPanel = document.getElementById("feedback-panel");
+    const feedbackTitle = document.getElementById("feedback-title");
+    const feedbackHint = document.getElementById("feedback-hint");
+    const feedbackSlotRow = document.getElementById("feedback-slot-row");
+    const feedbackSlot = document.getElementById("feedback-slot");
+    const feedbackMessage = document.getElementById("feedback-message");
+    const feedbackSend = document.getElementById("feedback-send");
+    const feedbackCancel = document.getElementById("feedback-cancel");
+    const feedbackStatus = document.getElementById("feedback-status");
     const thread = document.getElementById("thread");
     const scenarioCard = document.getElementById("scenario-card");
     const scenarioTopic = document.getElementById("scenario-topic");
@@ -884,6 +1003,13 @@
         }
       }
       return out.slice(0, 60);
+    }
+
+    // Which learner turn the next one will be, 1-based. Counted by role rather
+    // than `dialogue.length / 2`: the two agree today, and only one of them
+    // still points at the right turn if a reply ever fails to land.
+    function nextLearnerTurn() {
+      return dialogue.filter((t) => t.role === "user").length + 1;
     }
 
     function setStatus(msg) { status.textContent = msg; }
@@ -1257,6 +1383,24 @@
       fresh.dataset.action = "new-session";
       fresh.addEventListener("click", () => newConversation());
       actions.appendChild(fresh);
+
+      // A7. The card is where a grade is read as final, so it is where the
+      // disagreement is sharpest — and it is the one screen that knows the slot
+      // ids (`missing`), so a contest filed from here can name what it claims.
+      // The per-turn flag stays the primary route: the moment you notice is the
+      // moment you are looking at the turn.
+      const contest = document.createElement("button");
+      contest.textContent = "Graded wrong?";
+      contest.title = "Contest a grade";
+      contest.dataset.action = "contest-verdict";
+      contest.addEventListener("click", () => openFeedback({ kind: "contest" }));
+      actions.appendChild(contest);
+
+      const report = document.createElement("button");
+      report.textContent = "Report a problem";
+      report.dataset.action = "report";
+      report.addEventListener("click", () => openFeedback({ kind: "bug" }));
+      actions.appendChild(report);
       return actions;
     }
 
@@ -1364,6 +1508,159 @@
     // session exists (the overwhelmingly common case: `startSession()` above
     // already ran at load), and otherwise gives the in-flight or a fresh
     // fetch a chance to land before the turn is built.
+    // --- A7: reporting a problem, and contesting a grade --------------------
+    //
+    // Two affordances, one mechanism (`docs/streams/grading.md`). The reason
+    // the contest exists at all: you cannot repeat yourself in a conversation
+    // without it getting strange, so before this a turn graded wrong stayed
+    // graded wrong and the learner watched it happen. Now the disagreement
+    // leaves the phone as a GitHub issue whose body is a replayable eval case.
+    //
+    // Everything the report needs is already here — the transcript, the state,
+    // the sketch, the opening line — because the server keeps none of it. The
+    // learner supplies one sentence, and that is the whole cost.
+    let feedbackContext = null;
+    let feedbackSending = false;
+
+    // The only slot names a learner has ever seen. Mid-session there are none:
+    // slot ids are deliberately never rendered (`docs/SCENARIOS.md`), so a
+    // contest filed during a conversation names a turn and no slot, which the
+    // server accepts. Once the card is up, `missing` carries real ids and the
+    // claim can be exact.
+    function contestableSlots() {
+      const card = readJson(VERDICT_KEY, null);
+      return (card && card.missing) || [];
+    }
+
+    function openFeedback(opts) {
+      opts = opts || {};
+      const contest = opts.kind === "contest";
+      // A contest opened from the card has no turn of its own; the last one the
+      // learner took is the one they just watched being graded.
+      const turn = contest ? (opts.turn || Math.max(1, nextLearnerTurn() - 1)) : null;
+      feedbackContext = { kind: contest ? "contest" : "bug", turn: turn };
+
+      feedbackTitle.textContent = contest ? "Graded wrong?" : "Report a problem";
+      feedbackHint.textContent = contest
+        ? "Turn " + turn + ". Say what you got across, and why it should have counted."
+        : "Say what went wrong. This conversation and your progress go with it.";
+
+      const slots = contest ? contestableSlots() : [];
+      feedbackSlot.replaceChildren();
+      if (slots.length) {
+        const blank = document.createElement("option");
+        blank.value = "";
+        blank.textContent = "Not sure";
+        feedbackSlot.appendChild(blank);
+        for (const slot of slots) {
+          const option = document.createElement("option");
+          option.value = slot.id;
+          option.textContent = slot.description;
+          feedbackSlot.appendChild(option);
+        }
+      }
+      feedbackSlotRow.hidden = slots.length === 0;
+
+      feedbackMessage.value = "";
+      feedbackMessage.disabled = false;
+      feedbackStatus.replaceChildren();
+      feedbackSend.hidden = false;
+      feedbackSend.disabled = false;
+      feedbackCancel.textContent = "Cancel";
+      feedbackSheet.hidden = false;
+      feedbackMessage.focus();
+    }
+
+    function closeFeedback() {
+      feedbackSheet.hidden = true;
+      feedbackContext = null;
+    }
+
+    // One phrase per status, because they mean different things to the learner.
+    // A 429 is "come back later", a 503 is "this build cannot file at all", and
+    // a 422 is "this report is wrong" — collapsing them into "something went
+    // wrong" would be the same as having no recourse, which is the thing this
+    // whole feature exists to end.
+    function feedbackErrorCopy(status, detail) {
+      if (status === 429) return "Too many reports for now — try again later.";
+      if (status === 503) return "This server can't file reports (no token set).";
+      if (status === 422) return "Couldn't file that: " + detail;
+      return "Couldn't file it — " + detail;
+    }
+
+    async function submitFeedback() {
+      if (!feedbackContext || feedbackSending) return;
+      const message = feedbackMessage.value.trim();
+      if (!message) {
+        feedbackStatus.textContent = "Say what went wrong first.";
+        feedbackMessage.focus();
+        return;
+      }
+      feedbackSending = true;
+      feedbackSend.disabled = true;
+      feedbackStatus.textContent = "Filing…";
+      try {
+        const resp = await fetch("/api/feedback", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            kind: feedbackContext.kind,
+            topic_id: session ? session.topic_id : "",
+            message: message,
+            // The same client-held session every other call resubmits.
+            dialogue: dialogue.map((t) => ({ role: t.role, zh: t.zh })),
+            state: state,
+            sketch: session ? session.sketch : "",
+            opening_line: (session && session.opening_line) || null,
+            turn: feedbackContext.turn,
+            slot_id: feedbackSlotRow.hidden ? null : (feedbackSlot.value || null),
+          }),
+        });
+        if (!resp.ok) {
+          const detail = gateIfUnauthorized(resp)
+            ? "log back in and send it again"
+            : await readErrorDetail(resp);
+          feedbackStatus.textContent = feedbackErrorCopy(resp.status, detail);
+          return;
+        }
+        const filed = await resp.json();
+        // The receipt. The repo is public and the issue is the learner's own
+        // report — a filed issue they cannot see is indistinguishable from a
+        // swallowed one.
+        feedbackStatus.replaceChildren();
+        feedbackStatus.appendChild(document.createTextNode("Filed as "));
+        const link = document.createElement("a");
+        link.href = filed.url;
+        link.target = "_blank";
+        link.rel = "noopener";
+        link.textContent = "#" + filed.number;
+        feedbackStatus.appendChild(link);
+        feedbackStatus.appendChild(document.createTextNode(". Thank you."));
+        feedbackMessage.disabled = true;
+        feedbackSend.hidden = true;
+        feedbackCancel.textContent = "Close";
+      } catch (err) {
+        feedbackStatus.textContent = "Couldn't file it — " + err;
+      } finally {
+        feedbackSending = false;
+        if (!feedbackSend.hidden) feedbackSend.disabled = false;
+      }
+    }
+
+    feedbackSend.addEventListener("click", submitFeedback);
+    feedbackCancel.addEventListener("click", closeFeedback);
+    // A tap on the backdrop dismisses, like the overflow menu; a tap inside
+    // must not, or the sheet closes while you are typing in it.
+    feedbackPanel.addEventListener("click", (event) => event.stopPropagation());
+    feedbackSheet.addEventListener("click", closeFeedback);
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && !feedbackSheet.hidden) closeFeedback();
+    });
+    reportBtn.addEventListener("click", () => {
+      closeMore();
+      openFeedback({ kind: "bug" });
+    });
+
     function ensureSession() {
       return session ? Promise.resolve(session) : startSession();
     }
@@ -1439,6 +1736,11 @@
       opts = opts || {};
       const el = document.createElement("div");
       el.className = "bubble " + role;
+      // Which learner turn this is, if the caller knows. Stamped on the element
+      // rather than closed over, because `paint` runs again on every upgrade —
+      // pending dots, then the transcript, then the scored rendering — and the
+      // contest control has to survive all three.
+      if (opts.turn) el.dataset.turn = String(opts.turn);
       thread.insertBefore(el, opts.before || null);
       if (opts.scroll !== false && stuck) scrollToBottom("smooth");
 
@@ -1482,10 +1784,31 @@
       if (opts.pronunciation && opts.pronunciation.syllables.length) {
         el.replaceChildren();
         renderScored(el, utt, opts.pronunciation);
+        addContest(el, role);
         return;
       }
       el.replaceChildren(...textRows(utt));
       if (opts.toneErrors && opts.toneErrors.length) markToneErrors(el, utt, opts.toneErrors);
+      addContest(el, role);
+    }
+
+    // A7. The flag goes on the learner's own bubbles and nowhere else: a grade
+    // is about what *they* said. Appended after painting, in both branches, so
+    // a scored bubble keeps it too — `renderScored` replaces the children.
+    //
+    // Not on an empty bubble: "(nothing recognized)" was never graded, so there
+    // is no judgment there to disagree with.
+    function addContest(el, role) {
+      if (role !== "user" || !el.dataset.turn) return;
+      const turn = Number(el.dataset.turn);
+      const flag = document.createElement("button");
+      flag.type = "button";
+      flag.className = "contest";
+      flag.dataset.action = "contest";
+      flag.textContent = "⚑ graded wrong?";
+      flag.title = "Tell us this turn was graded wrong";
+      flag.addEventListener("click", () => openFeedback({ kind: "contest", turn: turn }));
+      el.appendChild(flag);
     }
 
     // 汉字 on top, pinyin beneath — the two rows every bubble is made of, split
@@ -2157,7 +2480,7 @@
       // reply being written before your own words appear. Waiting means the
       // thread always reads in order — your message, then the partner
       // considering it — which is also what a real chat app does.
-      const echo = createBubble("user").pending();
+      const echo = createBubble("user", { turn: nextLearnerTurn() }).pending();
       let pending = null;
       // Created on demand so an error before the transcript still has somewhere
       // to land; after `transcript` this always returns the existing bubble.
@@ -2334,7 +2657,8 @@
       // them, not a round trip later. All we have locally is the pinyin you
       // typed, so paint that (dimmed) and upgrade the same bubble to the
       // worker's 汉字 reading — with tone marks — when the response lands.
-      const echo = createBubble("user").render({ zh: "", pinyin: text }, { optimistic: true });
+      const echo = createBubble("user", { turn: nextLearnerTurn() })
+        .render({ zh: "", pinyin: text }, { optimistic: true });
       const pending = createBubble("partner").pending();
       textInput.value = "";   // the bubble holds the text now
 
@@ -2528,6 +2852,7 @@
     // each other is what used to leave the thread parked mid-history — and lands
     // at the newest message in one instant jump, like reopening a chat app.
     function restoreThread() {
+      let learnerTurn = 0;
       for (const t of dialogue) {
         const utt = { zh: t.zh, pinyin: t.pinyin || "" };
         if (t.role === "partner") {
@@ -2537,7 +2862,10 @@
           renderReply(createBubble("partner", { scroll: false }), utt,
                       { scroll: false, speak: false });
         } else {
-          renderLine(t.role, utt, { scroll: false });
+          // Restored turns keep their flag. A learner who reloads the page has
+          // not stopped disagreeing with the grade they saw before it.
+          learnerTurn += 1;
+          renderLine(t.role, utt, { scroll: false, turn: learnerTurn });
         }
       }
       stuck = true;
