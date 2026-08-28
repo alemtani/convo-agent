@@ -831,6 +831,20 @@ so the partner's `coherent` tag — a gate on the learner's credit since A4 — 
 never been measured. A6.5 is the next grade change, and it is a measurement
 before it is a fix.
 
+**Four steps are open, and only one pair is ordered.** A1.5 (measure the
+partner), A6.5 (measure earlier-turn recall), A7 (feedback intake) and A8 (prompt
+weight) touch different files and can be worked in any order — except that **A8
+waits on A6.5**, because cutting a prompt with no baseline loses credit you had.
+
+**A7 and A8 are the parallel pair, and they are the same shape.** Both are about
+what the system carries that nobody reads: A7 gives the learner a way to say a
+grade was wrong, and A8 stops the grader carrying every instruction on every
+call. Neither blocks the other, neither touches the other's files (A7 is
+`main.py` + `frontend/`; A8 is `prompts.py`), and both feed the same place —
+A7 produces labelled disagreements for `gold.json`, and A8 is measured against
+what A6.5 puts there. Run them concurrently in separate worktrees if two agents
+are free.
+
 Every one of these ends the same way, so it is said once here: work in a git
 worktree, write the failing test first, branch from `main`, conventional commits,
 open a PR explaining the *why* — and **update this document in the same PR**:
@@ -950,4 +964,82 @@ in the order they are worth trying:
 
 Report the baseline first, as a rate with its sample count, before changing
 anything.
+```
+
+### A7 — feedback intake, and contesting a grade
+
+```
+Read docs/streams/grading.md, the A7 section. Build feedback intake: a button in
+the app that files what went wrong, and a contest affordance pointed at one turn.
+
+There is currently no recourse of any kind. You cannot repeat yourself in a
+conversation without it getting strange, so a turn graded wrong stays graded
+wrong and the learner watches it happen. That is the case to fix first — the
+general "something is off" button is the easier half.
+
+Two affordances, one mechanism:
+
+- **File a bug.** A control on the verdict card. It opens a GitHub issue with the
+  transcript, the scenario id, the slot state, and what the learner typed.
+- **Contest a grade.** The same POST, scoped to one turn: which turn, which slot
+  they believe they filled, and why. Reachable from the turn itself, not only
+  from the card — the moment they notice is the moment they are looking at it.
+
+Server-side: a route that opens the issue, a token that lives in the environment
+and never reaches the client, and a rate limit — this is an unauthenticated
+endpoint that writes to a public repo, so treat the limit as part of the
+feature, not a follow-up.
+
+Real red-green TDD, with the GitHub client mocked: the route builds the issue
+body it should, refuses an oversized transcript, refuses a contest naming a slot
+the scenario does not have, and is bounded by the rate limit. Nothing here is a
+model call.
+
+The deliverable is the labelled disagreement, so make the issue body machine-
+readable enough to become an eval case without retyping it — a fenced JSON block
+with the transcript, the state, the contested turn and the claimed slot, under
+the learner's own prose. A contested grade is the highest-value thing that can
+land in `gold.json`, and a filed issue is handled by: write the failing case,
+then fix, then close.
+
+Frontend PR, so raise a tunnel and file one real issue from the phone before the
+PR is ready — then close it.
+```
+
+### A8 — prompt weight
+
+```
+Read docs/streams/grading.md, the A8 section. Cut the grader's prompt, and decide
+what should not be in a prompt at all.
+
+Do A6.5 first. This step changes what the grader reads on every call, and
+cutting a prompt with no baseline loses credit you had — the measurement is the
+gate, not the intuition.
+
+The finding this starts from: the frozen prefix is 612 words, `slots_filled`
+gets five paragraphs, `slots_filled_previously` gets one sentence saying to
+leave it empty, and the prompt closes on "Grade the learner's final turn." A6
+tried four wordings of the review's note against that and moved nothing, which
+is the evidence that the note is not the load-bearing text.
+
+In order:
+
+1. **Cut.** Every sentence justifies its place against the A6.5 gate. A3's
+   multi-slot sweep is this stream's headline fix and stays; find what does not.
+2. **Split the prefix by caller.** A live turn and an end-of-session review are
+   different jobs arguing over one prompt. Give the review its own frozen prefix
+   — one that says *judge every turn* rather than *judge the final turn*. It
+   costs a second cache entry (they are per-model and per-prefix) and re-records
+   the grader's cassettes.
+3. **Then ask what should not be shipped on every call at all.** One correction
+   before you start: **Agent Skills do not attach to a plain `messages.parse`
+   call** — they need `container={"skills": [...]}`, the code-execution tool and
+   two beta headers, which is a container per call on the path the learner waits
+   behind. The API-native form of progressive disclosure here is deferred tool
+   loading (`tool_search`), or fetching the rubric as a tool result instead of
+   pinning it in the prefix. On a 612-word prefix that may not pay; establish
+   that it does before building it.
+
+Report every change as a rate against the A6.5 baseline, with its sample count.
+A prompt cut that reads better and grades worse is a regression.
 ```
