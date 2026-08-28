@@ -30,6 +30,7 @@ from backend.models import DialogueTurn, GraderResult
 from backend.prompts import (
     render_filled_note,
     render_grader_prompt,
+    render_review_note,
     render_window_note,
 )
 
@@ -83,6 +84,7 @@ def build_request(
     opening_line: Optional[str] = None,
     window: int = 1,
     filled_slots: Optional[List[str]] = None,
+    review: bool = False,
 ) -> Dict:
     """Assemble the exact `messages.parse` kwargs for one grade.
 
@@ -105,6 +107,11 @@ def build_request(
     Messages API requires `messages[0]` to be `user`. That leading line folds
     into the learner turn it precedes — the same shape turn 1 already uses for
     the opening line.
+
+    **`review` (A6)** is the end-of-session pass: `window` is the whole session,
+    so the tail is the whole conversation, and the note asks for a re-reading
+    with hindsight rather than for turns a grading failure lost. It is the only
+    caller that sends the transcript back, and it is off the turn loop.
     """
     windowed = dialogue[-(2 * window - 1):] if dialogue else []
     messages = [
@@ -121,9 +128,9 @@ def build_request(
     filled_note = render_filled_note(filled_slots)
     if filled_note:
         _prefix_text(messages[-1], filled_note)
-    window_note = render_window_note(window)
-    if window_note:
-        _prefix_text(messages[-1], window_note)
+    note = render_review_note(window) if review else render_window_note(window)
+    if note:
+        _prefix_text(messages[-1], note)
 
     # The window opens on the partner's last line — an assistant turn the API
     # will not take as `messages[0]`. Fold it into the user turn it precedes.
@@ -176,6 +183,7 @@ async def grade(
     opening_line: Optional[str] = None,
     window: int = 1,
     filled_slots: Optional[List[str]] = None,
+    review: bool = False,
     timeout: Optional[float] = None,
     client: Optional[AsyncAnthropic] = None,
 ) -> Tuple[GraderResult, object]:
@@ -194,6 +202,7 @@ async def grade(
     request = build_request(
         scenario=scenario, dialogue=dialogue, user_text=user_text,
         opening_line=opening_line, window=window, filled_slots=filled_slots,
+        review=review,
     )
 
     try:

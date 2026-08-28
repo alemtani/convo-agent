@@ -79,6 +79,14 @@ best.
 
 ### 5. Prompts are long enough to dilute the instruction that matters
 
+**This applies to the grader too, and A6 found the receipt.** The item below was
+written about the partner, and A2 cut the partner. Meanwhile the grader's prompt
+grew — A3's multi-slot language, A4's split, A5's window — to 612 words in which
+`slots_filled` gets five paragraphs and `slots_filled_previously` gets **one
+sentence telling the model to leave it empty**. Everything that then asks for
+earlier turns (the window note, the review note) arrives after that, behind the
+cache breakpoint, arguing with a frozen prefix that has already said no. See A8.
+
 The system prompt is ~60 lines. The partner is asked to hold a persona, a band
 ceiling, a scene, a reciprocity rule, a stay-in-character rule, a pinyin-reading
 rule, a forgiveness level, and four annotation fields. The reply is one short
@@ -669,11 +677,12 @@ Five draws over eleven cases, same gold, same replay:
 Both of A4's misses were `wellbeing` on `elliptical-ni-ne`; A5 has none. Nothing
 regressed.
 
-### A6 — The verdict reviews the session
+### A6 — The verdict reviews the session — **shipped, PR #99**
 
-`feedback.settle_outstanding_grades` already re-grades the last unsettled turn
-before the card is written, and the verdict already holds the whole transcript.
-Extend it to review every turn with hindsight.
+`settle_outstanding_grades` re-graded the turns whose grade never landed. It is
+now `feedback.review_session`: one grader call over the whole conversation
+before the card, judging every turn again with the rest of the session in view.
+Recovery became a case of review rather than a separate job.
 
 This is strictly fairer. The grader at turn 3 did not know what turn 5 would
 clarify.
@@ -682,6 +691,66 @@ clarify.
 read after a session the learner already watched live; a card that takes away a
 point they saw themselves earn is indistinguishable from a bug, and there is no
 way for them to tell a correction from a defect.
+
+**What shipped, and what it taught us.**
+
+- **The one-way rule is enforced in Python, not asked for in the prompt.** New
+  ids union into `filled_at`; an already-earned slot keeps the turn it was
+  earned on, and `status`/`end_reason` are untouched. The note says so too, but
+  only so the model does not spend judgment on a decision it does not own.
+
+- **The pass is skipped when it could not change the answer.** Every slot filled
+  means an add-only review has nothing to add, so the happy path still costs
+  nothing — the same property the debt-only pass had, kept for a different
+  reason.
+
+- **A completed card no longer excuses turns it did not check.** `unchecked_turns`
+  is zero whenever the goal was met. That block exists to stop the card blaming
+  the learner for a turn our grader never read; with nothing missing it excused a
+  miss that was not there — and a completed session is exactly the one whose
+  watermark the review now leaves stale.
+
+- **The review note is its own note.** The owed-turn note reports a grading
+  *failure* and asks for the turns it lost; this one asks for a re-reading of
+  turns that were graded fine at the time. The first draft closed on "nothing
+  you leave out is taken away", which reads as licence to leave things out; it
+  is now an imperative — work turn by turn, sweep the whole slot list once per
+  turn, report everything any earlier turn established.
+
+- **No cassette re-recorded.** The live-turn request is byte-identical: the
+  review note rides `messages` behind the breakpoint, and `review=False` renders
+  exactly what it did before.
+
+### What the live measurement found — the ceiling is recall, not the note
+
+Two real sessions through the tunnel, then targeted draws against the live API
+(`greetings`, Opus grader). Three things, and the third is the finding:
+
+- **The mechanism works end to end.** A perfect session skips the pass and pays
+  nothing. An imperfect one logs `reviewing all 3 turn(s)`, and the card it
+  produces takes nothing away.
+
+- **Wording is not the lever it looked like.** Draws on the same transcript with
+  the review note, the owed-turn note, a per-turn-sweep variant, and a widened
+  `GraderResult` docstring (`slots_filled_previously` described as *earlier*
+  rather than *owed*) all land inside each other's noise. The docstring change
+  was reverted rather than spending a full grader re-record on a wave that
+  showed nothing.
+
+- **The grader's recall on earlier turns is weak, and that is A6's ceiling.**
+  On a transcript whose turn 2 is 你叫什么名字？ — unambiguous, and credited
+  ~always when it *is* the turn being graded — the pass reported it in
+  `slots_filled_previously` in about 1 draw in 5. The same turn's 我叫小明 came
+  back 5/5. So the review recovers an obvious earlier fill reliably and a
+  question unreliably, and the owed-turn path scores the same, which means this
+  is not something A6 introduced: **the recovery pass has always had it**, since
+  A1, unmeasured.
+
+  A6 is still strictly better than no pass — it only adds — but "the verdict
+  re-grades with hindsight" is worth roughly one slot in five on earlier turns
+  today, not the full re-read the step name promises. Raising that is the next
+  piece of work and it needs a labelled set, not another prompt draft: the
+  measurement above is four hand-built waves of five draws on one topic.
 
 ### A7 — Feedback intake, and contesting a grade
 
@@ -700,6 +769,48 @@ that can land in `gold.json`.
 
 Needs a server-side token and a rate limit. The client never sees the token.
 
+### A8 — Prompt weight, and moving what is left out of the prompt
+
+**The hypothesis A6 hands to this step: the `slots_filled_previously` weakness
+is context pollution, not a missing instruction.** Four wording variants moved
+nothing (A6). What none of them changed is the shape of the request they sit in.
+
+The grader's frozen prefix is 612 words. Of those, `slots_filled` gets five
+paragraphs — check every slot, judge meaning not wording, credit on the ask, a
+beginner's slip does not unmake it — and `slots_filled_previously` gets one
+sentence: *"normally empty — leave it so."* It then closes on *"Grade the
+learner's final turn. The history is context for reading it."*
+
+So the review's instruction to sweep every turn is a note, after the breakpoint,
+arguing against a prefix that has already told the model twice to do the
+opposite — and the earlier turns it is asking about sit in the middle of the
+messages, which is where models read worst. That is a plausible mechanism for
+5/5 on the nearest earlier turn and ~1/5 on the one before it, and it explains
+why wording the note differently did nothing: the note was never the load-bearing
+text.
+
+What to do about it, cheapest first:
+
+- **Cut.** The prompt is carrying instructions for two different jobs on every
+  call. Most of it is real (A3's multi-slot sweep is the fix for this stream's
+  headline bug) but it is all present all the time.
+- **Split the prefix by caller.** A live turn and a review are different jobs;
+  giving the review its own frozen prefix — one that says *judge every turn*
+  rather than *judge the final turn* — stops the note arguing with the prompt.
+  It costs a second cache entry and re-records the grader's cassettes.
+- **Move content out of the prompt entirely.** This is the idea worth exploring
+  and it needs a correction before anyone starts: **Agent Skills do not attach to
+  a plain `messages.parse` call.** They require `container={"skills": [...]}`,
+  the `code_execution` tool and two beta headers — a container per call, on the
+  path a learner waits behind. The API-native form of progressive disclosure here
+  is deferred tool loading (`tool_search`), or simply fetching the rubric as a
+  tool result rather than pinning it in the prefix. Whether either is worth it on
+  a call this small is an open question; the instinct — *stop shipping every
+  instruction on every call* — is right regardless of which mechanism answers it.
+
+Ordering: this is downstream of A6.5's baseline. Cutting a prompt with no
+measurement is how you lose credit you had.
+
 ## Done when
 
 - The cassette suite runs in CI, spends nothing, and is a merge gate — the
@@ -708,16 +819,17 @@ Needs a server-side token and a rate limit. The client never sees the token.
   schedule. Neither can rot unnoticed again.~~ **Done (A0.6).**
 - All four recorded misses pass.
 - ✅ The grader returns slots and nothing else (A4).
-- The partner prompt fits on one screen.
+- The partner prompt fits on one screen, and the grader's does too (A8).
 - A learner can file a bug, or contest a grade, in three taps.
 
 ## Kickoff prompts
 
 One per step, each runnable as written. **A0 (PR #86), A1 (PR #90), A2 (PR #91),
-A3 (PR #95), A0.6 (PR #92), A4 (PR #97) and A5 (PR #98) are done** — their
+A3 (PR #95), A0.6 (PR #92), A4 (PR #97), A5 (PR #98) and A6 are done** — their
 prompts are retired. A1.5 is still outstanding: the turn runner records nothing,
 so the partner's `coherent` tag — a gate on the learner's credit since A4 — has
-never been measured. A6 is the next grade change.
+never been measured. A6.5 is the next grade change, and it is a measurement
+before it is a fix.
 
 Every one of these ends the same way, so it is said once here: work in a git
 worktree, write the failing test first, branch from `main`, conventional commits,
@@ -795,34 +907,47 @@ wave may already have settled it.
 
 ### A6 — the verdict reviews the session
 
+Retired: shipped. `feedback.review_session` re-reads the whole conversation
+before the card, adds credit and never removes it, and skips the pass on a
+session with every slot already filled. What it did **not** settle is below.
+
+### A6.5 — earlier-turn recall, measured
+
 ```
-Read docs/streams/grading.md. Start Stream A at A6: let the verdict re-grade the
-whole session with hindsight.
+Read docs/streams/grading.md, the A6 section. A6 shipped the session review:
+one grader call over the whole conversation before the card, add-only. Its
+ceiling is not the mechanism, it is recall — on a transcript whose turn 2 is
+你叫什么名字？, the pass reported that slot in `slots_filled_previously` in
+about one draw in five, while the same turn's 我叫小明 came back 5/5. The
+owed-turn recovery path scores the same, so this predates A6 and has never been
+measured.
 
-`feedback.settle_outstanding_grades` already re-grades the last unsettled turn
-before the card is written, and the verdict worker already holds the whole
-transcript. Extend it to review every turn, not only the owed ones. The grader
-at turn 3 did not know what turn 5 would clarify; the end-of-session pass does.
+Measure it properly, then fix it. Four hand-built waves of five draws on one
+topic is not a baseline.
 
-**Review may add credit and may never remove it. Non-negotiable.** The card is
-read after a session the learner already watched live. A card that takes away a
-point they saw themselves earn is indistinguishable from a bug, and they cannot
-tell a correction from a defect. So the pass unions new credit into `filled_at`
-and never deletes — the same one-way rule `settle_outstanding_grades` already
-follows (it moves only `filled_at`, never `status`/`end_reason`).
+Build the cases the way A1 built the grader's: transcripts with a labelled
+`slots_filled_previously` for every earlier turn, across more than one topic,
+recorded through the cassette layer so the gate spends nothing. `evals/turn/`
+already drives whole sessions; a review case is a finished session plus the
+state the live grades produced, which that runner can emit.
 
-Write the failing test first: a session whose turn 3 was graded empty but which
-a later turn makes legible, and assert the verdict pass credits it and that no
-already-earned slot is ever dropped. This is deterministic logic over recorded
-turns, so it is real red-green TDD, not an eval.
+Then attack the gap with the sample count to tell a fix from a wave. Candidates,
+in the order they are worth trying:
 
-The prompt the recovery pass sends may change; if it does, re-record the
-affected cassettes (the grader keys, off `evals/coherence/replay.py`) and run
-the default suite. Do not delete stale recordings by hand; the weekly job prunes
-them.
+- **Prompt weight and position — read A8 first, it is the leading hypothesis.**
+  The frozen prefix spends 612 words, gives `slots_filled_previously` one
+  sentence that says "leave it empty", and closes on "Grade the learner's final
+  turn." The review's note argues against all of that from after the breakpoint,
+  about turns sitting in the middle of the messages. Splitting the prefix by
+  caller is the honest fix; it re-records every grader cassette, so it needs the
+  eval first.
+- `GraderResult.slots_filled_previously` says **owed**, and the docstring
+  reaches the model (`messages.parse`). Widening it to *earlier* showed nothing
+  at 5 draws; it may show something at 30, and it costs a re-record.
+- One call per earlier turn instead of one call per session. Strictly more
+  recall and strictly more money, off the turn loop where latency is cheap —
+  measure before assuming the session-wide call is worth defending.
 
-This changes the grade, not the HUD's shape — but a session on the phone is
-still the only thing that says the end-of-session review reads a real
-conversation the way a fair reader would, so raise a tunnel and take a real
-session to its card before the PR is ready.
+Report the baseline first, as a rate with its sample count, before changing
+anything.
 ```

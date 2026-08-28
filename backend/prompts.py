@@ -212,6 +212,38 @@ def render_window_note(window: int) -> Optional[str]:
     )
 
 
+def render_review_note(turns: int) -> str:
+    """The end-of-session review's instruction (A6) — never `None`.
+
+    A different job from `render_window_note`, and it must not borrow its words.
+    That note reports a **grading failure** and asks for the turns it lost; this
+    one asks for a re-reading of turns that were graded fine at the time, with
+    the one thing the live grader did not have: the rest of the conversation.
+    The grader at turn 3 did not know what turn 5 would clarify.
+
+    It says plainly that the pass may only **add**. Credit already awarded is not
+    on the table — the caller enforces that in Python, and saying so here keeps
+    the model from spending its judgment on a decision it does not own.
+
+    Volatile like the other two, so it rides `messages` after the breakpoint and
+    the frozen prefix stays byte-identical.
+    """
+    return (
+        f"[The session is over, and all {turns} of the learner's turns are shown "
+        "above. Judge every one of them again, together — which no live grade "
+        "could do: a later turn often makes an earlier one legible, a question "
+        "the reply shows was understood, an answer that only reads as one once "
+        "you have both halves. Work turn by turn, oldest first, and go through "
+        "the whole slot list for each turn separately — the same sweep you make "
+        "for the final turn, made once per turn. Put what the learner's **final** "
+        "turn established in `slots_filled`, and everything **any earlier turn** "
+        "established in `slots_filled_previously`, including slots listed as "
+        "already established and including a slot two turns established between "
+        "them. An earlier turn left out of that list is credit the learner does "
+        "not get; nothing is taken away on the strength of this pass.]"
+    )
+
+
 def render_filled_note(filled_slots) -> Optional[str]:
     """What earlier turns already established, or `None`.
 
