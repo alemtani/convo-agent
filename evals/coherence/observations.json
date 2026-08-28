@@ -1,214 +1,406 @@
 {
   "model": "claude-opus-5",
-  "repeat": 3,
+  "repeat": 5,
   "observations": [
     {
       "case_id": "clean-slot-fill",
-      "coherence": "on_track",
       "slots_filled": [
         "recommendation"
-      ]
+      ],
+      "slots_filled_previously": []
     },
     {
       "case_id": "clip-and-tea",
-      "coherence": "on_track",
       "slots_filled": [
         "order"
-      ]
+      ],
+      "slots_filled_previously": []
     },
     {
       "case_id": "computer-work-ni-ne",
-      "coherence": "on_track",
       "slots_filled": [
         "self_job",
+        "partner_origin",
         "partner_job"
-      ]
+      ],
+      "slots_filled_previously": []
     },
     {
       "case_id": "derailed-input",
-      "coherence": "on_track",
-      "slots_filled": []
+      "slots_filled": [],
+      "slots_filled_previously": []
     },
     {
       "case_id": "earned-under-annotated",
-      "coherence": "on_track",
       "slots_filled": [
         "self_name",
         "partner_name"
-      ]
+      ],
+      "slots_filled_previously": []
     },
     {
       "case_id": "elliptical-ni-ne",
-      "coherence": "on_track",
       "slots_filled": [
-        "self_name",
         "wellbeing"
-      ]
+      ],
+      "slots_filled_previously": []
     },
     {
       "case_id": "milk-and-biscuits",
-      "coherence": "on_track",
       "slots_filled": [
         "recommendation",
+        "drinks",
+        "order"
+      ],
+      "slots_filled_previously": []
+    },
+    {
+      "case_id": "nonsequitur-slot-fill",
+      "slots_filled": [
+        "recommendation"
+      ],
+      "slots_filled_previously": []
+    },
+    {
+      "case_id": "order-after-answers",
+      "slots_filled": [
+        "order"
+      ],
+      "slots_filled_previously": []
+    },
+    {
+      "case_id": "owed-drinks-then-order",
+      "slots_filled": [
+        "order"
+      ],
+      "slots_filled_previously": [
         "drinks"
       ]
     },
     {
-      "case_id": "nonsequitur-slot-fill",
-      "coherence": "drifting",
-      "slots_filled": [
-        "recommendation"
-      ]
-    },
-    {
-      "case_id": "order-after-answers",
-      "coherence": "on_track",
-      "slots_filled": [
-        "order"
-      ]
-    },
-    {
       "case_id": "wandering-no-slot",
-      "coherence": "off_track",
-      "slots_filled": []
+      "slots_filled": [],
+      "slots_filled_previously": []
     },
     {
       "case_id": "clean-slot-fill",
-      "coherence": "on_track",
       "slots_filled": [
         "recommendation"
-      ]
+      ],
+      "slots_filled_previously": []
     },
     {
       "case_id": "clip-and-tea",
-      "coherence": "on_track",
       "slots_filled": [
         "order"
-      ]
+      ],
+      "slots_filled_previously": []
     },
     {
       "case_id": "computer-work-ni-ne",
-      "coherence": "on_track",
       "slots_filled": [
         "self_job",
+        "partner_origin",
         "partner_job"
-      ]
+      ],
+      "slots_filled_previously": []
     },
     {
       "case_id": "derailed-input",
-      "coherence": "on_track",
-      "slots_filled": []
+      "slots_filled": [],
+      "slots_filled_previously": []
     },
     {
       "case_id": "earned-under-annotated",
-      "coherence": "on_track",
       "slots_filled": [
         "self_name",
         "partner_name"
-      ]
+      ],
+      "slots_filled_previously": []
     },
     {
       "case_id": "elliptical-ni-ne",
-      "coherence": "on_track",
       "slots_filled": [
         "wellbeing"
-      ]
+      ],
+      "slots_filled_previously": []
     },
     {
       "case_id": "milk-and-biscuits",
-      "coherence": "on_track",
       "slots_filled": [
         "recommendation",
+        "drinks",
+        "order"
+      ],
+      "slots_filled_previously": []
+    },
+    {
+      "case_id": "nonsequitur-slot-fill",
+      "slots_filled": [
+        "recommendation"
+      ],
+      "slots_filled_previously": []
+    },
+    {
+      "case_id": "order-after-answers",
+      "slots_filled": [
+        "order"
+      ],
+      "slots_filled_previously": []
+    },
+    {
+      "case_id": "owed-drinks-then-order",
+      "slots_filled": [
+        "order"
+      ],
+      "slots_filled_previously": [
         "drinks"
       ]
     },
     {
-      "case_id": "nonsequitur-slot-fill",
-      "coherence": "drifting",
-      "slots_filled": [
-        "recommendation"
-      ]
-    },
-    {
-      "case_id": "order-after-answers",
-      "coherence": "on_track",
-      "slots_filled": [
-        "order"
-      ]
-    },
-    {
       "case_id": "wandering-no-slot",
-      "coherence": "drifting",
-      "slots_filled": []
+      "slots_filled": [],
+      "slots_filled_previously": []
     },
     {
       "case_id": "clean-slot-fill",
-      "coherence": "on_track",
       "slots_filled": [
         "recommendation"
-      ]
+      ],
+      "slots_filled_previously": []
     },
     {
       "case_id": "clip-and-tea",
-      "coherence": "on_track",
       "slots_filled": [
         "order"
-      ]
+      ],
+      "slots_filled_previously": []
     },
     {
       "case_id": "computer-work-ni-ne",
-      "coherence": "on_track",
       "slots_filled": [
         "self_job",
+        "partner_origin",
         "partner_job"
-      ]
+      ],
+      "slots_filled_previously": []
     },
     {
       "case_id": "derailed-input",
-      "coherence": "on_track",
-      "slots_filled": []
+      "slots_filled": [],
+      "slots_filled_previously": []
     },
     {
       "case_id": "earned-under-annotated",
-      "coherence": "on_track",
       "slots_filled": [
         "self_name",
         "partner_name"
-      ]
+      ],
+      "slots_filled_previously": []
     },
     {
       "case_id": "elliptical-ni-ne",
-      "coherence": "on_track",
       "slots_filled": [
         "wellbeing"
-      ]
+      ],
+      "slots_filled_previously": []
     },
     {
       "case_id": "milk-and-biscuits",
-      "coherence": "on_track",
       "slots_filled": [
         "recommendation",
+        "drinks",
+        "order"
+      ],
+      "slots_filled_previously": []
+    },
+    {
+      "case_id": "nonsequitur-slot-fill",
+      "slots_filled": [
+        "recommendation"
+      ],
+      "slots_filled_previously": []
+    },
+    {
+      "case_id": "order-after-answers",
+      "slots_filled": [
+        "order"
+      ],
+      "slots_filled_previously": []
+    },
+    {
+      "case_id": "owed-drinks-then-order",
+      "slots_filled": [
+        "order"
+      ],
+      "slots_filled_previously": [
         "drinks"
       ]
     },
     {
-      "case_id": "nonsequitur-slot-fill",
-      "coherence": "drifting",
+      "case_id": "wandering-no-slot",
+      "slots_filled": [],
+      "slots_filled_previously": []
+    },
+    {
+      "case_id": "clean-slot-fill",
       "slots_filled": [
         "recommendation"
-      ]
+      ],
+      "slots_filled_previously": []
+    },
+    {
+      "case_id": "clip-and-tea",
+      "slots_filled": [
+        "order"
+      ],
+      "slots_filled_previously": []
+    },
+    {
+      "case_id": "computer-work-ni-ne",
+      "slots_filled": [
+        "self_job",
+        "partner_origin",
+        "partner_job"
+      ],
+      "slots_filled_previously": []
+    },
+    {
+      "case_id": "derailed-input",
+      "slots_filled": [],
+      "slots_filled_previously": []
+    },
+    {
+      "case_id": "earned-under-annotated",
+      "slots_filled": [
+        "self_name",
+        "partner_name"
+      ],
+      "slots_filled_previously": []
+    },
+    {
+      "case_id": "elliptical-ni-ne",
+      "slots_filled": [
+        "wellbeing"
+      ],
+      "slots_filled_previously": []
+    },
+    {
+      "case_id": "milk-and-biscuits",
+      "slots_filled": [
+        "recommendation",
+        "drinks",
+        "order"
+      ],
+      "slots_filled_previously": []
+    },
+    {
+      "case_id": "nonsequitur-slot-fill",
+      "slots_filled": [
+        "recommendation"
+      ],
+      "slots_filled_previously": []
     },
     {
       "case_id": "order-after-answers",
-      "coherence": "on_track",
       "slots_filled": [
         "order"
+      ],
+      "slots_filled_previously": []
+    },
+    {
+      "case_id": "owed-drinks-then-order",
+      "slots_filled": [
+        "order"
+      ],
+      "slots_filled_previously": [
+        "drinks"
       ]
     },
     {
       "case_id": "wandering-no-slot",
-      "coherence": "drifting",
-      "slots_filled": []
+      "slots_filled": [],
+      "slots_filled_previously": []
+    },
+    {
+      "case_id": "clean-slot-fill",
+      "slots_filled": [
+        "recommendation"
+      ],
+      "slots_filled_previously": []
+    },
+    {
+      "case_id": "clip-and-tea",
+      "slots_filled": [
+        "order"
+      ],
+      "slots_filled_previously": []
+    },
+    {
+      "case_id": "computer-work-ni-ne",
+      "slots_filled": [
+        "self_job",
+        "partner_origin",
+        "partner_job"
+      ],
+      "slots_filled_previously": []
+    },
+    {
+      "case_id": "derailed-input",
+      "slots_filled": [],
+      "slots_filled_previously": []
+    },
+    {
+      "case_id": "earned-under-annotated",
+      "slots_filled": [
+        "self_name",
+        "partner_name"
+      ],
+      "slots_filled_previously": []
+    },
+    {
+      "case_id": "elliptical-ni-ne",
+      "slots_filled": [
+        "wellbeing"
+      ],
+      "slots_filled_previously": []
+    },
+    {
+      "case_id": "milk-and-biscuits",
+      "slots_filled": [
+        "recommendation",
+        "drinks",
+        "order"
+      ],
+      "slots_filled_previously": []
+    },
+    {
+      "case_id": "nonsequitur-slot-fill",
+      "slots_filled": [
+        "recommendation"
+      ],
+      "slots_filled_previously": []
+    },
+    {
+      "case_id": "order-after-answers",
+      "slots_filled": [
+        "order"
+      ],
+      "slots_filled_previously": []
+    },
+    {
+      "case_id": "owed-drinks-then-order",
+      "slots_filled": [
+        "order"
+      ],
+      "slots_filled_previously": [
+        "drinks"
+      ]
+    },
+    {
+      "case_id": "wandering-no-slot",
+      "slots_filled": [],
+      "slots_filled_previously": []
     }
   ]
 }

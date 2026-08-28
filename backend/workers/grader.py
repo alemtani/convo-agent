@@ -27,7 +27,12 @@ from pydantic import ValidationError
 from backend import config
 from backend.kb import Scenario
 from backend.models import DialogueTurn, GraderResult
-from backend.prompts import render_grader_prompt, render_window_note
+from backend.prompts import (
+    render_filled_note,
+    render_grader_prompt,
+    render_review_note,
+    render_window_note,
+)
 
 _ROLE_MAP = {"user": "user", "partner": "assistant"}
 
@@ -54,6 +59,23 @@ def _as_dict(turn) -> dict:
     return turn.model_dump() if isinstance(turn, DialogueTurn) else turn
 
 
+def _prefix_text(message: Dict, text: str) -> None:
+    """Prepend a note to a `user` message's content, in place.
+
+    Content is a bare string or a list of blocks. A string joins with a newline
+    — the shape the turn-1 opener has always used, so a turn that gains no window
+    or filled note keeps a byte-identical request and its cassette. A list (a
+    breakpoint already sits inside it) gets a block prepended. Either way the new
+    text lands first, so context reads before the words it is context for.
+    """
+    body = message["content"]
+    message["content"] = (
+        [{"type": "text", "text": text}] + body
+        if isinstance(body, list)
+        else f"{text}\n{body}"
+    )
+
+
 def build_request(
     *,
     scenario: Scenario,
@@ -61,6 +83,8 @@ def build_request(
     user_text: str,
     opening_line: Optional[str] = None,
     window: int = 1,
+    filled_slots: Optional[List[str]] = None,
+    review: bool = False,
 ) -> Dict:
     """Assemble the exact `messages.parse` kwargs for one grade.
 
@@ -70,49 +94,62 @@ def build_request(
     runs on `GRADER_MODEL`. Opus 5 caches from 512 tokens where Sonnet 5 needs
     1024, which suits the smaller block.
 
-    `dialogue` and the learner's turn ride `messages`, after the breakpoint. The
-    partner's most recent line is simply the last entry of that history, which is
-    why the grader needs nothing the turn does not already have — and why it can
-    start the moment the learner's 汉字 exists rather than waiting on the reply.
+    **The window (A5).** The grader has one job since A4 — which of the named
+    facts did *this* turn establish — and for that it needs the partner's last
+    line, the learner's turn, and which slots are already filled. It does not
+    need the transcript. Ten turns of history is ten chances to credit something
+    from turn 3, and it is Stream B's largest single latency lever. So `messages`
+    carries only the tail of `dialogue`: `2*window - 1` entries — the partner's
+    last line for the current turn, plus a `(partner, learner)` pair for each
+    earlier turn still owed a grade. `filled_slots` stands in for the rest.
+
+    The tail opens on the partner's last line, an assistant turn, but the
+    Messages API requires `messages[0]` to be `user`. That leading line folds
+    into the learner turn it precedes — the same shape turn 1 already uses for
+    the opening line.
+
+    **`review` (A6)** is the end-of-session pass: `window` is the whole session,
+    so the tail is the whole conversation, and the note asks for a re-reading
+    with hindsight rather than for turns a grading failure lost. It is the only
+    caller that sends the transcript back, and it is off the turn loop.
     """
+    windowed = dialogue[-(2 * window - 1):] if dialogue else []
     messages = [
         {"role": _ROLE_MAP[_as_dict(t)["role"]], "content": _as_dict(t)["zh"]}
-        for t in dialogue
+        for t in windowed
     ]
     messages.append({"role": "user", "content": user_text})
 
-    # Volatile, so it rides the final user message rather than the frozen prefix:
-    # whether earlier turns are owed depends on which grades failed, and the
-    # cached system block must stay byte-identical across the session.
-    window_note = render_window_note(window)
-    if window_note:
-        messages[-1] = {
-            "role": "user",
-            "content": [
-                {"type": "text", "text": window_note},
-                {"type": "text", "text": messages[-1]["content"]},
-            ],
-        }
+    # Volatile, so they ride the final user message rather than the frozen
+    # prefix: whether earlier turns are owed depends on which grades failed, and
+    # what is already filled changes every turn — the cached system block must
+    # stay byte-identical across the session. The window note goes on last, so it
+    # reads first, ahead of the filled-slot context.
+    filled_note = render_filled_note(filled_slots)
+    if filled_note:
+        _prefix_text(messages[-1], filled_note)
+    note = render_review_note(window) if review else render_window_note(window)
+    if note:
+        _prefix_text(messages[-1], note)
 
-    # On turn 1 `dialogue` is empty, because the partner's opening line costs the
-    # learner none of their budget and so is never part of it. The learner's
-    # first words are a response to that line and to nothing else, so without it
-    # coherence on turn 1 is judged against nothing.
-    #
-    # It rides as a prefix on the first *user* message rather than as an
-    # assistant turn of its own: the Messages API requires `messages[0]` to be
-    # `user`, and a lone leading assistant message reads as prefill.
-    if opening_line and not dialogue:
-        opener = f"[The partner opened the conversation with: {opening_line}]"
-        first = messages[0]["content"]
-        messages[0] = {
-            "role": "user",
-            "content": (
-                [{"type": "text", "text": opener}] + first
-                if isinstance(first, list)
-                else f"{opener}\n{first}"
-            ),
-        }
+    # The window opens on the partner's last line — an assistant turn the API
+    # will not take as `messages[0]`. Fold it into the user turn it precedes.
+    # `messages[1]` is that user turn: the mapping alternates, so a leading
+    # assistant is always followed by a user.
+    if messages[0]["role"] == "assistant":
+        line = messages.pop(0)["content"]
+        _prefix_text(messages[0], f"[The partner's last line was: {line}]")
+
+    # On turn 1 the window is empty, because the partner's opening line costs the
+    # learner none of their budget and so is never part of `dialogue`. The
+    # learner's first words are a response to that line and to nothing else, so
+    # without it a turn-1 slot is judged with nothing to have answered. It rides
+    # as a prefix on the first (and only) user message, the same fold.
+    if opening_line and not windowed:
+        _prefix_text(
+            messages[0],
+            f"[The partner opened the conversation with: {opening_line}]",
+        )
 
     return {
         "model": config.GRADER_MODEL,
@@ -145,6 +182,8 @@ async def grade(
     user_text: str,
     opening_line: Optional[str] = None,
     window: int = 1,
+    filled_slots: Optional[List[str]] = None,
+    review: bool = False,
     timeout: Optional[float] = None,
     client: Optional[AsyncAnthropic] = None,
 ) -> Tuple[GraderResult, object]:
@@ -162,7 +201,8 @@ async def grade(
     client = client or _get_client()
     request = build_request(
         scenario=scenario, dialogue=dialogue, user_text=user_text,
-        opening_line=opening_line, window=window,
+        opening_line=opening_line, window=window, filled_slots=filled_slots,
+        review=review,
     )
 
     try:

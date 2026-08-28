@@ -1,0 +1,83 @@
+{
+  "key": "43fbc197ace26127ce0e1391c96eaf96129d01c9988be7a2744f23f78b4b2352",
+  "model": "claude-opus-5",
+  "recorded_at": "2026-08-28T07:02:53+00:00",
+  "samples": [
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "recommendation"
+        ],
+        "slots_filled_previously": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 2085,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 40,
+        "output_tokens": 43
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "recommendation"
+        ],
+        "slots_filled_previously": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2085,
+        "input_tokens": 40,
+        "output_tokens": 46
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "recommendation"
+        ],
+        "slots_filled_previously": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2085,
+        "input_tokens": 40,
+        "output_tokens": 46
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "recommendation"
+        ],
+        "slots_filled_previously": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2085,
+        "input_tokens": 40,
+        "output_tokens": 43
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "recommendation"
+        ],
+        "slots_filled_previously": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2085,
+        "input_tokens": 40,
+        "output_tokens": 43
+      }
+    }
+  ],
+  "summary": "claude-opus-5 → GraderResult: [The partner opened the conversation with: 你好！你要点什么？]\n请问，什么…"
+}

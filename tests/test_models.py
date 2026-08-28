@@ -158,39 +158,52 @@ def test_turn_annotation_defaults_are_empty():
     ann = TurnAnnotation()
     assert ann.tone_errors == []
     assert ann.learner_said_goodbye is False
+    assert ann.coherent is True
 
 
-def test_the_converser_only_notices_a_goodbye():
+def test_the_converser_notices_a_goodbye_and_whether_the_turn_followed():
     """A field belongs to whichever of the two parties would actually notice it
     (`docs/streams/grading.md` A2). The partner is the person you are talking
-    to. Tags, coaching flags, and grammar notes are a coach's job."""
-    assert set(ConverserAnnotation.model_fields) == {"learner_said_goodbye"}
+    to: it notices a goodbye, and it is the only one who knows what its own last
+    line meant, which is what coherence asks about (A4). Tags, coaching flags,
+    and grammar notes are a coach's job."""
+    assert set(ConverserAnnotation.model_fields) == {"learner_said_goodbye", "coherent"}
     for field in ("grammar_notes", "topic_tags", "should_give_feedback"):
         assert field not in ConverserAnnotation.model_fields
         assert field not in TurnAnnotation.model_fields
 
 
-def test_grader_result_rejects_unknown_coherence():
-    with pytest.raises(ValidationError):
-        GraderResult(coherence="vibes")
+def test_coherence_is_binary_and_defaults_to_understood():
+    """Three tags collapse to two (A4): a gate has one consequence, so
+    `drifting` and `off_track` are the same answer and there is no reason to
+    ask a model to draw the line between them.
+
+    The default is the generous one on purpose. A turn wrongly marked
+    incoherent costs the learner a point they earned and they cannot tell it
+    happened; wrongly marked coherent costs them nothing."""
+    assert ConverserAnnotation().coherent is True
+    assert ConverserAnnotation(coherent=False).coherent is False
 
 
 def test_the_converser_is_never_asked_what_the_grader_judges():
     """V2's split (`docs/VALIDITY.md`). A partner holding the rubric plays along
     with anything that looks like scoring, so the converser's schema must not
-    offer it anywhere to say so — not as an ignored field, not as a default."""
-    for field in ("slots_filled", "slots_filled_previously", "coherence"):
+    offer it anywhere to say so — not as an ignored field, not as a default.
+
+    `coherent` is not on this list and never was: it names no slot and no goal,
+    so a partner that answers it still cannot see what is being scored."""
+    for field in ("slots_filled", "slots_filled_previously"):
         assert field not in ConverserAnnotation.model_fields
         assert field not in TurnAnnotation.model_fields
 
 
-def test_the_grader_judges_the_learner_and_nothing_else():
-    """The mirror. The grader has no reply to write and none of the
-    converser's fields. Noticing a goodbye needs no rubric, so it stays on
-    the converser — which is what keeps `consecutive_closes` exact through
-    a grader outage."""
+def test_the_grader_judges_which_slots_and_nothing_else():
+    """The mirror, and the point of A4. The grader has no reply to write, none
+    of the converser's fields, and — since coherence went back to the partner —
+    exactly one job. Noticing a goodbye needs no rubric, so it stays on the
+    converser, which is what keeps `consecutive_closes` exact through a grader
+    outage."""
     assert set(GraderResult.model_fields) == {
-        "coherence",
         "slots_filled",
         "slots_filled_previously",
     }
@@ -201,7 +214,7 @@ def test_grader_defaults_credit_nothing():
     """A grader that returns an empty judgment must not advance the session.
     This is the shape a failed-then-defaulted grade would take, and it has to be
     indistinguishable from `the learner established nothing this turn`."""
-    result = GraderResult(coherence="on_track")
+    result = GraderResult()
     assert result.slots_filled == []
     assert result.slots_filled_previously == []
 
@@ -217,8 +230,9 @@ def test_conversation_result_nests_reply_and_annotation():
             "partner_response": {"zh": "你今天怎么样？", "pinyin": "nǐ jīntiān zěnmeyàng?"},
             "turn_annotation": {
                 "learner_said_goodbye": False,
+                "coherent": True,
             },
-            "grade": {"coherence": "on_track"},
+            "grade": {"slots_filled": ["self_name"]},
             "user_reading": {"zh": "我很好", "pinyin": "wǒ hěn hǎo"},
         }
     )
@@ -275,13 +289,15 @@ def test_conversation_turn_response_shape():
     assert resp.model_dump() == {
         "transcript": {"zh": "我叫小明", "pinyin": "wǒ jiào xiǎo míng"},
         "reply": {"zh": "你好", "pinyin": "nǐ hǎo"},
-        # No `coherence`, no `slots_filled`, no `learner_closed`: the scoring
-        # half is the grader's and travels with `state`, not here (V2).
-        # No `grammar_notes` / `topic_tags` / `should_give_feedback`: those
-        # were a coach's job, and the partner is not the coach (A2).
+        # No `slots_filled`: the scoring half is the grader's and travels
+        # with `state`, not here (V2). No `grammar_notes` / `topic_tags` /
+        # `should_give_feedback`: those were a coach's job, and the partner is
+        # not the coach (A2). `coherent` *is* here — it is the partner's own
+        # judgment and lands with the partner (A4).
         "annotation": {
             "tone_errors": [],
             "learner_said_goodbye": False,
+            "coherent": True,
         },
         "timings": None,
         "usage": None,

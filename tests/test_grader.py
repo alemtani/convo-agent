@@ -24,11 +24,13 @@ SCENARIO = kb.load_scenario("greetings")
 
 
 def _build(**overrides):
+    # A realistic history ends with the partner's line — that is what the
+    # learner's next turn answers. The opening line is never in `dialogue`.
     kwargs = dict(
         scenario=SCENARIO,
         dialogue=[
-            DialogueTurn(role="partner", zh="你好！"),
             DialogueTurn(role="user", zh="你好，我叫小明。"),
+            DialogueTurn(role="partner", zh="你好！我叫小王。"),
         ],
         user_text="你叫什么名字？",
     )
@@ -82,11 +84,28 @@ def test_the_learners_turn_and_the_history_ride_after_the_breakpoint():
     assert "你叫什么名字？" in str(req["messages"])
 
 
-def test_the_previous_partner_turn_is_what_the_gaming_check_needs():
-    """*Did the learner respond to what was actually said?* is legible from the
-    partner's previous turn and the learner's — and from nothing else."""
+def test_the_previous_partner_turn_is_what_the_slot_judgment_needs():
+    """A slot is filled by an answer to something. Whether 你呢 bounced a
+    question back is legible from the partner's previous turn and the learner's
+    — and from nothing else. The partner's last line rides the window even
+    after A5 folds it into the learner's turn."""
     req = _build()
-    assert "你好！" in str(req["messages"])
+    assert "你好！我叫小王。" in str(req["messages"])
+    assert "你叫什么名字？" in str(req["messages"])
+
+
+def test_the_grader_is_never_asked_whether_the_turn_followed():
+    """A4. Coherence is a question about what the partner meant by its own last
+    line, and the partner is the only party that knows. Leaving the instruction
+    here would spend tokens on a field `GraderResult` has nowhere to put."""
+    text = _system_text(_build())
+    assert "coherence" not in text
+    assert "on_track" not in text
+    schema = _build()["output_format"].model_json_schema()
+    assert "coherence" not in schema["properties"]
+    # And not smuggled in through the docstring, which `messages.parse` renders
+    # into the request as the schema `description`.
+    assert "coherence" not in str(schema).lower()
 
 
 def test_the_grader_is_constrained_to_the_grade_and_nothing_else():
@@ -118,7 +137,7 @@ def _fake_client(parsed_output, *, stop_reason="end_turn"):
 
 async def test_grade_parses_a_recorded_response():
     recorded = GraderResult(
-        coherence="on_track", slots_filled=["partner_name"], learner_closed=False
+        slots_filled=["partner_name"]
     )
     client, parse = _fake_client(recorded)
 
@@ -163,7 +182,7 @@ async def test_a_timeout_is_a_grader_error_not_a_five_hundred():
 
 
 async def test_the_grader_is_given_the_timeout_that_bounds_it():
-    client, parse = _fake_client(GraderResult(coherence="on_track"))
+    client, parse = _fake_client(GraderResult())
     await grader.grade(
         scenario=SCENARIO, dialogue=[], user_text="你好", client=client
     )
@@ -244,29 +263,88 @@ def test_the_window_asks_for_the_two_lists_kept_apart():
     assert "do not merge" in note
 
 
-def test_a_longer_dialogue_reaches_the_grader_in_order():
-    """Requested in review of PR #76. The history is what makes the previous
-    partner turn legible, so its order and roles are the contract."""
+def test_an_owed_window_reaches_back_to_the_ungraded_turn():
+    """A5 shrinks the window but must not shrink it below the debt. A turn
+    settling an owed grade needs the earlier turn it is settling *and* the
+    partner line that turn answered — `2*window - 1` entries, not a fixed pair.
+    `owed-drinks-then-order` is the fixture this protects."""
     dialogue = [
-        DialogueTurn(role="partner", zh="你好！"),
+        DialogueTurn(role="user", zh="请问，什么菜最好吃？"),
+        DialogueTurn(role="partner", zh="鱼最好吃。"),
+        DialogueTurn(role="user", zh="你们有什么喝的？"),
+        DialogueTurn(role="partner", zh="有茶，也有水。"),
+    ]
+    req = _build(
+        dialogue=dialogue, user_text="好，我要一个鱼和一杯茶", window=2
+    )
+    text = str(req["messages"])
+    # The owed turn (asking about drinks) and its context both survive.
+    assert "你们有什么喝的？" in text
+    assert "鱼最好吃。" in text            # context for the owed turn
+    assert "有茶，也有水。" in text        # context for the current turn
+    assert "好，我要一个鱼和一杯茶" in text
+    # Still a valid conversation: first message is the learner's.
+    assert req["messages"][0]["role"] == "user"
+    # But nothing older than the window: turn-1 (menu) context is not owed here.
+    assert "请问，什么菜最好吃？" not in text
+
+
+def test_the_filled_slot_set_rides_after_the_breakpoint():
+    """A5 sends the grader the set of slots already filled instead of the
+    transcript it used to read that fact off. It is per-turn state, so it rides
+    the volatile messages, never the frozen prefix."""
+    req = _build(filled_slots=["self_name", "partner_name"])
+    note = str(req["messages"])
+    assert "self_name" in note
+    assert "partner_name" in note
+    assert "Already established" in note
+    # Volatile: the note itself must never touch the cached prefix, whatever is
+    # filled. (Slot ids appear in the frozen slot list either way — the note's
+    # wording is what must stay out of the prefix.)
+    assert "Already established" not in _system_text(req)
+    # And the prefix is byte-identical whether or not anything is filled.
+    assert _system_text(req) == _system_text(_build(filled_slots=[]))
+
+
+def test_no_filled_note_when_nothing_is_filled():
+    """The first turn has filled nothing. No note, no tokens spent saying so."""
+    assert "already established" not in str(_build()["messages"]).lower()
+    assert "already established" not in str(
+        _build(filled_slots=[])["messages"]
+    ).lower()
+
+
+def test_a_healthy_turn_reads_only_the_last_partner_line_not_the_transcript():
+    """A5. Since A4 the grader has one job — which slots did *this* turn fill —
+    and for that it needs the partner's last line and the learner's turn, not
+    ten turns of history. Older turns are ten chances to credit something from
+    turn 3, and Stream B's largest latency lever."""
+    dialogue = [
         DialogueTurn(role="user", zh="你好，我叫小明。"),
         DialogueTurn(role="partner", zh="我也很高兴认识你。"),
         DialogueTurn(role="user", zh="你叫什么名字？"),
         DialogueTurn(role="partner", zh="我叫小王。"),
     ]
-    req = _build(dialogue=dialogue, user_text="你最近怎么样？")
+    req = _build(dialogue=dialogue, user_text="你最近怎么样？", window=1)
 
-    assert [m["role"] for m in req["messages"]] == [
-        "assistant", "user", "assistant", "user", "assistant", "user",
-    ]
-    assert [m["content"] for m in req["messages"]] == [
-        "你好！", "你好，我叫小明。", "我也很高兴认识你。", "你叫什么名字？",
-        "我叫小王。", "你最近怎么样？",
-    ]
-    # The learner's turn is last, and the partner's previous line is the one
-    # before it — the pair the gaming check reads.
-    assert req["messages"][-1]["content"] == "你最近怎么样？"
-    assert req["messages"][-2]["content"] == "我叫小王。"
+    # A single user message: the learner's turn, with the partner's last line
+    # folded in as context. Nothing before it survives.
+    assert [m["role"] for m in req["messages"]] == ["user"]
+    text = str(req["messages"])
+    assert "我叫小王。" in text        # the partner's last line
+    assert "你最近怎么样？" in text     # the learner's turn
+    # The earlier exchange is gone — the whole point of the window.
+    assert "你好，我叫小明。" not in text
+    assert "我也很高兴认识你。" not in text
+    assert "你叫什么名字？" not in text
+
+
+def test_the_window_always_opens_on_a_user_message():
+    """The window starts with the partner's last line, an assistant turn, but the
+    Messages API requires `messages[0]` to be `user`. The partner line folds into
+    the learner's turn, the same shape turn 1 already uses for the opening line."""
+    req = _build()  # dialogue ends with a partner turn
+    assert req["messages"][0]["role"] == "user"
 
 
 def test_the_opening_line_is_not_prefixed_once_history_exists():

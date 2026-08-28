@@ -224,9 +224,14 @@ GRADER_MAX_TOKENS = int(os.getenv("GRADER_MAX_TOKENS", "4096"))
 # affordable rather than reckless.
 GRADER_TIMEOUT_S = float(os.getenv("GRADER_TIMEOUT_S", "15"))
 
-# The recovery pass runs *in front of* the verdict call, so its budget and the
+# The session review runs *in front of* the verdict call, so its budget and the
 # verdict's add up in the one place a learner is already waiting on a spinner.
 # It is also best-effort by construction — a failure leaves the state alone and
 # the card is still written — so it gets a tighter bound than a live turn's
 # grade, which is the one whose result the session depends on.
-VERDICT_RECOVERY_TIMEOUT_S = float(os.getenv("VERDICT_RECOVERY_TIMEOUT_S", "8"))
+#
+# A6 made it a whole-session read rather than a window of owed turns, which is a
+# longer prompt on a call that already ran on the slower of the two paths. The
+# bound holds anyway: a review that times out costs the learner nothing they had
+# before it.
+VERDICT_REVIEW_TIMEOUT_S = float(os.getenv("VERDICT_REVIEW_TIMEOUT_S", "8"))

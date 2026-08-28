@@ -1,0 +1,21 @@
+{
+  "key": "4ffb4b6f452d8ec5315456c0c6f374b8a667d728d624285568dece6be12f2191",
+  "model": "claude-sonnet-5",
+  "recorded_at": "2026-08-28T06:58:58+00:00",
+  "samples": [
+    {
+      "parsed_output": {
+        "rationale": "The line only says 'I'm also very well, thank you' in response to being asked how they are. It does not state the partner's name anywhere.",
+        "volunteered": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 587,
+        "output_tokens": 59
+      }
+    }
+  ],
+  "summary": "claude-sonnet-5 → WithholdingVerdict: The partner's line:\n我也很好，谢谢你。"
+}

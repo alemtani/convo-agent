@@ -93,38 +93,57 @@ def _missing_slots(scenario: Optional[kb.Scenario], state: SessionState) -> List
     ]
 
 
-async def settle_outstanding_grades(
+async def review_session(
     req: VerdictRequest, *, scenario, grader_client=None
 ) -> SessionState:
-    """One last grader pass for turns whose grade never landed, before the card.
+    """One grader pass over the whole session, with hindsight, before the card.
 
-    The verdict is computed from state, so an unsettled debt means telling the
-    learner they missed something they established — the false negative
-    `ACCESSIBILITY.md` exists to prevent, at the moment it is most visible.
+    The live grader judges a turn from inside it: the partner's last line, the
+    learner's reply, and the set of slots already filled (A5). That is the right
+    window for a decision the learner is waiting on, and it is blind by
+    construction to what comes next. The grader at turn 3 did not know what turn
+    5 would clarify. This pass does, because by the time the card is written the
+    whole conversation exists.
 
-    This is the "session-end pass" `VALIDITY.md` contemplated and dropped, and
-    it is **recovery, not the rule**. The rule is still one grade per turn,
-    credited on the ask; nothing here re-opens the AND rule or re-audits turns
-    that were graded. It judges only what was never judged.
+    So it re-reads every turn rather than only the turns whose grade never landed
+    (A6). It began as that narrower recovery pass, and recovery is now a case of
+    review rather than a separate job: a turn nobody graded and a turn graded
+    without its sequel are both turns this pass judges with more evidence than
+    the live one had.
 
-    Returns the submitted state untouched when nothing is owed — which is every
-    healthy session, and so costs nothing — or when the pass itself fails. A
-    broken grader at the end of a broken session is not a reason to invent a
-    grade.
+    **It may add credit and may never remove it. That is not a preference.** The
+    card is read after a session the learner already watched, slot by slot, as
+    they earned it. A card that takes a point back is indistinguishable from a
+    bug to the person reading it, and they have no way to tell a correction from
+    a defect. So new ids union into `filled_at` and nothing is ever deleted —
+    the same one-way rule the recovery pass already followed, now the load-
+    bearing one.
+
+    It costs one grader call per session, off the turn loop, and none at all
+    where it could not change the answer: a session with every slot filled has
+    nothing left for an add-only pass to add. Returns the submitted state
+    untouched in that case, and when the pass itself fails — a broken grader at
+    the end of a session is not a reason to invent a grade.
     """
     turns_taken = len(req.dialogue) // 2
-    if (
-        scenario is None
-        # No watermark reported is not a debt — see `SessionState`.
-        or req.state.last_graded_turn is None
-        or req.state.last_graded_turn >= turns_taken
-    ):
+    if scenario is None or turns_taken == 0:
         return req.state
-    window = turns_taken - req.state.last_graded_turn
-    logger.warning(
-        "settling %d ungraded turn(s) before the verdict (last graded %d of %d)",
-        window, req.state.last_graded_turn, turns_taken,
+    if not {slot.id for slot in scenario.slots} - req.state.filled:
+        # Add-only, and there is nothing left to add. The happy path pays
+        # nothing, exactly as it did when this pass only settled debts.
+        return req.state
+    owed = (
+        turns_taken - req.state.last_graded_turn
+        if req.state.last_graded_turn is not None
+        else 0
     )
+    if owed > 0:
+        logger.warning(
+            "reviewing %d turn(s), %d of them never graded (last graded %d)",
+            turns_taken, owed, req.state.last_graded_turn,
+        )
+    else:
+        logger.info("reviewing all %d turn(s) before the verdict", turns_taken)
 
     # **The grader must be handed the same shape a live turn hands it**: the
     # history *up to* the learner's last turn, and that turn separately. At
@@ -145,17 +164,26 @@ async def settle_outstanding_grades(
             dialogue=req.dialogue[:last_user],
             user_text=req.dialogue[last_user].zh,
             opening_line=req.opening_line.zh if req.opening_line else None,
-            window=window,
-            timeout=config.VERDICT_RECOVERY_TIMEOUT_S,
+            # The whole session: `window` is what the grader slices its tail
+            # by, so `turns_taken` keeps every turn, and it is what the review
+            # note counts.
+            window=turns_taken,
+            review=True,
+            filled_slots=sorted(req.state.filled),
+            timeout=config.VERDICT_REVIEW_TIMEOUT_S,
             # Its own client. The verdict's is forwarded nowhere: two workers
             # sharing one injected fake lets a test fabricate a grade it never
             # meant to stub.
             client=grader_client,
         )
     except grader.GraderError as exc:
-        logger.warning("final grading pass failed: %s", exc)
+        logger.warning("the session review failed: %s", exc)
         return req.state
 
+    # **Union, never replace.** A slot already in `filled_at` keeps the turn it
+    # was earned on: the review is add-only, and re-stamping an earned slot with
+    # the last turn would misdate a fact the card explains the timing of.
+    #
     # **Not `termination.advance`.** The session has already ended, and advance
     # recomputes `status`/`end_reason` from scratch — it would overwrite the real
     # ending (`stuck`, `closed`, `ungraded`) with whatever a fresh evaluation of
@@ -255,18 +283,24 @@ async def verdict(
     scenario = kb.load_scenario(req.topic_id)
     kb_block = kb.load_kb_block(req.topic_id)
 
-    state = await settle_outstanding_grades(req, scenario=scenario)
+    state = await review_session(req, scenario=scenario)
     missing = _missing_slots(scenario, state)
     goal_met = not missing
     turns_taken = len(req.dialogue) // 2
     end_reason = _consistent_end_reason(
         state, scenario=scenario, missing=missing, turns_taken=turns_taken
     )
-    # What the recovery pass could not settle. Both a failed pass and a session
+    # What the review could not settle. Both a failed review and a session
     # stopped for repeated grading failures land here.
+    #
+    # Zero whenever the goal was met, whatever the watermark says. The block
+    # this feeds exists to stop the card blaming the learner for a slot our
+    # grader never looked at — so on a card with nothing missing it excuses a
+    # miss that is not there. A completed session is also the one case the
+    # review skips (nothing to add), so its watermark can be stale by design.
     unchecked = (
         max(0, turns_taken - state.last_graded_turn)
-        if state.last_graded_turn is not None
+        if state.last_graded_turn is not None and not goal_met
         else 0
     )
 

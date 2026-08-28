@@ -52,7 +52,17 @@ and what that situation does not hand over. Play it as a person in that place \
 would. If the scene says the stall shows no prices, then you do not say what \
 something costs until a customer asks; if it says the classmate is shy about \
 themselves, then you do not announce your own name unprompted. This is not a \
-rule about the learner — it is who you are and where you are."""
+rule about the learner — it is who you are and where you are.
+
+One thing you are asked *about* the conversation rather than in it: `coherent`. \
+It is true when the learner's turn made sense as a reply to your own last line — \
+they answered it, added to it, or asked something that follows from it. It is \
+false when their turn went somewhere else entirely, or when you could not make \
+out what they meant at all. Answer it as the person in the scene: you are the \
+only one who knows what your line meant. Do not be strict about *how* they said \
+it — a beginner's wrong word, missing tone or odd grammar is still an answer, \
+and messy pinyin you can read is not incoherent. Judge only whether it \
+followed."""
 
 
 def render_system_prompt(forgiveness_level: float) -> str:
@@ -137,16 +147,34 @@ It is made of these named facts — the slots:
 
 Return, as structured output:
 
-- `slots_filled`: the ids of the slots **the learner's final turn** \
-established, and only those. One utterance may fill several. Report nothing when this turn \
-established none; a slot established on an earlier turn is not new.
+- `slots_filled`: **one turn usually fills more than one slot.** Go through \
+the slot list above one slot at a time, and for each of them ask: did the \
+learner's final turn establish this? Report the id of every slot the answer is \
+yes for. A learner packs a greeting, two questions and an order into one \
+breath, in any order, and every one of those counts — stopping once you have \
+found a slot that fits is how this is usually got wrong. Check all of them, \
+every time.
+
+  Only what **this** turn established goes in `slots_filled`. A slot \
+established on an earlier turn is not new, and a slot this turn did not \
+establish is not filled by being nearby. Leave the list empty when the answer \
+was no for every slot. (Earlier turns are judged only when you are told so \
+below — and what they established goes in `slots_filled_previously`, never \
+here.)
 
   Judge by **meaning, not wording**. `expressible_with` lists words that *can* \
 express a slot; it is a hint, never a pattern to match, and a learner who gets \
 there by another route has still got there. A short or elliptical question \
-counts: if the partner asks 你最近怎么样？ and the learner answers and turns it \
-back with 你呢？, they have asked how the partner has been. Bouncing a question \
-back is real skill, not a shortcut.
+counts, and one such phrase can fill several slots at once: if the partner \
+asked two things and the learner answers and turns it back with 你呢？, that \
+bounce asks back **both** of them, so both request slots are filled. Bouncing \
+a question back is real skill, not a shortcut.
+
+  The learner is a beginner, and a beginner's slip does not unmake what they \
+did. A wrong pronoun, a missing measure word, a word that lands next to the \
+one they wanted — judge the slot on what they plainly meant, not on whether \
+they said it correctly. Naming the slip is the coach's job at the end of the \
+session; yours is only whether the fact got across.
 
   **A `request` slot is filled when the learner asks. Do not wait to see \
 whether the partner answered.** The slot is a claim about the learner's \
@@ -158,16 +186,6 @@ ask for it.
 
 - `slots_filled_previously`: normally empty — leave it so. It is used only when \
 you are told below that earlier turns still need judging.
-
-- `coherence`: `on_track` if the learner's turn answered or followed from what \
-the partner actually just said; `drifting` if it wandered off that thread; \
-`off_track` if it was unintelligible or derailed.
-
-  This is the question the partner could never answer honestly, because it \
-knew what was being scored and would take anything scoreable as relevant. You \
-do not have that reason. If the partner asked what the learner wanted to drink \
-and the learner asked which dish is best, that is `drifting` — a slot may still \
-be filled by it, and it is still not an answer to the question.
 
 Grade the learner's final turn. The history is context for reading it."""
 
@@ -190,8 +208,62 @@ def render_window_note(window: int) -> Optional[str]:
         "a grading failure, nothing the learner did. Judge them too. Put what "
         "the learner's final turn established in `slots_filled`, and what those "
         f"{earlier} earlier turn(s) established in `slots_filled_previously`. "
-        "Keep them separate; do not merge the two lists. `coherence` is about "
-        "the final turn only.]"
+        "Keep them separate; do not merge the two lists.]"
+    )
+
+
+def render_review_note(turns: int) -> str:
+    """The end-of-session review's instruction (A6) — never `None`.
+
+    A different job from `render_window_note`, and it must not borrow its words.
+    That note reports a **grading failure** and asks for the turns it lost; this
+    one asks for a re-reading of turns that were graded fine at the time, with
+    the one thing the live grader did not have: the rest of the conversation.
+    The grader at turn 3 did not know what turn 5 would clarify.
+
+    It says plainly that the pass may only **add**. Credit already awarded is not
+    on the table — the caller enforces that in Python, and saying so here keeps
+    the model from spending its judgment on a decision it does not own.
+
+    Volatile like the other two, so it rides `messages` after the breakpoint and
+    the frozen prefix stays byte-identical.
+    """
+    return (
+        f"[The session is over, and all {turns} of the learner's turns are shown "
+        "above. Judge every one of them again, together — which no live grade "
+        "could do: a later turn often makes an earlier one legible, a question "
+        "the reply shows was understood, an answer that only reads as one once "
+        "you have both halves. Work turn by turn, oldest first, and go through "
+        "the whole slot list for each turn separately — the same sweep you make "
+        "for the final turn, made once per turn. Put what the learner's **final** "
+        "turn established in `slots_filled`, and everything **any earlier turn** "
+        "established in `slots_filled_previously`, including slots listed as "
+        "already established and including a slot two turns established between "
+        "them. An earlier turn left out of that list is credit the learner does "
+        "not get; nothing is taken away on the strength of this pass.]"
+    )
+
+
+def render_filled_note(filled_slots) -> Optional[str]:
+    """What earlier turns already established, or `None`.
+
+    A5 stopped sending the grader the whole transcript — it reads the partner's
+    last line and the learner's turn now, not ten turns of history. This note is
+    what replaces the history as the record of earlier progress: the set of slots
+    already filled, so the grader knows which facts are old without having to
+    re-read the conversation that established them.
+
+    Volatile — it changes every time a slot is filled — so the caller puts it in
+    `messages`, after the `cache_control` breakpoint. Factual, not an
+    instruction: the frozen prompt already says only *this* turn's fills go in
+    `slots_filled`, and A4 taught that restrictive language aimed at a rule the
+    prompt already carries costs credit elsewhere.
+    """
+    if not filled_slots:
+        return None
+    return (
+        "[Already established on earlier turns of this session: "
+        f"{', '.join(filled_slots)}.]"
     )
 
 

@@ -3,7 +3,8 @@
 Companion to [`SCENARIOS.md`](SCENARIOS.md), which specifies *how* a session is
 graded. This one asks whether the grade is **earned**.
 
-Status: **V0 measured; V1 does not ship; V2 built; V3 closed as decided.**
+Status: **V0 measured; V1 does not ship; V2 built; V3 closed as decided; the
+gate ships in Stream A (A4) on the other side of the split.**
 
 > **V0's answer: `coherence` cannot carry a gate.** Across 21 runs over 7
 > recorded cases, the partner tagged the gaming turn `on_track` every time and
@@ -12,6 +13,14 @@ Status: **V0 measured; V1 does not ship; V2 built; V3 closed as decided.**
 > earned turn either, so V1 would not have broken A2; it would simply never have
 > fired. Evidence and method: [`evals/coherence/`](../evals/coherence/README.md).
 > The motivating turn stays V2's to fix.
+>
+> **A4 ships one anyway, and V0's finding is why it can.** V0 measured a
+> *goal-aware* partner's tag: it could see what was scoreable, so it called the
+> gaming turn relevant. V2 made the partner goal-blind. A4 asks the same
+> question of that partner, binary, and gates on the answer
+> (`docs/streams/grading.md`). What V0 established stands — the signal it
+> measured was silent — and so does the safety rule below, now enforced in code
+> rather than reported on.
 
 ---
 
@@ -169,11 +178,13 @@ the ask only because Python cannot judge whether a reply answered. The answer wa
 never the interesting half, regardless of who can check it. So: one call, one
 turn, and no lag — and **V3 closes as decided rather than built**.
 
-**This is not contradicted by the recovery pass below.** There *is* a session-end
-grader pass, but it exists to judge turns that were never judged, never to
-re-audit turns that were. The rule stays one grade per turn, credited on the ask;
-what the recovery pass recovers is a grade that failed to happen, not a verdict
-that was already reached.
+**This is not contradicted by the session review below.** There *is* a
+session-end grader pass — since A6 it re-reads every turn, not only the turns
+whose grade never landed. It does not re-open this decision, because it can only
+**add** credit. A `request` slot is still credited on the ask, one grade per
+turn, live; the review asks the narrower question of whether a turn established
+something the live grader could not see at the time, and a verdict already
+reached in the learner's favour is never revisited.
 
 **If the grader fails: the turn is owed, not lost.** The reply stands and no slot
 is credited *yet* — but the turn is not forgotten either. `SessionState` carries
@@ -202,12 +213,29 @@ grader outage.
 outage, not a backlog, and spending the learner's remaining turns on a session
 that cannot grade them is worse than stopping.
 
-**A session that ends still owing grades gets one final pass** before the
-verdict. The card is computed from state, so an unsettled debt would tell the
-learner they missed something they established — the A2 false negative at the
-moment it is most visible. If that pass completes the goal it supersedes the
-recorded `end_reason`: someone who established everything did not leave
-unfinished, `stuck` least of all.
+**Every session gets one review pass** before the verdict
+(`feedback.review_session`, A6). It began as recovery — a session that ended
+still owing grades got one final pass, because the card is computed from state
+and an unsettled debt would tell the learner they missed something they
+established, the A2 false negative at the moment it is most visible. A6 widened
+it to the whole session for the same reason at a wider angle: the live grader
+judges turn 3 without turn 5, and by the time the card is written the whole
+conversation exists. Recovery is now a case of review rather than a separate
+job.
+
+**It may add credit and may never remove it.** The card is read after a session
+the learner watched themselves earn, slot by slot. A card that takes a point
+back is indistinguishable from a bug to the person reading it, so new ids union
+into `filled_at` and nothing is ever deleted — and an already-earned slot keeps
+the turn it was earned on. `status` and `end_reason` are not recomputed either
+(`termination.advance` would overwrite a real ending with a fresh evaluation of
+a finished session), with one exception: if the review completes the goal it
+supersedes the recorded `end_reason`, because someone who established everything
+did not leave unfinished, `stuck` least of all.
+
+The pass is skipped where it could not change the answer — a session with every
+slot filled has nothing left for an add-only review to add — so the happy path
+still costs nothing. A review that fails leaves the state exactly as submitted.
 
 ### Model: a stronger grader, a faster converser
 
@@ -293,14 +321,18 @@ needs a home, in the converser's own prompt rather than a per-turn injection.
 
 ## The penalty for gaming
 
-`coherence` — `on_track | drifting | off_track` on `WorkerAnnotation`
-(`models.py:301`) — comes from `DESIGN.md`'s original annotation schema. It
-**predates the slot tracker**, has been computed on every turn since the
-conversation worker shipped, and is read by **no code path at all**.
+`coherence` came from `DESIGN.md`'s original annotation schema as
+`on_track | drifting | off_track` on the converser. It **predated the slot
+tracker**, was computed on every turn since the conversation worker shipped, and
+was read by **no code path at all**. V2 moved it to the grader; A4 moved it back
+to the (now goal-blind) partner as a binary field and made it a gate.
 
-**Do not withhold credit on a bad coherence tag.** That reintroduces the false
-negative A2 exists to fix, and would fail the learner whose Chinese was fine and
-whose conversational timing was not.
+**Do not withhold credit *already earned* on a bad coherence tag.** That
+reintroduces the false negative A2 exists to fix, and would fail the learner
+whose Chinese was fine and whose conversational timing was not. A4's gate obeys
+this by construction: it withholds only the credit of the turn it judged, it
+cannot reach `state.filled_at`, and a learner therefore never watches a score go
+down (`orchestrator._advance_or_echo`).
 
 **The threshold is an output of measurement, not an input.** `off_track` is
 defined as *unintelligible or derailed*; `drifting` is *wandering*. The
@@ -332,7 +364,7 @@ The verdict record then describes what went wrong rather than punishing it.
 | | What | Blocked on |
 |---|---|---|
 | **V0** | ✅ **Done.** A recorded-transcript fixture set and the first measurement of `coherence` against gold labels. Reported that **no threshold is safe** — every candidate gate never fires. Shipped no gate. | nothing |
-| **V1** | ❌ **Not shipping the gate.** V0 found nothing for it to gate on. The session-level coherence fact on `VerdictCard` is separable and still open — but it is describing a signal we now know is silent on the failure that matters, so it waits for V2's grader to produce a tag worth recording. | V0 said no |
+| **V1** | ❌ **Not shipping the gate** — *superseded by A4.* V0 found nothing for it to gate on, because the partner it measured could see the rubric. Once V2 made the partner goal-blind, the objection expired and Stream A's A4 shipped the gate: binary, on the partner's annotation, applied in `_advance_or_echo`. | V0 said no; A4 said yes |
 | **V2** | ✅ **Built.** Goal-blind converser; grader as a third fan-out branch reading the *previous* partner turn; withholding as authored scene prose; `closing_hint` replacing `pressure_hint`. Splits the model: Sonnet 5 converses, Opus 5 grades. Staged: (1) ✅ verdict worker → Opus 5; (2) ✅ the authoring rule + all five situations rewritten; (3) ✅ the converser/grader change. | done |
 | **V3** | ❌ **Closed as decided, not built.** It asked whether to re-open A2's floor-on-ask compromise once a grader could evaluate ask-AND-answer. The grader can, and we do not want it to: the partner's answer is the partner's performance. | decided |
 

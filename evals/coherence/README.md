@@ -1,12 +1,28 @@
-# V0 — can `coherence` carry a gate?
+# The grader's measurement — is it crediting the right facts?
 
-`docs/VALIDITY.md`, chunk V0. **Ships no gate.** Its output is a measurement and
-a recommendation, and *"no threshold is safe"* is a valid one.
+Started as `docs/VALIDITY.md` chunk V0, *can `coherence` carry a gate?*, and the
+V0 history below is kept because the answer it gave shaped everything after it.
 
-The question: `WorkerAnnotation.coherence` (`backend/models.py:301`) has been
-computed on every turn since the conversation worker shipped and read by no code
-path. V1 proposed gating A2's credit floor on it. Before gating anything on an
-unmeasured signal, measure it.
+**What this directory measures today is the grade**: which slots the grader
+credits, against gold labels held apart from the transcripts. Coherence is the
+partner's judgment since A4 (`docs/streams/grading.md`), and this runner holds
+the partner still — so the tag is observed by `evals/turn/`, the runner that
+runs a whole turn, and `matrix.confusion` scores it there.
+
+## History: V0's question, and A4's answer
+
+V1 proposed gating A2's credit floor on `coherence`. Before gating anything on
+an unmeasured signal, V0 measured it — and reported that no threshold was safe,
+so no gate shipped. A4 ships one anyway, and V0 is why it can: what V0 measured
+was a **goal-aware** partner's tag. That partner could see what was scoreable,
+so it called the gaming turn relevant. V2 made the partner goal-blind, which
+retired the objection, and A4 asks the same question of that partner — binary,
+`coherent` or not — and gates on the answer in
+`orchestrator._advance_or_echo`.
+
+The gate-selection code went with the question it answered. `matrix.py` no
+longer searches candidate thresholds: the gate is chosen, and a recommender
+with one candidate is not a measurement.
 
 ## The answer
 
@@ -44,11 +60,18 @@ the one underneath it: **is the tracker right?**
 | **Spurious** — credit not earned | **3** | `recommendation` on the gaming turn, all 3 runs |
 | **Missed** — credit earned, not given | **0** | none on this corpus |
 
-The whole tracker error on this corpus is the one failure `docs/VALIDITY.md`
-describes, and it is not occasional — it is **every single run**. That is the
-number V2's goal-blind grader has to move, and it is recorded here *before* the
-grader exists, so the grader cannot be marked against a standard written after
-it.
+At V0 the whole tracker error on this corpus is that one turn, on every run —
+the failure `docs/VALIDITY.md` describes, recorded before the grader existed so
+it could not be marked against a standard written after it.
+
+**A4 reframed what that number means.** The goal-blind grader still credits the
+gaming turn, and under A4 that is the *right* answer: the grader is a pure
+extractor, so it credits the fact the words state and leaves coherence to the
+partner. Gold credits it now too (`slots_established: [recommendation]`), so slot
+accuracy reads it as exact, not spurious. The gaming turn is caught by the gate
+instead, and whether the partner tags it incoherent is scored in `evals/turn`.
+V2 did not beat the V0 number by making the grader stricter; it dissolved it by
+splitting the question in two.
 
 **One thing this says to the accessibility track.** `missed` is zero, and
 `earned-under-annotated` — the messy-pinyin turn built specifically to provoke
@@ -64,7 +87,7 @@ worth more than any case written from imagination.
 | File | What |
 |---|---|
 | `cases.py` | Load recorded cases and gold labels; refuse an unpaired set |
-| `matrix.py` | Tag-vs-gold confusion, candidate gates, the recommendation |
+| `matrix.py` | Slot accuracy per case; the tag-vs-gold 2×2 the turn runner fills |
 | `report.py` | Render the above as markdown |
 | `replay.py` | Cassette runner — grades each case, writes `observations.json` |
 | `RESULTS.md` | The rendered measurement |
@@ -76,30 +99,36 @@ cassettes. A1's dense-turn cases assert slot credit against those recordings.
 The partner itself is measured by [`evals/turn/`](../turn/), which drives
 the whole turn rather than `grader.grade` alone.
 
-## A1 / the V2 re-run
+## A1 / A3 / A4
 
-[`RESULTS.md`](RESULTS.md) is now the **grader** on `claude-opus-5`, 30 runs
-over 10 cases, off committed cassettes. Replay calls `grader.grade`, not the
-converser. Turn-1 fixtures carry `opening_line`.
+[`RESULTS.md`](RESULTS.md) is the **grader** on `claude-opus-5`, 55 runs over 11
+cases, off committed cassettes. Replay calls `grader.grade`, not the converser.
+Turn-1 fixtures carry `opening_line`.
 
-The slot misses A3 has to clear. They are `strict` xfails in
-`tests/test_coherence_eval.py` (`A1_DENSE_CASES`). A3 removes those marks.
+A1 recorded three dense turns the grader under-credited; A3 rewrote the
+`slots_filled` instruction and all three went green. They are asserted as a
+**rate**, not a run: `DENSE_MIN_EXACT` of `DENSE_SAMPLES` draws must be exact
+(`tests/test_coherence_eval.py`).
 
-| case | missed | A3 |
-| --- | --- | --- |
-| `milk-and-biscuits` | `order` ×3 | drop the xfail; the assert must pass |
-| `computer-work-ni-ne` | `partner_origin` ×3 | drop the xfail; the assert must pass |
+A4 took `coherence` out of this prompt. The corpus was re-recorded on the
+slots-only grader and the dense cases held at 5/5 each. One case moved the wrong
+way — `elliptical-ni-ne` misses `wellbeing` on 2 of 5 draws, where A3 measured
+0 of 5 — and three separate 55-run waves showed it, so it is a shift and not one
+unlucky draw. It is the smallest case in the corpus: 我很好，你呢？, where the
+whole slot rides on 你呢 bouncing one question back.
 
-`clip-and-tea` already credits `order` on this grader. The V0 gaming turn
-(`nonsequitur-slot-fill`) is now tagged `drifting` and still credits
-`recommendation` — a different signal from the converser, and A4's problem.
+The V0 gaming turn (`nonsequitur-slot-fill`) still credits `recommendation` on
+every run — the right answer for a goal-blind extractor, so gold credits it too
+and slot accuracy reads it as exact. Coherence is the separate question: gold
+labels the turn incoherent, the gate blocks the credit before the learner sees
+it, and the partner's tag is scored in `evals/turn`.
 
 ## Re-running it
 
 ```bash
 source .venv/bin/activate
-python -m evals.coherence.replay --repeat 3            # free, off cassettes
-python -m evals.coherence.replay --record --samples 3  # live; costs money
+python -m evals.coherence.replay --repeat 5                      # free, off cassettes
+python -m evals.coherence.replay --record --samples 5 --repeat 5  # live; costs money
 python - <<'PY'
 from evals.coherence.cases import load_cases, load_gold, paired
 from evals.coherence.matrix import load_observations

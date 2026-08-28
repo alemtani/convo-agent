@@ -1,0 +1,40 @@
+{
+  "id": "owed-drinks-then-order",
+  "topic_id": "food-ordering",
+  "sketch": "The server is brisk and a little busy — short answers, no small talk. It is lunchtime and most tables are full. A pot of tea sits on the counter.",
+  "opening_line": {
+    "zh": "你好！你要点什么？",
+    "pinyin": "nǐ hǎo! nǐ yào diǎn shénme?"
+  },
+  "dialogue": [
+    {
+      "role": "user",
+      "zh": "请问，什么菜最好吃？",
+      "pinyin": "qǐngwèn, shénme cài zuì hǎochī?"
+    },
+    {
+      "role": "partner",
+      "zh": "鱼最好吃。",
+      "pinyin": "yú zuì hǎochī."
+    },
+    {
+      "role": "user",
+      "zh": "你们有什么喝的？",
+      "pinyin": "nǐmen yǒu shénme hē de?"
+    },
+    {
+      "role": "partner",
+      "zh": "有茶，也有水。",
+      "pinyin": "yǒu chá, yě yǒu shuǐ."
+    }
+  ],
+  "learner_turn": "好，我要一个鱼和一杯茶",
+  "state": {
+    "filled_at": {
+      "recommendation": 1
+    },
+    "consecutive_closes": 0,
+    "last_graded_turn": 1
+  },
+  "notes": "The owed-turn path, which had no coverage before A3. The watermark sits at turn 1, so this turn-3 grade owes turn 2 as well: `grading_window` is 2 and `render_window_note` fires. Turn 2 asked what there is to drink and its grade never landed, so `drinks` belongs in `slots_filled_previously`; the final turn orders a dish and a drink, so `order` belongs in `slots_filled`. A grader that merges the two lists, or that reads the prefix's \"only this turn\" as covering the whole job, fails here and nowhere else."
+}

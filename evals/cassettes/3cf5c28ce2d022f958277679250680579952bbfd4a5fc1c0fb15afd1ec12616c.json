@@ -1,0 +1,123 @@
+{
+  "key": "3cf5c28ce2d022f958277679250680579952bbfd4a5fc1c0fb15afd1ec12616c",
+  "model": "claude-sonnet-5",
+  "recorded_at": "2026-08-28T07:06:04+00:00",
+  "samples": [
+    {
+      "parsed_output": {
+        "partner_response": {
+          "pinyin": "nǐ xiǎng chī shénme?",
+          "zh": "你想吃什么？"
+        },
+        "turn_annotation": {
+          "coherent": true,
+          "learner_said_goodbye": false
+        },
+        "user_reading": {
+          "pinyin": "wǒ hěn è",
+          "zh": "我很饿"
+        }
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 5343,
+        "input_tokens": 8,
+        "output_tokens": 108
+      }
+    },
+    {
+      "parsed_output": {
+        "partner_response": {
+          "pinyin": "nǐ xiǎng chī shénme?",
+          "zh": "你想吃什么？"
+        },
+        "turn_annotation": {
+          "coherent": true,
+          "learner_said_goodbye": false
+        },
+        "user_reading": {
+          "pinyin": "wǒ hěn è.",
+          "zh": "我很饿。"
+        }
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 5343,
+        "input_tokens": 8,
+        "output_tokens": 109
+      }
+    },
+    {
+      "parsed_output": {
+        "partner_response": {
+          "pinyin": "nǐ xiǎng chī shénme?",
+          "zh": "你想吃什么？"
+        },
+        "turn_annotation": {
+          "coherent": true,
+          "learner_said_goodbye": false
+        },
+        "user_reading": {
+          "pinyin": "wǒ hěn è",
+          "zh": "我很饿"
+        }
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 5343,
+        "input_tokens": 8,
+        "output_tokens": 108
+      }
+    },
+    {
+      "parsed_output": {
+        "partner_response": {
+          "pinyin": "nǐ xiǎng chī shénme?",
+          "zh": "你想吃什么？"
+        },
+        "turn_annotation": {
+          "coherent": true,
+          "learner_said_goodbye": false
+        },
+        "user_reading": {
+          "pinyin": "wǒ hěn è.",
+          "zh": "我很饿。"
+        }
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 5343,
+        "input_tokens": 8,
+        "output_tokens": 109
+      }
+    },
+    {
+      "parsed_output": {
+        "partner_response": {
+          "pinyin": "nǐ xiǎng chī shénme?",
+          "zh": "你想吃什么？"
+        },
+        "turn_annotation": {
+          "coherent": true,
+          "learner_said_goodbye": false
+        },
+        "user_reading": {
+          "pinyin": "wǒ hěn è.",
+          "zh": "我很饿。"
+        }
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 5343,
+        "input_tokens": 8,
+        "output_tokens": 109
+      }
+    }
+  ],
+  "summary": "claude-sonnet-5 → ConversationResult: 我很饿"
+}

@@ -6,6 +6,12 @@ name: re-record cassettes
 # The alternative — a probabilistic live call on every PR — buys freshness with
 # the one property the cassette layer exists to give CI: determinism. A build
 # that is green 90% of the time is worse than one that is honestly stale.
+#
+# The `live` job below rides the same schedule for the same reason. It is the
+# half of the old `live` marker a recording cannot stand in for — a real
+# `cache_read_input_tokens`, and Azure — and A0.6 found every Anthropic test in
+# it broken, because a suite excluded from every run is a suite nobody runs.
+# This job is what makes that impossible a second time.
 on:
   schedule:
     # Weekly, Monday 06:00 UTC. The eval corpus is small and the models do not
@@ -33,24 +39,75 @@ jobs:
       - name: Install dependencies
         run: pip install -r backend/requirements.txt
 
-      # `--refresh` replaces each recording rather than topping it up: the diff
-      # against what is committed is the entire output of this job, and an
-      # appended sample would bury it. Both runners share `evals/cassettes/`;
-      # the grader-only keys and the turn keys (partner + judge) all land there.
-      - name: Re-record coherence eval
+      # `--refresh` replaces each recording rather than topping it up, so the
+      # diff against what is committed is the whole output of this job.
+      #
+      # Depth needs both flags here. `--samples` is the cassette ceiling — how
+      # many draws a key may hold — and `--repeat` is how many times the run
+      # visits each case. A key holds only as many samples as it was visited, so
+      # the default `--repeat 3` recorded three and the dense gate (which judges
+      # a rate over five: `tests/test_coherence_eval.py`, DENSE_SAMPLES) then
+      # failed its own depth check. The two must move together.
+      - name: Re-record the grader cases
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: python -m evals.coherence.replay --record --refresh --samples 3
+        run: >
+          python -m evals.coherence.replay --record --refresh --samples 5
+          --repeat 5 --used-out "$RUNNER_TEMP/used-coherence.json"
 
-      - name: Re-record turn eval
+      # Same flag pairing as the grader step above. Nothing asserts a depth of 5
+      # on turn observations yet (A1.5 records the first ones), but recording
+      # shallower than the corpus claims is the trap to avoid.
+      - name: Re-record the turn cases
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: python -m evals.turn.replay --record --refresh --samples 3
+        run: >
+          python -m evals.turn.replay --record --refresh --samples 5
+          --repeat 5 --used-out "$RUNNER_TEMP/used-turn.json"
 
-      - name: Re-record turn probes
+      # The probes are the same runner over a second corpus: one-line openings
+      # that ask for nothing, so a partner that volunteers a slot is visible.
+      # Own `--out` and own manifest — the sweep takes the union, and a probe
+      # key missing from it would be swept as unreachable.
+      - name: Re-record the turn probes
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: python -m evals.turn.replay --record --refresh --samples 3 --cases-dir evals/turn/cases --out evals/turn/observations.probes.json
+        run: >
+          python -m evals.turn.replay --record --refresh --samples 5
+          --repeat 5 --cases-dir evals/turn/cases
+          --out evals/turn/observations.probes.json
+          --used-out "$RUNNER_TEMP/used-turn-probes.json"
+
+      # The A0.6 behavioral evals: same layer, different corpus. No `--repeat`
+      # here — this recorder loops `--samples` times directly, so the flag is
+      # both the depth and the ceiling. `--samples 5` matches
+      # `tests/test_worker_behavior.py:DRAWS`, which refuses a shallower cassette
+      # rather than cycling it.
+      - name: Re-record the worker behavior cases
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: >
+          python -m evals.behavior.record --record --refresh --samples 5
+          --used-out "$RUNNER_TEMP/used-behavior.json"
+
+      # One store, four runs. None reaches the others' keys, so none can
+      # decide alone what is stale — a runner that deleted what *it* did not
+      # touch would take the other runners' whole corpus with it. The sweep
+      # takes the union, and refuses if a manifest is missing, because a runner
+      # that crashed must not read as "reached nothing".
+      #
+      # Every recording step must therefore come *before* this one. A step that
+      # ran after the sweep would have its cassettes deleted on every scheduled
+      # run and silently re-bought, which is the bill this layer exists to
+      # avoid.
+      #
+      # This is the only place it runs: the scheduled job is the one context
+      # where every runner sweeps the whole corpus in the same pass.
+      - name: Sweep recordings nothing reaches any more
+        run: >
+          python -m evals.cassette.sweep
+          --used "$RUNNER_TEMP/used-coherence.json" "$RUNNER_TEMP/used-turn.json"
+          "$RUNNER_TEMP/used-turn-probes.json" "$RUNNER_TEMP/used-behavior.json"
 
       - name: Show what moved
         run: git --no-pager diff --stat -- evals/cassettes
@@ -67,3 +124,54 @@ jobs:
       # is evidence and evidence does not update itself.
       - name: Fail if the recording moved
         run: git diff --exit-code -- evals/cassettes
+
+  # The contact half of the old `live` marker: the tests whose whole point is
+  # touching the real API. `cache_read_input_tokens > 0` proves the API served
+  # our prefix from cache, and a replayed `850` proves only that someone once
+  # wrote `850` into a JSON file. `test_stt`, `test_pronunciation` and
+  # `test_tts_live` are Azure, which the cassette layer does not cover at all.
+  #
+  # It cannot be a merge gate — it spends money and needs keys CI deliberately
+  # does without — so it runs here instead. `continue-on-error` is not set: a
+  # red scheduled job is the entire mechanism.
+  live:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r backend/requirements.txt
+
+      # Every one of these tests skips itself when its key is absent, which is
+      # a second way to rot unnoticed: a green run that asserted nothing. So
+      # the keys are checked here, where a missing one fails with a name.
+      - name: Check the keys are present
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          AZURE_SPEECH_KEY: ${{ secrets.AZURE_SPEECH_KEY }}
+          AZURE_SPEECH_REGION: ${{ secrets.AZURE_SPEECH_REGION }}
+        run: |
+          missing=
+          for name in ANTHROPIC_API_KEY AZURE_SPEECH_KEY AZURE_SPEECH_REGION; do
+            printenv "$name" | grep -q . || missing="$missing $name"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::live suite would skip silently — missing:$missing"
+            exit 1
+          fi
+
+      # `-rs` so a skip is named rather than folded into the summary count. An
+      # Azure 401 surfaces here first, and it usually means the subscription
+      # lapsed rather than the code broke.
+      - name: Run the live suite
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          AZURE_SPEECH_KEY: ${{ secrets.AZURE_SPEECH_KEY }}
+          AZURE_SPEECH_REGION: ${{ secrets.AZURE_SPEECH_REGION }}
+        run: pytest -m live -rs

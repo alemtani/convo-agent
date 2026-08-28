@@ -1,11 +1,11 @@
 {
   "key": "136d7707ead141bf6a04fb155ffce1115693ad5c6cfcca32a68e9b9c5c79ae28",
   "model": "claude-sonnet-5",
-  "recorded_at": "2026-08-26T05:10:01+00:00",
+  "recorded_at": "2026-08-28T07:00:08+00:00",
   "samples": [
     {
       "parsed_output": {
-        "rationale": "The line explicitly states the drink options available (tea or water), directly answering what there is to drink without requiring the customer to ask an open-ended question first. It does not mention anything about food recommendations.",
+        "rationale": "The line states specific drink options (tea or water) outright, answering what there is to drink without being asked. It says nothing about which dish is good.",
         "volunteered": [
           "drinks"
         ]
@@ -15,7 +15,7 @@
         "cache_creation_input_tokens": 0,
         "cache_read_input_tokens": 0,
         "input_tokens": 609,
-        "output_tokens": 208
+        "output_tokens": 143
       }
     }
   ],

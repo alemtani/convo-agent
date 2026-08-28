@@ -45,7 +45,9 @@ should wait on. Live modules: `main.py`, `orchestrator.py`, `termination.py`,
 `profile.py` (Phases 7–8).
 
 Session state is client-held, like `sketch`: `termination.py` computes it from
-the **grader's** judgment and the client resubmits it every turn. It rides its
+the **grader's** judgment, gated by the **partner's** (`coherent` — a turn that
+did not follow from the partner's last line earns nothing), and the client
+resubmits it every turn. It rides its
 own `StateEvent` — not `ReplyEvent`, because the grader is a separate branch of
 the fan-out and holding the reply for it would spend the latency that split
 exists to protect; and not `DoneEvent`, which waits on the PA branch too. A
@@ -164,11 +166,19 @@ it pass. Verification is tiered by how deterministic the code is:
 - **Claude / Azure boundaries — contract tests.** Mock the SDK client; assert
   the *request we build* (model id, breakpoint placement, message roles) and
   that we *parse a recorded response* correctly. Never assert exact model text.
-- **LLM / Azure behavior — evals, not asserts.** Structural invariants (valid
-  JSON, feedback cites only KB vocab, reply stays in HSK band) and the live
-  `cache_read_input_tokens > 0` check are marked `@pytest.mark.live` — they need
-  keys and cost money, so they are **excluded from the default run**. Invoke
-  explicitly with `pytest -m live`.
+- **LLM / Azure behavior — evals, not asserts.** Structural invariants over
+  model output (valid JSON, a slot credited, a slot withheld) run off
+  **cassettes** in the default suite — `tests/test_worker_behavior.py`, with the
+  calls defined in `evals/behavior/cases.py` and re-recorded by
+  `python -m evals.behavior.record --record --samples 3`. They are a merge gate
+  and they spend nothing.
+  The `live` marker is now reserved for calls a recording cannot stand in for:
+  `cache_read_input_tokens > 0`, which proves the *real* API served our prefix,
+  and everything Azure. Those need keys and cost money, so they are **excluded
+  from the default run** — invoke with `pytest -m live`. Exclusion is paid for
+  by a schedule: `.github/workflows/rerecord.yml` runs them weekly. An excluded
+  suite with no schedule rots, and this one did — every Anthropic test under the
+  marker had been broken for months before A0.6 found it.
   Evals under `evals/` are a third thing again: they judge model *behavior*, and
   they run off committed **cassettes** (`evals/cassette/`, recorded once and
   replayed by request hash) so the suite is a merge gate that spends nothing. A

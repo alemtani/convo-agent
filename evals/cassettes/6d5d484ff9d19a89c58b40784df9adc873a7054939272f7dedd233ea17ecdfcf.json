@@ -1,0 +1,123 @@
+{
+  "key": "6d5d484ff9d19a89c58b40784df9adc873a7054939272f7dedd233ea17ecdfcf",
+  "model": "claude-sonnet-5",
+  "recorded_at": "2026-08-28T07:02:59+00:00",
+  "samples": [
+    {
+      "parsed_output": {
+        "partner_response": {
+          "pinyin": "hǎo, yī gè jiǎozi, yī bēi chá.",
+          "zh": "好，一个饺子，一杯茶。"
+        },
+        "turn_annotation": {
+          "coherent": true,
+          "learner_said_goodbye": false
+        },
+        "user_reading": {
+          "pinyin": "hǎo de, nà wǒ yào yī gè jiǎozi hé yī bēi chá.",
+          "zh": "好的，那我要一个饺子和一杯茶。"
+        }
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 5343,
+        "input_tokens": 66,
+        "output_tokens": 162
+      }
+    },
+    {
+      "parsed_output": {
+        "partner_response": {
+          "pinyin": "hǎo, yī gè jiǎozi hé yī bēi chá, hái yào biéde ma?",
+          "zh": "好，一个饺子和一杯茶，还要别的吗？"
+        },
+        "turn_annotation": {
+          "coherent": true,
+          "learner_said_goodbye": false
+        },
+        "user_reading": {
+          "pinyin": "hǎo de, nà wǒ yào yī gè jiǎozi hé yī bēi chá.",
+          "zh": "好的，那我要一个饺子和一杯茶。"
+        }
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 5343,
+        "input_tokens": 66,
+        "output_tokens": 181
+      }
+    },
+    {
+      "parsed_output": {
+        "partner_response": {
+          "pinyin": "hǎo, yī gè jiǎozi, yī bēi chá, hái yào biéde ma?",
+          "zh": "好，一个饺子，一杯茶，还要别的吗？"
+        },
+        "turn_annotation": {
+          "coherent": true,
+          "learner_said_goodbye": false
+        },
+        "user_reading": {
+          "pinyin": "hǎo de, nà wǒ yào yī gè jiǎozi hé yī bēi chá.",
+          "zh": "好的，那我要一个饺子和一杯茶。"
+        }
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 5343,
+        "input_tokens": 66,
+        "output_tokens": 180
+      }
+    },
+    {
+      "parsed_output": {
+        "partner_response": {
+          "pinyin": "hǎo, yī gè jiǎozi, yī bēi chá. hái yào biéde ma?",
+          "zh": "好，一个饺子，一杯茶。还要别的吗？"
+        },
+        "turn_annotation": {
+          "coherent": true,
+          "learner_said_goodbye": false
+        },
+        "user_reading": {
+          "pinyin": "hǎo de, nà wǒ yào yī gè jiǎozi hé yī bēi chá.",
+          "zh": "好的，那我要一个饺子和一杯茶。"
+        }
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 5343,
+        "input_tokens": 66,
+        "output_tokens": 180
+      }
+    },
+    {
+      "parsed_output": {
+        "partner_response": {
+          "pinyin": "hǎo, yī gè jiǎozi hé yī bēi chá, hái yào biéde ma?",
+          "zh": "好，一个饺子和一杯茶，还要别的吗？"
+        },
+        "turn_annotation": {
+          "coherent": true,
+          "learner_said_goodbye": false
+        },
+        "user_reading": {
+          "pinyin": "hǎo de, nà wǒ yào yī gè jiǎozi hé yī bēi chá.",
+          "zh": "好的，那我要一个饺子和一杯茶。"
+        }
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 5343,
+        "input_tokens": 66,
+        "output_tokens": 181
+      }
+    }
+  ],
+  "summary": "claude-sonnet-5 → ConversationResult: 好的，那我要一个夹子和一杯茶"
+}

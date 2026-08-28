@@ -1,11 +1,11 @@
 {
   "key": "b7407001a9d659dcaf2953a707c7f7b3e7016ce5a518e83ef49c39631690eb04",
   "model": "claude-sonnet-5",
-  "recorded_at": "2026-08-26T05:10:49+00:00",
+  "recorded_at": "2026-08-28T07:02:56+00:00",
   "samples": [
     {
       "parsed_output": {
-        "rationale": "The line only recommends the fish dish; it says nothing about what drinks are available, so the drinks fact was not stated outright.",
+        "rationale": "The line only states that the fish is the best dish; it says nothing about what drinks are available, so the 'drinks' fact was not volunteered.",
         "volunteered": []
       },
       "stop_reason": "end_turn",
@@ -13,12 +13,12 @@
         "cache_creation_input_tokens": 0,
         "cache_read_input_tokens": 0,
         "input_tokens": 587,
-        "output_tokens": 102
+        "output_tokens": 104
       }
     },
     {
       "parsed_output": {
-        "rationale": "The line only recommends the fish dish; it says nothing about what drinks are available, so the drinks fact is not stated outright.",
+        "rationale": "The line only recommends a dish ('鱼最好吃' – the fish is best) and says nothing about what drinks are available, so the drinks fact was not stated outright.",
         "volunteered": []
       },
       "stop_reason": "end_turn",
@@ -31,7 +31,7 @@
     },
     {
       "parsed_output": {
-        "rationale": "The line only states that the fish is the best dish, which is a food recommendation. It does not mention or state what drinks are available, so the 'drinks' fact was not volunteered.",
+        "rationale": "The line only recommends the fish dish; it says nothing about what drinks are available, so the drinks fact was not stated outright.",
         "volunteered": []
       },
       "stop_reason": "end_turn",
@@ -39,7 +39,33 @@
         "cache_creation_input_tokens": 0,
         "cache_read_input_tokens": 0,
         "input_tokens": 587,
-        "output_tokens": 114
+        "output_tokens": 86
+      }
+    },
+    {
+      "parsed_output": {
+        "rationale": "The line only recommends a dish ('鱼最好吃' - the fish is best) in response to what seems like a food inquiry. It does not mention or state anything about what drinks are available.",
+        "volunteered": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 587,
+        "output_tokens": 109
+      }
+    },
+    {
+      "parsed_output": {
+        "rationale": "The line only recommends the fish dish; it says nothing about what drinks are available, so the drinks fact is not stated outright.",
+        "volunteered": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 587,
+        "output_tokens": 92
       }
     }
   ],

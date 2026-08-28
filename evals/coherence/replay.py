@@ -1,18 +1,23 @@
-"""Replay the recorded cases through the grader and record the tags.
+"""Replay the recorded cases through the grader and record what it credited.
 
 Runs off **cassettes** by default (`evals/cassette/`): a key with no recording
 is an error, not a live call. `--record` is the only thing that spends money,
 and what it buys is committed. Its output is still a report rather than an
 assertion — but a report that costs nothing to reproduce.
 
-Each case is replayed `--repeat` times, because `coherence` and `slots_filled`
-are a model's output and not a function — one run tells you what happened once.
-Every run is its own row in `observations.json`, and `matrix.py` reads them all.
+Each case is replayed `--repeat` times, because `slots_filled` is a model's
+output and not a function — one run tells you what happened once. Every run is
+its own row in `observations.json`, and `matrix.py` reads them all.
 
-V2 moved both fields onto `GraderResult`. This runner calls the grader, not the
-converser: a measurement taken through a different path than the one that
-ships would measure something else. Turn 1 still needs the opening line the
-client resubmits, because that line is never in `dialogue`.
+**Slots only, since A4.** Coherence went back to the partner, and this runner
+holds the partner still — which is exactly why it is the right instrument for
+the grader and the wrong one for the gate. The partner's tag is measured by
+`evals/turn/replay.py`, the runner that runs a partner.
+
+This runner calls the grader, not the converser: a measurement taken through a
+different path than the one that ships would measure something else. Turn 1
+still needs the opening line the client resubmits, because that line is never
+in `dialogue`.
 
     python -m evals.coherence.replay --repeat 3               # free, off cassettes
     python -m evals.coherence.replay --record --samples 3     # live; costs money
@@ -48,6 +53,17 @@ _GRADE_TIMEOUT_S = 60.0
 _turn_index = orchestrator._turn_index
 
 
+def _check_manifest_is_a_full_sweep(*, used_out, cases) -> None:
+    """Refuse `--used-out` on a run that only visits some of the corpus.
+
+    The manifest is what `evals.cassette.sweep` keeps. A `--case` run reaches a
+    handful, so a manifest written from one would tell the sweep to delete
+    every other recording in the store — the expensive mistake, made silently.
+    """
+    if used_out and cases:
+        raise SystemExit("--used-out needs the whole corpus; drop --case")
+
+
 def _opening_zh(case: Case) -> Optional[str]:
     """The 汉字 the grader is prefixed with on turn 1, or `None`."""
     line = case.opening_line
@@ -68,13 +84,14 @@ async def replay_case(case: Case, *, client=None) -> Observation:
         user_text=case.learner_turn,
         opening_line=_opening_zh(case),
         window=termination.grading_window(state, turn=turn),
+        filled_slots=sorted(state.filled),
         timeout=_GRADE_TIMEOUT_S,
         client=client,
     )
     return Observation(
         case_id=case.id,
-        coherence=grade.coherence,
         slots_filled=tuple(grade.slots_filled),
+        slots_filled_previously=tuple(grade.slots_filled_previously),
     )
 
 
@@ -106,7 +123,7 @@ async def replay_all(
             observations.append(observation)
             print(
                 f"run {run}/{repeat}  {case.id:<24} "
-                f"{observation.coherence:<10} slots={list(observation.slots_filled)}"
+                f"slots={list(observation.slots_filled)}"
             )
             if on_run is not None:
                 on_run(observations)
@@ -121,6 +138,9 @@ def main() -> None:
     parser.add_argument("--cases-dir", default=CASES_DIR)
     parser.add_argument("--out", default=DEFAULT_OUT)
     args = parser.parse_args()
+    _check_manifest_is_a_full_sweep(
+        used_out=getattr(args, "used_out", None), cases=args.case
+    )
 
     cases = load_cases(args.cases_dir)
     # Pair even when replaying a subset: an unlabelled case is a hole in the
@@ -157,6 +177,9 @@ def main() -> None:
     )
     write(observations)
     print(f"\nwrote {len(observations)} observations to {args.out}")
+
+    # After the write, never before: the observations are already paid for.
+    cassette.cli.write_used(args, client.used)
 
 
 if __name__ == "__main__":

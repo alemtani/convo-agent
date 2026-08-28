@@ -193,6 +193,71 @@ def test_the_store_lists_what_it_holds(tmp_path):
     assert list(store.keys()) == [key]
 
 
+def test_prune_removes_a_recording_nothing_can_reach(tmp_path):
+    """A prompt edit changes the key, and the old file is then unreachable.
+
+    Nothing can produce that key again, and the filename is a hash, so it
+    cannot be read either. It is not evidence any more; it is a file no one
+    can reason about.
+    """
+    store = cassette.CassetteStore(tmp_path)
+    live = cassette.request_key(_request())
+    stale = cassette.request_key(_request(system=[{"type": "text", "text": "old"}]))
+    for key in (live, stale):
+        store.append(key, _sample(), model="m", summary="s")
+
+    removed = store.prune(keep={live})
+
+    assert removed == [stale]
+    assert list(store.keys()) == [live]
+
+
+def test_prune_leaves_the_directory_alone_when_every_key_was_used(tmp_path):
+    store = cassette.CassetteStore(tmp_path)
+    key = cassette.request_key(_request())
+    store.append(key, _sample(), model="m", summary="s")
+
+    assert store.prune(keep={key}) == []
+    assert list(store.keys()) == [key]
+
+
+def test_prune_never_touches_a_file_that_is_not_a_cassette(tmp_path):
+    """`evals/cassettes/README.md` explains the directory. It is not a key.
+
+    Nor is a `.json` file that is not named for a sha256 digest — a manifest
+    parked in the directory would otherwise read as a stale recording.
+    """
+    store = cassette.CassetteStore(tmp_path)
+    live = cassette.request_key(_request())
+    stale = cassette.request_key(_request(system=[{"type": "text", "text": "old"}]))
+    for key in (live, stale):
+        store.append(key, _sample(), model="m", summary="s")
+    readme = tmp_path / "README.md"
+    readme.write_text("what this directory is", encoding="utf-8")
+    stray = tmp_path / "used.json"
+    stray.write_text('{"used": []}', encoding="utf-8")
+
+    assert store.prune(keep={live}) == [stale]
+
+    assert readme.exists()
+    assert stray.exists()
+
+
+def test_prune_refuses_to_empty_the_store(tmp_path):
+    """`keep` being empty means the run recorded nothing — a crash, a typo'd
+    `--case`, an API outage. Deleting the whole corpus because a run failed is
+    the one mistake that costs real money to undo.
+    """
+    store = cassette.CassetteStore(tmp_path)
+    key = cassette.request_key(_request())
+    store.append(key, _sample(), model="m", summary="s")
+
+    with pytest.raises(cassette.CassetteError, match="keep nothing"):
+        store.prune(keep=set())
+
+    assert list(store.keys()) == [key]
+
+
 # --- The client ----------------------------------------------------------
 
 
@@ -323,6 +388,37 @@ async def test_refresh_replaces_the_recording_instead_of_appending(tmp_path):
     assert [s["parsed_output"]["value"] for s in store.load(key).samples] == ["fresh"]
 
 
+async def test_the_client_remembers_every_key_it_used(tmp_path):
+    """What `--prune` keeps. A hit counts as much as a recording: the key is
+    reachable either way, and only a key nothing reached is stale.
+    """
+    store = cassette.CassetteStore(tmp_path)
+    replayed = cassette.request_key(_request())
+    store.append(replayed, _sample(), model="m", summary="s")
+    fresh_request = _request(system=[{"type": "text", "text": "a new prompt"}])
+    client = cassette.CassetteClient(store, record=True, live=_Live(_response("new")))
+
+    await client.messages.parse(**_request())
+    await client.messages.parse(**fresh_request)
+
+    assert client.used == {replayed, cassette.request_key(fresh_request)}
+
+
+async def test_a_missed_key_is_not_counted_as_used(tmp_path):
+    """A miss raises, so the run is not a sweep and its key was never reached.
+
+    Counting it would let a failed run's key survive a prune while every key
+    it never got to did not.
+    """
+    store = cassette.CassetteStore(tmp_path)
+    client = cassette.CassetteClient(store)
+
+    with pytest.raises(cassette.CassetteMiss):
+        await client.messages.parse(**_request())
+
+    assert client.used == set()
+
+
 async def test_a_request_without_a_schema_is_out_of_scope(tmp_path):
     # Every Anthropic call in the repo today is a structured `messages.parse`.
     # A streaming or free-text call is a real gap in the layer (Stream B's
@@ -408,7 +504,7 @@ async def test_the_real_grader_replays_off_a_cassette(tmp_path):
     request = grader.build_request(
         scenario=scenario, dialogue=[], user_text="我要一杯茶", opening_line="您好"
     )
-    result = GraderResult(coherence="on_track", slots_filled=[])
+    result = GraderResult(slots_filled=["order"])
     store.append(
         cassette.request_key(request),
         {
@@ -428,7 +524,7 @@ async def test_the_real_grader_replays_off_a_cassette(tmp_path):
         client=cassette.CassetteClient(store),
     )
 
-    assert grade.coherence == "on_track"
+    assert grade.slots_filled == ["order"]
     assert usage.output_tokens == 20
 
 
@@ -481,3 +577,66 @@ def test_refresh_without_record_is_refused():
     # yesterday's recording still agrees with yesterday's recording.
     with pytest.raises(SystemExit):
         cassette.cli.client_from_args(_parse(["--refresh"]))
+
+
+def test_a_runner_can_write_down_which_keys_it_reached(tmp_path):
+    """`--used-out` is what makes a sweep composable across runners.
+
+    One store, two runners (`evals.coherence` and `evals.turn`). Neither one
+    reaches the other's keys, so neither can decide alone what is stale.
+    """
+    manifest = tmp_path / "used.json"
+    args = _parse(["--used-out", str(manifest), "--cassettes", str(tmp_path)])
+    assert args.used_out == str(manifest)
+
+    cassette.cli.write_used(args, {"bbb", "aaa"})
+
+    assert json.loads(manifest.read_text())["used"] == ["aaa", "bbb"]
+
+
+def test_writing_the_manifest_is_a_no_op_when_it_was_not_asked_for(tmp_path):
+    cassette.cli.write_used(_parse(["--cassettes", str(tmp_path)]), {"aaa"})
+    assert list(tmp_path.iterdir()) == []
+
+
+# --- the sweep ------------------------------------------------------------
+
+
+def test_the_sweep_keeps_the_union_of_every_runner_that_reported(tmp_path):
+    """The whole point: a key one runner never reached is not stale if another
+    runner did reach it.
+    """
+    from evals.cassette import sweep
+
+    store = cassette.CassetteStore(tmp_path)
+    mine = cassette.request_key(_request())
+    theirs = cassette.request_key(_request(system=[{"type": "text", "text": "b"}]))
+    stale = cassette.request_key(_request(system=[{"type": "text", "text": "c"}]))
+    for key in (mine, theirs, stale):
+        store.append(key, _sample(), model="m", summary="s")
+
+    reports = tmp_path.parent / "reports"
+    reports.mkdir()
+    manifests = []
+    for name, keys in (("a.json", [mine]), ("b.json", [theirs])):
+        path = reports / name
+        path.write_text(json.dumps({"used": keys}), encoding="utf-8")
+        manifests.append(str(path))
+
+    removed = sweep.run(store=store, manifests=manifests)
+
+    assert removed == [stale]
+    assert sorted(store.keys()) == sorted([mine, theirs])
+
+
+def test_the_sweep_refuses_a_manifest_that_never_arrived(tmp_path):
+    """A runner that crashed writes no manifest. Sweeping on the ones that did
+    land would delete everything the dead runner was responsible for.
+    """
+    from evals.cassette import sweep
+
+    store = cassette.CassetteStore(tmp_path)
+    store.append(cassette.request_key(_request()), _sample(), model="m", summary="s")
+
+    with pytest.raises(cassette.CassetteError, match="missing"):
+        sweep.run(store=store, manifests=[str(tmp_path / "never-written.json")])

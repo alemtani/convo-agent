@@ -1,6 +1,6 @@
 {
   "clean-slot-fill": {
-    "coherence": "on_track",
+    "coherence": "coherent",
     "credit_ok": true,
     "slots_established": [
       "recommendation"
@@ -8,25 +8,27 @@
     "rationale": "Answers the menu being handed over with the question the scene invites."
   },
   "nonsequitur-slot-fill": {
-    "coherence": "drifting",
+    "coherence": "incoherent",
     "credit_ok": false,
-    "slots_established": [],
-    "rationale": "The partner asked what they wanted to drink. This answers nothing that was asked; it is a phrase that matches a criterion, not a question in a conversation."
+    "slots_established": [
+      "recommendation"
+    ],
+    "rationale": "Asks which dish is best when the partner asked about drinks. The words state a recommendation, so the goal-blind extractor credits it; the turn follows from nothing, so the partner marks it incoherent and the gate blocks the credit. The motivating turn of docs/VALIDITY.md: extract the fact, gate the credit."
   },
   "wandering-no-slot": {
-    "coherence": "drifting",
+    "coherence": "incoherent",
     "credit_ok": false,
     "slots_established": [],
-    "rationale": "In-band words, out-of-scene content. Nothing here establishes any authored fact."
+    "rationale": "In-band words, out-of-scene content. The turn states no authored fact, so the extractor credits nothing and the incoherent turn would earn nothing anyway."
   },
   "derailed-input": {
-    "coherence": "off_track",
+    "coherence": "incoherent",
     "credit_ok": false,
     "slots_established": [],
-    "rationale": "The learner is stuck and half in English. The right move is to ask them to repeat, not to credit anything."
+    "rationale": "The learner is stuck and half in English. Nothing to credit; the right move is to ask them to repeat."
   },
   "elliptical-ni-ne": {
-    "coherence": "on_track",
+    "coherence": "coherent",
     "credit_ok": true,
     "slots_established": [
       "wellbeing"
@@ -34,7 +36,7 @@
     "rationale": "Answers the question asked and turns it back. Bouncing a question back is asking it."
   },
   "earned-under-annotated": {
-    "coherence": "on_track",
+    "coherence": "coherent",
     "credit_ok": true,
     "slots_established": [
       "self_name",
@@ -43,7 +45,7 @@
     "rationale": "Untoned run-together pinyin, but the learner greets, gives their name, and asks for the partner's. Two facts established in one turn."
   },
   "order-after-answers": {
-    "coherence": "on_track",
+    "coherence": "coherent",
     "credit_ok": true,
     "slots_established": [
       "order"
@@ -51,7 +53,7 @@
     "rationale": "Orders a dish and a drink after hearing both answers, so the dependency is genuinely satisfied."
   },
   "milk-and-biscuits": {
-    "coherence": "on_track",
+    "coherence": "coherent",
     "credit_ok": true,
     "slots_established": [
       "recommendation",
@@ -61,7 +63,7 @@
     "rationale": "One turn asks which dish is best, asks what there is to drink, and orders a drink and a food. Three facts in one breath. 饼干 is out of band; the order is still an order."
   },
   "computer-work-ni-ne": {
-    "coherence": "on_track",
+    "coherence": "coherent",
     "credit_ok": true,
     "slots_established": [
       "self_job",
@@ -71,11 +73,19 @@
     "rationale": "States a job and 你呢 bounces both questions the partner just asked — origin and job. They did not state their own origin. 电脑 is out of band; the job is still a job."
   },
   "clip-and-tea": {
-    "coherence": "on_track",
+    "coherence": "coherent",
     "credit_ok": true,
     "slots_established": [
       "order"
     ],
     "rationale": "After hearing the recommended dish and the drinks, the learner orders one of each. 夹子 is a near-miss for 饺子; the drink is 茶. The order slot is one fact that names two things."
+  },
+  "owed-drinks-then-order": {
+    "coherence": "coherent",
+    "credit_ok": true,
+    "slots_established": [
+      "order"
+    ],
+    "rationale": "The final turn orders one of each after both answers, so `order` and nothing else. `drinks` was established on the ungraded turn 2 and is settled separately."
   }
 }

@@ -42,7 +42,7 @@ def staged(transcript, syllables, overall=88.0):
         {
             "stage": "reply",
             "reply": {"zh": "好的。", "pinyin": "hǎo de."},
-            "annotation": {"tone_errors": []},
+            "annotation": {"tone_errors": [], "coherent": True},
             "timings": {**TIMINGS, "total_ms": None},
             "elapsed_ms": 1240.0,
         },
@@ -52,7 +52,6 @@ def staged(transcript, syllables, overall=88.0):
         {
             "stage": "state",
             "state": {"filled_at": {}, "status": "active"},
-            "coherence": "on_track",
             "timings": {**TIMINGS, "total_ms": None},
             "elapsed_ms": 1245.0,
         },

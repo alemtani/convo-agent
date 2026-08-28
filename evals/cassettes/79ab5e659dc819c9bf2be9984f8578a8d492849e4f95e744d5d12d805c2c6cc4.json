@@ -1,0 +1,83 @@
+{
+  "key": "79ab5e659dc819c9bf2be9984f8578a8d492849e4f95e744d5d12d805c2c6cc4",
+  "model": "claude-sonnet-5",
+  "recorded_at": "2026-08-28T07:03:54+00:00",
+  "samples": [
+    {
+      "parsed_output": {
+        "rationale": "The line states outright that the fish is the best dish, directly answering the recommendation question without prompting. No mention of drinks is made.",
+        "volunteered": [
+          "recommendation"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 603,
+        "output_tokens": 133
+      }
+    },
+    {
+      "parsed_output": {
+        "rationale": "The line directly states that fish is the best dish, outright volunteering a recommendation without being asked. Drinks are not mentioned.",
+        "volunteered": [
+          "recommendation"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 603,
+        "output_tokens": 112
+      }
+    },
+    {
+      "parsed_output": {
+        "rationale": "The server states outright that the fish is the best dish, directly answering the recommendation fact without being asked to elaborate further. No mention of drinks is made.",
+        "volunteered": [
+          "recommendation"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 603,
+        "output_tokens": 104
+      }
+    },
+    {
+      "parsed_output": {
+        "rationale": "The line states outright that the fish is the best dish (\"鱼最好吃\"), directly answering the recommendation fact without being asked to withhold it. It says nothing about drinks.",
+        "volunteered": [
+          "recommendation"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 603,
+        "output_tokens": 115
+      }
+    },
+    {
+      "parsed_output": {
+        "rationale": "The server directly states '鱼最好吃' (the fish is the best), which outright provides the recommendation of which dish is good without being asked. No mention of drinks is made.",
+        "volunteered": [
+          "recommendation"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 603,
+        "output_tokens": 119
+      }
+    }
+  ],
+  "summary": "claude-sonnet-5 → WithholdingVerdict: The partner's line:\n鱼最好吃。"
+}

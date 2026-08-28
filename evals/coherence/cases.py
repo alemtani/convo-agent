@@ -15,7 +15,10 @@ import os
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 
-COHERENCE_TAGS = ("on_track", "drifting", "off_track")
+# A gate has one consequence, so coherence is binary (A4). The earlier three-tag
+# scheme existed to measure whether the signal separated gaming from earned
+# credit; it does, so `drifting` and `off_track` both fold into `incoherent`.
+COHERENCE_TAGS = ("coherent", "incoherent")
 
 GOLD_FILENAME = "gold.json"
 
@@ -77,7 +80,11 @@ class Gold:
     `coherence` is the tag a fair reader would give. `credit_ok` is the separate
     and more important question: **may this turn earn slot credit?** They are not
     the same field. A turn can wander and still establish a fact, and the whole
-    risk V1 carries is a gate that reads the first and decides the second.
+    risk the gate carries is that it reads the first and decides the second.
+
+    Since A4 the tag is the **partner's** judgment, so it is scored from
+    `evals/turn` — the runner that runs a partner — rather than from the
+    grader-only runner next door, which no longer produces one.
     """
 
     case_id: str

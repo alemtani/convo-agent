@@ -37,6 +37,13 @@ def add_arguments(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
         "What the scheduled re-record job runs, so the diff is the news.",
     )
     group.add_argument(
+        "--used-out",
+        help="write the keys this run reached to this path. `evals.cassette."
+        "sweep` takes the union across runners and deletes the rest — one "
+        "runner cannot decide that alone, because it never reaches the "
+        "other's keys.",
+    )
+    group.add_argument(
         "--cassettes",
         default=str(CassetteStore.default_root()),
         help="cassette directory (default: evals/cassettes)",
@@ -56,3 +63,14 @@ def client_from_args(args) -> CassetteClient:
         samples=getattr(args, "samples", 1),
         refresh=refresh,
     )
+
+
+def write_used(args, used) -> None:
+    """Record which keys a run reached, if `--used-out` asked for it."""
+    path = getattr(args, "used_out", None)
+    if not path:
+        return
+    import json
+
+    with open(path, "w", encoding="utf-8") as handle:
+        json.dump({"used": sorted(used)}, handle, indent=2)
