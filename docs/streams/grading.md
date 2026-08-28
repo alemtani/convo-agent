@@ -777,6 +777,73 @@ Two real sessions through the tunnel, then targeted draws against the live API
   piece of work and it needs a labelled set, not another prompt draft: the
   measurement above is four hand-built waves of five draws on one topic.
 
+  **A6.5 built that set, and this paragraph is wrong.** The real rate is 86%
+  (190/220 owed slots, 200 draws, four topics). One slot in five was this one
+  transcript, which is the corpus's only failure — five draws could not tell
+  a defect from a wave any more than three could tell A1 a fix from one.
+  Left standing above because it is what A6 believed, and the correction is the
+  point: see A6.5.
+
+### A6.5 — Earlier-turn recall, measured — **shipped, this PR**
+
+A6 closed on a number: the session review "is worth roughly one slot in five on
+earlier turns today". A6.5 built the corpus to check it, and **the number was
+wrong**.
+
+`evals/review/` is the third eval corpus in this stream, built like the other
+two: finished sessions in their own files, gold labels held apart from them,
+replayed off committed cassettes so the gate spends nothing. A case is a whole
+session as `/api/verdict` receives it — the opening line, every turn, and the
+`SessionState` the *live* grades produced, under-credited on purpose. The runner
+drives `feedback.review_session` itself rather than assembling the grader call,
+and records the **diff**: which slots entered `filled_at` that the client did not
+submit. Ten sessions, four topics, twenty draws each.
+
+**Baseline: 190 of 220 owed slots, over 200 draws. 0 spurious.**
+Full numbers in [`evals/review/RESULTS.md`](../../evals/review/RESULTS.md).
+
+Three things, and the third is the one that changes what A8 should do.
+
+- **86%, not 20%.** Nine of the eleven owed slots come back at 19/20 or 20/20
+  across four topics. A6's figure came from four waves of five draws on one
+  transcript — and that transcript turned out to be the corpus's only real
+  failure. This is A1's mistake again from the other side: A1 read three passes
+  as a fix, A6 read five draws as a defect.
+
+- **The add-only rule holds in practice.** Twenty draws of a session where the
+  learner asks nothing, with two slots sitting there to be wrongly given, and
+  the review gave neither. 0 spurious in 200. That is now asserted at every
+  draw rather than as a rate — a slot the pass invents reaches a card the
+  learner reads as truth and cannot be taken back.
+
+- **The whole loss is one slot, and it is not explained by either obvious
+  story.** `greetings/partner_name` — 你叫什么名字？ — moved through three
+  positions, holding topic, slot and wording still:
+
+  | where the question sits | recovered |
+  |---|---|
+  | the final turn | **20/20** |
+  | the oldest turn | 11/20 |
+  | mid-session | **0/20** |
+
+  Not the wording: the same seven characters recover 20/20 as the final turn.
+  Not the position: `family-size-question-mid-session` and
+  `food-drinks-question-mid-session` are the same shape — three turns, the only
+  owed slot on the middle one — and both recover 20/20. What is left is the
+  interaction. In the 0/20 session the learner gives their own name *first*, the
+  partner answers it, and `self_name` is already in the filled-slot note when
+  the name is asked back. Every draw reports `self_name` and `wellbeing` and
+  never mentions `partner_name`: the review reads the name exchange as one piece
+  of business already credited, and the second slot inside it disappears.
+
+**What this hands A8.** Its premise — that the prefix's weight dilutes the
+instruction that matters — is now open rather than established. A corpus at 86%
+with one localised failure between two sibling slots is not the picture that
+premise predicts, and cutting words may not touch it. Cut the prompt on its own
+merits, split it by caller because a live turn and a review are different jobs,
+and measure both against this gate. If the cut does not move
+`greetings-name-question-mid-session`, the honest report is that it did not.
+
 ### A7 — Feedback intake, and contesting a grade
 
 A button in the app. It opens a GitHub issue with the session transcript, the
@@ -799,6 +866,15 @@ Needs a server-side token and a rate limit. The client never sees the token.
 **The hypothesis A6 hands to this step: the `slots_filled_previously` weakness
 is context pollution, not a missing instruction.** Four wording variants moved
 nothing (A6). What none of them changed is the shape of the request they sit in.
+
+**A6.5 measured that weakness and it is smaller and stranger than this section
+assumes.** The review recovers 86% of what it owes (190/220 owed slots, 200
+draws, four topics) and invents nothing. The whole loss is one slot, and it
+survives both explanations prompt weight would offer: the same question recovers
+20/20 as the final turn, and the same mid-session shape recovers 20/20 on two
+other topics. So the case for cutting stands on its own merits — a shorter
+prompt is cheaper, faster and easier to reason about — and *not* on a promise to
+fix recall. Measure; report what moves and what does not.
 
 The grader's frozen prefix is 612 words. Of those, `slots_filled` gets five
 paragraphs — check every slot, judge meaning not wording, credit on the ask, a
@@ -843,6 +919,7 @@ measurement is how you lose credit you had.
 - ~~The `live` suite runs — the behavioral half in CI, the contact half on a
   schedule. Neither can rot unnoticed again.~~ **Done (A0.6).**
 - All four recorded misses pass.
+- ✅ The session review is measured, not asserted from a hand-built wave (A6.5): 190/220 owed slots over 200 draws, 0 spurious, gated in CI.
 - ✅ The grader returns slots and nothing else (A4).
 - The partner prompt fits on one screen, and the grader's does too (A8).
 - A learner can file a bug, or contest a grade, in three taps.
@@ -850,9 +927,13 @@ measurement is how you lose credit you had.
 ## Kickoff prompts
 
 One per step, each runnable as written. **A0 (PR #86), A1 (PR #90), A2 (PR #91),
-A3 (PR #95), A0.6 (PR #92), A1.5 (this PR), A4 (PR #97), A5 (PR #98) and A6 are
-done** — their prompts are retired. A6.5 is the next grade change, and it is a
-measurement before it is a fix.
+A3 (PR #95), A0.6 (PR #92), A1.5 (PR #96), A4 (PR #97), A5 (PR #98), A6
+(PR #99) and A6.5 (this PR) are done** — their prompts are retired. **A7 and A8
+are what is left, they are the parallel pair, and neither blocks the other**:
+different files (`main.py` + `frontend/` against `prompts.py`), and both feed
+`gold.json` — A7 produces labelled disagreements, A8 is measured against what
+A6.5 put there. Two free agents can run them concurrently in separate
+worktrees.
 
 Every one of these ends the same way, so it is said once here: work in a git
 worktree, write the failing test first, branch from `main`, conventional commits,
@@ -902,41 +983,103 @@ session with every slot already filled. What it did **not** settle is below.
 
 ### A6.5 — earlier-turn recall, measured
 
+Retired: shipped. `evals/review/` measures the session review against labelled
+finished sessions, twenty draws a case, off cassettes. The baseline is 190/220
+owed slots with 0 spurious, and the failure it found is narrower and stranger
+than A6 described — see the A6.5 section above and
+[`evals/review/RESULTS.md`](../../evals/review/RESULTS.md).
+
+**Still open from it, and now a real question rather than a hunch:** why
+`greetings/partner_name` is never recovered mid-session when the same words
+recover 20/20 as the final turn and the same *shape* recovers 20/20 on two other
+topics. A8 should test it; if a prompt cut does not move it, the next candidate
+is the one A6.5's evidence points at — a slot pair the review collapses into one
+already-credited event — and that is an authoring question
+(`description` / `expressible_with`) before it is a prompt one.
+
+### A7 — feedback intake, and contesting a grade
+
 ```
-Read docs/streams/grading.md, the A6 section. A6 shipped the session review:
-one grader call over the whole conversation before the card, add-only. Its
-ceiling is not the mechanism, it is recall — on a transcript whose turn 2 is
-你叫什么名字？, the pass reported that slot in `slots_filled_previously` in
-about one draw in five, while the same turn's 我叫小明 came back 5/5. The
-owed-turn recovery path scores the same, so this predates A6 and has never been
-measured.
+Read docs/streams/grading.md, the A7 section. Build feedback intake: a button in
+the app that files what went wrong, and a contest affordance pointed at one turn.
 
-Measure it properly, then fix it. Four hand-built waves of five draws on one
-topic is not a baseline.
+There is currently no recourse of any kind. You cannot repeat yourself in a
+conversation without it getting strange, so a turn graded wrong stays graded
+wrong and the learner watches it happen. That is the case to fix first — the
+general "something is off" button is the easier half.
 
-Build the cases the way A1 built the grader's: transcripts with a labelled
-`slots_filled_previously` for every earlier turn, across more than one topic,
-recorded through the cassette layer so the gate spends nothing. `evals/turn/`
-already drives whole sessions; a review case is a finished session plus the
-state the live grades produced, which that runner can emit.
+Two affordances, one mechanism:
 
-Then attack the gap with the sample count to tell a fix from a wave. Candidates,
-in the order they are worth trying:
+- **File a bug.** A control on the verdict card. It opens a GitHub issue with the
+  transcript, the scenario id, the slot state, and what the learner typed.
+- **Contest a grade.** The same POST, scoped to one turn: which turn, which slot
+  they believe they filled, and why. Reachable from the turn itself, not only
+  from the card — the moment they notice is the moment they are looking at it.
 
-- **Prompt weight and position — read A8 first, it is the leading hypothesis.**
-  The frozen prefix spends 612 words, gives `slots_filled_previously` one
-  sentence that says "leave it empty", and closes on "Grade the learner's final
-  turn." The review's note argues against all of that from after the breakpoint,
-  about turns sitting in the middle of the messages. Splitting the prefix by
-  caller is the honest fix; it re-records every grader cassette, so it needs the
-  eval first.
-- `GraderResult.slots_filled_previously` says **owed**, and the docstring
-  reaches the model (`messages.parse`). Widening it to *earlier* showed nothing
-  at 5 draws; it may show something at 30, and it costs a re-record.
-- One call per earlier turn instead of one call per session. Strictly more
-  recall and strictly more money, off the turn loop where latency is cheap —
-  measure before assuming the session-wide call is worth defending.
+Server-side: a route that opens the issue, a token that lives in the environment
+and never reaches the client, and a rate limit — this is an unauthenticated
+endpoint that writes to a public repo, so treat the limit as part of the
+feature, not a follow-up.
 
-Report the baseline first, as a rate with its sample count, before changing
-anything.
+Real red-green TDD, with the GitHub client mocked: the route builds the issue
+body it should, refuses an oversized transcript, refuses a contest naming a slot
+the scenario does not have, and is bounded by the rate limit. Nothing here is a
+model call.
+
+The deliverable is the labelled disagreement, so make the issue body machine-
+readable enough to become an eval case without retyping it — a fenced JSON block
+with the transcript, the state, the contested turn and the claimed slot, under
+the learner's own prose. A contested grade is the highest-value thing that can
+land in `gold.json`, and a filed issue is handled by: write the failing case,
+then fix, then close.
+
+Frontend PR, so raise a tunnel and file one real issue from the phone before the
+PR is ready — then close it.
+```
+
+### A8 — prompt weight
+
+```
+Read docs/streams/grading.md, the A8 section. Cut the grader's prompt, and decide
+what should not be in a prompt at all.
+
+Do A6.5 first. This step changes what the grader reads on every call, and
+cutting a prompt with no baseline loses credit you had — the measurement is the
+gate, not the intuition.
+
+The finding this starts from: the frozen prefix is 612 words, `slots_filled`
+gets five paragraphs, `slots_filled_previously` gets one sentence saying to
+leave it empty, and the prompt closes on "Grade the learner's final turn." A6
+tried four wordings of the review's note against that and moved nothing, which
+is the evidence that the note is not the load-bearing text.
+
+Read A6.5's numbers before you believe the rest of that. The review recovers
+86% of what it owes (190/220 owed slots, 200 draws, four topics) with nothing
+invented, and the entire loss is one slot that fails for a reason prompt length
+does not explain — the same question recovers 20/20 as the final turn, and the
+same mid-session shape recovers 20/20 on two other topics. **Cut the prompt
+because a shorter prompt is cheaper, faster and easier to reason about, not
+because it is going to fix recall.** If the cut does not move
+`greetings-name-question-mid-session`, say so.
+
+In order:
+
+1. **Cut.** Every sentence justifies its place against the A6.5 gate. A3's
+   multi-slot sweep is this stream's headline fix and stays; find what does not.
+2. **Split the prefix by caller.** A live turn and an end-of-session review are
+   different jobs arguing over one prompt. Give the review its own frozen prefix
+   — one that says *judge every turn* rather than *judge the final turn*. It
+   costs a second cache entry (they are per-model and per-prefix) and re-records
+   the grader's cassettes.
+3. **Then ask what should not be shipped on every call at all.** One correction
+   before you start: **Agent Skills do not attach to a plain `messages.parse`
+   call** — they need `container={"skills": [...]}`, the code-execution tool and
+   two beta headers, which is a container per call on the path the learner waits
+   behind. The API-native form of progressive disclosure here is deferred tool
+   loading (`tool_search`), or fetching the rubric as a tool result instead of
+   pinning it in the prefix. On a 612-word prefix that may not pay; establish
+   that it does before building it.
+
+Report every change as a rate against the A6.5 baseline, with its sample count.
+A prompt cut that reads better and grades worse is a regression.
 ```

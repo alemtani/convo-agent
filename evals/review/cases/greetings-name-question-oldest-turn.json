@@ -1,0 +1,49 @@
+{
+  "dialogue": [
+    {
+      "pinyin": "nǐ jiào shénme míngzi?",
+      "role": "user",
+      "zh": "你叫什么名字？"
+    },
+    {
+      "pinyin": "wǒ jiào Xiǎowáng.",
+      "role": "partner",
+      "zh": "我叫小王。"
+    },
+    {
+      "pinyin": "wǒ jiào Xiǎomíng.",
+      "role": "user",
+      "zh": "我叫小明。"
+    },
+    {
+      "pinyin": "hěn gāoxìng rènshi nǐ!",
+      "role": "partner",
+      "zh": "很高兴认识你！"
+    },
+    {
+      "pinyin": "nǐ zuìjìn zěnmeyàng?",
+      "role": "user",
+      "zh": "你最近怎么样？"
+    },
+    {
+      "pinyin": "wǒ hěn hǎo, xièxie.",
+      "role": "partner",
+      "zh": "我很好，谢谢。"
+    }
+  ],
+  "id": "greetings-name-question-oldest-turn",
+  "notes": "The same question and slot, moved to the oldest turn. Second point of the positional sweep.",
+  "opening_line": {
+    "pinyin": "nǐ hǎo!",
+    "zh": "你好！"
+  },
+  "state": {
+    "filled_at": {
+      "self_name": 2,
+      "wellbeing": 3
+    },
+    "last_graded_turn": 3,
+    "status": "complete"
+  },
+  "topic_id": "greetings"
+}

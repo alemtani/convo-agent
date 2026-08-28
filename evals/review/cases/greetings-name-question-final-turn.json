@@ -1,0 +1,49 @@
+{
+  "dialogue": [
+    {
+      "pinyin": "nǐ hǎo, wǒ jiào Xiǎomíng.",
+      "role": "user",
+      "zh": "你好，我叫小明。"
+    },
+    {
+      "pinyin": "nǐ hǎo, Xiǎomíng!",
+      "role": "partner",
+      "zh": "你好，小明！"
+    },
+    {
+      "pinyin": "nǐ zuìjìn zěnmeyàng?",
+      "role": "user",
+      "zh": "你最近怎么样？"
+    },
+    {
+      "pinyin": "wǒ hěn hǎo, xièxie.",
+      "role": "partner",
+      "zh": "我很好，谢谢。"
+    },
+    {
+      "pinyin": "nǐ jiào shénme míngzi?",
+      "role": "user",
+      "zh": "你叫什么名字？"
+    },
+    {
+      "pinyin": "wǒ jiào Xiǎowáng.",
+      "role": "partner",
+      "zh": "我叫小王。"
+    }
+  ],
+  "id": "greetings-name-question-final-turn",
+  "notes": "The same question and slot on the final turn, where the review reports it in `slots_filled`. The control the other two are read against: if the words themselves were the problem, this would fail too.",
+  "opening_line": {
+    "pinyin": "nǐ hǎo!",
+    "zh": "你好！"
+  },
+  "state": {
+    "filled_at": {
+      "self_name": 1,
+      "wellbeing": 2
+    },
+    "last_graded_turn": 3,
+    "status": "complete"
+  },
+  "topic_id": "greetings"
+}

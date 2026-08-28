@@ -1,0 +1,49 @@
+{
+  "dialogue": [
+    {
+      "pinyin": "nǐ hǎo, wǒ jiào Xiǎolǐ.",
+      "role": "user",
+      "zh": "你好，我叫小李。"
+    },
+    {
+      "pinyin": "nǐ hǎo!",
+      "role": "partner",
+      "zh": "你好！"
+    },
+    {
+      "pinyin": "nǐ jiào shénme míngzi?",
+      "role": "user",
+      "zh": "你叫什么名字？"
+    },
+    {
+      "pinyin": "wǒ jiào Xiǎowáng.",
+      "role": "partner",
+      "zh": "我叫小王。"
+    },
+    {
+      "pinyin": "nǐ zuìjìn zěnmeyàng?",
+      "role": "user",
+      "zh": "你最近怎么样？"
+    },
+    {
+      "pinyin": "wǒ hěn hǎo, xièxie.",
+      "role": "partner",
+      "zh": "我很好，谢谢。"
+    }
+  ],
+  "id": "greetings-name-statement-oldest-turn",
+  "notes": "The oldest turn as a plain statement — 我叫小李 — rather than a question. A6 saw the statement come back where the question did not.",
+  "opening_line": {
+    "pinyin": "nǐ hǎo!",
+    "zh": "你好！"
+  },
+  "state": {
+    "filled_at": {
+      "partner_name": 2,
+      "wellbeing": 3
+    },
+    "last_graded_turn": 3,
+    "status": "complete"
+  },
+  "topic_id": "greetings"
+}

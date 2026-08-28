@@ -1,0 +1,58 @@
+{
+  "dialogue": [
+    {
+      "pinyin": "nǐ hǎo.",
+      "role": "user",
+      "zh": "你好。"
+    },
+    {
+      "pinyin": "nǐ hǎo! yào diǎn shénme?",
+      "role": "partner",
+      "zh": "你好！要点什么？"
+    },
+    {
+      "pinyin": "shénme cài zuì hǎochī?",
+      "role": "user",
+      "zh": "什么菜最好吃？"
+    },
+    {
+      "pinyin": "jiǎozi hěn hǎochī.",
+      "role": "partner",
+      "zh": "饺子很好吃。"
+    },
+    {
+      "pinyin": "yǒu shénme hē de?",
+      "role": "user",
+      "zh": "有什么喝的？"
+    },
+    {
+      "pinyin": "yǒu chá, yě yǒu shuǐ.",
+      "role": "partner",
+      "zh": "有茶，也有水。"
+    },
+    {
+      "pinyin": "wǒ yào yì wǎn jiǎozi hé yì bēi chá.",
+      "role": "user",
+      "zh": "我要一碗饺子和一杯茶。"
+    },
+    {
+      "pinyin": "hǎo de, xièxie!",
+      "role": "partner",
+      "zh": "好的，谢谢！"
+    }
+  ],
+  "id": "food-two-questions-lost",
+  "notes": "Two request slots owed at once, at distances two and one. A review that stops at the first thing it finds looks identical to one that swept the list, unless a case owes more than one.",
+  "opening_line": {
+    "pinyin": "nǐ hǎo, yào diǎn shénme?",
+    "zh": "你好，要点什么？"
+  },
+  "state": {
+    "filled_at": {
+      "order": 4
+    },
+    "last_graded_turn": 4,
+    "status": "complete"
+  },
+  "topic_id": "food-ordering"
+}

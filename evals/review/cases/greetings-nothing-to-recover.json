@@ -1,0 +1,48 @@
+{
+  "dialogue": [
+    {
+      "pinyin": "nǐ hǎo, wǒ jiào Xiǎolǐ.",
+      "role": "user",
+      "zh": "你好，我叫小李。"
+    },
+    {
+      "pinyin": "nǐ hǎo! hěn gāoxìng rènshi nǐ.",
+      "role": "partner",
+      "zh": "你好！很高兴认识你。"
+    },
+    {
+      "pinyin": "xièxie.",
+      "role": "user",
+      "zh": "谢谢。"
+    },
+    {
+      "pinyin": "yě xièxie nǐ!",
+      "role": "partner",
+      "zh": "也谢谢你！"
+    },
+    {
+      "pinyin": "zàijiàn.",
+      "role": "user",
+      "zh": "再见。"
+    },
+    {
+      "pinyin": "zàijiàn!",
+      "role": "partner",
+      "zh": "再见！"
+    }
+  ],
+  "id": "greetings-nothing-to-recover",
+  "notes": "The spurious control. The learner greets, gives their name and leaves. They never ask the partner's name and never ask how they have been, so a review that reports either has invented it — and the pass is add-only, so it cannot be taken back.",
+  "opening_line": {
+    "pinyin": "nǐ hǎo!",
+    "zh": "你好！"
+  },
+  "state": {
+    "filled_at": {
+      "self_name": 1
+    },
+    "last_graded_turn": 3,
+    "status": "complete"
+  },
+  "topic_id": "greetings"
+}

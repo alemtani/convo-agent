@@ -78,6 +78,18 @@ jobs:
           --out evals/turn/observations.probes.json
           --used-out "$RUNNER_TEMP/used-turn-probes.json"
 
+      # A6.5's review corpus: whole sessions through the end-of-session pass.
+      # Twenty deep rather than five, because what this corpus measures is a
+      # rate and five draws is the sample count A6 could not read a fix out of.
+      # It is the most expensive step here — eight sessions x 20 Opus calls —
+      # and the depth is the reason it is worth that.
+      - name: Re-record the session-review cases
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: >
+          python -m evals.review.replay --record --refresh --samples 20
+          --repeat 20 --used-out "$RUNNER_TEMP/used-review.json"
+
       # The A0.6 behavioral evals: same layer, different corpus. No `--repeat`
       # here — this recorder loops `--samples` times directly, so the flag is
       # both the depth and the ceiling. `--samples 5` matches
@@ -90,7 +102,7 @@ jobs:
           python -m evals.behavior.record --record --refresh --samples 5
           --used-out "$RUNNER_TEMP/used-behavior.json"
 
-      # One store, four runs. None reaches the others' keys, so none can
+      # One store, five runs. None reaches the others' keys, so none can
       # decide alone what is stale — a runner that deleted what *it* did not
       # touch would take the other runners' whole corpus with it. The sweep
       # takes the union, and refuses if a manifest is missing, because a runner
@@ -108,6 +120,7 @@ jobs:
           python -m evals.cassette.sweep
           --used "$RUNNER_TEMP/used-coherence.json" "$RUNNER_TEMP/used-turn.json"
           "$RUNNER_TEMP/used-turn-probes.json" "$RUNNER_TEMP/used-behavior.json"
+          "$RUNNER_TEMP/used-review.json"
 
       - name: Show what moved
         run: git --no-pager diff --stat -- evals/cassettes

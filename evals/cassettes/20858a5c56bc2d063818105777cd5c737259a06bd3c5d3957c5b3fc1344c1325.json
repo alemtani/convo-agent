@@ -1,0 +1,368 @@
+{
+  "key": "20858a5c56bc2d063818105777cd5c737259a06bd3c5d3957c5b3fc1344c1325",
+  "model": "claude-opus-5",
+  "recorded_at": "2026-08-28T16:14:18+00:00",
+  "samples": [
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "sibling_age"
+        ],
+        "slots_filled_previously": [
+          "my_family",
+          "their_family_size"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 2138,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 331,
+        "output_tokens": 261
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "sibling_age"
+        ],
+        "slots_filled_previously": [
+          "my_family",
+          "their_family_size"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2138,
+        "input_tokens": 331,
+        "output_tokens": 173
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "sibling_age"
+        ],
+        "slots_filled_previously": [
+          "my_family",
+          "their_family_size"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2138,
+        "input_tokens": 331,
+        "output_tokens": 324
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "sibling_age"
+        ],
+        "slots_filled_previously": [
+          "my_family",
+          "their_family_size"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2138,
+        "input_tokens": 331,
+        "output_tokens": 161
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "sibling_age"
+        ],
+        "slots_filled_previously": [
+          "my_family",
+          "their_family_size"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2138,
+        "input_tokens": 331,
+        "output_tokens": 142
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "sibling_age"
+        ],
+        "slots_filled_previously": [
+          "my_family",
+          "their_family_size"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2138,
+        "input_tokens": 331,
+        "output_tokens": 187
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "sibling_age"
+        ],
+        "slots_filled_previously": [
+          "my_family",
+          "their_family_size"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2138,
+        "input_tokens": 331,
+        "output_tokens": 218
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "sibling_age"
+        ],
+        "slots_filled_previously": [
+          "my_family",
+          "their_family_size"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2138,
+        "input_tokens": 331,
+        "output_tokens": 262
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "sibling_age"
+        ],
+        "slots_filled_previously": [
+          "my_family",
+          "their_family_size"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2138,
+        "input_tokens": 331,
+        "output_tokens": 220
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "sibling_age"
+        ],
+        "slots_filled_previously": [
+          "my_family",
+          "their_family_size"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2138,
+        "input_tokens": 331,
+        "output_tokens": 237
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "sibling_age"
+        ],
+        "slots_filled_previously": [
+          "my_family",
+          "their_family_size"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2138,
+        "input_tokens": 331,
+        "output_tokens": 346
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "sibling_age"
+        ],
+        "slots_filled_previously": [
+          "my_family",
+          "their_family_size"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2138,
+        "input_tokens": 331,
+        "output_tokens": 213
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "sibling_age"
+        ],
+        "slots_filled_previously": [
+          "my_family",
+          "their_family_size"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2138,
+        "input_tokens": 331,
+        "output_tokens": 227
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "sibling_age"
+        ],
+        "slots_filled_previously": [
+          "my_family",
+          "their_family_size"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2138,
+        "input_tokens": 331,
+        "output_tokens": 263
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "sibling_age"
+        ],
+        "slots_filled_previously": [
+          "my_family",
+          "their_family_size"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2138,
+        "input_tokens": 331,
+        "output_tokens": 265
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "sibling_age"
+        ],
+        "slots_filled_previously": [
+          "my_family",
+          "their_family_size"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2138,
+        "input_tokens": 331,
+        "output_tokens": 158
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "sibling_age"
+        ],
+        "slots_filled_previously": [
+          "my_family",
+          "their_family_size"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2138,
+        "input_tokens": 331,
+        "output_tokens": 202
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "sibling_age"
+        ],
+        "slots_filled_previously": [
+          "my_family",
+          "their_family_size"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2138,
+        "input_tokens": 331,
+        "output_tokens": 186
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "sibling_age"
+        ],
+        "slots_filled_previously": [
+          "my_family",
+          "their_family_size"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2138,
+        "input_tokens": 331,
+        "output_tokens": 267
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "sibling_age"
+        ],
+        "slots_filled_previously": [
+          "my_family",
+          "their_family_size"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2138,
+        "input_tokens": 331,
+        "output_tokens": 231
+      }
+    }
+  ],
+  "summary": "claude-opus-5 → GraderResult: [The session is over, and all 4 of the learner's turns are …"
+}

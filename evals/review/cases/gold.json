@@ -1,0 +1,113 @@
+{
+  "family-my-family-oldest-turn": {
+    "already_credited": [
+      "their_family_size",
+      "sibling_age"
+    ],
+    "never_established": [],
+    "rationale": "我家有三口人 on turn 1 says how many people are in the learner's family. It names no members, which the slot description invites but does not require — the fact the goal asks for is the count.",
+    "recoverable": [
+      "my_family"
+    ]
+  },
+  "family-size-question-mid-session": {
+    "already_credited": [
+      "my_family",
+      "sibling_age"
+    ],
+    "never_established": [],
+    "rationale": "你家有几口人？ on turn 2, answered with 我家有五口人.",
+    "recoverable": [
+      "their_family_size"
+    ]
+  },
+  "food-drinks-question-mid-session": {
+    "already_credited": [
+      "recommendation",
+      "order"
+    ],
+    "never_established": [],
+    "rationale": "有什么喝的？ on turn 2, answered with 有茶和水. The ask is the whole of the slot.",
+    "recoverable": [
+      "drinks"
+    ]
+  },
+  "food-two-questions-lost": {
+    "already_credited": [
+      "order"
+    ],
+    "never_established": [],
+    "rationale": "Turn 2 asks which dish is best and turn 3 asks what there is to drink. Both are owed, at different distances, and a pass that reports only the nearer one has half-swept the list.",
+    "recoverable": [
+      "recommendation",
+      "drinks"
+    ]
+  },
+  "greetings-name-question-final-turn": {
+    "already_credited": [
+      "self_name",
+      "wellbeing"
+    ],
+    "never_established": [],
+    "rationale": "你叫什么名字？ is the final turn, so the review reports it in `slots_filled` rather than `slots_filled_previously`. Same slot and same words as the mid-session case; only the position moves.",
+    "recoverable": [
+      "partner_name"
+    ]
+  },
+  "greetings-name-question-mid-session": {
+    "already_credited": [
+      "self_name",
+      "wellbeing"
+    ],
+    "never_established": [],
+    "rationale": "Turn 2 of 3 is 你叫什么名字？ and the partner answered it. A request slot is filled on the ask. The same words on the final turn recover 20/20, so the words are not what fails here.",
+    "recoverable": [
+      "partner_name"
+    ]
+  },
+  "greetings-name-question-oldest-turn": {
+    "already_credited": [
+      "self_name",
+      "wellbeing"
+    ],
+    "never_established": [],
+    "rationale": "你叫什么名字？ as the oldest turn of the session, with the learner's own name given after it rather than before.",
+    "recoverable": [
+      "partner_name"
+    ]
+  },
+  "greetings-name-statement-oldest-turn": {
+    "already_credited": [
+      "partner_name",
+      "wellbeing"
+    ],
+    "never_established": [],
+    "rationale": "Turn 1 says 我叫小李 — a statement where the sibling cases carry a question, at the same distance.",
+    "recoverable": [
+      "self_name"
+    ]
+  },
+  "greetings-nothing-to-recover": {
+    "already_credited": [
+      "self_name"
+    ],
+    "never_established": [
+      "partner_name",
+      "wellbeing"
+    ],
+    "rationale": "The learner never asks the partner's name and never asks how they have been. There is nothing to recover, so anything the review reports here is credit nobody earned.",
+    "recoverable": []
+  },
+  "self-intro-ungraded-debt": {
+    "already_credited": [
+      "self_origin",
+      "self_job"
+    ],
+    "never_established": [],
+    "rationale": "你是哪国人？ on turn 3 and 你做什么工作？ on turn 4. The second is the final turn, so it returns in `slots_filled` rather than `slots_filled_previously` — the learner is owed both either way.",
+    "recoverable": [
+      "partner_origin",
+      "partner_job"
+    ]
+  }
+}
