@@ -1,7 +1,7 @@
 {
   "key": "2bc9ae91fe7d72d06dad70ffc2e8940a2eed3b7c41d29a3214516a30560948b6",
   "model": "claude-sonnet-5",
-  "recorded_at": "2026-08-28T07:04:15+00:00",
+  "recorded_at": "2026-08-28T16:32:18+00:00",
   "samples": [
     {
       "parsed_output": {
@@ -14,6 +14,19 @@
         "cache_read_input_tokens": 0,
         "input_tokens": 607,
         "output_tokens": 80
+      }
+    },
+    {
+      "parsed_output": {
+        "rationale": "The server's line simply asks the customers what they want to eat; it does not state which dish is good or what drinks are available. Neither fact is given outright.",
+        "volunteered": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 607,
+        "output_tokens": 101
       }
     }
   ],

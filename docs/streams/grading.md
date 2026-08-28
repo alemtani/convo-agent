@@ -861,7 +861,7 @@ that can land in `gold.json`.
 
 Needs a server-side token and a rate limit. The client never sees the token.
 
-### A8 — Prompt weight, and moving what is left out of the prompt
+### A8 — Prompt weight, and moving what is left out of the prompt — **shipped, this PR**
 
 **The hypothesis A6 hands to this step: the `slots_filled_previously` weakness
 is context pollution, not a missing instruction.** Four wording variants moved
@@ -912,6 +912,57 @@ What to do about it, cheapest first:
 Ordering: this is downstream of A6.5's baseline. Cutting a prompt with no
 measurement is how you lose credit you had.
 
+### What A8 did, and what it was worth
+
+**One prefix serving two callers became two, one per caller.** The live turn's
+prefix says *grade the final turn*. The review's says *judge every turn* and
+carries, in its frozen block, the instruction that used to arrive as a note
+after the cache breakpoint. `render_review_note` is what is left of that note:
+the turn count, one sentence, because the count is the only part of it that is
+volatile.
+
+**Measured on A6.5's gate: 190/220 → 199/220 (86% → 90%), 200 draws, 0 spurious
+both times.** Nearly all of it is one case. `greetings-name-question-mid-session`
+— never recovered on the old prompt, 0/20 — is now **11/20**. Not one word of
+the three slot rules changed for it; what changed is that the instruction asking
+for earlier turns is at the top of the request instead of behind the breakpoint,
+arguing with a block that had already said *"That pair is the whole of what you
+need"* and *"Grade the learner's final turn."* One case moved the other way,
+11/20 → 8/20, which at those counts is noise and is reported as noise.
+
+**Weight, since that was the framing.** The turn prefix is 1079 → 913 tokens
+(−15%) and the review call's instructions 1323 → 1073 (−19%). The turn prefix
+stays **above Opus 5's 512-token minimum cacheable prefix** — a cut that took it
+under would have stopped the prefix caching, silently, with the bill as the only
+symptom.
+
+**The plan's cost estimate was backwards.** It expected the split to cost a
+second cache entry. The review is one call per session, so a cached prefix there
+is written at 1.25x and read zero times — break-even is two reads, the arithmetic
+`workers/feedback.py` already applies to the verdict call. So the review's prefix
+is deliberately **not** cached, and the split is a saving.
+
+**Step 3 was measured and declined.** The only deferrable content is the rubric
+block — 211 tokens, 23% of the turn prefix. `tool_search` works by deferring
+*tools*, and the grader's only tool is the `GraderResult` schema
+`messages.parse` renders; making the rubric fetchable means a real tool and an
+agentic round-trip, two API calls where there is one, on the path the learner
+waits behind. What it buys is 211 tokens of cache read at 0.1x — about a
+hundredth of a cent a turn. It does not pay, and it would not have paid at 612
+words. The instinct is right and the split already answers it, for free: the
+review's instructions are no longer sent on turn calls at all.
+
+**And a gate had to be fixed on the way.** The first re-record went red on
+`computer-work-ni-ne` — 3/5 against a 4/5 floor — and read as a regression the
+cut had caused. It was not: twenty draws give 16/20 on the new prompt and 17/20
+on the old, and a 4-of-5 gate at that rate false-fails about a quarter of the
+time. A5's "0 missed of 55" and A3's "3/3" were the same coin landing the other
+way. The dense gate is now twenty draws with a floor of fourteen, and the weekly
+job tops those three cases up to depth. Same lesson as A6.5, in the last place
+the stream had not applied it.
+
+Full numbers: [`evals/review/RESULTS.md`](../../evals/review/RESULTS.md).
+
 ## Done when
 
 - The cassette suite runs in CI, spends nothing, and is a merge gate — the
@@ -921,19 +972,19 @@ measurement is how you lose credit you had.
 - All four recorded misses pass.
 - ✅ The session review is measured, not asserted from a hand-built wave (A6.5): 190/220 owed slots over 200 draws, 0 spurious, gated in CI.
 - ✅ The grader returns slots and nothing else (A4).
-- The partner prompt fits on one screen, and the grader's does too (A8).
+- ✅ The partner prompt fits on one screen, and the grader's does too — one per caller, 913 and 1037 tokens, down from one 1079-token prefix serving both (A8).
 - A learner can file a bug, or contest a grade, in three taps.
 
 ## Kickoff prompts
 
 One per step, each runnable as written. **A0 (PR #86), A1 (PR #90), A2 (PR #91),
 A3 (PR #95), A0.6 (PR #92), A1.5 (PR #96), A4 (PR #97), A5 (PR #98), A6
-(PR #99) and A6.5 (this PR) are done** — their prompts are retired. **A7 and A8
-are what is left, they are the parallel pair, and neither blocks the other**:
-different files (`main.py` + `frontend/` against `prompts.py`), and both feed
-`gold.json` — A7 produces labelled disagreements, A8 is measured against what
-A6.5 put there. Two free agents can run them concurrently in separate
-worktrees.
+(PR #99), A6.5 and A8 are done** — their prompts are retired. **A7 is what is
+left of this stream**, and the open work A8 handed on is a *slot-authoring*
+question rather than a prompt one: why the review collapses `self_name` and
+`partner_name` when the learner gives their own name first. It has a labelled
+case (`greetings-name-question-mid-session`, 11/20) and a gate already watching
+it.
 
 Every one of these ends the same way, so it is said once here: work in a git
 worktree, write the failing test first, branch from `main`, conventional commits,
@@ -1039,47 +1090,17 @@ PR is ready — then close it.
 
 ### A8 — prompt weight
 
-```
-Read docs/streams/grading.md, the A8 section. Cut the grader's prompt, and decide
-what should not be in a prompt at all.
+Retired: shipped. The grader's prefix is split by caller, the review's
+instruction lives in its own frozen block instead of in a note behind the cache
+breakpoint, and the review's prefix is uncached because it is read once. Recall
+on A6.5's gate went 190/220 to 199/220; the case that was 0/20 is 11/20. Weight
+is down 15% on the turn prefix and 19% on the review call. Deferred tool loading
+was costed and declined — see the A8 section above.
 
-Do A6.5 first. This step changes what the grader reads on every call, and
-cutting a prompt with no baseline loses credit you had — the measurement is the
-gate, not the intuition.
+**What it did not fix**, and the next candidate: `greetings-name-question-mid-session`
+is 11/20, not 20/20. A6.5's hypothesis is still the best account of the rest —
+the review collapses `self_name` and `partner_name` into one already-credited
+piece of business when the learner gives their own name first — and that is an
+authoring question (`description`, `expressible_with`) before it is a prompt one.
+It has a labelled case and a gate waiting for it.
 
-The finding this starts from: the frozen prefix is 612 words, `slots_filled`
-gets five paragraphs, `slots_filled_previously` gets one sentence saying to
-leave it empty, and the prompt closes on "Grade the learner's final turn." A6
-tried four wordings of the review's note against that and moved nothing, which
-is the evidence that the note is not the load-bearing text.
-
-Read A6.5's numbers before you believe the rest of that. The review recovers
-86% of what it owes (190/220 owed slots, 200 draws, four topics) with nothing
-invented, and the entire loss is one slot that fails for a reason prompt length
-does not explain — the same question recovers 20/20 as the final turn, and the
-same mid-session shape recovers 20/20 on two other topics. **Cut the prompt
-because a shorter prompt is cheaper, faster and easier to reason about, not
-because it is going to fix recall.** If the cut does not move
-`greetings-name-question-mid-session`, say so.
-
-In order:
-
-1. **Cut.** Every sentence justifies its place against the A6.5 gate. A3's
-   multi-slot sweep is this stream's headline fix and stays; find what does not.
-2. **Split the prefix by caller.** A live turn and an end-of-session review are
-   different jobs arguing over one prompt. Give the review its own frozen prefix
-   — one that says *judge every turn* rather than *judge the final turn*. It
-   costs a second cache entry (they are per-model and per-prefix) and re-records
-   the grader's cassettes.
-3. **Then ask what should not be shipped on every call at all.** One correction
-   before you start: **Agent Skills do not attach to a plain `messages.parse`
-   call** — they need `container={"skills": [...]}`, the code-execution tool and
-   two beta headers, which is a container per call on the path the learner waits
-   behind. The API-native form of progressive disclosure here is deferred tool
-   loading (`tool_search`), or fetching the rubric as a tool result instead of
-   pinning it in the prefix. On a 612-word prefix that may not pay; establish
-   that it does before building it.
-
-Report every change as a rate against the A6.5 baseline, with its sample count.
-A prompt cut that reads better and grades worse is a regression.
-```

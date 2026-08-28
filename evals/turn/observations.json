@@ -301,7 +301,6 @@
       "reading_zh": "我做电脑工作，你呢？",
       "slots_filled": [
         "partner_job",
-        "partner_origin",
         "self_job"
       ],
       "volunteered": [],
@@ -437,6 +436,7 @@
       "reading_zh": "我做电脑工作，你呢？",
       "slots_filled": [
         "partner_job",
+        "partner_origin",
         "self_job"
       ],
       "volunteered": [],

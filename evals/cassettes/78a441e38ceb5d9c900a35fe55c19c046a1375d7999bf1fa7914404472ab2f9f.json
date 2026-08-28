@@ -1,7 +1,7 @@
 {
   "key": "78a441e38ceb5d9c900a35fe55c19c046a1375d7999bf1fa7914404472ab2f9f",
   "model": "claude-sonnet-5",
-  "recorded_at": "2026-08-28T07:01:50+00:00",
+  "recorded_at": "2026-08-28T16:30:35+00:00",
   "samples": [
     {
       "parsed_output": {
@@ -40,6 +40,32 @@
         "cache_read_input_tokens": 0,
         "input_tokens": 606,
         "output_tokens": 95
+      }
+    },
+    {
+      "parsed_output": {
+        "rationale": "The server merely asks what the customer wants to eat, without stating any recommended dish or naming any drink options.",
+        "volunteered": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 606,
+        "output_tokens": 113
+      }
+    },
+    {
+      "parsed_output": {
+        "rationale": "The line simply asks the customer what they'd like to eat, without stating any recommended dish or listing available drinks.",
+        "volunteered": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 606,
+        "output_tokens": 94
       }
     }
   ],

@@ -467,11 +467,12 @@ async def test_a_failed_review_scores_as_a_draw_that_recovered_nothing(monkeypat
 
 REVIEW_DRAWS = 20
 
-# Nine of the eleven owed slots come back at 20/20 (`evals/review/RESULTS.md`).
-# The two that do not are the same slot in two positions, and the floor is set
-# under the total those numbers produce, not at it — the corpus is re-recorded
-# weekly and a floor set exactly at the measurement fails on noise.
-REVIEW_MIN_RECALL = 0.80
+# A6.5 measured 190/220 (86%) on the prompt it inherited and set this floor at
+# 0.80. A8 split the grader's prefix by caller and the measurement moved to
+# 199/220 (90%), so the floor moves under the new number the same way it sat
+# under the old one — a regression guard, not a target, with room for the noise
+# a weekly re-record introduces.
+REVIEW_MIN_RECALL = 0.85
 
 
 async def _draws_for(case):

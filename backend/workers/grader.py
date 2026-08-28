@@ -30,6 +30,7 @@ from backend.models import DialogueTurn, GraderResult
 from backend.prompts import (
     render_filled_note,
     render_grader_prompt,
+    render_grader_review_prompt,
     render_review_note,
     render_window_note,
 )
@@ -163,8 +164,19 @@ def build_request(
         # judgment was hardest.
         "max_tokens": config.GRADER_MAX_TOKENS,
         "output_config": {"effort": config.GRADER_EFFORT},
+        # **Two prefixes, one per caller (A8).** A live turn and an
+        # end-of-session review are different jobs, and one prompt serving both
+        # meant the review's instruction arrived after the breakpoint arguing
+        # with a frozen block that had said the opposite.
+        #
+        # Only the turn's prefix is cached. The review runs **once per session**,
+        # so a cache write there costs 1.25x and is read zero times —
+        # break-even is two reads, the same arithmetic the verdict call already
+        # makes (`workers/feedback.py`).
         "system": [
-            {
+            {"type": "text", "text": render_grader_review_prompt(scenario)}
+            if review
+            else {
                 "type": "text",
                 "text": render_grader_prompt(scenario),
                 "cache_control": {"type": "ephemeral"},

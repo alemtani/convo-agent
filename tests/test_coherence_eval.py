@@ -615,17 +615,23 @@ def _gold_with_slots(case_id, slots, credit_ok=True):
 # `milk-and-biscuits` was nearer 6/10. A gate you pass by luck is worse than no
 # gate, because it is read as evidence.
 #
-# So the corpus records `DENSE_SAMPLES` draws and the gate is `DENSE_MIN_EXACT`
-# of them. Five and four: at a true rate of 0.95 that false-fails 2% of the
-# time, and ten samples buys more power to catch a *mediocre* case rather than
-# more protection for a good one. Re-recording is the only thing that spends
-# money, so the sample count is the weekly job's bill, not every PR's.
+# **Five draws was still too few, and A8 found out the expensive way.** The
+# gate ran at `DENSE_SAMPLES = 5, DENSE_MIN_EXACT = 4` and went red on
+# `computer-work-ni-ne` the first time A8 re-recorded — 3/5, read as a
+# regression the prompt cut had caused. Measured at twenty draws it is 16/20 on
+# the new prompt and 17/20 on the old: no regression, and a gate that
+# false-fails about a quarter of the time at the rate this case actually has.
+# A5's "0 missed of 55" and A3's "3/3" were the same coin landing the other way.
+#
+# So the depth moved to twenty and the floor to fourteen. At a true rate of 0.85
+# that false-fails about 2% of the time and still catches a case that has slipped
+# to 0.6. The cost is the weekly job's, not every PR's — replay spends nothing.
 #
 # The observed rate goes in the failure message on purpose. A case that scrapes
-# through at 4/5 must not read the same as one at 5/5.
+# through must not read the same as one at 20/20.
 
-DENSE_SAMPLES = 5
-DENSE_MIN_EXACT = 4
+DENSE_SAMPLES = 20
+DENSE_MIN_EXACT = 14
 
 A1_DENSE_CASES = (
     "milk-and-biscuits",

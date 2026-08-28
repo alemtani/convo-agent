@@ -738,14 +738,46 @@ async def test_the_review_asks_for_a_review_not_a_settled_debt(monkeypatch):
 
 def test_the_review_note_is_not_the_owed_turn_note():
     review = prompts.render_review_note(3)
-    # It asks for every turn, and it says so as an instruction rather than as a
-    # reassurance — "nothing you leave out is taken away" reads as licence to
-    # leave things out, and measured that way (see docs/streams/grading.md A6).
-    assert "all 3 of the learner's turns" in review
-    assert "earlier turn" in review
+    # It states the turn count and nothing else. A8 moved every instruction it
+    # used to carry into the review's own prefix — the note was arguing with a
+    # frozen block from after the cache breakpoint, which is exactly where an
+    # instruction is weakest.
+    assert "All 3 of the learner's turns" in review
     assert "never judged" not in review
     # A one-turn session still reads as a review of that turn.
     assert prompts.render_review_note(1) is not None
+
+
+def test_the_review_asks_for_every_turn_in_its_prefix_not_in_a_note():
+    """A8. The instruction that matters is frozen at the top of the request,
+    where the model reads best, instead of appended to the last user message
+    behind the cache breakpoint."""
+    prefix = prompts.render_grader_review_prompt(kb.load_scenario("greetings"))
+
+    assert "Judge every turn" in prefix
+    assert "slots_filled_previously" in prefix
+    # And the live turn's prefix no longer carries the sentence the note had to
+    # argue with.
+    turn = prompts.render_grader_prompt(kb.load_scenario("greetings"))
+    assert "slots_filled_previously" not in turn
+
+
+def test_the_review_prefix_is_not_cached():
+    """One call per session, so a cache write is paid at 1.25x and read zero
+    times. Break-even is two reads — the arithmetic the verdict call already
+    makes."""
+    request = grader.build_request(
+        scenario=kb.load_scenario("greetings"),
+        dialogue=_dialogue(3)[:4], user_text="我叫小明", window=3, review=True,
+    )
+
+    assert "cache_control" not in request["system"][0]
+
+    live = grader.build_request(
+        scenario=kb.load_scenario("greetings"),
+        dialogue=_dialogue(3)[:4], user_text="我叫小明",
+    )
+    assert live["system"][0]["cache_control"] == {"type": "ephemeral"}
 
 
 async def test_a_completed_card_never_excuses_turns_it_did_not_check(monkeypatch):

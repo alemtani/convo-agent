@@ -1,0 +1,83 @@
+{
+  "key": "d1b62aae3f768d85cf2c1b03ac04fafb4b0c298a1b922a8b75661e3aacacde8b",
+  "model": "claude-opus-5",
+  "recorded_at": "2026-08-28T16:33:10+00:00",
+  "samples": [
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "partner_name"
+        ],
+        "slots_filled_previously": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 1910,
+        "input_tokens": 35,
+        "output_tokens": 31
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "partner_name"
+        ],
+        "slots_filled_previously": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 1910,
+        "input_tokens": 35,
+        "output_tokens": 56
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "partner_name"
+        ],
+        "slots_filled_previously": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 1910,
+        "input_tokens": 35,
+        "output_tokens": 63
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "partner_name"
+        ],
+        "slots_filled_previously": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 1910,
+        "input_tokens": 35,
+        "output_tokens": 63
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "partner_name"
+        ],
+        "slots_filled_previously": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 1910,
+        "input_tokens": 35,
+        "output_tokens": 60
+      }
+    }
+  ],
+  "summary": "claude-opus-5 → GraderResult: [The partner opened the conversation with: 早上好！]\n早上好，你叫什么名字？"
+}

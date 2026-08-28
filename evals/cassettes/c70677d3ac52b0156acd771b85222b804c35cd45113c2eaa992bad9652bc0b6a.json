@@ -1,7 +1,7 @@
 {
   "key": "c70677d3ac52b0156acd771b85222b804c35cd45113c2eaa992bad9652bc0b6a",
   "model": "claude-sonnet-5",
-  "recorded_at": "2026-08-28T07:03:21+00:00",
+  "recorded_at": "2026-08-28T16:32:06+00:00",
   "samples": [
     {
       "parsed_output": {
@@ -16,6 +16,21 @@
         "cache_read_input_tokens": 0,
         "input_tokens": 609,
         "output_tokens": 113
+      }
+    },
+    {
+      "parsed_output": {
+        "rationale": "The server's line states specific drink options (tea or water) outright rather than waiting to be asked what's available, directly revealing the drinks information.",
+        "volunteered": [
+          "drinks"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 609,
+        "output_tokens": 121
       }
     }
   ],

@@ -1,7 +1,7 @@
 {
   "key": "9440da792eb2ab4bbf386ca482dea10c29595c3f93aa384b7d751ccaa7eed7a0",
   "model": "claude-sonnet-5",
-  "recorded_at": "2026-08-28T07:01:40+00:00",
+  "recorded_at": "2026-08-28T16:30:29+00:00",
   "samples": [
     {
       "parsed_output": {
@@ -27,6 +27,19 @@
         "cache_read_input_tokens": 0,
         "input_tokens": 569,
         "output_tokens": 106
+      }
+    },
+    {
+      "parsed_output": {
+        "rationale": "The line only states '我是学生' (I am a student), which addresses occupation, not origin. It does not state where the partner is from, so partner_origin is not volunteered.",
+        "volunteered": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 569,
+        "output_tokens": 120
       }
     }
   ],

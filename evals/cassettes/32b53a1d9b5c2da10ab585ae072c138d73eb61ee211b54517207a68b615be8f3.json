@@ -1,7 +1,7 @@
 {
   "key": "32b53a1d9b5c2da10ab585ae072c138d73eb61ee211b54517207a68b615be8f3",
   "model": "claude-sonnet-5",
-  "recorded_at": "2026-08-28T06:59:37+00:00",
+  "recorded_at": "2026-08-28T16:30:52+00:00",
   "samples": [
     {
       "parsed_output": {
@@ -14,6 +14,19 @@
         "cache_read_input_tokens": 0,
         "input_tokens": 607,
         "output_tokens": 72
+      }
+    },
+    {
+      "parsed_output": {
+        "rationale": "The server simply asks what the customer would like to order, without stating any recommended dish or listing available drinks.",
+        "volunteered": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 607,
+        "output_tokens": 50
       }
     }
   ],

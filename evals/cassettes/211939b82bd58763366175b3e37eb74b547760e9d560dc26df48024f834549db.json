@@ -1,0 +1,73 @@
+{
+  "key": "211939b82bd58763366175b3e37eb74b547760e9d560dc26df48024f834549db",
+  "model": "claude-opus-5",
+  "recorded_at": "2026-08-28T16:32:52+00:00",
+  "samples": [
+    {
+      "parsed_output": {
+        "slots_filled": [],
+        "slots_filled_previously": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 1919,
+        "input_tokens": 30,
+        "output_tokens": 28
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [],
+        "slots_filled_previously": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 1919,
+        "input_tokens": 30,
+        "output_tokens": 27
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [],
+        "slots_filled_previously": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 1919,
+        "input_tokens": 30,
+        "output_tokens": 26
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [],
+        "slots_filled_previously": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 1919,
+        "input_tokens": 30,
+        "output_tokens": 39
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [],
+        "slots_filled_previously": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 1919,
+        "input_tokens": 30,
+        "output_tokens": 28
+      }
+    }
+  ],
+  "summary": "claude-opus-5 → GraderResult: [The partner opened the conversation with: 你好！你要点什么？]\n你好"
+}

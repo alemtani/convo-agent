@@ -1,0 +1,47 @@
+{
+  "key": "fa6cf418dc533fdee8bf46c3b9ae3a37be65664e6226060ce08dd5e722a36dbb",
+  "model": "claude-opus-5",
+  "recorded_at": "2026-08-28T16:32:57+00:00",
+  "samples": [
+    {
+      "parsed_output": {
+        "slots_filled": [],
+        "slots_filled_previously": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 1919,
+        "input_tokens": 33,
+        "output_tokens": 32
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [],
+        "slots_filled_previously": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 1919,
+        "input_tokens": 33,
+        "output_tokens": 32
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [],
+        "slots_filled_previously": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 1919,
+        "input_tokens": 33,
+        "output_tokens": 32
+      }
+    }
+  ],
+  "summary": "claude-opus-5 → GraderResult: [The partner opened the conversation with: 你好！你要点什么？]\n我很饿。"
+}

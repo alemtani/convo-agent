@@ -1,7 +1,7 @@
 {
   "key": "22692a54d5e9a85bd4b8b9012c40c261b7c673f2d8909c8bdd2872dd385cce0c",
   "model": "claude-sonnet-5",
-  "recorded_at": "2026-08-28T06:57:16+00:00",
+  "recorded_at": "2026-08-28T16:30:08+00:00",
   "samples": [
     {
       "parsed_output": {
@@ -14,6 +14,19 @@
         "cache_read_input_tokens": 0,
         "input_tokens": 586,
         "output_tokens": 83
+      }
+    },
+    {
+      "parsed_output": {
+        "rationale": "The line only responds about how they're doing ('I'm also fine, thank you!') and does not state their name.",
+        "volunteered": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 586,
+        "output_tokens": 78
       }
     }
   ],

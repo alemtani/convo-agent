@@ -1,7 +1,7 @@
 {
   "key": "136d7707ead141bf6a04fb155ffce1115693ad5c6cfcca32a68e9b9c5c79ae28",
   "model": "claude-sonnet-5",
-  "recorded_at": "2026-08-28T07:00:08+00:00",
+  "recorded_at": "2026-08-28T16:31:09+00:00",
   "samples": [
     {
       "parsed_output": {
@@ -16,6 +16,21 @@
         "cache_read_input_tokens": 0,
         "input_tokens": 609,
         "output_tokens": 143
+      }
+    },
+    {
+      "parsed_output": {
+        "rationale": "The server states specific drink options (tea or water) outright, without being asked what drinks are available. No mention of dish recommendations.",
+        "volunteered": [
+          "drinks"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 609,
+        "output_tokens": 121
       }
     }
   ],

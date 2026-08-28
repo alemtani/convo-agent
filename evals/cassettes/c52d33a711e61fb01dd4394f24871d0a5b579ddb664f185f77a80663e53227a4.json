@@ -1,0 +1,355 @@
+{
+  "key": "c52d33a711e61fb01dd4394f24871d0a5b579ddb664f185f77a80663e53227a4",
+  "model": "claude-opus-5",
+  "recorded_at": "2026-08-28T16:47:37+00:00",
+  "samples": [
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "wellbeing"
+        ],
+        "slots_filled_previously": [
+          "partner_name",
+          "self_name"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 2137,
+        "output_tokens": 454
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [],
+        "slots_filled_previously": [
+          "self_name",
+          "wellbeing"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 2137,
+        "output_tokens": 625
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "wellbeing"
+        ],
+        "slots_filled_previously": [
+          "partner_name",
+          "self_name"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 2137,
+        "output_tokens": 251
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "wellbeing"
+        ],
+        "slots_filled_previously": [
+          "self_name"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 2137,
+        "output_tokens": 405
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "wellbeing"
+        ],
+        "slots_filled_previously": [
+          "self_name"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 2137,
+        "output_tokens": 325
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "wellbeing"
+        ],
+        "slots_filled_previously": [
+          "partner_name",
+          "self_name"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 2137,
+        "output_tokens": 459
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "wellbeing"
+        ],
+        "slots_filled_previously": [
+          "partner_name",
+          "self_name"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 2137,
+        "output_tokens": 308
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "wellbeing"
+        ],
+        "slots_filled_previously": [
+          "self_name"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 2137,
+        "output_tokens": 302
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "wellbeing"
+        ],
+        "slots_filled_previously": [
+          "self_name"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 2137,
+        "output_tokens": 280
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "wellbeing"
+        ],
+        "slots_filled_previously": [
+          "self_name",
+          "wellbeing"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 2137,
+        "output_tokens": 507
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "wellbeing"
+        ],
+        "slots_filled_previously": [
+          "self_name"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 2137,
+        "output_tokens": 367
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "wellbeing"
+        ],
+        "slots_filled_previously": [
+          "self_name"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 2137,
+        "output_tokens": 470
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "wellbeing"
+        ],
+        "slots_filled_previously": [
+          "self_name"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 2137,
+        "output_tokens": 406
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "wellbeing"
+        ],
+        "slots_filled_previously": [
+          "partner_name",
+          "self_name"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 2137,
+        "output_tokens": 441
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "wellbeing"
+        ],
+        "slots_filled_previously": [
+          "partner_name",
+          "self_name"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 2137,
+        "output_tokens": 458
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [],
+        "slots_filled_previously": [
+          "self_name",
+          "wellbeing"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 2137,
+        "output_tokens": 435
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "wellbeing"
+        ],
+        "slots_filled_previously": [
+          "partner_name",
+          "self_name"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 2137,
+        "output_tokens": 454
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "wellbeing"
+        ],
+        "slots_filled_previously": [
+          "self_name"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 2137,
+        "output_tokens": 372
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "wellbeing"
+        ],
+        "slots_filled_previously": [
+          "self_name"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 2137,
+        "output_tokens": 533
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "wellbeing"
+        ],
+        "slots_filled_previously": [
+          "self_name",
+          "partner_name"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 2137,
+        "output_tokens": 504
+      }
+    }
+  ],
+  "summary": "claude-opus-5 → GraderResult: [The session is over. All 3 of the learner's turns are show…"
+}

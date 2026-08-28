@@ -1,0 +1,21 @@
+{
+  "key": "bb8bffd6740c5d963efd3bcf7b36833d48dc4716595a9be137d0c0d74ab89bf4",
+  "model": "claude-sonnet-5",
+  "recorded_at": "2026-08-28T16:31:03+00:00",
+  "samples": [
+    {
+      "parsed_output": {
+        "rationale": "The line states the partner's occupation (a student studying at university) but does not mention or state where they are from. Since partner_origin is not addressed, it is not volunteered.",
+        "volunteered": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 576,
+        "output_tokens": 127
+      }
+    }
+  ],
+  "summary": "claude-sonnet-5 → WithholdingVerdict: The partner's line:\n我是学生，我在大学学习。"
+}

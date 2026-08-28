@@ -127,15 +127,26 @@ def render_sketch_prompt(scenario: Scenario) -> str:
     )
 
 
-_GRADER_PROMPT_TEMPLATE = """\
-You are grading one turn of a Mandarin conversation practice session for a \
-beginner learner (HSK 3.0, bands 1–2). You are not the conversation partner. \
-You have no character to play and no reply to write. Judge what the learner \
-did, and nothing else.
+# The grader's prefix, in three parts and two frames (A8).
+#
+# One prompt used to serve two callers. A live turn judges the learner's last
+# words; the end-of-session review judges every turn of a finished session. They
+# were sharing a prefix that says "That pair is the whole of what you need" and
+# closes on "Grade the learner's final turn" — so the review's instruction to
+# sweep the session arrived *after* the cache breakpoint, arguing with a frozen
+# block that had already told the model the opposite twice.
+#
+# So the parts that are true for both callers are named once, and each caller
+# gets a frame that is true for it. Nothing is said twice and nothing is said
+# to the wrong caller.
 
-You are shown the conversation so far, ending with the partner's most recent \
-line and then the learner's turn. That pair is the whole of what you need.
+_GRADER_ROLE = """\
+You are grading a Mandarin conversation practice session for a beginner learner \
+(HSK 3.0, bands 1–2). You are not the conversation partner. You have no \
+character to play and no reply to write. Judge what the learner did, and \
+nothing else."""
 
+_GRADER_RUBRIC = """\
 The scene the two of them are in:
 {situation}
 
@@ -143,51 +154,98 @@ The learner is working toward this goal:
 {goal}
 
 It is made of these named facts — the slots:
-{slots_block}
+{slots_block}"""
 
-Return, as structured output:
+# How to judge one turn. True whoever is asking, so it is written once and both
+# frames include it. A3's multi-slot sweep is the first paragraph and stays: it
+# is this stream's headline fix.
+_SLOT_RULES = """\
+**One turn usually fills more than one slot.** Go through the slot list one \
+slot at a time, and for each ask: did this turn establish it? Report every slot \
+the answer is yes for. A learner packs a greeting, two questions and an order \
+into one breath, in any order, and every one of those counts — stopping at the \
+first slot that fits is how this is usually got wrong. Check all of them, every \
+time.
 
-- `slots_filled`: **one turn usually fills more than one slot.** Go through \
-the slot list above one slot at a time, and for each of them ask: did the \
-learner's final turn establish this? Report the id of every slot the answer is \
-yes for. A learner packs a greeting, two questions and an order into one \
-breath, in any order, and every one of those counts — stopping once you have \
-found a slot that fits is how this is usually got wrong. Check all of them, \
-every time.
-
-  Only what **this** turn established goes in `slots_filled`. A slot \
-established on an earlier turn is not new, and a slot this turn did not \
-establish is not filled by being nearby. Leave the list empty when the answer \
-was no for every slot. (Earlier turns are judged only when you are told so \
-below — and what they established goes in `slots_filled_previously`, never \
-here.)
-
-  Judge by **meaning, not wording**. `expressible_with` lists words that *can* \
+Judge by **meaning, not wording**. `expressible_with` lists words that *can* \
 express a slot; it is a hint, never a pattern to match, and a learner who gets \
 there by another route has still got there. A short or elliptical question \
 counts, and one such phrase can fill several slots at once: if the partner \
 asked two things and the learner answers and turns it back with 你呢？, that \
-bounce asks back **both** of them, so both request slots are filled. Bouncing \
-a question back is real skill, not a shortcut.
+bounce asks back **both** of them, so both request slots are filled. A \
+beginner's slip does not unmake what they did — a wrong pronoun, a missing \
+measure word, a word that lands next to the one they wanted — so judge on what \
+they plainly meant, not on whether they said it correctly.
 
-  The learner is a beginner, and a beginner's slip does not unmake what they \
-did. A wrong pronoun, a missing measure word, a word that lands next to the \
-one they wanted — judge the slot on what they plainly meant, not on whether \
-they said it correctly. Naming the slip is the coach's job at the end of the \
-session; yours is only whether the fact got across.
+**A `request` slot is filled when the learner asks. Do not wait to see whether \
+the partner answered.** The slot is a claim about the learner's Chinese: they \
+either formed the question or they did not. Whether the partner answered is the \
+partner's performance, and grading the learner on it grades the wrong party. A \
+fact the partner volunteered unasked is never filled, however the conversation \
+got there — that is about the learner too, since they did not ask for it."""
 
-  **A `request` slot is filled when the learner asks. Do not wait to see \
-whether the partner answered.** The slot is a claim about the learner's \
-Chinese: they either formed the question or they did not. Whether the partner \
-answered is the partner's performance, and grading the learner on it grades the \
-wrong party. A fact the partner volunteered unasked is never filled, however \
-the conversation got there — that is about the learner too, since they did not \
-ask for it.
+_TURN_PROMPT_TEMPLATE = """\
+{role}
 
-- `slots_filled_previously`: normally empty — leave it so. It is used only when \
-you are told below that earlier turns still need judging.
+You are shown the partner's last line and then the learner's turn. That pair is \
+what you are judging.
+
+{rubric}
+
+Return, as structured output:
+
+- `slots_filled`: which of the slots above the learner's turn established.
+
+{slot_rules}
+
+Only what **this** turn established goes in `slots_filled`. A slot established \
+on an earlier turn is not new, and a slot this turn did not establish is not \
+filled by being nearby. Leave the list empty when the answer was no for every \
+slot.
 
 Grade the learner's final turn. The history is context for reading it."""
+
+_REVIEW_PROMPT_TEMPLATE = """\
+{role}
+
+You are shown a whole session that is over: the partner's opening line, then \
+every turn of it in order. You are re-reading it with the rest of the \
+conversation in view, which no live grade could do — a later turn often makes \
+an earlier one legible, a question the reply shows was understood, an answer \
+that only reads as one once you have both halves.
+
+{rubric}
+
+**Judge every turn of the session, not only the last one.** Work turn by turn, \
+oldest first, and make the whole sweep below once per turn:
+
+{slot_rules}
+
+Return, as structured output:
+
+- `slots_filled`: which slots the learner's **final** turn established.
+- `slots_filled_previously`: which slots **any earlier turn** established — \
+every one of them, including slots you are told are already established, and \
+including a slot that two turns established between them. An earlier turn left \
+out of this list is credit the learner does not get.
+
+Nothing is taken away on the strength of this pass; it can only add. Judge \
+every turn."""
+
+
+def _rubric(scenario: Scenario) -> str:
+    slots = "\n".join(
+        f"- {slot.id} [{slot.kind}] {slot.description}"
+        + (
+            f" (often expressed with: {', '.join(slot.expressible_with)})"
+            if slot.expressible_with
+            else ""
+        )
+        for slot in scenario.slots
+    )
+    return _GRADER_RUBRIC.format(
+        situation=scenario.situation, goal=scenario.goal, slots_block=slots
+    )
 
 
 def render_window_note(window: int) -> Optional[str]:
@@ -213,34 +271,22 @@ def render_window_note(window: int) -> Optional[str]:
 
 
 def render_review_note(turns: int) -> str:
-    """The end-of-session review's instruction (A6) — never `None`.
+    """The volatile half of the review's instruction: how many turns there are.
 
-    A different job from `render_window_note`, and it must not borrow its words.
-    That note reports a **grading failure** and asks for the turns it lost; this
-    one asks for a re-reading of turns that were graded fine at the time, with
-    the one thing the live grader did not have: the rest of the conversation.
-    The grader at turn 3 did not know what turn 5 would clarify.
+    Everything else this note used to carry — judge every turn, oldest first,
+    sweep the whole slot list once per turn, put earlier turns in
+    `slots_filled_previously`, nothing is taken away — moved into
+    `render_grader_review_prompt` in A8. It belongs in the prefix because it is
+    true of every review call, and it was only ever here because the review had
+    no prefix of its own to be true in.
 
-    It says plainly that the pass may only **add**. Credit already awarded is not
-    on the table — the caller enforces that in Python, and saying so here keeps
-    the model from spending its judgment on a decision it does not own.
-
-    Volatile like the other two, so it rides `messages` after the breakpoint and
-    the frozen prefix stays byte-identical.
+    What is left is the one fact that changes per session: the turn count. It
+    still rides `messages`, and it is now a sentence rather than a paragraph
+    arguing with the block above it.
     """
     return (
-        f"[The session is over, and all {turns} of the learner's turns are shown "
-        "above. Judge every one of them again, together — which no live grade "
-        "could do: a later turn often makes an earlier one legible, a question "
-        "the reply shows was understood, an answer that only reads as one once "
-        "you have both halves. Work turn by turn, oldest first, and go through "
-        "the whole slot list for each turn separately — the same sweep you make "
-        "for the final turn, made once per turn. Put what the learner's **final** "
-        "turn established in `slots_filled`, and everything **any earlier turn** "
-        "established in `slots_filled_previously`, including slots listed as "
-        "already established and including a slot two turns established between "
-        "them. An earlier turn left out of that list is credit the learner does "
-        "not get; nothing is taken away on the strength of this pass.]"
+        f"[The session is over. All {turns} of the learner's turns are shown "
+        "above, oldest first.]"
     )
 
 
@@ -268,11 +314,11 @@ def render_filled_note(filled_slots) -> Optional[str]:
 
 
 def render_grader_prompt(scenario: Scenario) -> str:
-    """The grader's frozen prefix (V2, `docs/VALIDITY.md`).
+    """The **live turn's** frozen prefix (V2, `docs/VALIDITY.md`).
 
     Everything here is authored per topic, so it is byte-stable within a session
-    and caches like the converser's. What varies per turn — the history and the
-    learner's words — goes in `messages`, after the breakpoint.
+    and caches like the converser's. What varies per turn — the partner's last
+    line and the learner's words — goes in `messages`, after the breakpoint.
 
     Deliberately carries no persona and no sketch. The grader is not playing
     anyone, and a judge given a character has something to be loyal to.
@@ -281,18 +327,36 @@ def render_grader_prompt(scenario: Scenario) -> str:
     evidence: "the partner volunteered this unasked" cannot be judged without
     knowing what the scene hands over unprompted. `docs/VALIDITY.md` marks it ✅
     for both columns for that reason.
+
+    **It says nothing about `slots_filled_previously` (A8).** It used to carry
+    one sentence — *"normally empty — leave it so"* — frozen into every request
+    the grader ever makes. The field is only ever wanted when a grade is owed,
+    and `render_window_note` is what asks for it then; a frozen sentence saying
+    to leave it empty is text the note has to argue with from behind the cache
+    breakpoint.
     """
-    slots = "\n".join(
-        f"- {slot.id} [{slot.kind}] {slot.description}"
-        + (
-            f" (often expressed with: {', '.join(slot.expressible_with)})"
-            if slot.expressible_with
-            else ""
-        )
-        for slot in scenario.slots
+    return _TURN_PROMPT_TEMPLATE.format(
+        role=_GRADER_ROLE, rubric=_rubric(scenario), slot_rules=_SLOT_RULES
     )
-    return _GRADER_PROMPT_TEMPLATE.format(
-        situation=scenario.situation, goal=scenario.goal, slots_block=slots
+
+
+def render_grader_review_prompt(scenario: Scenario) -> str:
+    """The **end-of-session review's** prefix (A8).
+
+    Same role, same rubric, same rules for judging a turn — and a different job.
+    This caller re-reads a finished session, so the frame says *judge every turn*
+    where the turn prompt says *grade the final turn*, and
+    `slots_filled_previously` is spelled out here rather than asked for by a note
+    after the breakpoint.
+
+    Not cached, and that is not an oversight: this is **one call per session**,
+    so a cached prefix would be written at 1.25x and read zero times. Break-even
+    is two reads — the same arithmetic `workers/feedback.py` already applies to
+    the verdict call. The A8 plan expected a second cache entry to be the cost of
+    the split; it is a saving instead.
+    """
+    return _REVIEW_PROMPT_TEMPLATE.format(
+        role=_GRADER_ROLE, rubric=_rubric(scenario), slot_rules=_SLOT_RULES
     )
 
 
