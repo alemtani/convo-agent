@@ -79,6 +79,14 @@ best.
 
 ### 5. Prompts are long enough to dilute the instruction that matters
 
+**This applies to the grader too, and A6 found the receipt.** The item below was
+written about the partner, and A2 cut the partner. Meanwhile the grader's prompt
+grew — A3's multi-slot language, A4's split, A5's window — to 612 words in which
+`slots_filled` gets five paragraphs and `slots_filled_previously` gets **one
+sentence telling the model to leave it empty**. Everything that then asks for
+earlier turns (the window note, the review note) arrives after that, behind the
+cache breakpoint, arguing with a frozen prefix that has already said no. See A8.
+
 The system prompt is ~60 lines. The partner is asked to hold a persona, a band
 ceiling, a scene, a reciprocity rule, a stay-in-character rule, a pinyin-reading
 rule, a forgiveness level, and four annotation fields. The reply is one short
@@ -761,6 +769,48 @@ that can land in `gold.json`.
 
 Needs a server-side token and a rate limit. The client never sees the token.
 
+### A8 — Prompt weight, and moving what is left out of the prompt
+
+**The hypothesis A6 hands to this step: the `slots_filled_previously` weakness
+is context pollution, not a missing instruction.** Four wording variants moved
+nothing (A6). What none of them changed is the shape of the request they sit in.
+
+The grader's frozen prefix is 612 words. Of those, `slots_filled` gets five
+paragraphs — check every slot, judge meaning not wording, credit on the ask, a
+beginner's slip does not unmake it — and `slots_filled_previously` gets one
+sentence: *"normally empty — leave it so."* It then closes on *"Grade the
+learner's final turn. The history is context for reading it."*
+
+So the review's instruction to sweep every turn is a note, after the breakpoint,
+arguing against a prefix that has already told the model twice to do the
+opposite — and the earlier turns it is asking about sit in the middle of the
+messages, which is where models read worst. That is a plausible mechanism for
+5/5 on the nearest earlier turn and ~1/5 on the one before it, and it explains
+why wording the note differently did nothing: the note was never the load-bearing
+text.
+
+What to do about it, cheapest first:
+
+- **Cut.** The prompt is carrying instructions for two different jobs on every
+  call. Most of it is real (A3's multi-slot sweep is the fix for this stream's
+  headline bug) but it is all present all the time.
+- **Split the prefix by caller.** A live turn and a review are different jobs;
+  giving the review its own frozen prefix — one that says *judge every turn*
+  rather than *judge the final turn* — stops the note arguing with the prompt.
+  It costs a second cache entry and re-records the grader's cassettes.
+- **Move content out of the prompt entirely.** This is the idea worth exploring
+  and it needs a correction before anyone starts: **Agent Skills do not attach to
+  a plain `messages.parse` call.** They require `container={"skills": [...]}`,
+  the `code_execution` tool and two beta headers — a container per call, on the
+  path a learner waits behind. The API-native form of progressive disclosure here
+  is deferred tool loading (`tool_search`), or simply fetching the rubric as a
+  tool result rather than pinning it in the prefix. Whether either is worth it on
+  a call this small is an open question; the instinct — *stop shipping every
+  instruction on every call* — is right regardless of which mechanism answers it.
+
+Ordering: this is downstream of A6.5's baseline. Cutting a prompt with no
+measurement is how you lose credit you had.
+
 ## Done when
 
 - The cassette suite runs in CI, spends nothing, and is a merge gate — the
@@ -769,7 +819,7 @@ Needs a server-side token and a rate limit. The client never sees the token.
   schedule. Neither can rot unnoticed again.~~ **Done (A0.6).**
 - All four recorded misses pass.
 - ✅ The grader returns slots and nothing else (A4).
-- The partner prompt fits on one screen.
+- The partner prompt fits on one screen, and the grader's does too (A8).
 - A learner can file a bug, or contest a grade, in three taps.
 
 ## Kickoff prompts
@@ -884,10 +934,13 @@ state the live grades produced, which that runner can emit.
 Then attack the gap with the sample count to tell a fix from a wave. Candidates,
 in the order they are worth trying:
 
-- The frozen grader prompt is written for one turn — "Grade the learner's final
-  turn. The history is context for reading it." — and the review's note argues
-  against it from after the breakpoint. Splitting the prefix is the honest fix
-  and it re-records every grader cassette, so it needs the eval first.
+- **Prompt weight and position — read A8 first, it is the leading hypothesis.**
+  The frozen prefix spends 612 words, gives `slots_filled_previously` one
+  sentence that says "leave it empty", and closes on "Grade the learner's final
+  turn." The review's note argues against all of that from after the breakpoint,
+  about turns sitting in the middle of the messages. Splitting the prefix by
+  caller is the honest fix; it re-records every grader cassette, so it needs the
+  eval first.
 - `GraderResult.slots_filled_previously` says **owed**, and the docstring
   reaches the model (`messages.parse`). Widening it to *earlier* showed nothing
   at 5 draws; it may show something at 30, and it costs a re-record.
