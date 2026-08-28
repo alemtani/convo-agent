@@ -669,7 +669,7 @@ Five draws over eleven cases, same gold, same replay:
 Both of A4's misses were `wellbeing` on `elliptical-ni-ne`; A5 has none. Nothing
 regressed.
 
-### A6 — The verdict reviews the session — **shipped, PR #TBD**
+### A6 — The verdict reviews the session — **shipped, PR #99**
 
 `settle_outstanding_grades` re-graded the turns whose grade never landed. It is
 now `feedback.review_session`: one grader call over the whole conversation
