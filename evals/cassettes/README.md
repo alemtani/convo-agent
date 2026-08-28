@@ -30,10 +30,14 @@ same answers every time.
 
 ```bash
 python -m evals.coherence.replay --record --samples 3   # tops up missing samples
+python -m evals.turn.replay --record --samples 3
+python -m evals.turn.replay --record --samples 3 --cases-dir evals/turn/cases
 ```
 
 A key with a full cassette costs nothing even under `--record`. Change a prompt
-and its key changes, so only the affected cases are re-recorded.
+and its key changes, so only the affected cases are re-recorded. The two
+runners share this directory: grader-only keys from the coherence runner,
+partner and withholding-judge keys from the turn runner.
 
 ## Staleness
 

@@ -83,14 +83,15 @@ The last product work on `main` is the A2 progress HUD (slots filled and
 turns used, counts only). A2's floor, verdict copy, and gender pin are
 still open. Stream B B0 is the timings HUD: every branch now has a number.
 
-Stream A A2 (eval, this track): dead `ConverserAnnotation` fields are
-gone (`topic_tags`, `should_give_feedback`, `grammar_notes`). The notes
-panel went with them — tone errors still reach the verdict. `depends_on`
-is gone. The partner prompt is persona, scene, band ceiling, and pinyin
-reading. Two dense-turn cases remain strict xfails until A3
-(`milk-and-biscuits` drops `order`; `computer-work-ni-ne` drops
-`partner_origin`). Do not treat `clip-and-tea` going green as the
-multi-slot fix.
+Stream A (eval, this track): A2 cuts shipped. A1.5 recorded the turn
+runner: the red-team probes honour `withholding`; `derailed-input`
+still offers 茶还是水 on 2/3 runs when the learner is stuck — written
+up, not fixed. Two dense-turn cases remain strict xfails until A3
+(`milk-and-biscuits` drops `order` on the grader-only runner;
+`computer-work-ni-ne` drops `partner_origin`). Do not treat
+`clip-and-tea` going green, or the turn runner crediting `order` on
+2/3 `milk-and-biscuits` runs, as the multi-slot fix — those wins are
+the converser's reading (`夹子`→`饺子`, `你要`→`我要`), not the grader.
 
 ---
 
@@ -255,6 +256,9 @@ pytest -q                          # default gate
 pytest -m live                     # real keys, costs money (and stale — see A0.6)
 python -m evals.coherence.replay --repeat 3            # free, off cassettes
 python -m evals.coherence.replay --record --samples 3  # live; costs money
+python -m evals.turn.replay --repeat 3                 # partner + withholding; free
+python -m evals.turn.replay --record --samples 3       # live; costs money
+python -m evals.turn.replay --repeat 3 --cases-dir evals/turn/cases
 pytest -m smoke tests/smoke        # needs Playwright Chromium
 python kb/zh/_tools/validate.py --all
 ```
@@ -312,3 +316,5 @@ on idle and toasts on failure.
 | The page | `frontend/index.html` |
 | Topic seed | `kb/zh/<id>/topic.md` |
 | Scenario guardrails | `kb/zh/_tools/validate.py` |
+| Grader eval | `evals/coherence/` |
+| Partner eval (withholding) | `evals/turn/` |

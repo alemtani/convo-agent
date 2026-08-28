@@ -12,3 +12,4 @@ They carry no gold labels. Gold answers "what did this turn deserve", which is a
 question about the learner; a probe is a question about the partner.
 
     python -m evals.turn.replay --cases-dir evals/turn/cases
+    python -m evals.turn.replay --record --samples 3 --cases-dir evals/turn/cases

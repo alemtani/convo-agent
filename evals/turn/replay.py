@@ -2,6 +2,8 @@
 
     python -m evals.turn.replay                 # replays; a miss is an error
     python -m evals.turn.replay --record --samples 3
+    python -m evals.turn.replay --cases-dir evals/turn/cases
+    python -m evals.turn.replay --record --samples 3 --cases-dir evals/turn/cases
 
 `evals/coherence/replay.py` calls `grader.grade` directly. That is the right
 instrument for measuring the judge — it holds the partner still — but it means
@@ -166,8 +168,19 @@ def main() -> None:
     cases = load_cases(args.cases_dir)
     # Pair before spending anything: an unlabelled case is a hole in the
     # coherence matrix, and finding that out after the calls is too late.
-    gold = load_gold(os.path.join(args.cases_dir, "gold.json"))
-    paired(cases, gold)
+    #
+    # A corpus with no `gold.json` is asking a different question. The probes
+    # (`evals/turn/cases/`) are one-line openings that request nothing, so what
+    # they measure is whether the reply volunteers a slot — there is no
+    # coherence judgment to score, and inventing labels for them would put
+    # trivially-coherent rows into a matrix built for hard cases. So gold is
+    # optional here, and the 2×2 is skipped when there is none. A corpus
+    # that ships a *partial* `gold.json` is still an error: that is a
+    # labelling hole, not a different question.
+    gold_path = os.path.join(args.cases_dir, "gold.json")
+    gold = load_gold(gold_path) if os.path.exists(gold_path) else None
+    if gold is not None:
+        paired(cases, gold)
     if args.case:
         wanted = set(args.case)
         unknown = sorted(wanted - {case.id for case in cases})
@@ -200,14 +213,15 @@ def main() -> None:
     # The partner's tag against a fair reader's, as a 2×2. Printed rather than
     # asserted: this runner reports, and the gate it feeds is asserted in
     # `tests/test_orchestrator.py` where it is a pure function.
-    counts = confusion(observations, gold)
-    print("\ncoherence — gold \\ observed")
-    for expected in ("coherent", "incoherent"):
-        row = "  ".join(
-            f"{seen}={counts[(expected, seen)]}"
-            for seen in ("coherent", "incoherent")
-        )
-        print(f"  {expected:<11} {row}")
+    if gold is not None:
+        counts = confusion(observations, gold)
+        print("\ncoherence — gold \\ observed")
+        for expected in ("coherent", "incoherent"):
+            row = "  ".join(
+                f"{seen}={counts[(expected, seen)]}"
+                for seen in ("coherent", "incoherent")
+            )
+            print(f"  {expected:<11} {row}")
 
     cassette.cli.write_used(args, client.used)
 

@@ -1,0 +1,21 @@
+{
+  "key": "85ce5a3ae92e3ad9f5b7c85c9349dc5aaff84871d844290290d28a17614668c8",
+  "model": "claude-sonnet-5",
+  "recorded_at": "2026-08-28T07:05:47+00:00",
+  "samples": [
+    {
+      "parsed_output": {
+        "rationale": "The server merely asks what the customer would like to order, without naming any dish or mentioning drink options. Neither the recommendation nor the drinks information is stated outright.",
+        "volunteered": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 605,
+        "output_tokens": 69
+      }
+    }
+  ],
+  "summary": "claude-sonnet-5 → WithholdingVerdict: The partner's line:\n你好，想吃点什么？"
+}

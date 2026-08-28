@@ -301,7 +301,7 @@ The two misses are `strict` xfails so CI stays a merge gate. A3 removes the
 mark. An unexpected pass fails the build — that is how we notice the fix
 landed early.
 
-### A1.5 — The turn runner, so the *partner* is measured too — **code shipped (PR #93); cassettes outstanding**
+### A1.5 — The turn runner, so the *partner* is measured too — **shipped, PR #93 + #96**
 
 Every eval in the repo called `grader.grade` directly. That measures the judge
 and never the thing being judged: the partner's prompt had no coverage at all,
@@ -340,9 +340,35 @@ Two things the work settled:
   lie a later reader cannot detect. Probes carry no gold: gold answers what the
   *learner* deserved, and a probe asks about the partner.
 
-**Cassettes are not recorded yet.** The runner is a merge gate only once they
-are, and recording spends money — one wave, two calls per case plus a judge call
-where there is a candidate slot.
+**What shipped, and what it taught us.** Cassettes recorded, 3 samples per
+key. The runner is now a merge gate: pytest replays the probes and every
+session case, a new `eval` CI job walks both this corpus and the
+grader-only one, and `.github/workflows/rerecord.yml` refreshes both.
+
+The actual deliverable is what the recording found
+([`evals/turn/RESULTS.md`](../../evals/turn/RESULTS.md)):
+
+- **The probes honour `withholding`.** `greeting-only` and `i-am-hungry`
+  volunteer nothing, 3/3. The partner asks 几位 / 要吃什么. It does not
+  name a dish. The failure seen in real sessions — 你好, then the day's
+  best dish — does not reproduce on A2's trimmed prompt.
+- **A stuck learner still gets the drinks list.** `derailed-input`, 2/3
+  runs: 你想喝茶还是水？ after the learner said they could not speak.
+  That is either the prompt being a person when the customer freezes, or
+  `withholding` not covering the recovery path. Not fixed here — which
+  one it is deserves its own change.
+- **A2 did not break the partner in the way nobody was watching.**
+  Reciprocity, stay-in-character, and `forgiveness_level` went; the
+  scene block is doing that job on the probes. What the turn runner
+  newly shows is the converser's reading: `milk-and-biscuits` becomes
+  我要 on 2/3 runs and those runs credit `order`. Do not treat that as
+  A3. The grader-only runner still drops `order` 3/3, and that is the
+  case A3 has to clear.
+
+The volunteering that remains is on a recorded session case, not on the
+probes. The probes stay a hard assert (`volunteered == ()`). The stuck
+turn is written up, not asserted: it is 2/3, and pinning a flaky xfail
+would hide the next real miss.
 
 ### A2 — The cuts — **shipped, PR #91**
 
@@ -480,7 +506,7 @@ gave the store a second writer: `evals.turn.replay` records the whole turn,
 `evals.coherence.replay` records the grader alone, and **neither reaches the
 other's keys**. A `--prune` that deleted what its own run did not touch would
 therefore delete the other runner's entire corpus — which is exactly what this
-PR's first draft would have shipped, armed to fire the moment A1.5 records.
+PR's first draft would have shipped, and A1.5 (PR #96) then recorded.
 
 So each runner writes down what it reached (`--used-out`) and
 `evals.cassette.sweep` takes the **union**. A missing manifest is an error, not
@@ -614,12 +640,11 @@ The second is a defect in the weekly job. `--samples 5` is a ceiling and
 gate demands five of. It has been recording shallow since A3. Both steps now
 pass `--repeat 5`.
 
-**What is not yet measured: the partner's tag itself.** Scoring `coherent`
-against gold needs the turn runner's cassettes, which are A1.5's outstanding
-work. `TurnObservation` carries the tag and `evals.turn.replay` prints the 2×2
-against `gold.json`; it prints nothing until there is something to replay. Until
-then the gate is asserted where it is deterministic — `_advance_or_echo`, in
-`tests/test_orchestrator.py` — and its accuracy is an open question.
+**The partner's tag is measured as of A1.5 (PR #96).** Scoring `coherent`
+against gold needs the turn runner's cassettes, and they are now recorded.
+`TurnObservation` carries the tag and `evals.turn.replay` prints the 2×2
+against `gold.json`. The gate stays asserted where it is deterministic too —
+`_advance_or_echo`, in `tests/test_orchestrator.py`.
 
 ### A5 — The grader's input window — **shipped, PR #98**
 
@@ -825,11 +850,9 @@ measurement is how you lose credit you had.
 ## Kickoff prompts
 
 One per step, each runnable as written. **A0 (PR #86), A1 (PR #90), A2 (PR #91),
-A3 (PR #95), A0.6 (PR #92), A4 (PR #97), A5 (PR #98) and A6 are done** — their
-prompts are retired. A1.5 is still outstanding: the turn runner records nothing,
-so the partner's `coherent` tag — a gate on the learner's credit since A4 — has
-never been measured. A6.5 is the next grade change, and it is a measurement
-before it is a fix.
+A3 (PR #95), A0.6 (PR #92), A1.5 (this PR), A4 (PR #97), A5 (PR #98) and A6 are
+done** — their prompts are retired. A6.5 is the next grade change, and it is a
+measurement before it is a fix.
 
 Every one of these ends the same way, so it is said once here: work in a git
 worktree, write the failing test first, branch from `main`, conventional commits,
@@ -839,45 +862,11 @@ runnable.
 
 ### A1.5 — record the turn runner's cassettes
 
-```
-Read docs/streams/grading.md. Finish Stream A at A1.5: the turn runner is
-merged (PR #93) but records nothing, so it is not a gate yet.
-
-`evals/turn/replay.py` drives `orchestrator.run_text_turn` — one client threads
-into both workers, so one run covers the reply, the grade computed against that
-reply, and the state it advances to. `evals/turn/withholding.py` then asks
-whether the reply gave away a `request` slot the learner had not asked for.
-
-Record and commit the cassettes. This spends money, one wave:
-
-    python -m evals.turn.replay --record --samples 3
-    python -m evals.turn.replay --record --samples 3 --cases-dir evals/turn/cases
-
-Two calls per case, plus a judge call wherever a candidate slot exists. The
-second command is the red-team probes, which are the point: on `greeting-only`
-and `i-am-hungry` the learner asks for nothing, so any slot the partner's reply
-establishes was volunteered — a point the learner can now never earn.
-
-Then report what the recording found, which is the actual deliverable:
-
-- Does the partner honour `withholding`? It was seen breaking it twice in real
-  sessions and nothing has ever checked it.
-- Does the partner's `coherent` agree with a fair reader? A4 made that tag a
-  gate on the learner's credit and shipped it unmeasured, because measuring it
-  needs exactly these recordings. The runner already prints the 2×2 against
-  `gold.json`; this is the first time it has anything to print. A tag that
-  fires on a coherent turn is a point the learner earned and did not get.
-- Did A2's trimmed prompt (PR #91) change the partner in a way nobody was
-  watching? A third of the system prompt went with no partner-side eval in
-  existence. This is the first look.
-
-Wire the runner into the CI eval job beside the coherence one, and into
-`.github/workflows/rerecord.yml` so it cannot go stale unnoticed.
-
-If a probe shows the partner volunteering, do **not** fix it in this PR. Write
-it up: it is either a prompt bug for its own change or an authoring bug in
-`withholding`, and which one it is deserves deciding on its own.
-```
+Retired: shipped. The wave is recorded, both corpora replay off cassettes, and
+the runner is a merge gate in the `eval` CI job. What it found is in
+[`evals/turn/RESULTS.md`](../../evals/turn/RESULTS.md); the one open finding —
+a stuck learner is still handed the drinks list — is deliberately not fixed
+there.
 
 ### A0.6 — repair the `live` suite
 

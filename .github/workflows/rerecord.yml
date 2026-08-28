@@ -65,6 +65,19 @@ jobs:
           python -m evals.turn.replay --record --refresh --samples 5
           --repeat 5 --used-out "$RUNNER_TEMP/used-turn.json"
 
+      # The probes are the same runner over a second corpus: one-line openings
+      # that ask for nothing, so a partner that volunteers a slot is visible.
+      # Own `--out` and own manifest — the sweep takes the union, and a probe
+      # key missing from it would be swept as unreachable.
+      - name: Re-record the turn probes
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: >
+          python -m evals.turn.replay --record --refresh --samples 5
+          --repeat 5 --cases-dir evals/turn/cases
+          --out evals/turn/observations.probes.json
+          --used-out "$RUNNER_TEMP/used-turn-probes.json"
+
       # The A0.6 behavioral evals: same layer, different corpus. No `--repeat`
       # here — this recorder loops `--samples` times directly, so the flag is
       # both the depth and the ceiling. `--samples 5` matches
@@ -77,7 +90,7 @@ jobs:
           python -m evals.behavior.record --record --refresh --samples 5
           --used-out "$RUNNER_TEMP/used-behavior.json"
 
-      # One store, three runners. None reaches the others' keys, so none can
+      # One store, four runs. None reaches the others' keys, so none can
       # decide alone what is stale — a runner that deleted what *it* did not
       # touch would take the other runners' whole corpus with it. The sweep
       # takes the union, and refuses if a manifest is missing, because a runner
@@ -94,7 +107,7 @@ jobs:
         run: >
           python -m evals.cassette.sweep
           --used "$RUNNER_TEMP/used-coherence.json" "$RUNNER_TEMP/used-turn.json"
-          "$RUNNER_TEMP/used-behavior.json"
+          "$RUNNER_TEMP/used-turn-probes.json" "$RUNNER_TEMP/used-behavior.json"
 
       - name: Show what moved
         run: git --no-pager diff --stat -- evals/cassettes

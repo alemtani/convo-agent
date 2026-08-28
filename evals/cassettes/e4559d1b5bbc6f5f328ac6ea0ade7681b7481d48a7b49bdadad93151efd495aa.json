@@ -1,0 +1,123 @@
+{
+  "key": "e4559d1b5bbc6f5f328ac6ea0ade7681b7481d48a7b49bdadad93151efd495aa",
+  "model": "claude-sonnet-5",
+  "recorded_at": "2026-08-28T07:04:02+00:00",
+  "samples": [
+    {
+      "parsed_output": {
+        "partner_response": {
+          "pinyin": "hǎo, hái yào biéde ma?",
+          "zh": "好，还要别的吗？"
+        },
+        "turn_annotation": {
+          "coherent": true,
+          "learner_said_goodbye": false
+        },
+        "user_reading": {
+          "pinyin": "hǎo, wǒ yào yī gè yú hé yī bēi chá.",
+          "zh": "好，我要一个鱼和一杯茶。"
+        }
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 5343,
+        "input_tokens": 64,
+        "output_tokens": 140
+      }
+    },
+    {
+      "parsed_output": {
+        "partner_response": {
+          "pinyin": "hǎo, hái yào biéde ma?",
+          "zh": "好，还要别的吗？"
+        },
+        "turn_annotation": {
+          "coherent": true,
+          "learner_said_goodbye": false
+        },
+        "user_reading": {
+          "pinyin": "hǎo, wǒ yào yī gè yú hé yī bēi chá.",
+          "zh": "好，我要一个鱼和一杯茶。"
+        }
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 5343,
+        "input_tokens": 64,
+        "output_tokens": 140
+      }
+    },
+    {
+      "parsed_output": {
+        "partner_response": {
+          "pinyin": "hǎo, hái yào biéde ma?",
+          "zh": "好，还要别的吗？"
+        },
+        "turn_annotation": {
+          "coherent": true,
+          "learner_said_goodbye": false
+        },
+        "user_reading": {
+          "pinyin": "hǎo, wǒ yào yī gè yú hé yī bēi chá.",
+          "zh": "好，我要一个鱼和一杯茶。"
+        }
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 5343,
+        "input_tokens": 64,
+        "output_tokens": 140
+      }
+    },
+    {
+      "parsed_output": {
+        "partner_response": {
+          "pinyin": "hǎo, hái yào biéde ma?",
+          "zh": "好，还要别的吗？"
+        },
+        "turn_annotation": {
+          "coherent": true,
+          "learner_said_goodbye": false
+        },
+        "user_reading": {
+          "pinyin": "hǎo, wǒ yào yī gè yú hé yī bēi chá.",
+          "zh": "好，我要一个鱼和一杯茶。"
+        }
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 5343,
+        "input_tokens": 64,
+        "output_tokens": 140
+      }
+    },
+    {
+      "parsed_output": {
+        "partner_response": {
+          "pinyin": "hǎo, hái yào biéde ma?",
+          "zh": "好，还要别的吗？"
+        },
+        "turn_annotation": {
+          "coherent": true,
+          "learner_said_goodbye": false
+        },
+        "user_reading": {
+          "pinyin": "hǎo, wǒ yào yī gè yú hé yī bēi chá.",
+          "zh": "好，我要一个鱼和一杯茶。"
+        }
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 5343,
+        "input_tokens": 64,
+        "output_tokens": 140
+      }
+    }
+  ],
+  "summary": "claude-sonnet-5 → ConversationResult: 好，我要一个鱼和一杯茶"
+}

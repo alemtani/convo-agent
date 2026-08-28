@@ -1,0 +1,21 @@
+{
+  "key": "0c390d761cda23adcdd72e72b333b44cad6bc40965a6938ce25f0523b6c358e2",
+  "model": "claude-sonnet-5",
+  "recorded_at": "2026-08-28T07:00:20+00:00",
+  "samples": [
+    {
+      "parsed_output": {
+        "rationale": "The line only provides the classmate's surname (王) in response to an implied name question and asks for the learner's name in return. It does not state anything about how the classmate has been lately, so the wellbeing fact was not volunteered.",
+        "volunteered": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 590,
+        "output_tokens": 117
+      }
+    }
+  ],
+  "summary": "claude-sonnet-5 → WithholdingVerdict: The partner's line:\n我姓王。你呢？"
+}

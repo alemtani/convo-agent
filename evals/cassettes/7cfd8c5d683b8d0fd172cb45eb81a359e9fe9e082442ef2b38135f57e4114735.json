@@ -1,0 +1,21 @@
+{
+  "key": "7cfd8c5d683b8d0fd172cb45eb81a359e9fe9e082442ef2b38135f57e4114735",
+  "model": "claude-sonnet-5",
+  "recorded_at": "2026-08-28T06:57:05+00:00",
+  "samples": [
+    {
+      "parsed_output": {
+        "rationale": "The line only states the classmate's surname (李) and asks for the learner's name in return. It does not mention or answer anything about how they have been lately, so the wellbeing fact was not volunteered.",
+        "volunteered": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 590,
+        "output_tokens": 107
+      }
+    }
+  ],
+  "summary": "claude-sonnet-5 → WithholdingVerdict: The partner's line:\n我姓李。你呢？"
+}

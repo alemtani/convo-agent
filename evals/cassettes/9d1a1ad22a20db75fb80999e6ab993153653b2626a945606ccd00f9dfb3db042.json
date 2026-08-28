@@ -1,0 +1,21 @@
+{
+  "key": "9d1a1ad22a20db75fb80999e6ab993153653b2626a945606ccd00f9dfb3db042",
+  "model": "claude-sonnet-5",
+  "recorded_at": "2026-08-28T07:01:13+00:00",
+  "samples": [
+    {
+      "parsed_output": {
+        "rationale": "The server merely asks how many people are in the party; no mention of dishes, recommendations, or drink options is made.",
+        "volunteered": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 603,
+        "output_tokens": 70
+      }
+    }
+  ],
+  "summary": "claude-sonnet-5 → WithholdingVerdict: The partner's line:\n好，你们几个人？"
+}

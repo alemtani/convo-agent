@@ -1,0 +1,21 @@
+{
+  "key": "32b53a1d9b5c2da10ab585ae072c138d73eb61ee211b54517207a68b615be8f3",
+  "model": "claude-sonnet-5",
+  "recorded_at": "2026-08-28T06:59:37+00:00",
+  "samples": [
+    {
+      "parsed_output": {
+        "rationale": "The server's line simply asks what the customer would like to order. It does not name any specific dish as good, nor does it mention any drink options. Neither withheld fact is stated outright.",
+        "volunteered": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 607,
+        "output_tokens": 72
+      }
+    }
+  ],
+  "summary": "claude-sonnet-5 → WithholdingVerdict: The partner's line:\n好的，那你们要吃什么？"
+}
