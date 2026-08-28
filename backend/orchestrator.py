@@ -103,6 +103,7 @@ async def run_text_turn(
             scenario=scenario, dialogue=req.dialogue, user_text=reading.zh,
             opening_line=req.opening_line.zh if req.opening_line else None,
             window=termination.grading_window(req.state, turn=turn),
+            filled_slots=sorted(req.state.filled),
             client=client,
         )
 
@@ -346,6 +347,7 @@ async def stream_audio_turn(
                 user_text=transcript.zh,
                 opening_line=opening_line,
                 window=termination.grading_window(state, turn=turn),
+                filled_slots=sorted(state.filled),
                 client=client,
             )
 
@@ -522,7 +524,8 @@ def _at_emit(timer: timing.Timer) -> dict:
 
 
 async def _grade_or_degrade(
-    *, scenario, dialogue, user_text, opening_line=None, window=1, client=None
+    *, scenario, dialogue, user_text, opening_line=None, window=1,
+    filled_slots=None, client=None,
 ):
     """Run the grader, degrading a failure to `None` rather than failing the turn.
 
@@ -541,7 +544,8 @@ async def _grade_or_degrade(
     try:
         return await grader_worker.grade(
             scenario=scenario, dialogue=dialogue, user_text=user_text,
-            opening_line=opening_line, window=window, client=client,
+            opening_line=opening_line, window=window,
+            filled_slots=filled_slots, client=client,
         )
     except grader_worker.GraderError as exc:
         logger.warning("grader failed: %s", exc)

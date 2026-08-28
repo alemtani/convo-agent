@@ -212,6 +212,29 @@ def render_window_note(window: int) -> Optional[str]:
     )
 
 
+def render_filled_note(filled_slots) -> Optional[str]:
+    """What earlier turns already established, or `None`.
+
+    A5 stopped sending the grader the whole transcript — it reads the partner's
+    last line and the learner's turn now, not ten turns of history. This note is
+    what replaces the history as the record of earlier progress: the set of slots
+    already filled, so the grader knows which facts are old without having to
+    re-read the conversation that established them.
+
+    Volatile — it changes every time a slot is filled — so the caller puts it in
+    `messages`, after the `cache_control` breakpoint. Factual, not an
+    instruction: the frozen prompt already says only *this* turn's fills go in
+    `slots_filled`, and A4 taught that restrictive language aimed at a rule the
+    prompt already carries costs credit elsewhere.
+    """
+    if not filled_slots:
+        return None
+    return (
+        "[Already established on earlier turns of this session: "
+        f"{', '.join(filled_slots)}.]"
+    )
+
+
 def render_grader_prompt(scenario: Scenario) -> str:
     """The grader's frozen prefix (V2, `docs/VALIDITY.md`).
 

@@ -146,6 +146,7 @@ async def settle_outstanding_grades(
             user_text=req.dialogue[last_user].zh,
             opening_line=req.opening_line.zh if req.opening_line else None,
             window=window,
+            filled_slots=sorted(req.state.filled),
             timeout=config.VERDICT_RECOVERY_TIMEOUT_S,
             # Its own client. The verdict's is forwarded nowhere: two workers
             # sharing one injected fake lets a test fabricate a grade it never
