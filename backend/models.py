@@ -493,8 +493,9 @@ class SessionState(BaseModel):
     #
     # `None`, not `0`, when absent. A client that does not report a watermark is
     # saying nothing about its grades, and `0` would say the opposite — that
-    # every turn so far is owed. That reading would fire a recovery pass on every
-    # session a client too old to send the field ever finished.
+    # every turn so far is owed. Since A6 the verdict reviews every session
+    # anyway, so what this now decides is whether a *debt* is reported — and a
+    # client too old to send the field is not in one.
     last_graded_turn: Optional[int] = Field(default=None, ge=0)
     status: Literal["active", "complete"] = "active"
     goal_met: bool = False
@@ -687,7 +688,7 @@ class VerdictRequest(BaseModel):
     dialogue: List[DialogueTurn] = Field(default_factory=list, max_length=40)
     state: SessionState = Field(default_factory=SessionState)
     notes: List[str] = Field(default_factory=list, max_length=60)
-    # Only read by the recovery pass, and only when the debt reaches back to the
+    # Only read by the session review, and only when it reaches back to the
     # first turn — where the opening line is the sole thing the learner's words
     # answer, and it is never in `dialogue`. Optional everywhere else.
     opening_line: Optional[Utterance] = None

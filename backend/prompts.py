@@ -212,6 +212,36 @@ def render_window_note(window: int) -> Optional[str]:
     )
 
 
+def render_review_note(turns: int) -> str:
+    """The end-of-session review's instruction (A6) — never `None`.
+
+    A different job from `render_window_note`, and it must not borrow its words.
+    That note reports a **grading failure** and asks for the turns it lost; this
+    one asks for a re-reading of turns that were graded fine at the time, with
+    the one thing the live grader did not have: the rest of the conversation.
+    The grader at turn 3 did not know what turn 5 would clarify.
+
+    It says plainly that the pass may only **add**. Credit already awarded is not
+    on the table — the caller enforces that in Python, and saying so here keeps
+    the model from spending its judgment on a decision it does not own.
+
+    Volatile like the other two, so it rides `messages` after the breakpoint and
+    the frozen prefix stays byte-identical.
+    """
+    return (
+        f"[The session is over. All {turns} of the learner's turns are shown "
+        "above, and you are re-reading the whole session at once — something no "
+        "live grade could do. A later turn often makes an earlier one legible: "
+        "a name that only makes sense once the reply comes back, a question "
+        "finished two turns after it was started. Judge every turn again with "
+        "that hindsight. Put what the learner's final turn established in "
+        "`slots_filled`, and what any earlier turn established in "
+        "`slots_filled_previously`. This pass can only **add** credit — a slot "
+        "already established stays established, so nothing you leave out is "
+        "taken away.]"
+    )
+
+
 def render_filled_note(filled_slots) -> Optional[str]:
     """What earlier turns already established, or `None`.
 

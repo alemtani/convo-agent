@@ -111,7 +111,7 @@ def advance(
     elif watermark is not None and turn - watermark >= MAX_UNGRADED_TURNS:
         # Not a debt to keep servicing. The grader has failed this many turns
         # running, so the session is broken rather than behind — stop it and let
-        # the verdict's recovery pass settle what it can.
+        # the verdict's session review settle what it can.
         logger.error(
             "ending session: %d turns ungraded (last graded %d, now %d)",
             turn - watermark, watermark, turn,

@@ -59,6 +59,22 @@ def _fake_client(parsed_output, *, stop_reason="end_turn"):
     return SimpleNamespace(messages=SimpleNamespace(parse=parse)), parse
 
 
+@pytest.fixture(autouse=True)
+def no_live_review(monkeypatch):
+    """`verdict` reviews the session before writing the card (A6), so every test
+    that calls it would otherwise reach a real grader.
+
+    The default stub credits nothing, which leaves the state exactly as the
+    caller submitted it — so the outcome assertions below still read the client's
+    state, not a grade this fixture invented. Tests about the review itself
+    replace it.
+    """
+    async def nothing(**kwargs):
+        return GraderResult(), None
+
+    monkeypatch.setattr(grader, "grade", nothing)
+
+
 def _req(filled_at=None, end_reason="cap", notes=None):
     return VerdictRequest(
         topic_id="greetings",
@@ -427,51 +443,54 @@ def _dialogue(pairs=2):
     return turns
 
 
-async def test_a_session_with_no_debt_spends_no_grader_call(monkeypatch):
-    """Every healthy session takes this path, so it must cost nothing."""
-    called = False
+async def test_a_session_with_slots_outstanding_is_reviewed_once(monkeypatch):
+    """One call per session, off the turn loop — not one per turn."""
+    calls = 0
 
-    async def never(**kwargs):
-        nonlocal called
-        called = True
-        raise AssertionError("graded a session that owed nothing")
+    async def review(**kwargs):
+        nonlocal calls
+        calls += 1
+        return GraderResult(), None
 
-    monkeypatch.setattr(grader, "grade", never)
+    monkeypatch.setattr(grader, "grade", review)
     req = VerdictRequest(
         topic_id="greetings",
         dialogue=_dialogue(2),
         state=SessionState(status="complete", last_graded_turn=2),
     )
-    state = await feedback.settle_outstanding_grades(
-        req, scenario=kb.load_scenario("greetings")
-    )
-    assert state is req.state
-    assert called is False
+    await feedback.review_session(req, scenario=kb.load_scenario("greetings"))
+    assert calls == 1
 
 
-async def test_a_client_reporting_no_watermark_is_not_in_debt(monkeypatch):
-    """`None` says nothing about its grades. Reading it as `0` would fire a
-    recovery pass on every session an older client ever finished."""
-    async def never(**kwargs):
-        raise AssertionError("graded a session that reported no watermark")
+async def test_a_client_reporting_no_watermark_is_reviewed_but_owes_nothing(
+    monkeypatch, caplog
+):
+    """`None` still says nothing about its grades — the review runs on every
+    session anyway, but it must not report a debt it cannot know about."""
+    async def review(**kwargs):
+        return GraderResult(slots_filled=["self_name"]), None
 
-    monkeypatch.setattr(grader, "grade", never)
+    monkeypatch.setattr(grader, "grade", review)
     req = VerdictRequest(
         topic_id="greetings", dialogue=_dialogue(3),
         state=SessionState(status="complete"),
     )
     assert req.state.last_graded_turn is None
-    state = await feedback.settle_outstanding_grades(
-        req, scenario=kb.load_scenario("greetings")
-    )
-    assert state is req.state
+    with caplog.at_level("WARNING"):
+        state = await feedback.review_session(
+            req, scenario=kb.load_scenario("greetings")
+        )
+    assert set(state.filled_at) == {"self_name"}
+    assert "never graded" not in caplog.text
 
 
 async def test_an_outstanding_debt_is_settled_before_the_card(monkeypatch):
     """The card is computed from state, so an unsettled debt tells the learner
     they missed something they established — at the moment it is most visible."""
     async def late(**kwargs):
-        assert kwargs["window"] == 2
+        # The whole session is re-read now, not just the two owed turns.
+        assert kwargs["window"] == 3
+        assert kwargs["review"] is True
         return (
             GraderResult(
                 slots_filled=["wellbeing"],
@@ -485,7 +504,7 @@ async def test_an_outstanding_debt_is_settled_before_the_card(monkeypatch):
         topic_id="greetings", dialogue=_dialogue(3),
         state=SessionState(status="complete", last_graded_turn=1),
     )
-    state = await feedback.settle_outstanding_grades(
+    state = await feedback.review_session(
         req, scenario=kb.load_scenario("greetings")
     )
     assert set(state.filled_at) == {"self_name", "partner_name", "wellbeing"}
@@ -502,7 +521,7 @@ async def test_a_failed_final_pass_leaves_the_state_alone(monkeypatch):
         topic_id="greetings", dialogue=_dialogue(3),
         state=SessionState(status="complete", last_graded_turn=1),
     )
-    state = await feedback.settle_outstanding_grades(
+    state = await feedback.review_session(
         req, scenario=kb.load_scenario("greetings")
     )
     assert state is req.state
@@ -543,7 +562,7 @@ async def test_the_recovery_pass_hands_the_grader_a_live_turns_shape(monkeypatch
         topic_id="greetings", dialogue=dialogue,
         state=SessionState(status="complete", last_graded_turn=0),
     )
-    await feedback.settle_outstanding_grades(
+    await feedback.review_session(
         req, scenario=kb.load_scenario("greetings")
     )
 
@@ -568,7 +587,7 @@ async def test_the_recovery_pass_does_not_rewrite_how_the_session_ended(monkeypa
             status="complete", end_reason="stuck", last_graded_turn=1
         ),
     )
-    state = await feedback.settle_outstanding_grades(
+    state = await feedback.review_session(
         req, scenario=kb.load_scenario("greetings")
     )
 
@@ -610,7 +629,142 @@ async def test_a_debt_with_no_learner_turn_to_grade_is_left_alone(monkeypatch):
         ],
         state=SessionState(status="complete", last_graded_turn=0),
     )
-    state = await feedback.settle_outstanding_grades(
+    state = await feedback.review_session(
         req, scenario=kb.load_scenario("greetings")
     )
     assert state is req.state
+
+
+# --- A6: the verdict reviews the whole session ----------------------------
+
+
+async def test_a_session_with_no_debt_is_still_reviewed(monkeypatch):
+    """The grader at turn 3 did not know what turn 5 would clarify.
+
+    Every grade landed here — there is no debt — and the old recovery pass would
+    have returned without a call. The review pass runs anyway, over the whole
+    session, and credits what hindsight makes legible.
+    """
+    captured = {}
+
+    async def review(**kwargs):
+        captured.update(kwargs)
+        return GraderResult(slots_filled_previously=["partner_name"]), None
+
+    monkeypatch.setattr(grader, "grade", review)
+    req = VerdictRequest(
+        topic_id="greetings", dialogue=_dialogue(3),
+        state=SessionState(
+            filled_at={"self_name": 1}, status="complete", last_graded_turn=3
+        ),
+    )
+    state = await feedback.review_session(
+        req, scenario=kb.load_scenario("greetings")
+    )
+    assert set(state.filled_at) == {"self_name", "partner_name"}
+    # The whole session, not a window of owed turns.
+    assert captured["window"] == 3
+    assert len(captured["dialogue"]) == 4  # everything before the last learner turn
+
+
+async def test_the_review_never_drops_an_already_earned_slot(monkeypatch):
+    """Review may add credit and may never remove it. A card that takes away a
+    point the learner watched themselves earn is indistinguishable from a bug."""
+    async def review(**kwargs):
+        # Hindsight says this turn established nothing at all.
+        return GraderResult(), None
+
+    monkeypatch.setattr(grader, "grade", review)
+    req = VerdictRequest(
+        topic_id="greetings", dialogue=_dialogue(3),
+        state=SessionState(
+            filled_at={"self_name": 1, "wellbeing": 2},
+            status="complete", last_graded_turn=3,
+        ),
+    )
+    state = await feedback.review_session(
+        req, scenario=kb.load_scenario("greetings")
+    )
+    assert state.filled_at == {"self_name": 1, "wellbeing": 2}
+
+
+async def test_a_session_that_filled_everything_spends_no_review_call(monkeypatch):
+    """A review that can only add has nothing to add once every slot is filled.
+    Skipping it is provably lossless, and it is the happy path."""
+    async def never(**kwargs):
+        raise AssertionError("reviewed a session with nothing left to earn")
+
+    monkeypatch.setattr(grader, "grade", never)
+    scenario = kb.load_scenario("greetings")
+    req = VerdictRequest(
+        topic_id="greetings", dialogue=_dialogue(3),
+        state=SessionState(
+            filled_at={slot.id: 1 for slot in scenario.slots},
+            status="complete", last_graded_turn=3,
+        ),
+    )
+    state = await feedback.review_session(req, scenario=scenario)
+    assert state is req.state
+
+
+async def test_the_review_asks_for_a_review_not_a_settled_debt(monkeypatch):
+    """A session-wide review is not a grading failure being settled, and must
+    not be described as one — the owed-turn note blames a failure that did not
+    happen."""
+    captured = {}
+
+    async def capture(**kwargs):
+        captured.update(kwargs)
+        return GraderResult(), None
+
+    monkeypatch.setattr(grader, "grade", capture)
+    req = VerdictRequest(
+        topic_id="greetings", dialogue=_dialogue(3),
+        state=SessionState(status="complete", last_graded_turn=3),
+    )
+    await feedback.review_session(
+        req, scenario=kb.load_scenario("greetings")
+    )
+    assert captured["review"] is True
+
+    request = grader.build_request(
+        scenario=kb.load_scenario("greetings"),
+        dialogue=_dialogue(3)[:4], user_text="我叫小明", window=3, review=True,
+    )
+    note = request["messages"][-1]["content"]
+    assert "never judged" not in note
+    assert "session is over" in note
+
+
+def test_the_review_note_is_not_the_owed_turn_note():
+    review = prompts.render_review_note(3)
+    assert "the whole session" in review
+    # A one-turn session still reads as a review of that turn.
+    assert prompts.render_review_note(1) is not None
+
+
+async def test_a_completed_card_never_excuses_turns_it_did_not_check(monkeypatch):
+    """The unchecked block softens a *miss*. With nothing missing there is no
+    miss to soften, and a completed session is exactly the one the review skips
+    — so its watermark can be stale and must not reach the card."""
+    captured = {}
+
+    def capture(**kwargs):
+        captured.update(kwargs)
+        return "PROMPT"
+
+    monkeypatch.setattr(feedback, "render_verdict_prompt", capture)
+    scenario = kb.load_scenario("greetings")
+    client, _ = _fake_client(_recorded(lines=[]))
+    await feedback.verdict(
+        VerdictRequest(
+            topic_id="greetings", dialogue=_dialogue(3),
+            state=SessionState(
+                filled_at={slot.id: 1 for slot in scenario.slots},
+                status="complete", last_graded_turn=1,
+            ),
+        ),
+        client=client,
+    )
+    assert captured["goal_met"] is True
+    assert captured["unchecked_turns"] == 0

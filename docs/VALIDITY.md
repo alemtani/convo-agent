@@ -178,11 +178,13 @@ the ask only because Python cannot judge whether a reply answered. The answer wa
 never the interesting half, regardless of who can check it. So: one call, one
 turn, and no lag — and **V3 closes as decided rather than built**.
 
-**This is not contradicted by the recovery pass below.** There *is* a session-end
-grader pass, but it exists to judge turns that were never judged, never to
-re-audit turns that were. The rule stays one grade per turn, credited on the ask;
-what the recovery pass recovers is a grade that failed to happen, not a verdict
-that was already reached.
+**This is not contradicted by the session review below.** There *is* a
+session-end grader pass — since A6 it re-reads every turn, not only the turns
+whose grade never landed. It does not re-open this decision, because it can only
+**add** credit. A `request` slot is still credited on the ask, one grade per
+turn, live; the review asks the narrower question of whether a turn established
+something the live grader could not see at the time, and a verdict already
+reached in the learner's favour is never revisited.
 
 **If the grader fails: the turn is owed, not lost.** The reply stands and no slot
 is credited *yet* — but the turn is not forgotten either. `SessionState` carries
@@ -211,12 +213,29 @@ grader outage.
 outage, not a backlog, and spending the learner's remaining turns on a session
 that cannot grade them is worse than stopping.
 
-**A session that ends still owing grades gets one final pass** before the
-verdict. The card is computed from state, so an unsettled debt would tell the
-learner they missed something they established — the A2 false negative at the
-moment it is most visible. If that pass completes the goal it supersedes the
-recorded `end_reason`: someone who established everything did not leave
-unfinished, `stuck` least of all.
+**Every session gets one review pass** before the verdict
+(`feedback.review_session`, A6). It began as recovery — a session that ended
+still owing grades got one final pass, because the card is computed from state
+and an unsettled debt would tell the learner they missed something they
+established, the A2 false negative at the moment it is most visible. A6 widened
+it to the whole session for the same reason at a wider angle: the live grader
+judges turn 3 without turn 5, and by the time the card is written the whole
+conversation exists. Recovery is now a case of review rather than a separate
+job.
+
+**It may add credit and may never remove it.** The card is read after a session
+the learner watched themselves earn, slot by slot. A card that takes a point
+back is indistinguishable from a bug to the person reading it, so new ids union
+into `filled_at` and nothing is ever deleted — and an already-earned slot keeps
+the turn it was earned on. `status` and `end_reason` are not recomputed either
+(`termination.advance` would overwrite a real ending with a fresh evaluation of
+a finished session), with one exception: if the review completes the goal it
+supersedes the recorded `end_reason`, because someone who established everything
+did not leave unfinished, `stuck` least of all.
+
+The pass is skipped where it could not change the answer — a session with every
+slot filled has nothing left for an add-only review to add — so the happy path
+still costs nothing. A review that fails leaves the state exactly as submitted.
 
 ### Model: a stronger grader, a faster converser
 
