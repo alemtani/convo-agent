@@ -738,7 +738,12 @@ async def test_the_review_asks_for_a_review_not_a_settled_debt(monkeypatch):
 
 def test_the_review_note_is_not_the_owed_turn_note():
     review = prompts.render_review_note(3)
-    assert "the whole session" in review
+    # It asks for every turn, and it says so as an instruction rather than as a
+    # reassurance — "nothing you leave out is taken away" reads as licence to
+    # leave things out, and measured that way (see docs/streams/grading.md A6).
+    assert "all 3 of the learner's turns" in review
+    assert "earlier turn" in review
+    assert "never judged" not in review
     # A one-turn session still reads as a review of that turn.
     assert prompts.render_review_note(1) is not None
 
