@@ -1,7 +1,7 @@
 {
   "key": "40a3a8fb3763ff120852e2720ecd81b17bdc10a06c63f080c9a7db2a24ac2378",
   "model": "claude-sonnet-5",
-  "recorded_at": "2026-08-28T07:03:24+00:00",
+  "recorded_at": "2026-08-29T02:47:56+00:00",
   "samples": [
     {
       "parsed_output": {
@@ -14,8 +14,8 @@
           "learner_said_goodbye": false
         },
         "user_reading": {
-          "pinyin": "zǎoshang hǎo! wǒ jiào xiǎomíng, nǐ jiào shénme míngzi?",
-          "zh": "早上好！我叫小明，你叫什么名字？"
+          "pinyin": "zǎoshang hǎo, wǒ jiào xiǎomíng, nǐ jiào shénme míngzi?",
+          "zh": "早上好，我叫小明，你叫什么名字？"
         }
       },
       "stop_reason": "end_turn",
@@ -29,8 +29,8 @@
     {
       "parsed_output": {
         "partner_response": {
-          "pinyin": "wǒ xìng lǐ, nǐ ne?",
-          "zh": "我姓李，你呢？"
+          "pinyin": "wǒ xìng wáng, nǐ ne?",
+          "zh": "我姓王，你呢？"
         },
         "turn_annotation": {
           "coherent": true,
@@ -39,29 +39,6 @@
         "user_reading": {
           "pinyin": "zǎoshang hǎo, wǒ jiào xiǎomíng, nǐ jiào shénme míngzi?",
           "zh": "早上好，我叫小明，你叫什么名字？"
-        }
-      },
-      "stop_reason": "end_turn",
-      "usage": {
-        "cache_creation_input_tokens": 0,
-        "cache_read_input_tokens": 4675,
-        "input_tokens": 32,
-        "output_tokens": 161
-      }
-    },
-    {
-      "parsed_output": {
-        "partner_response": {
-          "pinyin": "wǒ xìng wáng. nǐ ne?",
-          "zh": "我姓王。你呢？"
-        },
-        "turn_annotation": {
-          "coherent": true,
-          "learner_said_goodbye": false
-        },
-        "user_reading": {
-          "pinyin": "zǎoshang hǎo! wǒ jiào xiǎomíng, nǐ jiào shénme míngzi?",
-          "zh": "早上好！我叫小明，你叫什么名字？"
         }
       },
       "stop_reason": "end_turn",
@@ -98,8 +75,8 @@
     {
       "parsed_output": {
         "partner_response": {
-          "pinyin": "wǒ xìng lǐ, nǐ ne?",
-          "zh": "我姓李，你呢？"
+          "pinyin": "wǒ xìng wáng, nǐ ne?",
+          "zh": "我姓王，你呢？"
         },
         "turn_annotation": {
           "coherent": true,
@@ -115,7 +92,30 @@
         "cache_creation_input_tokens": 0,
         "cache_read_input_tokens": 4675,
         "input_tokens": 32,
-        "output_tokens": 161
+        "output_tokens": 160
+      }
+    },
+    {
+      "parsed_output": {
+        "partner_response": {
+          "pinyin": "wǒ xìng lǐ, nǐ jiào shénme míngzi?",
+          "zh": "我姓李，你叫什么名字？"
+        },
+        "turn_annotation": {
+          "coherent": true,
+          "learner_said_goodbye": false
+        },
+        "user_reading": {
+          "pinyin": "zǎoshang hǎo, wǒ jiào xiǎomíng, nǐ jiào shénme míngzi?",
+          "zh": "早上好，我叫小明，你叫什么名字？"
+        }
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 4675,
+        "input_tokens": 32,
+        "output_tokens": 173
       }
     }
   ],

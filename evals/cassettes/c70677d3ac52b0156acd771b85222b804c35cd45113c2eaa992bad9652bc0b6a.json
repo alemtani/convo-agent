@@ -1,11 +1,11 @@
 {
   "key": "c70677d3ac52b0156acd771b85222b804c35cd45113c2eaa992bad9652bc0b6a",
   "model": "claude-sonnet-5",
-  "recorded_at": "2026-08-28T07:03:21+00:00",
+  "recorded_at": "2026-08-29T02:46:24+00:00",
   "samples": [
     {
       "parsed_output": {
-        "rationale": "The server directly states drink options (tea or water) without being asked, volunteering the drinks information. No dish recommendation is mentioned.",
+        "rationale": "The line states outright that tea and water are the drink options ('你要喝茶还是水？'), answering the drinks question without the customer having asked first. It says nothing about which dish is good.",
         "volunteered": [
           "drinks"
         ]
@@ -15,7 +15,22 @@
         "cache_creation_input_tokens": 0,
         "cache_read_input_tokens": 0,
         "input_tokens": 609,
-        "output_tokens": 113
+        "output_tokens": 185
+      }
+    },
+    {
+      "parsed_output": {
+        "rationale": "The server's line states outright that tea or water are the drink options ('你要喝茶还是水？'), volunteering the drinks information without being asked. No mention is made of any recommended dish.",
+        "volunteered": [
+          "drinks"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 609,
+        "output_tokens": 145
       }
     }
   ],

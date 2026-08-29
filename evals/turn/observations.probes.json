@@ -6,26 +6,6 @@
   "observations": [
     {
       "case_id": "greeting-only",
-      "reply_zh": "你好，要吃什么？",
-      "reading_zh": "你好",
-      "slots_filled": [],
-      "volunteered": [],
-      "said_goodbye": false,
-      "coherence": "coherent",
-      "status": "active"
-    },
-    {
-      "case_id": "i-am-hungry",
-      "reply_zh": "你想吃什么？",
-      "reading_zh": "我很饿",
-      "slots_filled": [],
-      "volunteered": [],
-      "said_goodbye": false,
-      "coherence": "coherent",
-      "status": "active"
-    },
-    {
-      "case_id": "greeting-only",
       "reply_zh": "你好，想吃什么？",
       "reading_zh": "你好",
       "slots_filled": [],
@@ -38,26 +18,6 @@
       "case_id": "i-am-hungry",
       "reply_zh": "你想吃什么？",
       "reading_zh": "我很饿。",
-      "slots_filled": [],
-      "volunteered": [],
-      "said_goodbye": false,
-      "coherence": "coherent",
-      "status": "active"
-    },
-    {
-      "case_id": "greeting-only",
-      "reply_zh": "你好，你要吃什么？",
-      "reading_zh": "你好",
-      "slots_filled": [],
-      "volunteered": [],
-      "said_goodbye": false,
-      "coherence": "coherent",
-      "status": "active"
-    },
-    {
-      "case_id": "i-am-hungry",
-      "reply_zh": "你想吃什么？",
-      "reading_zh": "我很饿",
       "slots_filled": [],
       "volunteered": [],
       "said_goodbye": false,
@@ -86,7 +46,47 @@
     },
     {
       "case_id": "greeting-only",
-      "reply_zh": "你好，想吃什么？",
+      "reply_zh": "你好，想吃点什么？",
+      "reading_zh": "你好",
+      "slots_filled": [],
+      "volunteered": [],
+      "said_goodbye": false,
+      "coherence": "coherent",
+      "status": "active"
+    },
+    {
+      "case_id": "i-am-hungry",
+      "reply_zh": "你想吃什么？",
+      "reading_zh": "我很饿。",
+      "slots_filled": [],
+      "volunteered": [],
+      "said_goodbye": false,
+      "coherence": "coherent",
+      "status": "active"
+    },
+    {
+      "case_id": "greeting-only",
+      "reply_zh": "你好，想吃点什么？",
+      "reading_zh": "你好",
+      "slots_filled": [],
+      "volunteered": [],
+      "said_goodbye": false,
+      "coherence": "coherent",
+      "status": "active"
+    },
+    {
+      "case_id": "i-am-hungry",
+      "reply_zh": "你想吃什么？",
+      "reading_zh": "我很饿。",
+      "slots_filled": [],
+      "volunteered": [],
+      "said_goodbye": false,
+      "coherence": "coherent",
+      "status": "active"
+    },
+    {
+      "case_id": "greeting-only",
+      "reply_zh": "你好，想吃点什么？",
       "reading_zh": "你好",
       "slots_filled": [],
       "volunteered": [],

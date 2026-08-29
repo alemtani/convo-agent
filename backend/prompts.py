@@ -204,11 +204,12 @@ def render_window_note(window: int) -> Optional[str]:
         return None
     earlier = window - 1
     return (
-        f"[The last {earlier} of the learner's earlier turns were never judged — "
-        "a grading failure, nothing the learner did. Judge them too. Put what "
-        "the learner's final turn established in `slots_filled`, and what those "
-        f"{earlier} earlier turn(s) established in `slots_filled_previously`. "
-        "Keep them separate; do not merge the two lists.]"
+        f"[The last {earlier} of the learner's earlier lines in the transcript "
+        "above were never judged — a grading failure, nothing the learner did. "
+        "Judge them too. Put what the learner's final line established in "
+        f"`slots_filled`, and what those {earlier} earlier line(s) established "
+        "in `slots_filled_previously`. Keep them separate; do not merge the two "
+        "lists.]"
     )
 
 
@@ -229,13 +230,14 @@ def render_review_note(turns: int) -> str:
     the frozen prefix stays byte-identical.
     """
     return (
-        f"[The session is over, and all {turns} of the learner's turns are shown "
-        "above. Judge every one of them again, together — which no live grade "
-        "could do: a later turn often makes an earlier one legible, a question "
-        "the reply shows was understood, an answer that only reads as one once "
-        "you have both halves. Work turn by turn, oldest first, and go through "
-        "the whole slot list for each turn separately — the same sweep you make "
-        "for the final turn, made once per turn. Put what the learner's **final** "
+        f"[The session is over, and all {turns} of the learner's turns are in the "
+        "numbered transcript above. Judge every one of them again, together — "
+        "which no live grade could do: a later turn often makes an earlier one "
+        "legible, a question the reply shows was understood, an answer that only "
+        "reads as one once you have both halves. Work through the learner's "
+        "numbered lines one at a time, oldest first, and go through the whole "
+        "slot list for each of them separately — the same sweep you make for the "
+        "final turn, made once per turn. Put what the learner's **final** "
         "turn established in `slots_filled`, and everything **any earlier turn** "
         "established in `slots_filled_previously`, including slots listed as "
         "already established and including a slot two turns established between "

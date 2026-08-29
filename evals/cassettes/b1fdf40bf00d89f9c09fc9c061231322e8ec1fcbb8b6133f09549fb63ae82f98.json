@@ -1,0 +1,21 @@
+{
+  "key": "b1fdf40bf00d89f9c09fc9c061231322e8ec1fcbb8b6133f09549fb63ae82f98",
+  "model": "claude-sonnet-5",
+  "recorded_at": "2026-08-29T02:46:01+00:00",
+  "samples": [
+    {
+      "parsed_output": {
+        "rationale": "The line states that today's fish is the best dish, which relates to recommending a dish, not to drinks. It does not mention what beverages are available, so the 'drinks' fact is not stated outright.",
+        "volunteered": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 589,
+        "output_tokens": 170
+      }
+    }
+  ],
+  "summary": "claude-sonnet-5 → WithholdingVerdict: The partner's line:\n今天鱼最好吃。"
+}

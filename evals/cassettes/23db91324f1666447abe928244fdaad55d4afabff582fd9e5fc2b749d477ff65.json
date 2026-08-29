@@ -1,77 +1,8 @@
 {
   "key": "23db91324f1666447abe928244fdaad55d4afabff582fd9e5fc2b749d477ff65",
   "model": "claude-sonnet-5",
-  "recorded_at": "2026-08-28T07:03:43+00:00",
+  "recorded_at": "2026-08-29T02:48:14+00:00",
   "samples": [
-    {
-      "parsed_output": {
-        "partner_response": {
-          "pinyin": "yú zuì hǎochī. hē de yǒu chá, shuǐ, niúnǎi.",
-          "zh": "鱼最好吃。喝的有茶、水、牛奶。"
-        },
-        "turn_annotation": {
-          "coherent": true,
-          "learner_said_goodbye": false
-        },
-        "user_reading": {
-          "pinyin": "nǐ hǎo, shénme cài zuì hǎochī? yǒu shénme hē de? wǒ yào yī gè niúnǎi hé sān gè bǐnggān.",
-          "zh": "你好，什么菜最好吃？有什么喝的？我要一个牛奶和三个饼干。"
-        }
-      },
-      "stop_reason": "end_turn",
-      "usage": {
-        "cache_creation_input_tokens": 0,
-        "cache_read_input_tokens": 5343,
-        "input_tokens": 37,
-        "output_tokens": 225
-      }
-    },
-    {
-      "parsed_output": {
-        "partner_response": {
-          "pinyin": "yú zuì hǎochī. hē de yǒu chá, shuǐ, niúnǎi.",
-          "zh": "鱼最好吃。喝的有茶、水、牛奶。"
-        },
-        "turn_annotation": {
-          "coherent": true,
-          "learner_said_goodbye": false
-        },
-        "user_reading": {
-          "pinyin": "nǐ hǎo, shénme cài zuì hǎochī? yǒu shénme hē de? wǒ yào yī gè niúnǎi hé sān gè bǐnggān.",
-          "zh": "你好，什么菜最好吃？有什么喝的？我要一个牛奶和三个饼干。"
-        }
-      },
-      "stop_reason": "end_turn",
-      "usage": {
-        "cache_creation_input_tokens": 0,
-        "cache_read_input_tokens": 5343,
-        "input_tokens": 37,
-        "output_tokens": 225
-      }
-    },
-    {
-      "parsed_output": {
-        "partner_response": {
-          "pinyin": "yú zuì hǎochī. hē de yǒu chá, shuǐ, niúnǎi.",
-          "zh": "鱼最好吃。喝的有茶、水、牛奶。"
-        },
-        "turn_annotation": {
-          "coherent": true,
-          "learner_said_goodbye": false
-        },
-        "user_reading": {
-          "pinyin": "nǐ hǎo, shénme cài zuì hǎochī? yǒu shénme hē de? wǒ yào yī gè niúnǎi hé sān gè bǐnggān.",
-          "zh": "你好，什么菜最好吃？有什么喝的？我要一个牛奶和三个饼干。"
-        }
-      },
-      "stop_reason": "end_turn",
-      "usage": {
-        "cache_creation_input_tokens": 0,
-        "cache_read_input_tokens": 5343,
-        "input_tokens": 37,
-        "output_tokens": 225
-      }
-    },
     {
       "parsed_output": {
         "partner_response": {
@@ -98,8 +29,8 @@
     {
       "parsed_output": {
         "partner_response": {
-          "pinyin": "yú zuì hǎochī. hē de yǒu chá, shuǐ, niúnǎi.",
-          "zh": "鱼最好吃。喝的有茶、水、牛奶。"
+          "pinyin": "yú zuì hǎochī. hē de yǒu chá hé shuǐ.",
+          "zh": "鱼最好吃。喝的有茶和水。"
         },
         "turn_annotation": {
           "coherent": true,
@@ -115,7 +46,76 @@
         "cache_creation_input_tokens": 0,
         "cache_read_input_tokens": 5343,
         "input_tokens": 37,
-        "output_tokens": 225
+        "output_tokens": 214
+      }
+    },
+    {
+      "parsed_output": {
+        "partner_response": {
+          "pinyin": "yú zuì hǎochī. hē de yǒu chá, shuǐ, hái yǒu niúnǎi.",
+          "zh": "鱼最好吃。喝的有茶、水，还有牛奶。"
+        },
+        "turn_annotation": {
+          "coherent": true,
+          "learner_said_goodbye": false
+        },
+        "user_reading": {
+          "pinyin": "nǐ hǎo, shénme cài zuì hǎochī? yǒu shénme hē de? wǒ yào yī gè niúnǎi hé sān gè bǐnggān.",
+          "zh": "你好，什么菜最好吃？有什么喝的？我要一个牛奶和三个饼干。"
+        }
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 5343,
+        "input_tokens": 37,
+        "output_tokens": 233
+      }
+    },
+    {
+      "parsed_output": {
+        "partner_response": {
+          "pinyin": "yú zuì hǎochī. hē de yǒu chá, shuǐ hé niúnǎi.",
+          "zh": "鱼最好吃。喝的有茶、水和牛奶。"
+        },
+        "turn_annotation": {
+          "coherent": true,
+          "learner_said_goodbye": false
+        },
+        "user_reading": {
+          "pinyin": "nǐ hǎo, shénme cài zuì hǎochī? yǒu shénme hē de? wǒ yào yī gè niúnǎi hé sān gè bǐnggān.",
+          "zh": "你好，什么菜最好吃？有什么喝的？我要一个牛奶和三个饼干。"
+        }
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 5343,
+        "input_tokens": 37,
+        "output_tokens": 226
+      }
+    },
+    {
+      "parsed_output": {
+        "partner_response": {
+          "pinyin": "yú zuì hǎochī. hē de yǒu chá hé shuǐ.",
+          "zh": "鱼最好吃。喝的有茶和水。"
+        },
+        "turn_annotation": {
+          "coherent": true,
+          "learner_said_goodbye": false
+        },
+        "user_reading": {
+          "pinyin": "nǐ hǎo, shénme cài zuì hǎochī? yǒu shénme hē de? wǒ yào yī gè niúnǎi hé sān gè bǐnggān.",
+          "zh": "你好，什么菜最好吃？有什么喝的？我要一个牛奶和三个饼干。"
+        }
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 5343,
+        "input_tokens": 37,
+        "output_tokens": 214
       }
     }
   ],

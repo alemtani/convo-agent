@@ -467,11 +467,14 @@ async def test_a_failed_review_scores_as_a_draw_that_recovered_nothing(monkeypat
 
 REVIEW_DRAWS = 20
 
-# Nine of the eleven owed slots come back at 20/20 (`evals/review/RESULTS.md`).
-# The two that do not are the same slot in two positions, and the floor is set
-# under the total those numbers produce, not at it — the corpus is re-recorded
-# weekly and a floor set exactly at the measurement fails on noise.
-REVIEW_MIN_RECALL = 0.80
+# **Raised from 0.80 to 0.95 by A6.6**, which took the corpus to 220/220 — every
+# owed slot, every draw. A floor left at the old baseline would have let the
+# review fall the whole way back to A6.5's 86% and still go green, which is a
+# gate that only detects a catastrophe. Still set under the measurement rather
+# than at it: 100% is not a rate anyone can promise, the corpus is re-recorded
+# weekly, and 0.95 leaves eleven misses of 220 for noise while failing on any
+# real return of the earlier-turn bug.
+REVIEW_MIN_RECALL = 0.95
 
 
 async def _draws_for(case):

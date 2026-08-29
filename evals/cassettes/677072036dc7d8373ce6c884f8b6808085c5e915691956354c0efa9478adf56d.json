@@ -1,11 +1,11 @@
 {
   "key": "677072036dc7d8373ce6c884f8b6808085c5e915691956354c0efa9478adf56d",
   "model": "claude-sonnet-5",
-  "recorded_at": "2026-08-28T07:06:01+00:00",
+  "recorded_at": "2026-08-29T02:48:51+00:00",
   "samples": [
     {
       "parsed_output": {
-        "rationale": "The server's line is just a generic prompt asking what the customer wants to eat. It does not state which dish is recommended, nor does it mention any drink options. Both facts remain unstated.",
+        "rationale": "The server merely asks what the customer wants to order. It does not name any recommended dish nor state what drinks are available.",
         "volunteered": []
       },
       "stop_reason": "end_turn",
@@ -13,20 +13,7 @@
         "cache_creation_input_tokens": 0,
         "cache_read_input_tokens": 0,
         "input_tokens": 604,
-        "output_tokens": 108
-      }
-    },
-    {
-      "parsed_output": {
-        "rationale": "The server merely asks what the customer wants to eat, without stating any dish recommendation or listing available drinks.",
-        "volunteered": []
-      },
-      "stop_reason": "end_turn",
-      "usage": {
-        "cache_creation_input_tokens": 0,
-        "cache_read_input_tokens": 0,
-        "input_tokens": 604,
-        "output_tokens": 78
+        "output_tokens": 53
       }
     }
   ],

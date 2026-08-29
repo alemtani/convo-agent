@@ -55,6 +55,22 @@ jobs:
           python -m evals.coherence.replay --record --refresh --samples 5
           --repeat 5 --used-out "$RUNNER_TEMP/used-coherence.json"
 
+      # The three dense cases are judged at twenty draws, not five
+      # (`tests/test_coherence_eval.py`, DENSE_SAMPLES) — the A8 experiment found
+      # the five-draw gate false-failing about a quarter of the time on a case
+      # that had not regressed. This tops those three up to depth, and it must run *after*
+      # the refresh above: `--refresh` replaces a cassette, so a run at
+      # `--samples 5` would truncate them back and the depth check would fail.
+      # No `--used-out` here — a `--case` run reaches a handful of keys, and a
+      # manifest from one would tell the sweep the rest are stale.
+      - name: Deepen the dense grader cases
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: >
+          python -m evals.coherence.replay --record --samples 20 --repeat 20
+          --case milk-and-biscuits --case computer-work-ni-ne
+          --case clip-and-tea --out "$RUNNER_TEMP/dense.json"
+
       # Same flag pairing as the grader step above. Nothing asserts a depth of 5
       # on turn observations yet (A1.5 records the first ones), but recording
       # shallower than the corpus claims is the trap to avoid.

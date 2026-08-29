@@ -1,0 +1,21 @@
+{
+  "key": "6ffb2a004e20a498be356ba84060b33a7f6e87b2ba7235f20c99eca9a395f819",
+  "model": "claude-sonnet-5",
+  "recorded_at": "2026-08-29T02:47:12+00:00",
+  "samples": [
+    {
+      "parsed_output": {
+        "rationale": "The line only states that there is no such large table available; it says nothing about a recommended dish or available drinks, so neither withheld fact is volunteered.",
+        "volunteered": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 607,
+        "output_tokens": 98
+      }
+    }
+  ],
+  "summary": "claude-sonnet-5 → WithholdingVerdict: The partner's line:\n我们没有那么大的桌子。"
+}

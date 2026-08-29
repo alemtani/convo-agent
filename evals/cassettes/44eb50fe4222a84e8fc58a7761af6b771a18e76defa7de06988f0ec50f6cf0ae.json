@@ -1,7 +1,7 @@
 {
   "key": "44eb50fe4222a84e8fc58a7761af6b771a18e76defa7de06988f0ec50f6cf0ae",
   "model": "claude-sonnet-5",
-  "recorded_at": "2026-08-28T07:03:33+00:00",
+  "recorded_at": "2026-08-29T02:48:05+00:00",
   "samples": [
     {
       "parsed_output": {
@@ -29,8 +29,8 @@
     {
       "parsed_output": {
         "partner_response": {
-          "pinyin": "wǒ yě hěn hǎo, xièxie nǐ.",
-          "zh": "我也很好，谢谢你。"
+          "pinyin": "wǒ yě hěn hǎo, xièxie!",
+          "zh": "我也很好，谢谢！"
         },
         "turn_annotation": {
           "coherent": true,
@@ -46,14 +46,14 @@
         "cache_creation_input_tokens": 0,
         "cache_read_input_tokens": 4675,
         "input_tokens": 39,
-        "output_tokens": 134
+        "output_tokens": 130
       }
     },
     {
       "parsed_output": {
         "partner_response": {
-          "pinyin": "wǒ yě hěn hǎo, xièxie.",
-          "zh": "我也很好，谢谢。"
+          "pinyin": "wǒ yě hěn hǎo, xièxie nǐ!",
+          "zh": "我也很好，谢谢你！"
         },
         "turn_annotation": {
           "coherent": true,
@@ -69,7 +69,7 @@
         "cache_creation_input_tokens": 0,
         "cache_read_input_tokens": 4675,
         "input_tokens": 39,
-        "output_tokens": 129
+        "output_tokens": 135
       }
     },
     {

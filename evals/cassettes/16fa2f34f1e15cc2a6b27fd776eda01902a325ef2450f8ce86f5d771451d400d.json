@@ -1,13 +1,13 @@
 {
   "key": "16fa2f34f1e15cc2a6b27fd776eda01902a325ef2450f8ce86f5d771451d400d",
   "model": "claude-sonnet-5",
-  "recorded_at": "2026-08-28T07:03:04+00:00",
+  "recorded_at": "2026-08-29T02:47:40+00:00",
   "samples": [
     {
       "parsed_output": {
         "partner_response": {
-          "pinyin": "wǒ shì xuésheng, wǒ zài dàxué xuéxí。",
-          "zh": "我是学生，我在大学学习。"
+          "pinyin": "wǒ shì xuésheng。",
+          "zh": "我是学生。"
         },
         "turn_annotation": {
           "coherent": true,
@@ -23,13 +23,36 @@
         "cache_creation_input_tokens": 5437,
         "cache_read_input_tokens": 0,
         "input_tokens": 15,
-        "output_tokens": 153
+        "output_tokens": 130
       }
     },
     {
       "parsed_output": {
         "partner_response": {
-          "pinyin": "wǒ shì xuésheng。",
+          "pinyin": "wǒ shì xuésheng",
+          "zh": "我是学生。"
+        },
+        "turn_annotation": {
+          "coherent": true,
+          "learner_said_goodbye": false
+        },
+        "user_reading": {
+          "pinyin": "wǒ zuò diànnǎo gōngzuò nǐ ne",
+          "zh": "我做电脑工作，你呢？"
+        }
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 5437,
+        "input_tokens": 15,
+        "output_tokens": 127
+      }
+    },
+    {
+      "parsed_output": {
+        "partner_response": {
+          "pinyin": "wǒ shì xuéshēng。",
           "zh": "我是学生。"
         },
         "turn_annotation": {
@@ -46,13 +69,13 @@
         "cache_creation_input_tokens": 0,
         "cache_read_input_tokens": 5437,
         "input_tokens": 15,
-        "output_tokens": 130
+        "output_tokens": 131
       }
     },
     {
       "parsed_output": {
         "partner_response": {
-          "pinyin": "wǒ shì xuéshēng, wǒ zài dàxué xuéxí。",
+          "pinyin": "wǒ shì xuésheng, wǒ zài dàxué xuéxí.",
           "zh": "我是学生，我在大学学习。"
         },
         "turn_annotation": {
@@ -69,30 +92,7 @@
         "cache_creation_input_tokens": 0,
         "cache_read_input_tokens": 5437,
         "input_tokens": 15,
-        "output_tokens": 154
-      }
-    },
-    {
-      "parsed_output": {
-        "partner_response": {
-          "pinyin": "wǒ shì xuésheng。",
-          "zh": "我是学生。"
-        },
-        "turn_annotation": {
-          "coherent": true,
-          "learner_said_goodbye": false
-        },
-        "user_reading": {
-          "pinyin": "wǒ zuò diànnǎo gōngzuò, nǐ ne?",
-          "zh": "我做电脑工作，你呢？"
-        }
-      },
-      "stop_reason": "end_turn",
-      "usage": {
-        "cache_creation_input_tokens": 0,
-        "cache_read_input_tokens": 5437,
-        "input_tokens": 15,
-        "output_tokens": 130
+        "output_tokens": 152
       }
     },
     {
