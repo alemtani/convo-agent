@@ -943,6 +943,14 @@ The recall floor in `tests/test_review_eval.py` goes 80% → **95%**. A floor le
 at the old baseline would let the review fall the whole way back to A6.5 and
 still go green.
 
+**The dense coherence gate goes to twenty draws with a floor of fourteen**, and
+the weekly job tops those three cases up to depth. That change is salvaged from
+the A8 experiment, which found the five-draw gate false-failing about a quarter
+of the time on a case that had not regressed — a test-only fix, carried here
+because it is right whatever happens to the prompt. `computer-work-ni-ne` draws
+19/20 on this encoding against 17/20 on the old, which at twenty draws is the
+same rate and is reported as such.
+
 ### What this costs, and what it does not
 
 Every grader cassette re-recorded — the request changed for every call — and
@@ -986,7 +994,40 @@ that can land in `gold.json`.
 
 Needs a server-side token and a rate limit. The client never sees the token.
 
-### A8 — Prompt weight, and moving what is left out of the prompt
+### A8 — Prompt weight — **tried, declined, PR #102 closed**
+
+**The prompt cut was built, measured, and not merged.** It split the frozen
+prefix by caller (`_GRADER_ROLE`, `_GRADER_RUBRIC`, `_SLOT_RULES`, then a turn
+frame and a review frame), took the turn prefix from 1079 to 913 tokens and the
+review call's instructions from 1323 to 1073, and stopped caching the review's
+prefix — one call per session, so a write at 1.25x is never read back. On the
+old encoding it measured 190/220 → 199/220.
+
+It was declined for two reasons, and neither is that the work was wrong.
+
+- **A6.6 took the same corpus to 220/220 without it.** A8's headline win was
+  `greetings-name-question-mid-session` going 0/20 → 11/20, and that is the case
+  the encoding fix alone takes to 20/20. The cut no longer has recall to buy.
+- **Its mechanism competes with A6.6's rather than adding to it.** A8 moved the
+  review's instruction *into the frozen prefix* — above the transcript. A6.6 put
+  it deliberately *after* the transcript, in the position the old encoding was
+  wasting on "answer this". Merging both is not additive; it is a new experiment
+  that has to be re-measured against 220/220, at the cost of a full re-record.
+
+What is left on the table is 166 tokens of cache read at 0.1x — about a
+hundredth of a cent a turn — and a prefix that still tells every caller *"That
+pair is the whole of what you need"* and *"Grade the learner's final turn"*,
+which is false for the review and for any `window > 1` turn. That contradiction
+costs no measured recall today. **Revisit when it does**: a drop on this gate, a
+new corpus that fails on it, or a third caller. The branch is
+`feat/a8-prompt-weight` and the commit is `13b7566` — the work does not need
+redoing from scratch, only re-measuring.
+
+The rest of this section is the analysis as it stood before A6.6, kept because
+the reasoning about deferred tool loading is still correct and still applies to
+whoever picks this up.
+
+### A8 — the original analysis
 
 **The hypothesis A6 hands to this step: the `slots_filled_previously` weakness
 is context pollution, not a missing instruction.** Four wording variants moved
@@ -1189,16 +1230,26 @@ PR is ready — then close it.
 
 ### A8 — prompt weight
 
+**Deferred, not retired.** The cut exists on `feat/a8-prompt-weight` (`13b7566`,
+PR #102 closed) and was measured on the encoding A6.6 replaced. It is not worth
+re-measuring while the gate reads 220/220: the clunkiness is real, the saving is
+a hundredth of a cent a turn, and A8's mechanism competes with A6.6's rather
+than adding to it. Pick it up when the prompt starts costing something — a drop
+on this gate, a new corpus it fails, or a third caller for the prefix. The
+prompt below still describes the job; only the premise in the first paragraph
+has changed.
+
 ```
 Read docs/streams/grading.md, the A8 section. Cut the grader's prompt, and decide
 what should not be in a prompt at all.
 
-Do A6.5 and A6.6 first. This step changes what the grader reads on every call,
-and cutting a prompt with no baseline loses credit you had — the measurement is
-the gate, not the intuition. **PR #102 was measured before A6.6 landed**: rebase
-it, re-record, and re-measure. Its headline win (the mid-session case, 0/20 →
-11/20) is a case A6.6 alone takes to 20/20, so that claim is no longer A8's to
-make.
+Start from `feat/a8-prompt-weight` (`13b7566`) rather than a blank page — the
+split is already built. Rebase it onto main, re-record, and **re-measure against
+the 220/220 baseline A6.6 set**, not against A6.5's 190/220. Its old headline win
+(the mid-session case, 0/20 → 11/20) is a case A6.6 alone takes to 20/20, so that
+claim is no longer A8's to make; and the one design question to settle is where
+the review's instruction sits — A8 moved it into the frozen prefix, above the
+transcript, and A6.6 deliberately puts it after. Measure both.
 
 The finding this starts from: the frozen prefix is 612 words, `slots_filled`
 gets five paragraphs, `slots_filled_previously` gets one sentence saying to
