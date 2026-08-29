@@ -1,0 +1,388 @@
+{
+  "key": "884c9b1a1f7b8011fc036a768bb76aa6123598b69b9b9452b12755f212bc467c",
+  "model": "claude-opus-5",
+  "recorded_at": "2026-08-29T02:38:59+00:00",
+  "samples": [
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "partner_job"
+        ],
+        "slots_filled_previously": [
+          "self_origin",
+          "self_job",
+          "partner_origin"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 2143,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 420,
+        "output_tokens": 45
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "partner_job"
+        ],
+        "slots_filled_previously": [
+          "self_origin",
+          "self_job",
+          "partner_origin"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2143,
+        "input_tokens": 420,
+        "output_tokens": 45
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "partner_job"
+        ],
+        "slots_filled_previously": [
+          "self_origin",
+          "self_job",
+          "partner_origin"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2143,
+        "input_tokens": 420,
+        "output_tokens": 45
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "partner_job"
+        ],
+        "slots_filled_previously": [
+          "self_origin",
+          "self_job",
+          "partner_origin"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2143,
+        "input_tokens": 420,
+        "output_tokens": 45
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "partner_job"
+        ],
+        "slots_filled_previously": [
+          "self_origin",
+          "self_job",
+          "partner_origin"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2143,
+        "input_tokens": 420,
+        "output_tokens": 45
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "partner_job"
+        ],
+        "slots_filled_previously": [
+          "self_origin",
+          "self_job",
+          "partner_origin"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2143,
+        "input_tokens": 420,
+        "output_tokens": 45
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "partner_job"
+        ],
+        "slots_filled_previously": [
+          "self_origin",
+          "self_job",
+          "partner_origin"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2143,
+        "input_tokens": 420,
+        "output_tokens": 45
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "partner_job"
+        ],
+        "slots_filled_previously": [
+          "self_origin",
+          "self_job",
+          "partner_origin"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2143,
+        "input_tokens": 420,
+        "output_tokens": 45
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "partner_job"
+        ],
+        "slots_filled_previously": [
+          "self_origin",
+          "self_job",
+          "partner_origin"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2143,
+        "input_tokens": 420,
+        "output_tokens": 45
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "partner_job"
+        ],
+        "slots_filled_previously": [
+          "self_origin",
+          "self_job",
+          "partner_origin"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2143,
+        "input_tokens": 420,
+        "output_tokens": 45
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "partner_job"
+        ],
+        "slots_filled_previously": [
+          "self_origin",
+          "self_job",
+          "partner_origin"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2143,
+        "input_tokens": 420,
+        "output_tokens": 45
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "partner_job"
+        ],
+        "slots_filled_previously": [
+          "self_origin",
+          "self_job",
+          "partner_origin"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2143,
+        "input_tokens": 420,
+        "output_tokens": 45
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "partner_job"
+        ],
+        "slots_filled_previously": [
+          "self_origin",
+          "self_job",
+          "partner_origin"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2143,
+        "input_tokens": 420,
+        "output_tokens": 45
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "partner_job"
+        ],
+        "slots_filled_previously": [
+          "self_origin",
+          "self_job",
+          "partner_origin"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2143,
+        "input_tokens": 420,
+        "output_tokens": 45
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "partner_job"
+        ],
+        "slots_filled_previously": [
+          "self_origin",
+          "self_job",
+          "partner_origin"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2143,
+        "input_tokens": 420,
+        "output_tokens": 45
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "partner_job"
+        ],
+        "slots_filled_previously": [
+          "self_origin",
+          "self_job",
+          "partner_origin"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2143,
+        "input_tokens": 420,
+        "output_tokens": 45
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "partner_job"
+        ],
+        "slots_filled_previously": [
+          "self_origin",
+          "self_job",
+          "partner_origin"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2143,
+        "input_tokens": 420,
+        "output_tokens": 45
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "partner_job"
+        ],
+        "slots_filled_previously": [
+          "self_origin",
+          "self_job",
+          "partner_origin"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2143,
+        "input_tokens": 420,
+        "output_tokens": 45
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "partner_job"
+        ],
+        "slots_filled_previously": [
+          "self_origin",
+          "self_job",
+          "partner_origin"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2143,
+        "input_tokens": 420,
+        "output_tokens": 45
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "partner_job"
+        ],
+        "slots_filled_previously": [
+          "self_origin",
+          "self_job",
+          "partner_origin"
+        ]
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2143,
+        "input_tokens": 420,
+        "output_tokens": 45
+      }
+    }
+  ],
+  "summary": "claude-opus-5 → GraderResult: [The conversation, from its first line. Every line is numbe…"
+}

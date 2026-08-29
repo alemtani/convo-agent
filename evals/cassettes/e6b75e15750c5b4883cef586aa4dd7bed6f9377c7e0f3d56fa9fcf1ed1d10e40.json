@@ -1,7 +1,7 @@
 {
   "key": "e6b75e15750c5b4883cef586aa4dd7bed6f9377c7e0f3d56fa9fcf1ed1d10e40",
   "model": "claude-sonnet-5",
-  "recorded_at": "2026-08-27T03:34:34+00:00",
+  "recorded_at": "2026-08-29T02:50:39+00:00",
   "samples": [
     {
       "parsed_output": {
@@ -9,14 +9,14 @@
           "pinyin": "nǐ hǎo!",
           "zh": "你好！"
         },
-        "sketch": "A friendly but shy classmate, happy to chat and quick to answer when asked directly, though too reserved to volunteer personal details on their own. Casual campus morning setting: a few other students walking by, backpacks, maybe a coffee cart nearby. Keeps replies short and simple, and always happy to turn a question back with 你呢."
+        "sketch": "The classmate is friendly but a bit shy and low-key — happy to chat and quick to ask about the learner, but never offers their own name or brings up how they've been unless asked directly. It's morning on campus, a little chilly, a few other students walking by with backpacks."
       },
       "stop_reason": "end_turn",
       "usage": {
         "cache_creation_input_tokens": 0,
         "cache_read_input_tokens": 0,
         "input_tokens": 4227,
-        "output_tokens": 150
+        "output_tokens": 126
       }
     },
     {
@@ -25,23 +25,7 @@
           "pinyin": "nǐ hǎo!",
           "zh": "你好！"
         },
-        "sketch": "Play a friendly but shy classmate: warm and quick to answer, happy to ask about the other person, yet never the one to offer up your own name or bring up how you've been. It's a cool, quiet morning on campus with a few students walking by. Keep replies short and simple, matching beginner-level Mandarin."
-      },
-      "stop_reason": "end_turn",
-      "usage": {
-        "cache_creation_input_tokens": 0,
-        "cache_read_input_tokens": 0,
-        "input_tokens": 4227,
-        "output_tokens": 140
-      }
-    },
-    {
-      "parsed_output": {
-        "opening_line": {
-          "pinyin": "nǐ hǎo!",
-          "zh": "你好！"
-        },
-        "sketch": "Play a friendly but shy classmate: warm and quick to answer, happy to ask about the other person, but never the one to offer up their own name or bring up how they've been. Morning campus scene—cool air, students walking to class, maybe books in hand. Keep replies short and simple, HSK band 1-2 only."
+        "sketch": "Play a shy but friendly classmate: warm and willing to answer anything asked directly, but quiet by nature, so you never offer your own name or bring up how you've been unless the other person asks first. Keep replies short and a little bashful. It's early morning on campus, a bit chilly, with a few other students walking by."
       },
       "stop_reason": "end_turn",
       "usage": {
@@ -57,14 +41,30 @@
           "pinyin": "nǐ hǎo!",
           "zh": "你好！"
         },
-        "sketch": "Play a friendly but shy classmate on campus in the morning, happy to chat and answer questions but never volunteering your own name or bringing up how you've been. The morning is a bit chilly, a few other students are walking to class with coffee cups, and you're both headed the same direction. Keep replies short and a little bashful, and be quick to turn questions back to the learner."
+        "sketch": "Play a shy, soft-spoken classmate who is friendly and happy to chat but never brings up their own name or how they've been unless directly asked. Keep answers short and a little bashful, and readily ask questions back about the learner. It's a cool, quiet morning on campus with a few students walking to class."
       },
       "stop_reason": "end_turn",
       "usage": {
         "cache_creation_input_tokens": 0,
         "cache_read_input_tokens": 0,
         "input_tokens": 4227,
-        "output_tokens": 157
+        "output_tokens": 137
+      }
+    },
+    {
+      "parsed_output": {
+        "opening_line": {
+          "pinyin": "zǎoshang hǎo!",
+          "zh": "早上好！"
+        },
+        "sketch": "Play a shy but friendly classmate on campus in the morning, happy to answer questions and curious about the learner, but too bashful to bring up your own name or share how you've been unless directly asked. Keep replies short and a little soft-spoken. You can mention small campus color if useful: it's a cool, bright morning, a few students are walking by with backpacks, maybe someone's carrying coffee."
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 4227,
+        "output_tokens": 170
       }
     },
     {
@@ -73,14 +73,14 @@
           "pinyin": "nǐ hǎo!",
           "zh": "你好！"
         },
-        "sketch": "Play a friendly but shy classmate who is happy to chat and answer questions but never offers their own name or brings up how they've been unless asked directly. It's a cool, sunny morning on campus, a few other students are walking to class in the background. Keep replies short and a little bashful, and always turn questions back to the learner with 你呢."
+        "sketch": "Play a shy but friendly classmate: warm and willing to answer, quick to smile, but never the one to bring things up first. You're both walking to class on a cool morning with a few other students passing by, backpacks and bikes around. Answer questions readily and ask about the learner in return, but don't offer your own name or mention how you've been unless asked directly."
       },
       "stop_reason": "end_turn",
       "usage": {
         "cache_creation_input_tokens": 0,
         "cache_read_input_tokens": 0,
         "input_tokens": 4227,
-        "output_tokens": 146
+        "output_tokens": 152
       }
     }
   ],

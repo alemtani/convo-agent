@@ -34,7 +34,11 @@ from backend.prompts import (
     render_window_note,
 )
 
-_ROLE_MAP = {"user": "user", "partner": "assistant"}
+# The transcript's speaker labels. Deliberately *not* API roles: the grader is
+# neither party. Replaying the partner as `assistant` told the model those lines
+# were its own prior output, seated it inside the conversation, and left it
+# ending on a user turn it was asked to grade rather than answer.
+_ROLE_LABEL = {"user": "learner", "partner": "partner"}
 
 _client: Optional[AsyncAnthropic] = None
 
@@ -59,21 +63,29 @@ def _as_dict(turn) -> dict:
     return turn.model_dump() if isinstance(turn, DialogueTurn) else turn
 
 
-def _prefix_text(message: Dict, text: str) -> None:
-    """Prepend a note to a `user` message's content, in place.
+def _render_transcript(lines: List[Tuple[str, str]], *, complete: bool) -> str:
+    """Render the conversation as a numbered record, in one block of text.
 
-    Content is a bare string or a list of blocks. A string joins with a newline
-    — the shape the turn-1 opener has always used, so a turn that gains no window
-    or filled note keeps a byte-identical request and its cassette. A list (a
-    breakpoint already sits inside it) gets a block prepended. Either way the new
-    text lands first, so context reads before the words it is context for.
+    Numbering is not decoration. `slots_filled_previously` asks the model to
+    report what *earlier* turns established, and before this the turns had no
+    names — the note said "shown above" over an unlabelled thread. A numbered
+    line is something a judgment can point at.
+
+    `complete` says whether the lines are the whole conversation or its tail. A
+    window is a tail, and telling the model it is reading from the beginning
+    would invite it to read turn 7 as turn 1.
     """
-    body = message["content"]
-    message["content"] = (
-        [{"type": "text", "text": text}] + body
-        if isinstance(body, list)
-        else f"{text}\n{body}"
+    head = (
+        "[The conversation, from its first line. Every line is numbered, and "
+        "the learner's lines are the ones you judge.]"
+        if complete
+        else "[The last lines of the conversation. Every line is numbered, and "
+        "the learner's lines are the ones you judge.]"
     )
+    body = "\n".join(
+        f"{n}. {who}: {zh}" for n, (who, zh) in enumerate(lines, start=1)
+    )
+    return f"{head}\n{body}"
 
 
 def build_request(
@@ -103,53 +115,53 @@ def build_request(
     last line for the current turn, plus a `(partner, learner)` pair for each
     earlier turn still owed a grade. `filled_slots` stands in for the rest.
 
-    The tail opens on the partner's last line, an assistant turn, but the
-    Messages API requires `messages[0]` to be `user`. That leading line folds
-    into the learner turn it precedes — the same shape turn 1 already uses for
-    the opening line.
+    **The encoding.** Whatever the window holds arrives as *one user message*:
+    a numbered transcript, `1. partner: … / 2. learner: …`, with the notes after
+    it. It used to arrive as replayed `messages` — the partner's lines as
+    `assistant`, the learner's as `user`. That is the API's word for the model's
+    own prior output, so it seated the grader inside the conversation and left
+    it ending on a user turn, which every instinct says to answer rather than
+    to judge. The recall numbers had the shape that predicts: the nearest turn
+    graded, the ones behind it not, and no wording fixed it because the request
+    was arguing with the prose. A record is read; a thread is joined.
+
+    Two things the encoding gives back for free. The API's "`messages[0]` must
+    be `user`" rule is gone, so the partner's last line and the opening line
+    stop needing bracketed folds. And the turns have numbers, which is what
+    `slots_filled_previously` was always asking the model to name.
 
     **`review` (A6)** is the end-of-session pass: `window` is the whole session,
-    so the tail is the whole conversation, and the note asks for a re-reading
-    with hindsight rather than for turns a grading failure lost. It is the only
-    caller that sends the transcript back, and it is off the turn loop.
+    so the transcript is the whole conversation — from the partner's opening
+    line — and the note asks for a re-reading with hindsight rather than for
+    turns a grading failure lost. It is off the turn loop.
     """
     windowed = dialogue[-(2 * window - 1):] if dialogue else []
-    messages = [
-        {"role": _ROLE_MAP[_as_dict(t)["role"]], "content": _as_dict(t)["zh"]}
-        for t in windowed
+    lines = [
+        (_ROLE_LABEL[_as_dict(t)["role"]], _as_dict(t)["zh"]) for t in windowed
     ]
-    messages.append({"role": "user", "content": user_text})
+    lines.append(("learner", user_text))
 
-    # Volatile, so they ride the final user message rather than the frozen
-    # prefix: whether earlier turns are owed depends on which grades failed, and
-    # what is already filled changes every turn — the cached system block must
-    # stay byte-identical across the session. The window note goes on last, so it
-    # reads first, ahead of the filled-slot context.
-    filled_note = render_filled_note(filled_slots)
-    if filled_note:
-        _prefix_text(messages[-1], filled_note)
+    # The opening line belongs to the transcript whenever the transcript starts
+    # at the start. It costs the learner none of their budget, so it is never in
+    # `dialogue` — and the learner's first turn is a response to it and to
+    # nothing else. Before the numbered transcript it was folded in only when
+    # `dialogue` was empty, so the review, whose window covers the whole
+    # session, judged the oldest turn with nothing it was answering.
+    complete = len(windowed) >= len(dialogue)
+    if opening_line and complete:
+        lines.insert(0, ("partner", opening_line))
+
+    # Instruction last. The transcript is the evidence and the note is the job,
+    # and the position a model reads last is the one the old encoding was
+    # spending on "answer this trailing user turn". The note also says the turns
+    # are shown *above*, which is now true.
     note = render_review_note(window) if review else render_window_note(window)
-    if note:
-        _prefix_text(messages[-1], note)
-
-    # The window opens on the partner's last line — an assistant turn the API
-    # will not take as `messages[0]`. Fold it into the user turn it precedes.
-    # `messages[1]` is that user turn: the mapping alternates, so a leading
-    # assistant is always followed by a user.
-    if messages[0]["role"] == "assistant":
-        line = messages.pop(0)["content"]
-        _prefix_text(messages[0], f"[The partner's last line was: {line}]")
-
-    # On turn 1 the window is empty, because the partner's opening line costs the
-    # learner none of their budget and so is never part of `dialogue`. The
-    # learner's first words are a response to that line and to nothing else, so
-    # without it a turn-1 slot is judged with nothing to have answered. It rides
-    # as a prefix on the first (and only) user message, the same fold.
-    if opening_line and not windowed:
-        _prefix_text(
-            messages[0],
-            f"[The partner opened the conversation with: {opening_line}]",
-        )
+    parts = [
+        _render_transcript(lines, complete=complete),
+        render_filled_note(filled_slots),
+        note,
+    ]
+    messages = [{"role": "user", "content": "\n\n".join(p for p in parts if p)}]
 
     return {
         "model": config.GRADER_MODEL,

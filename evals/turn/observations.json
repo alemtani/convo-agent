@@ -30,274 +30,7 @@
     },
     {
       "case_id": "computer-work-ni-ne",
-      "reply_zh": "我是学生，我在大学学习。",
-      "reading_zh": "我做电脑工作，你呢？",
-      "slots_filled": [
-        "partner_job",
-        "partner_origin",
-        "self_job"
-      ],
-      "volunteered": [],
-      "said_goodbye": false,
-      "coherence": "coherent",
-      "status": "active"
-    },
-    {
-      "case_id": "derailed-input",
-      "reply_zh": "没关系，你想吃什么？",
-      "reading_zh": "我不知道怎么说这个东西。",
-      "slots_filled": [],
-      "volunteered": [],
-      "said_goodbye": false,
-      "coherence": "incoherent",
-      "status": "active"
-    },
-    {
-      "case_id": "earned-under-annotated",
-      "reply_zh": "我姓李。你呢？",
-      "reading_zh": "早上好！我叫小明，你叫什么名字？",
-      "slots_filled": [
-        "partner_name",
-        "self_name"
-      ],
-      "volunteered": [],
-      "said_goodbye": false,
-      "coherence": "coherent",
-      "status": "active"
-    },
-    {
-      "case_id": "elliptical-ni-ne",
-      "reply_zh": "我也很好，谢谢！",
-      "reading_zh": "我很好，你呢？",
-      "slots_filled": [
-        "wellbeing"
-      ],
-      "volunteered": [],
-      "said_goodbye": false,
-      "coherence": "coherent",
-      "status": "active"
-    },
-    {
-      "case_id": "milk-and-biscuits",
-      "reply_zh": "鱼最好吃。喝的有茶、水、牛奶。",
-      "reading_zh": "你好，什么菜最好吃？有什么喝的？我要一个牛奶和三个饼干。",
-      "slots_filled": [
-        "drinks",
-        "order",
-        "recommendation"
-      ],
-      "volunteered": [],
-      "said_goodbye": false,
-      "coherence": "coherent",
-      "status": "complete"
-    },
-    {
-      "case_id": "nonsequitur-slot-fill",
-      "reply_zh": "鱼最好吃。",
-      "reading_zh": "什么菜最好吃？",
-      "slots_filled": [],
-      "volunteered": [
-        "recommendation"
-      ],
-      "said_goodbye": false,
-      "coherence": "incoherent",
-      "status": "active"
-    },
-    {
-      "case_id": "order-after-answers",
-      "reply_zh": "好，还要别的吗？",
-      "reading_zh": "我要一个鱼和一杯茶。",
-      "slots_filled": [
-        "order"
-      ],
-      "volunteered": [],
-      "said_goodbye": false,
-      "coherence": "coherent",
-      "status": "complete"
-    },
-    {
-      "case_id": "owed-drinks-then-order",
-      "reply_zh": "好，还要别的吗？",
-      "reading_zh": "好，我要一个鱼和一杯茶。",
-      "slots_filled": [
-        "drinks",
-        "order"
-      ],
-      "volunteered": [],
-      "said_goodbye": false,
-      "coherence": "coherent",
-      "status": "complete"
-    },
-    {
-      "case_id": "wandering-no-slot",
-      "reply_zh": "你们几个人？",
-      "reading_zh": "我有三个朋友。",
-      "slots_filled": [],
-      "volunteered": [],
-      "said_goodbye": false,
-      "coherence": "incoherent",
-      "status": "active"
-    },
-    {
-      "case_id": "clean-slot-fill",
-      "reply_zh": "鱼最好吃。",
-      "reading_zh": "请问，什么菜最好吃？",
-      "slots_filled": [
-        "recommendation"
-      ],
-      "volunteered": [],
-      "said_goodbye": false,
-      "coherence": "coherent",
-      "status": "active"
-    },
-    {
-      "case_id": "clip-and-tea",
-      "reply_zh": "好，一个饺子和一杯茶，还要别的吗？",
-      "reading_zh": "好的，那我要一个饺子和一杯茶。",
-      "slots_filled": [
-        "order"
-      ],
-      "volunteered": [],
-      "said_goodbye": false,
-      "coherence": "coherent",
-      "status": "complete"
-    },
-    {
-      "case_id": "computer-work-ni-ne",
       "reply_zh": "我是学生。",
-      "reading_zh": "我做电脑工作，你呢？",
-      "slots_filled": [
-        "partner_job",
-        "self_job"
-      ],
-      "volunteered": [],
-      "said_goodbye": false,
-      "coherence": "coherent",
-      "status": "active"
-    },
-    {
-      "case_id": "derailed-input",
-      "reply_zh": "没关系，你想吃什么？",
-      "reading_zh": "我不知道怎么说这个东西，对不起。",
-      "slots_filled": [],
-      "volunteered": [],
-      "said_goodbye": false,
-      "coherence": "incoherent",
-      "status": "active"
-    },
-    {
-      "case_id": "earned-under-annotated",
-      "reply_zh": "我姓李，你呢？",
-      "reading_zh": "早上好，我叫小明，你叫什么名字？",
-      "slots_filled": [
-        "partner_name",
-        "self_name"
-      ],
-      "volunteered": [],
-      "said_goodbye": false,
-      "coherence": "coherent",
-      "status": "active"
-    },
-    {
-      "case_id": "elliptical-ni-ne",
-      "reply_zh": "我也很好，谢谢你。",
-      "reading_zh": "我很好，你呢？",
-      "slots_filled": [
-        "wellbeing"
-      ],
-      "volunteered": [],
-      "said_goodbye": false,
-      "coherence": "coherent",
-      "status": "active"
-    },
-    {
-      "case_id": "milk-and-biscuits",
-      "reply_zh": "鱼最好吃。喝的有茶、水、牛奶。",
-      "reading_zh": "你好，什么菜最好吃？有什么喝的？我要一个牛奶和三个饼干。",
-      "slots_filled": [
-        "drinks",
-        "order",
-        "recommendation"
-      ],
-      "volunteered": [],
-      "said_goodbye": false,
-      "coherence": "coherent",
-      "status": "complete"
-    },
-    {
-      "case_id": "nonsequitur-slot-fill",
-      "reply_zh": "鱼最好吃。",
-      "reading_zh": "什么菜最好吃？",
-      "slots_filled": [],
-      "volunteered": [
-        "recommendation"
-      ],
-      "said_goodbye": false,
-      "coherence": "incoherent",
-      "status": "active"
-    },
-    {
-      "case_id": "order-after-answers",
-      "reply_zh": "好，还要别的吗？",
-      "reading_zh": "我要一个鱼和一杯茶。",
-      "slots_filled": [
-        "order"
-      ],
-      "volunteered": [],
-      "said_goodbye": false,
-      "coherence": "coherent",
-      "status": "complete"
-    },
-    {
-      "case_id": "owed-drinks-then-order",
-      "reply_zh": "好，还要别的吗？",
-      "reading_zh": "好，我要一个鱼和一杯茶。",
-      "slots_filled": [
-        "drinks",
-        "order"
-      ],
-      "volunteered": [],
-      "said_goodbye": false,
-      "coherence": "coherent",
-      "status": "complete"
-    },
-    {
-      "case_id": "wandering-no-slot",
-      "reply_zh": "好的，那你们要吃什么？",
-      "reading_zh": "我有三个朋友。",
-      "slots_filled": [],
-      "volunteered": [],
-      "said_goodbye": false,
-      "coherence": "incoherent",
-      "status": "active"
-    },
-    {
-      "case_id": "clean-slot-fill",
-      "reply_zh": "鱼最好吃。",
-      "reading_zh": "请问，什么菜最好吃？",
-      "slots_filled": [
-        "recommendation"
-      ],
-      "volunteered": [],
-      "said_goodbye": false,
-      "coherence": "coherent",
-      "status": "active"
-    },
-    {
-      "case_id": "clip-and-tea",
-      "reply_zh": "好，一个饺子，一杯茶，还要别的吗？",
-      "reading_zh": "好的，那我要一个饺子和一杯茶。",
-      "slots_filled": [
-        "order"
-      ],
-      "volunteered": [],
-      "said_goodbye": false,
-      "coherence": "coherent",
-      "status": "complete"
-    },
-    {
-      "case_id": "computer-work-ni-ne",
-      "reply_zh": "我是学生，我在大学学习。",
       "reading_zh": "我做电脑工作，你呢？",
       "slots_filled": [
         "partner_job",
@@ -312,7 +45,7 @@
     {
       "case_id": "derailed-input",
       "reply_zh": "没关系，你想喝茶还是水？",
-      "reading_zh": "我不知道怎么说这个东西。",
+      "reading_zh": "我不知道怎么说这个东西，对不起。",
       "slots_filled": [],
       "volunteered": [
         "drinks"
@@ -323,140 +56,7 @@
     },
     {
       "case_id": "earned-under-annotated",
-      "reply_zh": "我姓王。你呢？",
-      "reading_zh": "早上好！我叫小明，你叫什么名字？",
-      "slots_filled": [
-        "partner_name",
-        "self_name"
-      ],
-      "volunteered": [],
-      "said_goodbye": false,
-      "coherence": "coherent",
-      "status": "active"
-    },
-    {
-      "case_id": "elliptical-ni-ne",
-      "reply_zh": "我也很好，谢谢。",
-      "reading_zh": "我很好，你呢？",
-      "slots_filled": [
-        "wellbeing"
-      ],
-      "volunteered": [],
-      "said_goodbye": false,
-      "coherence": "coherent",
-      "status": "active"
-    },
-    {
-      "case_id": "milk-and-biscuits",
-      "reply_zh": "鱼最好吃。喝的有茶、水、牛奶。",
-      "reading_zh": "你好，什么菜最好吃？有什么喝的？我要一个牛奶和三个饼干。",
-      "slots_filled": [
-        "drinks",
-        "order",
-        "recommendation"
-      ],
-      "volunteered": [],
-      "said_goodbye": false,
-      "coherence": "coherent",
-      "status": "complete"
-    },
-    {
-      "case_id": "nonsequitur-slot-fill",
-      "reply_zh": "鱼最好吃。",
-      "reading_zh": "什么菜最好吃？",
-      "slots_filled": [],
-      "volunteered": [
-        "recommendation"
-      ],
-      "said_goodbye": false,
-      "coherence": "incoherent",
-      "status": "active"
-    },
-    {
-      "case_id": "order-after-answers",
-      "reply_zh": "好，还要别的吗？",
-      "reading_zh": "我要一个鱼和一杯茶。",
-      "slots_filled": [
-        "order"
-      ],
-      "volunteered": [],
-      "said_goodbye": false,
-      "coherence": "coherent",
-      "status": "complete"
-    },
-    {
-      "case_id": "owed-drinks-then-order",
-      "reply_zh": "好，还要别的吗？",
-      "reading_zh": "好，我要一个鱼和一杯茶。",
-      "slots_filled": [
-        "drinks",
-        "order"
-      ],
-      "volunteered": [],
-      "said_goodbye": false,
-      "coherence": "coherent",
-      "status": "complete"
-    },
-    {
-      "case_id": "wandering-no-slot",
-      "reply_zh": "好，你们几个人？",
-      "reading_zh": "我有三个朋友。",
-      "slots_filled": [],
-      "volunteered": [],
-      "said_goodbye": false,
-      "coherence": "incoherent",
-      "status": "active"
-    },
-    {
-      "case_id": "clean-slot-fill",
-      "reply_zh": "鱼最好吃。",
-      "reading_zh": "请问，什么菜最好吃？",
-      "slots_filled": [
-        "recommendation"
-      ],
-      "volunteered": [],
-      "said_goodbye": false,
-      "coherence": "coherent",
-      "status": "active"
-    },
-    {
-      "case_id": "clip-and-tea",
-      "reply_zh": "好，一个饺子，一杯茶。还要别的吗？",
-      "reading_zh": "好的，那我要一个饺子和一杯茶。",
-      "slots_filled": [
-        "order"
-      ],
-      "volunteered": [],
-      "said_goodbye": false,
-      "coherence": "coherent",
-      "status": "complete"
-    },
-    {
-      "case_id": "computer-work-ni-ne",
-      "reply_zh": "我是学生。",
-      "reading_zh": "我做电脑工作，你呢？",
-      "slots_filled": [
-        "partner_job",
-        "self_job"
-      ],
-      "volunteered": [],
-      "said_goodbye": false,
-      "coherence": "coherent",
-      "status": "active"
-    },
-    {
-      "case_id": "derailed-input",
-      "reply_zh": "没关系，你想吃什么？",
-      "reading_zh": "我不知道怎么说这个东西。",
-      "slots_filled": [],
-      "volunteered": [],
-      "said_goodbye": false,
-      "coherence": "incoherent",
-      "status": "active"
-    },
-    {
-      "case_id": "earned-under-annotated",
-      "reply_zh": "我姓李，你呢？",
+      "reply_zh": "我姓李。你呢？",
       "reading_zh": "早上好，我叫小明，你叫什么名字？",
       "slots_filled": [
         "partner_name",
@@ -469,7 +69,7 @@
     },
     {
       "case_id": "elliptical-ni-ne",
-      "reply_zh": "我也很好，谢谢。",
+      "reply_zh": "我也很好，谢谢！",
       "reading_zh": "我很好，你呢？",
       "slots_filled": [
         "wellbeing"
@@ -532,7 +132,7 @@
     },
     {
       "case_id": "wandering-no-slot",
-      "reply_zh": "你们几位？",
+      "reply_zh": "好的，几位一起坐？",
       "reading_zh": "我有三个朋友。",
       "slots_filled": [],
       "volunteered": [],
@@ -554,7 +154,7 @@
     },
     {
       "case_id": "clip-and-tea",
-      "reply_zh": "好，一个饺子和一杯茶，还要别的吗？",
+      "reply_zh": "好，一个饺子，一杯茶。",
       "reading_zh": "好的，那我要一个饺子和一杯茶。",
       "slots_filled": [
         "order"
@@ -580,19 +180,17 @@
     },
     {
       "case_id": "derailed-input",
-      "reply_zh": "没关系，你要喝茶还是水？",
-      "reading_zh": "我不知道怎么说这个东西，不好意思。",
+      "reply_zh": "没关系，你想吃什么？",
+      "reading_zh": "我不知道怎么说这个东西",
       "slots_filled": [],
-      "volunteered": [
-        "drinks"
-      ],
+      "volunteered": [],
       "said_goodbye": false,
       "coherence": "incoherent",
       "status": "active"
     },
     {
       "case_id": "earned-under-annotated",
-      "reply_zh": "我姓李，你呢？",
+      "reply_zh": "我姓王，你呢？",
       "reading_zh": "早上好，我叫小明，你叫什么名字？",
       "slots_filled": [
         "partner_name",
@@ -605,7 +203,7 @@
     },
     {
       "case_id": "elliptical-ni-ne",
-      "reply_zh": "我也很好，谢谢。",
+      "reply_zh": "我也很好，谢谢！",
       "reading_zh": "我很好，你呢？",
       "slots_filled": [
         "wellbeing"
@@ -617,7 +215,7 @@
     },
     {
       "case_id": "milk-and-biscuits",
-      "reply_zh": "鱼最好吃。喝的有茶、水、牛奶。",
+      "reply_zh": "鱼最好吃。喝的有茶和水。",
       "reading_zh": "你好，什么菜最好吃？有什么喝的？我要一个牛奶和三个饼干。",
       "slots_filled": [
         "drinks",
@@ -668,7 +266,413 @@
     },
     {
       "case_id": "wandering-no-slot",
-      "reply_zh": "哦，那你们想吃什么？",
+      "reply_zh": "这里没有朋友的位子，你要喝什么？",
+      "reading_zh": "我有三个朋友。",
+      "slots_filled": [],
+      "volunteered": [],
+      "said_goodbye": false,
+      "coherence": "incoherent",
+      "status": "active"
+    },
+    {
+      "case_id": "clean-slot-fill",
+      "reply_zh": "鱼最好吃。",
+      "reading_zh": "请问，什么菜最好吃？",
+      "slots_filled": [
+        "recommendation"
+      ],
+      "volunteered": [],
+      "said_goodbye": false,
+      "coherence": "coherent",
+      "status": "active"
+    },
+    {
+      "case_id": "clip-and-tea",
+      "reply_zh": "好，一个饺子，一杯茶。",
+      "reading_zh": "好的，那我要一个饺子和一杯茶。",
+      "slots_filled": [
+        "order"
+      ],
+      "volunteered": [],
+      "said_goodbye": false,
+      "coherence": "coherent",
+      "status": "complete"
+    },
+    {
+      "case_id": "computer-work-ni-ne",
+      "reply_zh": "我是学生。",
+      "reading_zh": "我做电脑工作，你呢？",
+      "slots_filled": [
+        "partner_job",
+        "partner_origin",
+        "self_job"
+      ],
+      "volunteered": [],
+      "said_goodbye": false,
+      "coherence": "coherent",
+      "status": "active"
+    },
+    {
+      "case_id": "derailed-input",
+      "reply_zh": "没关系，你要喝茶还是水？",
+      "reading_zh": "我不知道怎么说这个东西。",
+      "slots_filled": [],
+      "volunteered": [
+        "drinks"
+      ],
+      "said_goodbye": false,
+      "coherence": "incoherent",
+      "status": "active"
+    },
+    {
+      "case_id": "earned-under-annotated",
+      "reply_zh": "我姓李，你呢？",
+      "reading_zh": "早上好，我叫小明，你叫什么名字？",
+      "slots_filled": [
+        "partner_name",
+        "self_name"
+      ],
+      "volunteered": [],
+      "said_goodbye": false,
+      "coherence": "coherent",
+      "status": "active"
+    },
+    {
+      "case_id": "elliptical-ni-ne",
+      "reply_zh": "我也很好，谢谢你！",
+      "reading_zh": "我很好，你呢？",
+      "slots_filled": [
+        "wellbeing"
+      ],
+      "volunteered": [],
+      "said_goodbye": false,
+      "coherence": "coherent",
+      "status": "active"
+    },
+    {
+      "case_id": "milk-and-biscuits",
+      "reply_zh": "鱼最好吃。喝的有茶、水，还有牛奶。",
+      "reading_zh": "你好，什么菜最好吃？有什么喝的？我要一个牛奶和三个饼干。",
+      "slots_filled": [
+        "drinks",
+        "order",
+        "recommendation"
+      ],
+      "volunteered": [],
+      "said_goodbye": false,
+      "coherence": "coherent",
+      "status": "complete"
+    },
+    {
+      "case_id": "nonsequitur-slot-fill",
+      "reply_zh": "鱼最好吃。",
+      "reading_zh": "什么菜最好吃？",
+      "slots_filled": [],
+      "volunteered": [
+        "recommendation"
+      ],
+      "said_goodbye": false,
+      "coherence": "incoherent",
+      "status": "active"
+    },
+    {
+      "case_id": "order-after-answers",
+      "reply_zh": "好，还要别的吗？",
+      "reading_zh": "我要一个鱼和一杯茶。",
+      "slots_filled": [
+        "order"
+      ],
+      "volunteered": [],
+      "said_goodbye": false,
+      "coherence": "coherent",
+      "status": "complete"
+    },
+    {
+      "case_id": "owed-drinks-then-order",
+      "reply_zh": "好，还要别的吗？",
+      "reading_zh": "好，我要一个鱼和一杯茶。",
+      "slots_filled": [
+        "drinks",
+        "order"
+      ],
+      "volunteered": [],
+      "said_goodbye": false,
+      "coherence": "coherent",
+      "status": "complete"
+    },
+    {
+      "case_id": "wandering-no-slot",
+      "reply_zh": "我们没有菜单，你想吃什么？",
+      "reading_zh": "我有三个朋友。",
+      "slots_filled": [],
+      "volunteered": [],
+      "said_goodbye": false,
+      "coherence": "incoherent",
+      "status": "active"
+    },
+    {
+      "case_id": "clean-slot-fill",
+      "reply_zh": "今天鱼最好吃。",
+      "reading_zh": "请问，什么菜最好吃？",
+      "slots_filled": [
+        "recommendation"
+      ],
+      "volunteered": [],
+      "said_goodbye": false,
+      "coherence": "coherent",
+      "status": "active"
+    },
+    {
+      "case_id": "clip-and-tea",
+      "reply_zh": "好，一个饺子，一杯茶，还要别的吗？",
+      "reading_zh": "好的，那我要一个饺子和一杯茶。",
+      "slots_filled": [
+        "order"
+      ],
+      "volunteered": [],
+      "said_goodbye": false,
+      "coherence": "coherent",
+      "status": "complete"
+    },
+    {
+      "case_id": "computer-work-ni-ne",
+      "reply_zh": "我是学生，我在大学学习。",
+      "reading_zh": "我做电脑工作，你呢？",
+      "slots_filled": [
+        "partner_job",
+        "partner_origin",
+        "self_job"
+      ],
+      "volunteered": [],
+      "said_goodbye": false,
+      "coherence": "coherent",
+      "status": "active"
+    },
+    {
+      "case_id": "derailed-input",
+      "reply_zh": "没关系，你要喝茶还是水？",
+      "reading_zh": "我不知道怎么说这个东西。",
+      "slots_filled": [],
+      "volunteered": [
+        "drinks"
+      ],
+      "said_goodbye": false,
+      "coherence": "incoherent",
+      "status": "active"
+    },
+    {
+      "case_id": "earned-under-annotated",
+      "reply_zh": "我姓王，你呢？",
+      "reading_zh": "早上好，我叫小明，你叫什么名字？",
+      "slots_filled": [
+        "partner_name",
+        "self_name"
+      ],
+      "volunteered": [],
+      "said_goodbye": false,
+      "coherence": "coherent",
+      "status": "active"
+    },
+    {
+      "case_id": "elliptical-ni-ne",
+      "reply_zh": "我也很好，谢谢。",
+      "reading_zh": "我很好，你呢？",
+      "slots_filled": [
+        "wellbeing"
+      ],
+      "volunteered": [],
+      "said_goodbye": false,
+      "coherence": "coherent",
+      "status": "active"
+    },
+    {
+      "case_id": "milk-and-biscuits",
+      "reply_zh": "鱼最好吃。喝的有茶、水和牛奶。",
+      "reading_zh": "你好，什么菜最好吃？有什么喝的？我要一个牛奶和三个饼干。",
+      "slots_filled": [
+        "drinks",
+        "order",
+        "recommendation"
+      ],
+      "volunteered": [],
+      "said_goodbye": false,
+      "coherence": "coherent",
+      "status": "complete"
+    },
+    {
+      "case_id": "nonsequitur-slot-fill",
+      "reply_zh": "鱼最好吃。",
+      "reading_zh": "什么菜最好吃？",
+      "slots_filled": [],
+      "volunteered": [
+        "recommendation"
+      ],
+      "said_goodbye": false,
+      "coherence": "incoherent",
+      "status": "active"
+    },
+    {
+      "case_id": "order-after-answers",
+      "reply_zh": "好，还要别的吗？",
+      "reading_zh": "我要一个鱼和一杯茶。",
+      "slots_filled": [
+        "order"
+      ],
+      "volunteered": [],
+      "said_goodbye": false,
+      "coherence": "coherent",
+      "status": "complete"
+    },
+    {
+      "case_id": "owed-drinks-then-order",
+      "reply_zh": "好，还要别的吗？",
+      "reading_zh": "好，我要一个鱼和一杯茶。",
+      "slots_filled": [
+        "drinks",
+        "order"
+      ],
+      "volunteered": [],
+      "said_goodbye": false,
+      "coherence": "coherent",
+      "status": "complete"
+    },
+    {
+      "case_id": "wandering-no-slot",
+      "reply_zh": "我们没有那么大的桌子。",
+      "reading_zh": "我有三个朋友。",
+      "slots_filled": [],
+      "volunteered": [],
+      "said_goodbye": false,
+      "coherence": "incoherent",
+      "status": "active"
+    },
+    {
+      "case_id": "clean-slot-fill",
+      "reply_zh": "鱼最好吃。",
+      "reading_zh": "请问，什么菜最好吃？",
+      "slots_filled": [
+        "recommendation"
+      ],
+      "volunteered": [],
+      "said_goodbye": false,
+      "coherence": "coherent",
+      "status": "active"
+    },
+    {
+      "case_id": "clip-and-tea",
+      "reply_zh": "好，一个饺子和一杯茶，还要别的吗？",
+      "reading_zh": "好的，那我要一个饺子和一杯茶。",
+      "slots_filled": [
+        "order"
+      ],
+      "volunteered": [],
+      "said_goodbye": false,
+      "coherence": "coherent",
+      "status": "complete"
+    },
+    {
+      "case_id": "computer-work-ni-ne",
+      "reply_zh": "我是学生。",
+      "reading_zh": "我做电脑工作，你呢？",
+      "slots_filled": [
+        "partner_job",
+        "partner_origin",
+        "self_job"
+      ],
+      "volunteered": [],
+      "said_goodbye": false,
+      "coherence": "coherent",
+      "status": "active"
+    },
+    {
+      "case_id": "derailed-input",
+      "reply_zh": "没关系，你要喝什么？",
+      "reading_zh": "我不知道怎么说这个东西。",
+      "slots_filled": [],
+      "volunteered": [],
+      "said_goodbye": false,
+      "coherence": "incoherent",
+      "status": "active"
+    },
+    {
+      "case_id": "earned-under-annotated",
+      "reply_zh": "我姓李，你叫什么名字？",
+      "reading_zh": "早上好，我叫小明，你叫什么名字？",
+      "slots_filled": [
+        "partner_name",
+        "self_name"
+      ],
+      "volunteered": [],
+      "said_goodbye": false,
+      "coherence": "coherent",
+      "status": "active"
+    },
+    {
+      "case_id": "elliptical-ni-ne",
+      "reply_zh": "我也很好，谢谢。",
+      "reading_zh": "我很好，你呢？",
+      "slots_filled": [
+        "wellbeing"
+      ],
+      "volunteered": [],
+      "said_goodbye": false,
+      "coherence": "coherent",
+      "status": "active"
+    },
+    {
+      "case_id": "milk-and-biscuits",
+      "reply_zh": "鱼最好吃。喝的有茶和水。",
+      "reading_zh": "你好，什么菜最好吃？有什么喝的？我要一个牛奶和三个饼干。",
+      "slots_filled": [
+        "drinks",
+        "order",
+        "recommendation"
+      ],
+      "volunteered": [],
+      "said_goodbye": false,
+      "coherence": "coherent",
+      "status": "complete"
+    },
+    {
+      "case_id": "nonsequitur-slot-fill",
+      "reply_zh": "鱼最好吃。",
+      "reading_zh": "什么菜最好吃？",
+      "slots_filled": [],
+      "volunteered": [
+        "recommendation"
+      ],
+      "said_goodbye": false,
+      "coherence": "incoherent",
+      "status": "active"
+    },
+    {
+      "case_id": "order-after-answers",
+      "reply_zh": "好，还要别的吗？",
+      "reading_zh": "我要一个鱼和一杯茶。",
+      "slots_filled": [
+        "order"
+      ],
+      "volunteered": [],
+      "said_goodbye": false,
+      "coherence": "coherent",
+      "status": "complete"
+    },
+    {
+      "case_id": "owed-drinks-then-order",
+      "reply_zh": "好，还要别的吗？",
+      "reading_zh": "好，我要一个鱼和一杯茶。",
+      "slots_filled": [
+        "drinks",
+        "order"
+      ],
+      "volunteered": [],
+      "said_goodbye": false,
+      "coherence": "coherent",
+      "status": "complete"
+    },
+    {
+      "case_id": "wandering-no-slot",
+      "reply_zh": "我们这儿没有位子问题，你们要吃什么？",
       "reading_zh": "我有三个朋友。",
       "slots_filled": [],
       "volunteered": [],

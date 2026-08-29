@@ -1,0 +1,93 @@
+{
+  "key": "a97752093268e5f93242d956efe904704e5ff054754add9809bf84921602cc7c",
+  "model": "claude-opus-5",
+  "recorded_at": "2026-08-29T02:41:34+00:00",
+  "samples": [
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "self_job",
+          "partner_origin",
+          "partner_job"
+        ],
+        "slots_filled_previously": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2143,
+        "input_tokens": 81,
+        "output_tokens": 189
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "self_job",
+          "partner_origin",
+          "partner_job"
+        ],
+        "slots_filled_previously": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2143,
+        "input_tokens": 81,
+        "output_tokens": 193
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "self_job",
+          "partner_origin",
+          "partner_job"
+        ],
+        "slots_filled_previously": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2143,
+        "input_tokens": 81,
+        "output_tokens": 152
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "self_job",
+          "partner_origin",
+          "partner_job"
+        ],
+        "slots_filled_previously": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2143,
+        "input_tokens": 81,
+        "output_tokens": 158
+      }
+    },
+    {
+      "parsed_output": {
+        "slots_filled": [
+          "self_job",
+          "partner_origin",
+          "partner_job"
+        ],
+        "slots_filled_previously": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 2143,
+        "input_tokens": 81,
+        "output_tokens": 164
+      }
+    }
+  ],
+  "summary": "claude-opus-5 → GraderResult: [The conversation, from its first line. Every line is numbe…"
+}

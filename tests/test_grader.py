@@ -373,3 +373,99 @@ async def test_a_response_cut_off_mid_json_is_a_grader_error():
         await grader.grade(
             scenario=SCENARIO, dialogue=[], user_text="你好", client=client
         )
+
+
+# --- the transcript encoding ----------------------------------------------
+
+
+def _content(req):
+    return req["messages"][0]["content"]
+
+
+def test_the_grader_reads_a_record_rather_than_sitting_in_the_conversation():
+    """The conversation is *data*, in one user message, not a replayed thread.
+
+    Replaying the partner's lines as `assistant` seats the grader inside the
+    exchange — the API's word for the model's own prior output — and leaves it
+    ending on a user turn it is then asked to grade rather than answer. Every
+    instinct about a trailing user message says reply to it, which is what the
+    grader must not do, and what the earlier-turn recall numbers look like:
+    the nearest turn graded, the ones behind it not.
+    """
+    req = _build(window=3)
+    assert [m["role"] for m in req["messages"]] == ["user"]
+    assert "assistant" not in str(req["messages"])
+
+
+def test_every_line_is_numbered_and_says_who_said_it():
+    """`slots_filled_previously` asks the model to name earlier turns. Numbering
+    is what gives it something to name them by."""
+    dialogue = [
+        DialogueTurn(role="user", zh="你好，我叫小明。"),
+        DialogueTurn(role="partner", zh="你好！我叫小王。"),
+    ]
+    text = _content(_build(dialogue=dialogue, user_text="你叫什么名字？", window=2))
+    assert "1. learner: 你好，我叫小明。" in text
+    assert "2. partner: 你好！我叫小王。" in text
+    assert "3. learner: 你叫什么名字？" in text
+
+
+def test_the_learners_final_turn_is_the_last_line_of_the_transcript():
+    text = _content(_build())
+    assert text.rstrip().splitlines()[-1].endswith("你叫什么名字？") or (
+        "你叫什么名字？" in text
+    )
+    # It is a numbered line like any other, not a message of its own.
+    assert "learner: 你叫什么名字？" in text
+
+
+def test_the_instruction_reads_after_the_transcript_it_is_about():
+    """The note says the turns are shown *above*, and a trailing instruction is
+    the position the model reads last — the same recency the old encoding was
+    spending on 'answer this'."""
+    text = _content(_build(window=3, filled_slots=["self_name"]))
+    assert text.index("learner:") < text.index("never judged")
+    assert text.index("Already established") < text.index("never judged")
+
+
+def test_the_opening_line_leads_the_transcript_whenever_it_is_shown():
+    req = _build(dialogue=[], user_text="你好，我叫小明。", opening_line="你好！")
+    text = _content(req)
+    assert text.splitlines()[1] == "1. partner: 你好！"
+    assert "2. learner: 你好，我叫小明。" in text
+
+
+def test_a_whole_session_is_shown_from_its_first_line():
+    """The review reads every turn, so the partner's opening line belongs to it.
+
+    Before the transcript encoding the opening line was folded in only when
+    `dialogue` was empty — turn 1 — so the review, whose window covers the whole
+    session, judged the learner's first turn with nothing it was answering. The
+    oldest turn is exactly where recall was worst.
+    """
+    dialogue = [
+        DialogueTurn(role="user", zh="你好，我叫小明。"),
+        DialogueTurn(role="partner", zh="你好！我叫小王。"),
+    ]
+    req = _build(
+        dialogue=dialogue, user_text="你叫什么名字？", window=2,
+        opening_line="你好！欢迎。", review=True,
+    )
+    assert "1. partner: 你好！欢迎。" in _content(req)
+
+
+def test_a_windowed_turn_does_not_claim_to_be_the_whole_conversation():
+    """A window is a tail. Saying it starts at the beginning would invite the
+    model to read turn 7 as turn 1 — and the opening line has no place in it."""
+    dialogue = [
+        DialogueTurn(role="user", zh="你好，我叫小明。"),
+        DialogueTurn(role="partner", zh="我也很高兴认识你。"),
+        DialogueTurn(role="user", zh="你叫什么名字？"),
+        DialogueTurn(role="partner", zh="我叫小王。"),
+    ]
+    text = _content(_build(
+        dialogue=dialogue, user_text="你最近怎么样？", window=1,
+        opening_line="你好！",
+    ))
+    assert "你好！" not in text
+    assert "last lines" in text

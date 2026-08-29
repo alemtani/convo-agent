@@ -784,7 +784,7 @@ Two real sessions through the tunnel, then targeted draws against the live API
   Left standing above because it is what A6 believed, and the correction is the
   point: see A6.5.
 
-### A6.5 — Earlier-turn recall, measured — **shipped, this PR**
+### A6.5 — Earlier-turn recall, measured — **shipped, PR #101**
 
 A6 closed on a number: the session review "is worth roughly one slot in five on
 earlier turns today". A6.5 built the corpus to check it, and **the number was
@@ -836,6 +836,13 @@ Three things, and the third is the one that changes what A8 should do.
   never mentions `partner_name`: the review reads the name exchange as one piece
   of business already credited, and the second slot inside it disappears.
 
+**Answered by A6.6, below: the encoding, not the slots.** The interaction
+story in this section is wrong, and it is worth leaving on the page because it
+was the best reading of the evidence at the time. What the corpus could not see
+is that the conversation reached the grader as a replayed thread ending on a
+user turn. Change that and this case goes 0/20 → 20/20 with the slot rules
+untouched.
+
 **What this hands A8.** Its premise — that the prefix's weight dilutes the
 instruction that matters — is now open rather than established. A corpus at 86%
 with one localised failure between two sibling slots is not the picture that
@@ -843,6 +850,124 @@ premise predicts, and cutting words may not touch it. Cut the prompt on its own
 merits, split it by caller because a live turn and a review are different jobs,
 and measure both against this gate. If the cut does not move
 `greetings-name-question-mid-session`, the honest report is that it did not.
+
+### A6.6 — The grader reads a record, not a thread — **shipped, this PR**
+
+A6.5 left one question open: why `greetings/partner_name` never comes back
+mid-session when the same seven characters come back 20/20 as the final turn.
+A6 had already tried four wordings of the review's note against that failure and
+moved nothing. A8 was about to try a fifth thing made of words.
+
+**The answer was not in the prose. It was in how the conversation was encoded.**
+
+`_ROLE_MAP` replayed the partner's lines as `assistant` and the learner's as
+`user`. `assistant` is the API's word for *the model's own prior output*, so the
+grader was not shown a conversation — it was seated inside one, handed lines
+attributed to itself, and left ending on a `user` turn. A trailing user message
+is a question to answer; the grader's job is the opposite, and "grade every
+turn" was fighting the shape of the request rather than a missing instruction.
+
+That shape predicts what A6.5 measured, point for point:
+
+- the nearest earlier turn graded and the ones behind it not — a trailing user
+  message is what the request points at;
+- four wording variants moving nothing (A6) — structure beats prose;
+- the live per-turn grade missing nothing at all (A5: 0 of 55) — `window=1`
+  carries no history, so there is no earlier turn for the shape to bury. That
+  number was never evidence the encoding was fine; it was evidence the defect
+  needs history to show.
+
+## The change
+
+Whatever the window holds arrives as **one user message**: a numbered
+transcript, with the notes after it.
+
+```
+[The conversation, from its first line. Every line is numbered, and the
+learner's lines are the ones you judge.]
+1. partner: 你好！欢迎。
+2. learner: 你好，我叫小明。
+3. partner: 你好！我叫小王。
+4. learner: 你叫什么名字？
+
+[Already established on earlier turns of this session: self_name.]
+
+[The session is over, and all 2 of the learner's turns are in the numbered
+transcript above. …]
+```
+
+`build_request` already did exactly this in the two places the API forced it to
+— the `[The partner's last line was: …]` fold and the opening-line fold, both
+there only because `messages[0]` must be `user`. This generalises the thing that
+already worked, and deletes both folds.
+
+Three consequences beyond the roles:
+
+- **The turns have numbers.** `slots_filled_previously` asks the model to report
+  what *earlier* turns established, over a thread whose turns had no names — the
+  note said "shown above" about lines nothing labelled. Numbering is what makes
+  the field expressible.
+- **The instruction reads last.** Transcript, then notes. Data first and the job
+  last, in the position the old encoding was spending on "answer this".
+- **The review finally sees the opening line.** It was folded in only when
+  `dialogue` was empty — turn 1 — so the review, whose window is the whole
+  session, judged the learner's *oldest* turn with nothing it was answering.
+  The transcript carries it whenever the window reaches the start of the
+  session.
+
+It applies to **every** grader call, not only the review. Scoping it to
+`review=True` would have kept the live cassettes byte-identical, which is
+convenient and wrong: a live turn settling a debt (`window > 1`) has the same
+history, the same alternating roles and the same trailing user turn. The defect
+was never review-specific; only the measurement was.
+
+### Numbers
+
+Same corpus, same gold labels, same model, twenty draws a case
+([`evals/review/RESULTS.md`](../../evals/review/RESULTS.md)):
+
+| | A6.5 | A6.6 |
+|---|---|---|
+| **greetings-name-question-mid-session** | **0/20** | **20/20** |
+| **greetings-name-question-oldest-turn** | 11/20 | **20/20** |
+| self-intro-ungraded-debt · partner_origin | 19/20 | 20/20 |
+| every other owed slot (8 of them) | 20/20 | 20/20 |
+| **total owed slots** | **190/220 (86%)** | **220/220 (100%)** |
+| spurious | 0 | **0** |
+
+Nothing regressed, and the live grade did not move either: the coherence corpus
+still reports 0 missed and 0 spurious of 55, and every dense case holds its
+gate.
+
+The recall floor in `tests/test_review_eval.py` goes 80% → **95%**. A floor left
+at the old baseline would let the review fall the whole way back to A6.5 and
+still go green.
+
+### What this costs, and what it does not
+
+Every grader cassette re-recorded — the request changed for every call — and
+`evals.cassette.sweep` pruned 156 recordings no prompt in the tree produces any
+more. The frozen prefix did **not** move: `render_grader_prompt` is
+byte-identical, `pytest -m live` still sees `cache_read_input_tokens > 0`, and
+the turn's cached prefix is untouched. The whole change lives after the
+breakpoint.
+
+### What it means for A8
+
+A8 (PR #102) was measured on the old encoding, and its headline win — the
+mid-session case going 0/20 → 11/20 on a prompt split — is the same case this
+step takes to 20/20. **The two cannot both claim it.** A8 rebases onto this and
+re-measures against the new baseline; a cut that holds 220/220 is a cut worth
+having on its own terms (cheaper, faster, two callers stop arguing over one
+prompt), and that is the case it should now make.
+
+### What this does not settle
+
+100% is a rate over ten short sessions. The corpus was built to catch a defect
+that is now gone, so it can report a regression and no longer localise anything.
+Making it harder — longer sessions, more slots per turn, two turns that fill the
+same slot — is the next honest use of it, and it is worth more than another
+wording experiment.
 
 ### A7 — Feedback intake, and contesting a grade
 
@@ -866,6 +991,14 @@ Needs a server-side token and a rate limit. The client never sees the token.
 **The hypothesis A6 hands to this step: the `slots_filled_previously` weakness
 is context pollution, not a missing instruction.** Four wording variants moved
 nothing (A6). What none of them changed is the shape of the request they sit in.
+
+**A6.6 then found the cause, and it was not prompt weight at all** — the
+grader was reading the conversation as a replayed thread that ended on a user
+turn. Fixing the encoding took the review to 220/220. So this section's
+hypothesis is **closed, and answered no**: context pollution was not the
+mechanism, and the numbers below describe a defect that no longer exists. Cut
+the prompt because a shorter prompt is cheaper, faster and easier to reason
+about. Nothing else is on offer, and 220/220 is now the thing a cut must hold.
 
 **A6.5 measured that weakness and it is smaller and stranger than this section
 assumes.** The review recovers 86% of what it owes (190/220 owed slots, 200
@@ -909,8 +1042,10 @@ What to do about it, cheapest first:
   a call this small is an open question; the instinct — *stop shipping every
   instruction on every call* — is right regardless of which mechanism answers it.
 
-Ordering: this is downstream of A6.5's baseline. Cutting a prompt with no
-measurement is how you lose credit you had.
+Ordering: this is downstream of A6.5's baseline **and A6.6's fix**. PR #102 was
+measured against the old encoding and claimed the mid-session case as its win;
+A6.6 takes that case to 20/20 by itself, so #102 rebases and re-measures. Cutting
+a prompt with no measurement is how you lose credit you had.
 
 ## Done when
 
@@ -920,6 +1055,7 @@ measurement is how you lose credit you had.
   schedule. Neither can rot unnoticed again.~~ **Done (A0.6).**
 - All four recorded misses pass.
 - ✅ The session review is measured, not asserted from a hand-built wave (A6.5): 190/220 owed slots over 200 draws, 0 spurious, gated in CI.
+- ✅ Earlier turns are graded, not skimmed (A6.6): the grader reads a numbered transcript rather than a replayed thread — 220/220 owed slots, 0 spurious, floor raised to 95%.
 - ✅ The grader returns slots and nothing else (A4).
 - The partner prompt fits on one screen, and the grader's does too (A8).
 - A learner can file a bug, or contest a grade, in three taps.
@@ -989,13 +1125,27 @@ owed slots with 0 spurious, and the failure it found is narrower and stranger
 than A6 described — see the A6.5 section above and
 [`evals/review/RESULTS.md`](../../evals/review/RESULTS.md).
 
-**Still open from it, and now a real question rather than a hunch:** why
-`greetings/partner_name` is never recovered mid-session when the same words
-recover 20/20 as the final turn and the same *shape* recovers 20/20 on two other
-topics. A8 should test it; if a prompt cut does not move it, the next candidate
-is the one A6.5's evidence points at — a slot pair the review collapses into one
-already-credited event — and that is an authoring question
-(`description` / `expressible_with`) before it is a prompt one.
+**Closed by A6.6.** The mid-session failure was the request's encoding, not the
+slot pair: the conversation reached the grader as a replayed thread ending on a
+user turn. One numbered transcript in one user message took that case from 0/20
+to 20/20 and the corpus to 220/220. The authoring hypothesis was never tested
+and is no longer needed.
+
+### A6.6 — the grader reads a record, not a thread
+
+Retired: shipped. The grader's window is one user message holding a numbered
+transcript (`1. partner: … / 2. learner: …`), not replayed `user`/`assistant`
+messages. The review recovers 220/220 owed slots with 0 spurious, and the recall
+floor is 95%.
+
+**What it leaves open**, and it is worth more than another wording experiment:
+the corpus no longer discriminates — every case passes at every draw, so it can
+report a regression and localise nothing. Make it harder before trusting the
+number: longer sessions than four turns, more slots filled per turn, a session
+where two turns fill the same slot, and a session long enough that the whole
+transcript stops being cheap to send. That last one is also Stream B's question
+— the review sends the entire conversation, and a numbered transcript does not
+change how much of it there is.
 
 ### A7 — feedback intake, and contesting a grade
 
@@ -1043,9 +1193,12 @@ PR is ready — then close it.
 Read docs/streams/grading.md, the A8 section. Cut the grader's prompt, and decide
 what should not be in a prompt at all.
 
-Do A6.5 first. This step changes what the grader reads on every call, and
-cutting a prompt with no baseline loses credit you had — the measurement is the
-gate, not the intuition.
+Do A6.5 and A6.6 first. This step changes what the grader reads on every call,
+and cutting a prompt with no baseline loses credit you had — the measurement is
+the gate, not the intuition. **PR #102 was measured before A6.6 landed**: rebase
+it, re-record, and re-measure. Its headline win (the mid-session case, 0/20 →
+11/20) is a case A6.6 alone takes to 20/20, so that claim is no longer A8's to
+make.
 
 The finding this starts from: the frozen prefix is 612 words, `slots_filled`
 gets five paragraphs, `slots_filled_previously` gets one sentence saying to
@@ -1053,14 +1206,13 @@ leave it empty, and the prompt closes on "Grade the learner's final turn." A6
 tried four wordings of the review's note against that and moved nothing, which
 is the evidence that the note is not the load-bearing text.
 
-Read A6.5's numbers before you believe the rest of that. The review recovers
-86% of what it owes (190/220 owed slots, 200 draws, four topics) with nothing
-invented, and the entire loss is one slot that fails for a reason prompt length
-does not explain — the same question recovers 20/20 as the final turn, and the
-same mid-session shape recovers 20/20 on two other topics. **Cut the prompt
-because a shorter prompt is cheaper, faster and easier to reason about, not
-because it is going to fix recall.** If the cut does not move
-`greetings-name-question-mid-session`, say so.
+Read A6.6's numbers before you believe the rest of that. The hypothesis has been
+tested and answered no: the earlier-turn weakness was the request's *encoding* —
+a replayed thread ending on a user turn — and fixing that took the review from
+190/220 to **220/220 owed slots, 0 spurious**, with every word of the prompt
+unchanged. **Cut the prompt because a shorter prompt is cheaper, faster and
+easier to reason about. It is not going to fix recall, because recall is
+fixed.** The bar is that a cut *holds* 220/220 and the 95% floor.
 
 In order:
 

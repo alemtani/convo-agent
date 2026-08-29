@@ -46,7 +46,8 @@ have seen on their card.
 Two directions, and they are different bugs:
 
 - **missed** — an owed slot the review did not report. Credit earned and not
-  given. This is the number A8 exists to move.
+  given. A6.5 measured it at 30 of 220; A6.6 took it to **0**, by handing the
+  grader a numbered transcript instead of a replayed thread.
 - **spurious** — a slot no turn established, reported anyway. The pass is
   add-only, so this cannot be taken back before the learner reads the card. It
   must stay at zero.

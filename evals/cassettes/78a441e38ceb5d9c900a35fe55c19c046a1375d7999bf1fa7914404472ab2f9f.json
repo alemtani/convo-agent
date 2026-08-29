@@ -1,11 +1,11 @@
 {
   "key": "78a441e38ceb5d9c900a35fe55c19c046a1375d7999bf1fa7914404472ab2f9f",
   "model": "claude-sonnet-5",
-  "recorded_at": "2026-08-28T07:01:50+00:00",
+  "recorded_at": "2026-08-29T02:43:48+00:00",
   "samples": [
     {
       "parsed_output": {
-        "rationale": "The server's line merely asks the customer what they'd like to eat; it does not state any recommended dish or list any drinks available.",
+        "rationale": "The server's line ('It's fine, what would you like to eat?') simply invites the customer to order; it doesn't state a specific recommended dish or list any drinks.",
         "volunteered": []
       },
       "stop_reason": "end_turn",
@@ -13,33 +13,7 @@
         "cache_creation_input_tokens": 0,
         "cache_read_input_tokens": 0,
         "input_tokens": 606,
-        "output_tokens": 90
-      }
-    },
-    {
-      "parsed_output": {
-        "rationale": "The line merely asks the customer what they'd like to eat; it does not state any dish recommendation or mention drink options.",
-        "volunteered": []
-      },
-      "stop_reason": "end_turn",
-      "usage": {
-        "cache_creation_input_tokens": 0,
-        "cache_read_input_tokens": 0,
-        "input_tokens": 606,
-        "output_tokens": 113
-      }
-    },
-    {
-      "parsed_output": {
-        "rationale": "The server's line ('That's alright, what would you like to eat?') is simply prompting the customer to order; it does not state any dish recommendation or drink options.",
-        "volunteered": []
-      },
-      "stop_reason": "end_turn",
-      "usage": {
-        "cache_creation_input_tokens": 0,
-        "cache_read_input_tokens": 0,
-        "input_tokens": 606,
-        "output_tokens": 95
+        "output_tokens": 102
       }
     }
   ],

@@ -1,0 +1,21 @@
+{
+  "key": "96f9ec581cbf62dee1ed7123bf76e45cd04677babc60fdd77d871afed5c3da75",
+  "model": "claude-sonnet-5",
+  "recorded_at": "2026-08-29T02:44:34+00:00",
+  "samples": [
+    {
+      "parsed_output": {
+        "rationale": "The server's line merely asks the customer what they'd like to drink, without stating what drink options actually exist or naming any recommended dish. Neither fact is stated outright.",
+        "volunteered": []
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 613,
+        "output_tokens": 118
+      }
+    }
+  ],
+  "summary": "claude-sonnet-5 → WithholdingVerdict: The partner's line:\n这里没有朋友的位子，你要喝什么？"
+}

@@ -1,11 +1,11 @@
 {
   "key": "54988d83746a5a562457e3897d658c1157d1a4482a14a8df9fdeb574060b7759",
   "model": "claude-sonnet-5",
-  "recorded_at": "2026-08-28T07:06:08+00:00",
+  "recorded_at": "2026-08-29T02:50:06+00:00",
   "samples": [
     {
       "parsed_output": {
-        "rationale": "The server simply asks what the customer wants to order. It does not state any recommended dish nor mention available drinks.",
+        "rationale": "The server simply asks what the customer wants to eat, without stating any recommended dish or listing available drinks.",
         "volunteered": []
       },
       "stop_reason": "end_turn",
@@ -13,12 +13,12 @@
         "cache_creation_input_tokens": 0,
         "cache_read_input_tokens": 0,
         "input_tokens": 602,
-        "output_tokens": 52
+        "output_tokens": 51
       }
     },
     {
       "parsed_output": {
-        "rationale": "The server's line simply asks what the customer wants to eat. It does not mention any specific dish, recommend anything, or state what drinks are available. Both facts remain unrevealed.",
+        "rationale": "The server merely asks what the customer wants to order; no recommendation or drink information is stated.",
         "volunteered": []
       },
       "stop_reason": "end_turn",
@@ -26,12 +26,12 @@
         "cache_creation_input_tokens": 0,
         "cache_read_input_tokens": 0,
         "input_tokens": 602,
-        "output_tokens": 74
+        "output_tokens": 72
       }
     },
     {
       "parsed_output": {
-        "rationale": "The server's line simply asks what the customer wants to eat. It does not state any recommendation or mention drinks at all; it invites the customer to speak but discloses no withheld facts outright.",
+        "rationale": "The server's line simply asks what the customer would like to order. It does not state any dish recommendation or mention available drinks.",
         "volunteered": []
       },
       "stop_reason": "end_turn",
@@ -39,12 +39,12 @@
         "cache_creation_input_tokens": 0,
         "cache_read_input_tokens": 0,
         "input_tokens": 602,
-        "output_tokens": 76
+        "output_tokens": 54
       }
     },
     {
       "parsed_output": {
-        "rationale": "The server merely asks what the customer wants to order. It does not state any recommendation or list any drinks available, leaving both facts unrevealed.",
+        "rationale": "The server merely asks what the customer wants to eat; it does not name a recommended dish or list any drinks.",
         "volunteered": []
       },
       "stop_reason": "end_turn",
@@ -52,12 +52,12 @@
         "cache_creation_input_tokens": 0,
         "cache_read_input_tokens": 0,
         "input_tokens": 602,
-        "output_tokens": 62
+        "output_tokens": 78
       }
     },
     {
       "parsed_output": {
-        "rationale": "The server's line simply asks what the customer wants to order. It does not state any dish recommendation or list any drinks available, so neither withheld fact is volunteered.",
+        "rationale": "The server merely asks what the customer wants to eat, without stating any recommendation or drink options.",
         "volunteered": []
       },
       "stop_reason": "end_turn",
@@ -65,7 +65,7 @@
         "cache_creation_input_tokens": 0,
         "cache_read_input_tokens": 0,
         "input_tokens": 602,
-        "output_tokens": 68
+        "output_tokens": 71
       }
     }
   ],
