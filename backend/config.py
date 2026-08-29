@@ -235,3 +235,48 @@ GRADER_TIMEOUT_S = float(os.getenv("GRADER_TIMEOUT_S", "15"))
 # bound holds anyway: a review that times out costs the learner nothing they had
 # before it.
 VERDICT_REVIEW_TIMEOUT_S = float(os.getenv("VERDICT_REVIEW_TIMEOUT_S", "8"))
+
+
+# --- A7: feedback intake (docs/streams/grading.md) --------------------------
+#
+# A learner who is graded wrong has no recourse — you cannot repeat yourself in
+# a conversation without it getting strange. The fix is a button that files a
+# GitHub issue, so the disagreement leaves the phone and lands where it can
+# become an eval case.
+#
+# The token is server-side and never reaches the client, like every other key
+# here. Unset means the feature is off and the route says so (503) rather than
+# failing at the GitHub boundary with a confusing error.
+GITHUB_ISSUE_TOKEN = os.getenv("GITHUB_ISSUE_TOKEN", "")
+
+# `owner/name`. Where the issues land. Configured rather than hardcoded because
+# a fork should not file into someone else's tracker.
+GITHUB_ISSUE_REPO = os.getenv("GITHUB_ISSUE_REPO", "")
+
+# Labels to attach, comma-separated. Empty by default on purpose: the issues API
+# creates a label that does not exist yet, so a typo here silently invents one
+# in a public repo. The title carries `[bug]` / `[contest]` regardless.
+GITHUB_ISSUE_LABELS = tuple(
+    part.strip() for part in os.getenv("GITHUB_ISSUE_LABELS", "").split(",")
+    if part.strip()
+)
+
+GITHUB_TIMEOUT_S = float(os.getenv("GITHUB_TIMEOUT_S", "10"))
+
+# The rate limit is part of the feature, not a follow-up: this is an endpoint
+# that writes to a **public repo** and, with no `APP_PASSCODE`, does it for
+# whoever finds the hostname. The limit is global rather than per-IP — the
+# resource being protected is the issue tracker, and a per-IP budget is one
+# proxy away from unlimited.
+#
+# Sized for a person, not for a crawler: one learner filing four reports in an
+# hour is already a bad hour, and the fifth can wait.
+FEEDBACK_RATE_LIMIT = int(os.getenv("FEEDBACK_RATE_LIMIT", "4"))
+FEEDBACK_RATE_WINDOW_S = float(os.getenv("FEEDBACK_RATE_WINDOW_S", "3600"))
+
+# Character budget for one report — transcript, sketch and prose together. The
+# turn-count cap on `dialogue` bounds the number of entries; this bounds their
+# size, which is the half a `max_length` cannot see. Generous against a real
+# session (a 7-turn band-1 conversation is a few hundred characters) and small
+# against anything worth calling an upload.
+FEEDBACK_MAX_CHARS = int(os.getenv("FEEDBACK_MAX_CHARS", "8000"))

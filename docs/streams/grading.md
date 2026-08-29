@@ -784,7 +784,7 @@ Two real sessions through the tunnel, then targeted draws against the live API
   Left standing above because it is what A6 believed, and the correction is the
   point: see A6.5.
 
-### A6.5 — Earlier-turn recall, measured — **shipped, this PR**
+### A6.5 — Earlier-turn recall, measured — **shipped, PR #101**
 
 A6 closed on a number: the session review "is worth roughly one slot in five on
 earlier turns today". A6.5 built the corpus to check it, and **the number was
@@ -844,22 +844,60 @@ merits, split it by caller because a live turn and a review are different jobs,
 and measure both against this gate. If the cut does not move
 `greetings-name-question-mid-session`, the honest report is that it did not.
 
-### A7 — Feedback intake, and contesting a grade
+### A7 — Feedback intake, and contesting a grade — **shipped**
 
 A button in the app. It opens a GitHub issue with the session transcript, the
 scenario, the slot state, and what the learner says went wrong.
 
 A **contest** is the same mechanism pointed at one turn. It earns its own affordance
-because there is currently no recourse at all: you cannot repeat yourself in a
-conversation without it getting strange, so a turn graded wrong stays graded
-wrong.
+because there was no recourse at all: you cannot repeat yourself in a
+conversation without it getting strange, so a turn graded wrong stayed graded
+wrong and the learner watched it happen.
 
 Both live in Stream A rather than Stream C because their output is eval cases. A
 filed issue is handled by: write the failing case, then fix, then close. A
 contested grade is a **labelled disagreement**, which is the highest-value thing
 that can land in `gold.json`.
 
-Needs a server-side token and a rate limit. The client never sees the token.
+**What shipped.** `POST /api/feedback` (`backend/issues.py`), one route for both
+affordances. The frontend reaches it three ways: `🐞 Report a problem` under
+`⋯`, and on the verdict card; `⚑ graded wrong?` on every one of the learner's
+own bubbles. The flag is the primary route for a contest — the moment you notice
+a turn was graded wrong is the moment you are looking at it, and a control that
+lived only on the card would ask the learner to remember which turn it was.
+
+**The issue body is the deliverable, so it is built to be replayed.** Under the
+learner's prose sits a fenced JSON block in the exact shape
+`evals/coherence/cases.py` loads. For a contest it is sliced at the disputed
+turn: the history *before* it, the turn itself, and the state as it stood
+(`filled_at` entries earlier than the turn — the disputed slot is excluded by
+construction). Handling an issue is: paste the block into
+`tests/fixtures/sessions/<id>.json`, label it in `gold.json`, watch it fail, fix,
+close.
+
+The learner's claim rides *beside* the case as `claim`, never as a label, and it
+carries no `coherence` tag. They are a party to the disagreement; pre-filling a
+gold entry from one side is exactly the manufactured consent
+`evals/coherence/cases.py` splits its label file to prevent.
+
+**Three refusals, three codes, and the client renders each differently** — a 429
+says come back, a 503 says this build cannot file at all, a 422 says the report
+itself is wrong. Collapsing them into "something went wrong" would be the same
+as having no recourse.
+
+**The rate limit is global, not per-IP.** The resource being protected is a
+public issue tracker, and a per-IP budget is one proxy away from unlimited. Four
+an hour, `FEEDBACK_RATE_LIMIT`. A character budget (`FEEDBACK_MAX_CHARS`) sits
+beside the turn-count cap because `max_length` bounds how many turns arrive, not
+how big they are.
+
+The token lives in the environment beside the Anthropic and Azure keys and never
+reaches the client — not in a response, and not inside an error detail: a GitHub
+failure is reported as its status, never its body.
+
+**What it does not do.** Nothing reads these issues back automatically. Turning a
+filed contest into a case is a person copying one JSON block, which is the point
+at which someone decides whether the learner was right.
 
 ### A8 — Prompt weight, and moving what is left out of the prompt
 
@@ -922,18 +960,16 @@ measurement is how you lose credit you had.
 - ✅ The session review is measured, not asserted from a hand-built wave (A6.5): 190/220 owed slots over 200 draws, 0 spurious, gated in CI.
 - ✅ The grader returns slots and nothing else (A4).
 - The partner prompt fits on one screen, and the grader's does too (A8).
-- A learner can file a bug, or contest a grade, in three taps.
+- ✅ A learner can file a bug, or contest a grade, in three taps (A7).
 
 ## Kickoff prompts
 
 One per step, each runnable as written. **A0 (PR #86), A1 (PR #90), A2 (PR #91),
 A3 (PR #95), A0.6 (PR #92), A1.5 (PR #96), A4 (PR #97), A5 (PR #98), A6
-(PR #99) and A6.5 (this PR) are done** — their prompts are retired. **A7 and A8
-are what is left, they are the parallel pair, and neither blocks the other**:
-different files (`main.py` + `frontend/` against `prompts.py`), and both feed
-`gold.json` — A7 produces labelled disagreements, A8 is measured against what
-A6.5 put there. Two free agents can run them concurrently in separate
-worktrees.
+(PR #99), A6.5 (PR #101) and A7 (this PR) are done** — their prompts are
+retired. **A8 is what is left**: it is measured against the corpus A6.5
+built, and A7 keeps feeding `gold.json` with the labelled disagreements
+learners file.
 
 Every one of these ends the same way, so it is said once here: work in a git
 worktree, write the failing test first, branch from `main`, conventional commits,
@@ -981,6 +1017,18 @@ Retired: shipped. `feedback.review_session` re-reads the whole conversation
 before the card, adds credit and never removes it, and skips the pass on a
 session with every slot already filled. What it did **not** settle is below.
 
+### A7 — feedback intake, and contesting a grade
+
+Retired: shipped. `POST /api/feedback` files a bug or a contested turn as a
+GitHub issue whose body is a replayable eval case; the flag rides every learner
+bubble, and the rate limit is global.
+
+**What it hands the next person.** The first real contest to arrive is a case
+waiting to be written. The handling loop is deliberately manual — paste the JSON
+block into `tests/fixtures/sessions/`, label it in `gold.json`, watch it fail,
+fix, close — because deciding whether the learner was right is the judgment the
+whole stream is about, and it should not be automated on day one.
+
 ### A6.5 — earlier-turn recall, measured
 
 Retired: shipped. `evals/review/` measures the session review against labelled
@@ -996,46 +1044,6 @@ topics. A8 should test it; if a prompt cut does not move it, the next candidate
 is the one A6.5's evidence points at — a slot pair the review collapses into one
 already-credited event — and that is an authoring question
 (`description` / `expressible_with`) before it is a prompt one.
-
-### A7 — feedback intake, and contesting a grade
-
-```
-Read docs/streams/grading.md, the A7 section. Build feedback intake: a button in
-the app that files what went wrong, and a contest affordance pointed at one turn.
-
-There is currently no recourse of any kind. You cannot repeat yourself in a
-conversation without it getting strange, so a turn graded wrong stays graded
-wrong and the learner watches it happen. That is the case to fix first — the
-general "something is off" button is the easier half.
-
-Two affordances, one mechanism:
-
-- **File a bug.** A control on the verdict card. It opens a GitHub issue with the
-  transcript, the scenario id, the slot state, and what the learner typed.
-- **Contest a grade.** The same POST, scoped to one turn: which turn, which slot
-  they believe they filled, and why. Reachable from the turn itself, not only
-  from the card — the moment they notice is the moment they are looking at it.
-
-Server-side: a route that opens the issue, a token that lives in the environment
-and never reaches the client, and a rate limit — this is an unauthenticated
-endpoint that writes to a public repo, so treat the limit as part of the
-feature, not a follow-up.
-
-Real red-green TDD, with the GitHub client mocked: the route builds the issue
-body it should, refuses an oversized transcript, refuses a contest naming a slot
-the scenario does not have, and is bounded by the rate limit. Nothing here is a
-model call.
-
-The deliverable is the labelled disagreement, so make the issue body machine-
-readable enough to become an eval case without retyping it — a fenced JSON block
-with the transcript, the state, the contested turn and the claimed slot, under
-the learner's own prose. A contested grade is the highest-value thing that can
-land in `gold.json`, and a filed issue is handled by: write the failing case,
-then fix, then close.
-
-Frontend PR, so raise a tunnel and file one real issue from the phone before the
-PR is ready — then close it.
-```
 
 ### A8 — prompt weight
 

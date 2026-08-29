@@ -10,7 +10,7 @@ these fields (not nested inside the utterance).
 """
 from typing import Dict, List, Literal, Optional, Set
 
-from pydantic import BaseModel, Field, PositiveInt, field_validator
+from pydantic import BaseModel, Field, PositiveInt, field_validator, model_validator
 
 
 class Utterance(BaseModel):
@@ -810,3 +810,90 @@ class ConversationTurnResponse(BaseModel):
     # The spoken path's equivalent rides `ReplyEvent`; text mode has one
     # response, so it rides that.
     state: Optional[SessionState] = None
+
+
+class FeedbackRequest(BaseModel):
+    """Request body for `POST /api/feedback` — a bug report, or a contested grade.
+
+    One model for both because they are one mechanism (A7,
+    `docs/streams/grading.md`): the same session state files the same issue, and
+    a contest is that issue pointed at a single turn. Everything here is already
+    client-held — the stateless proxy keeps no transcript — so a report costs
+    the learner nothing but the sentence they type.
+
+    `turn` is the learner's turn, 1-based, counted over `dialogue` entries with
+    `role == "user"`. `slot_id` is optional even on a contest: mid-session the
+    learner has never seen a slot id, and requiring one would make the affordance
+    unreachable at the exact moment they notice the problem. When the verdict
+    card is up its `missing` list supplies real ids, and then the claim is exact.
+    """
+
+    kind: Literal["bug", "contest"]
+    topic_id: str
+    # What went wrong, in the learner's words. The whole report, as far as a
+    # human reader is concerned — everything else is context for it.
+    message: str = Field(max_length=2000)
+    dialogue: List[DialogueTurn] = Field(default_factory=list, max_length=40)
+    state: SessionState = Field(default_factory=SessionState)
+    # This session's frozen flavour. Carried so the filed case *replays*: a
+    # grader re-run without the sketch is judging a different scene.
+    sketch: str = Field(default="", max_length=2000)
+    opening_line: Optional[Utterance] = None
+    turn: Optional[PositiveInt] = None
+    slot_id: Optional[str] = Field(default=None, max_length=64)
+
+    @field_validator("message")
+    @classmethod
+    def _not_blank(cls, v: str) -> str:
+        """The prose is the report. An empty one is a filed issue with nothing
+        in it a maintainer could act on."""
+        v = v.strip()
+        if not v:
+            raise ValueError("message must not be empty")
+        return v
+
+    @model_validator(mode="after")
+    def _bounded_and_scoped(self) -> "FeedbackRequest":
+        """Two refusals that have to happen before anything reaches a public repo.
+
+        The character budget is separate from `max_length` on the list: that
+        bounds how many turns arrive, not how big they are, and forty turns of a
+        megabyte each would pass it. This endpoint is unauthenticated wherever
+        `APP_PASSCODE` is unset, so the size of what it will publish is part of
+        the feature.
+
+        And a contest without a turn is not a contest — it is a bug report that
+        has lost the thing it was about.
+        """
+        limit = _feedback_max_chars()
+        size = len(self.message) + len(self.sketch) + sum(
+            len(t.zh) for t in self.dialogue
+        )
+        if size > limit:
+            raise ValueError(f"report is {size} characters; the limit is {limit}")
+        if self.kind == "contest" and self.turn is None:
+            raise ValueError("a contest must name the turn it disputes")
+        return self
+
+
+def _feedback_max_chars() -> int:
+    """Read the cap at call time so a test (or a deploy) can move it.
+
+    Imported inside the function rather than at module scope: `config` loads
+    `.env` on import, and `models` is imported by authoring tooling that has no
+    business reading a deploy's environment.
+    """
+    from backend import config
+
+    return config.FEEDBACK_MAX_CHARS
+
+
+class FeedbackResponse(BaseModel):
+    """Where the report landed. The learner gets a link they can follow.
+
+    A filed issue the learner cannot see is indistinguishable from a swallowed
+    one, and the repo is public — so the URL is the receipt.
+    """
+
+    url: str
+    number: int
