@@ -1,0 +1,49 @@
+{
+  "dialogue": [
+    {
+      "pinyin": "wǒ jiā yǒu sì kǒu rén, bàba, māma, dìdi hé wǒ.",
+      "role": "user",
+      "zh": "我家有四口人，爸爸、妈妈、弟弟和我。"
+    },
+    {
+      "pinyin": "nǐ jiārén hěn duō!",
+      "role": "partner",
+      "zh": "你家人很多！"
+    },
+    {
+      "pinyin": "nǐ jiā yǒu jǐ kǒu rén?",
+      "role": "user",
+      "zh": "你家有几口人？"
+    },
+    {
+      "pinyin": "wǒ jiā yǒu wǔ kǒu rén.",
+      "role": "partner",
+      "zh": "我家有五口人。"
+    },
+    {
+      "pinyin": "nǐ dìdi duō dà?",
+      "role": "user",
+      "zh": "你弟弟多大？"
+    },
+    {
+      "pinyin": "tā jīnnián shí'èr suì.",
+      "role": "partner",
+      "zh": "他今年十二岁。"
+    }
+  ],
+  "id": "family-size-question-mid-session",
+  "notes": "A second topic's *mid-session* question, and the case that rules position out: the same shape as the greetings failure, and it recovers every time.",
+  "opening_line": {
+    "pinyin": "nǐ hǎo!",
+    "zh": "你好！"
+  },
+  "state": {
+    "filled_at": {
+      "my_family": 1,
+      "sibling_age": 3
+    },
+    "last_graded_turn": 3,
+    "status": "complete"
+  },
+  "topic_id": "family"
+}

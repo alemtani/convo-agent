@@ -1,0 +1,1147 @@
+{
+  "model": "claude-opus-5",
+  "repeat": 20,
+  "observations": [
+    {
+      "case_id": "family-my-family-oldest-turn",
+      "recovered": [
+        "my_family"
+      ]
+    },
+    {
+      "case_id": "family-size-question-mid-session",
+      "recovered": [
+        "their_family_size"
+      ]
+    },
+    {
+      "case_id": "food-drinks-question-mid-session",
+      "recovered": [
+        "drinks"
+      ]
+    },
+    {
+      "case_id": "food-two-questions-lost",
+      "recovered": [
+        "drinks",
+        "recommendation"
+      ]
+    },
+    {
+      "case_id": "greetings-name-question-final-turn",
+      "recovered": [
+        "partner_name"
+      ]
+    },
+    {
+      "case_id": "greetings-name-question-mid-session",
+      "recovered": []
+    },
+    {
+      "case_id": "greetings-name-question-oldest-turn",
+      "recovered": [
+        "partner_name"
+      ]
+    },
+    {
+      "case_id": "greetings-name-statement-oldest-turn",
+      "recovered": [
+        "self_name"
+      ]
+    },
+    {
+      "case_id": "greetings-nothing-to-recover",
+      "recovered": []
+    },
+    {
+      "case_id": "self-intro-ungraded-debt",
+      "recovered": [
+        "partner_job",
+        "partner_origin"
+      ]
+    },
+    {
+      "case_id": "family-my-family-oldest-turn",
+      "recovered": [
+        "my_family"
+      ]
+    },
+    {
+      "case_id": "family-size-question-mid-session",
+      "recovered": [
+        "their_family_size"
+      ]
+    },
+    {
+      "case_id": "food-drinks-question-mid-session",
+      "recovered": [
+        "drinks"
+      ]
+    },
+    {
+      "case_id": "food-two-questions-lost",
+      "recovered": [
+        "drinks",
+        "recommendation"
+      ]
+    },
+    {
+      "case_id": "greetings-name-question-final-turn",
+      "recovered": [
+        "partner_name"
+      ]
+    },
+    {
+      "case_id": "greetings-name-question-mid-session",
+      "recovered": []
+    },
+    {
+      "case_id": "greetings-name-question-oldest-turn",
+      "recovered": [
+        "partner_name"
+      ]
+    },
+    {
+      "case_id": "greetings-name-statement-oldest-turn",
+      "recovered": [
+        "self_name"
+      ]
+    },
+    {
+      "case_id": "greetings-nothing-to-recover",
+      "recovered": []
+    },
+    {
+      "case_id": "self-intro-ungraded-debt",
+      "recovered": [
+        "partner_job",
+        "partner_origin"
+      ]
+    },
+    {
+      "case_id": "family-my-family-oldest-turn",
+      "recovered": [
+        "my_family"
+      ]
+    },
+    {
+      "case_id": "family-size-question-mid-session",
+      "recovered": [
+        "their_family_size"
+      ]
+    },
+    {
+      "case_id": "food-drinks-question-mid-session",
+      "recovered": [
+        "drinks"
+      ]
+    },
+    {
+      "case_id": "food-two-questions-lost",
+      "recovered": [
+        "drinks",
+        "recommendation"
+      ]
+    },
+    {
+      "case_id": "greetings-name-question-final-turn",
+      "recovered": [
+        "partner_name"
+      ]
+    },
+    {
+      "case_id": "greetings-name-question-mid-session",
+      "recovered": []
+    },
+    {
+      "case_id": "greetings-name-question-oldest-turn",
+      "recovered": [
+        "partner_name"
+      ]
+    },
+    {
+      "case_id": "greetings-name-statement-oldest-turn",
+      "recovered": [
+        "self_name"
+      ]
+    },
+    {
+      "case_id": "greetings-nothing-to-recover",
+      "recovered": []
+    },
+    {
+      "case_id": "self-intro-ungraded-debt",
+      "recovered": [
+        "partner_job",
+        "partner_origin"
+      ]
+    },
+    {
+      "case_id": "family-my-family-oldest-turn",
+      "recovered": [
+        "my_family"
+      ]
+    },
+    {
+      "case_id": "family-size-question-mid-session",
+      "recovered": [
+        "their_family_size"
+      ]
+    },
+    {
+      "case_id": "food-drinks-question-mid-session",
+      "recovered": [
+        "drinks"
+      ]
+    },
+    {
+      "case_id": "food-two-questions-lost",
+      "recovered": [
+        "drinks",
+        "recommendation"
+      ]
+    },
+    {
+      "case_id": "greetings-name-question-final-turn",
+      "recovered": [
+        "partner_name"
+      ]
+    },
+    {
+      "case_id": "greetings-name-question-mid-session",
+      "recovered": []
+    },
+    {
+      "case_id": "greetings-name-question-oldest-turn",
+      "recovered": [
+        "partner_name"
+      ]
+    },
+    {
+      "case_id": "greetings-name-statement-oldest-turn",
+      "recovered": [
+        "self_name"
+      ]
+    },
+    {
+      "case_id": "greetings-nothing-to-recover",
+      "recovered": []
+    },
+    {
+      "case_id": "self-intro-ungraded-debt",
+      "recovered": [
+        "partner_job",
+        "partner_origin"
+      ]
+    },
+    {
+      "case_id": "family-my-family-oldest-turn",
+      "recovered": [
+        "my_family"
+      ]
+    },
+    {
+      "case_id": "family-size-question-mid-session",
+      "recovered": [
+        "their_family_size"
+      ]
+    },
+    {
+      "case_id": "food-drinks-question-mid-session",
+      "recovered": [
+        "drinks"
+      ]
+    },
+    {
+      "case_id": "food-two-questions-lost",
+      "recovered": [
+        "drinks",
+        "recommendation"
+      ]
+    },
+    {
+      "case_id": "greetings-name-question-final-turn",
+      "recovered": [
+        "partner_name"
+      ]
+    },
+    {
+      "case_id": "greetings-name-question-mid-session",
+      "recovered": []
+    },
+    {
+      "case_id": "greetings-name-question-oldest-turn",
+      "recovered": []
+    },
+    {
+      "case_id": "greetings-name-statement-oldest-turn",
+      "recovered": [
+        "self_name"
+      ]
+    },
+    {
+      "case_id": "greetings-nothing-to-recover",
+      "recovered": []
+    },
+    {
+      "case_id": "self-intro-ungraded-debt",
+      "recovered": [
+        "partner_job",
+        "partner_origin"
+      ]
+    },
+    {
+      "case_id": "family-my-family-oldest-turn",
+      "recovered": [
+        "my_family"
+      ]
+    },
+    {
+      "case_id": "family-size-question-mid-session",
+      "recovered": [
+        "their_family_size"
+      ]
+    },
+    {
+      "case_id": "food-drinks-question-mid-session",
+      "recovered": [
+        "drinks"
+      ]
+    },
+    {
+      "case_id": "food-two-questions-lost",
+      "recovered": [
+        "drinks",
+        "recommendation"
+      ]
+    },
+    {
+      "case_id": "greetings-name-question-final-turn",
+      "recovered": [
+        "partner_name"
+      ]
+    },
+    {
+      "case_id": "greetings-name-question-mid-session",
+      "recovered": []
+    },
+    {
+      "case_id": "greetings-name-question-oldest-turn",
+      "recovered": []
+    },
+    {
+      "case_id": "greetings-name-statement-oldest-turn",
+      "recovered": [
+        "self_name"
+      ]
+    },
+    {
+      "case_id": "greetings-nothing-to-recover",
+      "recovered": []
+    },
+    {
+      "case_id": "self-intro-ungraded-debt",
+      "recovered": [
+        "partner_job",
+        "partner_origin"
+      ]
+    },
+    {
+      "case_id": "family-my-family-oldest-turn",
+      "recovered": [
+        "my_family"
+      ]
+    },
+    {
+      "case_id": "family-size-question-mid-session",
+      "recovered": [
+        "their_family_size"
+      ]
+    },
+    {
+      "case_id": "food-drinks-question-mid-session",
+      "recovered": [
+        "drinks"
+      ]
+    },
+    {
+      "case_id": "food-two-questions-lost",
+      "recovered": [
+        "drinks",
+        "recommendation"
+      ]
+    },
+    {
+      "case_id": "greetings-name-question-final-turn",
+      "recovered": [
+        "partner_name"
+      ]
+    },
+    {
+      "case_id": "greetings-name-question-mid-session",
+      "recovered": []
+    },
+    {
+      "case_id": "greetings-name-question-oldest-turn",
+      "recovered": []
+    },
+    {
+      "case_id": "greetings-name-statement-oldest-turn",
+      "recovered": [
+        "self_name"
+      ]
+    },
+    {
+      "case_id": "greetings-nothing-to-recover",
+      "recovered": []
+    },
+    {
+      "case_id": "self-intro-ungraded-debt",
+      "recovered": [
+        "partner_job",
+        "partner_origin"
+      ]
+    },
+    {
+      "case_id": "family-my-family-oldest-turn",
+      "recovered": [
+        "my_family"
+      ]
+    },
+    {
+      "case_id": "family-size-question-mid-session",
+      "recovered": [
+        "their_family_size"
+      ]
+    },
+    {
+      "case_id": "food-drinks-question-mid-session",
+      "recovered": [
+        "drinks"
+      ]
+    },
+    {
+      "case_id": "food-two-questions-lost",
+      "recovered": [
+        "drinks",
+        "recommendation"
+      ]
+    },
+    {
+      "case_id": "greetings-name-question-final-turn",
+      "recovered": [
+        "partner_name"
+      ]
+    },
+    {
+      "case_id": "greetings-name-question-mid-session",
+      "recovered": []
+    },
+    {
+      "case_id": "greetings-name-question-oldest-turn",
+      "recovered": [
+        "partner_name"
+      ]
+    },
+    {
+      "case_id": "greetings-name-statement-oldest-turn",
+      "recovered": [
+        "self_name"
+      ]
+    },
+    {
+      "case_id": "greetings-nothing-to-recover",
+      "recovered": []
+    },
+    {
+      "case_id": "self-intro-ungraded-debt",
+      "recovered": [
+        "partner_job"
+      ]
+    },
+    {
+      "case_id": "family-my-family-oldest-turn",
+      "recovered": [
+        "my_family"
+      ]
+    },
+    {
+      "case_id": "family-size-question-mid-session",
+      "recovered": [
+        "their_family_size"
+      ]
+    },
+    {
+      "case_id": "food-drinks-question-mid-session",
+      "recovered": [
+        "drinks"
+      ]
+    },
+    {
+      "case_id": "food-two-questions-lost",
+      "recovered": [
+        "drinks",
+        "recommendation"
+      ]
+    },
+    {
+      "case_id": "greetings-name-question-final-turn",
+      "recovered": [
+        "partner_name"
+      ]
+    },
+    {
+      "case_id": "greetings-name-question-mid-session",
+      "recovered": []
+    },
+    {
+      "case_id": "greetings-name-question-oldest-turn",
+      "recovered": []
+    },
+    {
+      "case_id": "greetings-name-statement-oldest-turn",
+      "recovered": [
+        "self_name"
+      ]
+    },
+    {
+      "case_id": "greetings-nothing-to-recover",
+      "recovered": []
+    },
+    {
+      "case_id": "self-intro-ungraded-debt",
+      "recovered": [
+        "partner_job",
+        "partner_origin"
+      ]
+    },
+    {
+      "case_id": "family-my-family-oldest-turn",
+      "recovered": [
+        "my_family"
+      ]
+    },
+    {
+      "case_id": "family-size-question-mid-session",
+      "recovered": [
+        "their_family_size"
+      ]
+    },
+    {
+      "case_id": "food-drinks-question-mid-session",
+      "recovered": [
+        "drinks"
+      ]
+    },
+    {
+      "case_id": "food-two-questions-lost",
+      "recovered": [
+        "drinks",
+        "recommendation"
+      ]
+    },
+    {
+      "case_id": "greetings-name-question-final-turn",
+      "recovered": [
+        "partner_name"
+      ]
+    },
+    {
+      "case_id": "greetings-name-question-mid-session",
+      "recovered": []
+    },
+    {
+      "case_id": "greetings-name-question-oldest-turn",
+      "recovered": []
+    },
+    {
+      "case_id": "greetings-name-statement-oldest-turn",
+      "recovered": [
+        "self_name"
+      ]
+    },
+    {
+      "case_id": "greetings-nothing-to-recover",
+      "recovered": []
+    },
+    {
+      "case_id": "self-intro-ungraded-debt",
+      "recovered": [
+        "partner_job",
+        "partner_origin"
+      ]
+    },
+    {
+      "case_id": "family-my-family-oldest-turn",
+      "recovered": [
+        "my_family"
+      ]
+    },
+    {
+      "case_id": "family-size-question-mid-session",
+      "recovered": [
+        "their_family_size"
+      ]
+    },
+    {
+      "case_id": "food-drinks-question-mid-session",
+      "recovered": [
+        "drinks"
+      ]
+    },
+    {
+      "case_id": "food-two-questions-lost",
+      "recovered": [
+        "drinks",
+        "recommendation"
+      ]
+    },
+    {
+      "case_id": "greetings-name-question-final-turn",
+      "recovered": [
+        "partner_name"
+      ]
+    },
+    {
+      "case_id": "greetings-name-question-mid-session",
+      "recovered": []
+    },
+    {
+      "case_id": "greetings-name-question-oldest-turn",
+      "recovered": []
+    },
+    {
+      "case_id": "greetings-name-statement-oldest-turn",
+      "recovered": [
+        "self_name"
+      ]
+    },
+    {
+      "case_id": "greetings-nothing-to-recover",
+      "recovered": []
+    },
+    {
+      "case_id": "self-intro-ungraded-debt",
+      "recovered": [
+        "partner_job",
+        "partner_origin"
+      ]
+    },
+    {
+      "case_id": "family-my-family-oldest-turn",
+      "recovered": [
+        "my_family"
+      ]
+    },
+    {
+      "case_id": "family-size-question-mid-session",
+      "recovered": [
+        "their_family_size"
+      ]
+    },
+    {
+      "case_id": "food-drinks-question-mid-session",
+      "recovered": [
+        "drinks"
+      ]
+    },
+    {
+      "case_id": "food-two-questions-lost",
+      "recovered": [
+        "drinks",
+        "recommendation"
+      ]
+    },
+    {
+      "case_id": "greetings-name-question-final-turn",
+      "recovered": [
+        "partner_name"
+      ]
+    },
+    {
+      "case_id": "greetings-name-question-mid-session",
+      "recovered": []
+    },
+    {
+      "case_id": "greetings-name-question-oldest-turn",
+      "recovered": [
+        "partner_name"
+      ]
+    },
+    {
+      "case_id": "greetings-name-statement-oldest-turn",
+      "recovered": [
+        "self_name"
+      ]
+    },
+    {
+      "case_id": "greetings-nothing-to-recover",
+      "recovered": []
+    },
+    {
+      "case_id": "self-intro-ungraded-debt",
+      "recovered": [
+        "partner_job",
+        "partner_origin"
+      ]
+    },
+    {
+      "case_id": "family-my-family-oldest-turn",
+      "recovered": [
+        "my_family"
+      ]
+    },
+    {
+      "case_id": "family-size-question-mid-session",
+      "recovered": [
+        "their_family_size"
+      ]
+    },
+    {
+      "case_id": "food-drinks-question-mid-session",
+      "recovered": [
+        "drinks"
+      ]
+    },
+    {
+      "case_id": "food-two-questions-lost",
+      "recovered": [
+        "drinks",
+        "recommendation"
+      ]
+    },
+    {
+      "case_id": "greetings-name-question-final-turn",
+      "recovered": [
+        "partner_name"
+      ]
+    },
+    {
+      "case_id": "greetings-name-question-mid-session",
+      "recovered": []
+    },
+    {
+      "case_id": "greetings-name-question-oldest-turn",
+      "recovered": [
+        "partner_name"
+      ]
+    },
+    {
+      "case_id": "greetings-name-statement-oldest-turn",
+      "recovered": [
+        "self_name"
+      ]
+    },
+    {
+      "case_id": "greetings-nothing-to-recover",
+      "recovered": []
+    },
+    {
+      "case_id": "self-intro-ungraded-debt",
+      "recovered": [
+        "partner_job",
+        "partner_origin"
+      ]
+    },
+    {
+      "case_id": "family-my-family-oldest-turn",
+      "recovered": [
+        "my_family"
+      ]
+    },
+    {
+      "case_id": "family-size-question-mid-session",
+      "recovered": [
+        "their_family_size"
+      ]
+    },
+    {
+      "case_id": "food-drinks-question-mid-session",
+      "recovered": [
+        "drinks"
+      ]
+    },
+    {
+      "case_id": "food-two-questions-lost",
+      "recovered": [
+        "drinks",
+        "recommendation"
+      ]
+    },
+    {
+      "case_id": "greetings-name-question-final-turn",
+      "recovered": [
+        "partner_name"
+      ]
+    },
+    {
+      "case_id": "greetings-name-question-mid-session",
+      "recovered": []
+    },
+    {
+      "case_id": "greetings-name-question-oldest-turn",
+      "recovered": [
+        "partner_name"
+      ]
+    },
+    {
+      "case_id": "greetings-name-statement-oldest-turn",
+      "recovered": [
+        "self_name"
+      ]
+    },
+    {
+      "case_id": "greetings-nothing-to-recover",
+      "recovered": []
+    },
+    {
+      "case_id": "self-intro-ungraded-debt",
+      "recovered": [
+        "partner_job",
+        "partner_origin"
+      ]
+    },
+    {
+      "case_id": "family-my-family-oldest-turn",
+      "recovered": [
+        "my_family"
+      ]
+    },
+    {
+      "case_id": "family-size-question-mid-session",
+      "recovered": [
+        "their_family_size"
+      ]
+    },
+    {
+      "case_id": "food-drinks-question-mid-session",
+      "recovered": [
+        "drinks"
+      ]
+    },
+    {
+      "case_id": "food-two-questions-lost",
+      "recovered": [
+        "drinks",
+        "recommendation"
+      ]
+    },
+    {
+      "case_id": "greetings-name-question-final-turn",
+      "recovered": [
+        "partner_name"
+      ]
+    },
+    {
+      "case_id": "greetings-name-question-mid-session",
+      "recovered": []
+    },
+    {
+      "case_id": "greetings-name-question-oldest-turn",
+      "recovered": [
+        "partner_name"
+      ]
+    },
+    {
+      "case_id": "greetings-name-statement-oldest-turn",
+      "recovered": [
+        "self_name"
+      ]
+    },
+    {
+      "case_id": "greetings-nothing-to-recover",
+      "recovered": []
+    },
+    {
+      "case_id": "self-intro-ungraded-debt",
+      "recovered": [
+        "partner_job",
+        "partner_origin"
+      ]
+    },
+    {
+      "case_id": "family-my-family-oldest-turn",
+      "recovered": [
+        "my_family"
+      ]
+    },
+    {
+      "case_id": "family-size-question-mid-session",
+      "recovered": [
+        "their_family_size"
+      ]
+    },
+    {
+      "case_id": "food-drinks-question-mid-session",
+      "recovered": [
+        "drinks"
+      ]
+    },
+    {
+      "case_id": "food-two-questions-lost",
+      "recovered": [
+        "drinks",
+        "recommendation"
+      ]
+    },
+    {
+      "case_id": "greetings-name-question-final-turn",
+      "recovered": [
+        "partner_name"
+      ]
+    },
+    {
+      "case_id": "greetings-name-question-mid-session",
+      "recovered": []
+    },
+    {
+      "case_id": "greetings-name-question-oldest-turn",
+      "recovered": [
+        "partner_name"
+      ]
+    },
+    {
+      "case_id": "greetings-name-statement-oldest-turn",
+      "recovered": [
+        "self_name"
+      ]
+    },
+    {
+      "case_id": "greetings-nothing-to-recover",
+      "recovered": []
+    },
+    {
+      "case_id": "self-intro-ungraded-debt",
+      "recovered": [
+        "partner_job",
+        "partner_origin"
+      ]
+    },
+    {
+      "case_id": "family-my-family-oldest-turn",
+      "recovered": [
+        "my_family"
+      ]
+    },
+    {
+      "case_id": "family-size-question-mid-session",
+      "recovered": [
+        "their_family_size"
+      ]
+    },
+    {
+      "case_id": "food-drinks-question-mid-session",
+      "recovered": [
+        "drinks"
+      ]
+    },
+    {
+      "case_id": "food-two-questions-lost",
+      "recovered": [
+        "drinks",
+        "recommendation"
+      ]
+    },
+    {
+      "case_id": "greetings-name-question-final-turn",
+      "recovered": [
+        "partner_name"
+      ]
+    },
+    {
+      "case_id": "greetings-name-question-mid-session",
+      "recovered": []
+    },
+    {
+      "case_id": "greetings-name-question-oldest-turn",
+      "recovered": []
+    },
+    {
+      "case_id": "greetings-name-statement-oldest-turn",
+      "recovered": [
+        "self_name"
+      ]
+    },
+    {
+      "case_id": "greetings-nothing-to-recover",
+      "recovered": []
+    },
+    {
+      "case_id": "self-intro-ungraded-debt",
+      "recovered": [
+        "partner_job",
+        "partner_origin"
+      ]
+    },
+    {
+      "case_id": "family-my-family-oldest-turn",
+      "recovered": [
+        "my_family"
+      ]
+    },
+    {
+      "case_id": "family-size-question-mid-session",
+      "recovered": [
+        "their_family_size"
+      ]
+    },
+    {
+      "case_id": "food-drinks-question-mid-session",
+      "recovered": [
+        "drinks"
+      ]
+    },
+    {
+      "case_id": "food-two-questions-lost",
+      "recovered": [
+        "drinks",
+        "recommendation"
+      ]
+    },
+    {
+      "case_id": "greetings-name-question-final-turn",
+      "recovered": [
+        "partner_name"
+      ]
+    },
+    {
+      "case_id": "greetings-name-question-mid-session",
+      "recovered": []
+    },
+    {
+      "case_id": "greetings-name-question-oldest-turn",
+      "recovered": [
+        "partner_name"
+      ]
+    },
+    {
+      "case_id": "greetings-name-statement-oldest-turn",
+      "recovered": [
+        "self_name"
+      ]
+    },
+    {
+      "case_id": "greetings-nothing-to-recover",
+      "recovered": []
+    },
+    {
+      "case_id": "self-intro-ungraded-debt",
+      "recovered": [
+        "partner_job",
+        "partner_origin"
+      ]
+    },
+    {
+      "case_id": "family-my-family-oldest-turn",
+      "recovered": [
+        "my_family"
+      ]
+    },
+    {
+      "case_id": "family-size-question-mid-session",
+      "recovered": [
+        "their_family_size"
+      ]
+    },
+    {
+      "case_id": "food-drinks-question-mid-session",
+      "recovered": [
+        "drinks"
+      ]
+    },
+    {
+      "case_id": "food-two-questions-lost",
+      "recovered": [
+        "drinks",
+        "recommendation"
+      ]
+    },
+    {
+      "case_id": "greetings-name-question-final-turn",
+      "recovered": [
+        "partner_name"
+      ]
+    },
+    {
+      "case_id": "greetings-name-question-mid-session",
+      "recovered": []
+    },
+    {
+      "case_id": "greetings-name-question-oldest-turn",
+      "recovered": []
+    },
+    {
+      "case_id": "greetings-name-statement-oldest-turn",
+      "recovered": [
+        "self_name"
+      ]
+    },
+    {
+      "case_id": "greetings-nothing-to-recover",
+      "recovered": []
+    },
+    {
+      "case_id": "self-intro-ungraded-debt",
+      "recovered": [
+        "partner_job",
+        "partner_origin"
+      ]
+    },
+    {
+      "case_id": "family-my-family-oldest-turn",
+      "recovered": [
+        "my_family"
+      ]
+    },
+    {
+      "case_id": "family-size-question-mid-session",
+      "recovered": [
+        "their_family_size"
+      ]
+    },
+    {
+      "case_id": "food-drinks-question-mid-session",
+      "recovered": [
+        "drinks"
+      ]
+    },
+    {
+      "case_id": "food-two-questions-lost",
+      "recovered": [
+        "drinks",
+        "recommendation"
+      ]
+    },
+    {
+      "case_id": "greetings-name-question-final-turn",
+      "recovered": [
+        "partner_name"
+      ]
+    },
+    {
+      "case_id": "greetings-name-question-mid-session",
+      "recovered": []
+    },
+    {
+      "case_id": "greetings-name-question-oldest-turn",
+      "recovered": []
+    },
+    {
+      "case_id": "greetings-name-statement-oldest-turn",
+      "recovered": [
+        "self_name"
+      ]
+    },
+    {
+      "case_id": "greetings-nothing-to-recover",
+      "recovered": []
+    },
+    {
+      "case_id": "self-intro-ungraded-debt",
+      "recovered": [
+        "partner_job",
+        "partner_origin"
+      ]
+    }
+  ]
+}

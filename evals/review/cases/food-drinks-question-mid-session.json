@@ -1,0 +1,49 @@
+{
+  "dialogue": [
+    {
+      "pinyin": "shénme cài zuì hǎochī?",
+      "role": "user",
+      "zh": "什么菜最好吃？"
+    },
+    {
+      "pinyin": "yú hěn hǎochī.",
+      "role": "partner",
+      "zh": "鱼很好吃。"
+    },
+    {
+      "pinyin": "yǒu shénme hē de?",
+      "role": "user",
+      "zh": "有什么喝的？"
+    },
+    {
+      "pinyin": "yǒu chá hé shuǐ.",
+      "role": "partner",
+      "zh": "有茶和水。"
+    },
+    {
+      "pinyin": "wǒ yào yí ge yú, yì bēi chá.",
+      "role": "user",
+      "zh": "我要一个鱼，一杯茶。"
+    },
+    {
+      "pinyin": "hǎo de.",
+      "role": "partner",
+      "zh": "好的。"
+    }
+  ],
+  "id": "food-drinks-question-mid-session",
+  "notes": "A third topic's mid-session question. Same shape again, same result — the greetings failure is not about where the turn sits.",
+  "opening_line": {
+    "pinyin": "nǐ hǎo, yào diǎn shénme?",
+    "zh": "你好，要点什么？"
+  },
+  "state": {
+    "filled_at": {
+      "order": 3,
+      "recommendation": 1
+    },
+    "last_graded_turn": 3,
+    "status": "complete"
+  },
+  "topic_id": "food-ordering"
+}

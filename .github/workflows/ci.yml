@@ -83,6 +83,13 @@ jobs:
       - name: Replay turn probes
         run: python -m evals.turn.replay --repeat 3 --cases-dir evals/turn/cases --out evals/turn/observations.probes.json
 
+      # A6.5. Whole finished sessions through `feedback.review_session`, so the
+      # end-of-session review is a gate like the live grade already is. Twenty
+      # draws, not three: this corpus measures a *rate* — how much earlier-turn
+      # credit comes back — and three draws cannot tell a fix from a wave.
+      - name: Replay review eval
+        run: python -m evals.review.replay --repeat 20
+
   # Deploy lives in this workflow rather than its own so it can gate on the
   # suites with a plain `needs:`. A separate workflow would have to use
   # `workflow_run`, which fires on completion regardless of conclusion and

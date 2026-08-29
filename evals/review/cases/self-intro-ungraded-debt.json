@@ -1,0 +1,59 @@
+{
+  "dialogue": [
+    {
+      "pinyin": "nǐ hǎo, wǒ shì Měiguó rén.",
+      "role": "user",
+      "zh": "你好，我是美国人。"
+    },
+    {
+      "pinyin": "nǐ hǎo!",
+      "role": "partner",
+      "zh": "你好！"
+    },
+    {
+      "pinyin": "wǒ shì xuésheng.",
+      "role": "user",
+      "zh": "我是学生。"
+    },
+    {
+      "pinyin": "hěn hǎo!",
+      "role": "partner",
+      "zh": "很好！"
+    },
+    {
+      "pinyin": "nǐ shì nǎ guó rén?",
+      "role": "user",
+      "zh": "你是哪国人？"
+    },
+    {
+      "pinyin": "wǒ shì Zhōngguó rén, cóng Běijīng lái.",
+      "role": "partner",
+      "zh": "我是中国人，从北京来。"
+    },
+    {
+      "pinyin": "nǐ zuò shénme gōngzuò?",
+      "role": "user",
+      "zh": "你做什么工作？"
+    },
+    {
+      "pinyin": "wǒ shì lǎoshī.",
+      "role": "partner",
+      "zh": "我是老师。"
+    }
+  ],
+  "id": "self-intro-ungraded-debt",
+  "notes": "A four-slot scenario where the last two grades never landed — `last_graded_turn` is 2 of 4. The review owes an earlier turn and the final turn at once, which is the one case that exercises both halves of what it reports.",
+  "opening_line": {
+    "pinyin": "nǐ hǎo!",
+    "zh": "你好！"
+  },
+  "state": {
+    "filled_at": {
+      "self_job": 2,
+      "self_origin": 1
+    },
+    "last_graded_turn": 2,
+    "status": "complete"
+  },
+  "topic_id": "self-intro"
+}

@@ -1,0 +1,59 @@
+{
+  "dialogue": [
+    {
+      "pinyin": "wǒ jiā yǒu sān kǒu rén.",
+      "role": "user",
+      "zh": "我家有三口人。"
+    },
+    {
+      "pinyin": "hǎo de!",
+      "role": "partner",
+      "zh": "好的！"
+    },
+    {
+      "pinyin": "nǐ jiā yǒu jǐ kǒu rén?",
+      "role": "user",
+      "zh": "你家有几口人？"
+    },
+    {
+      "pinyin": "wǒ jiā yǒu wǔ kǒu rén.",
+      "role": "partner",
+      "zh": "我家有五口人。"
+    },
+    {
+      "pinyin": "nǐ yǒu gēge ma?",
+      "role": "user",
+      "zh": "你有哥哥吗？"
+    },
+    {
+      "pinyin": "wǒ yǒu yí ge gēge.",
+      "role": "partner",
+      "zh": "我有一个哥哥。"
+    },
+    {
+      "pinyin": "nǐ gēge duō dà?",
+      "role": "user",
+      "zh": "你哥哥多大？"
+    },
+    {
+      "pinyin": "tā jīnnián èrshí suì.",
+      "role": "partner",
+      "zh": "他今年二十岁。"
+    }
+  ],
+  "id": "family-my-family-oldest-turn",
+  "notes": "Distance, on an `inform`. The learner's own first line, three turns from the end — the furthest back this corpus reaches.",
+  "opening_line": {
+    "pinyin": "nǐ hǎo!",
+    "zh": "你好！"
+  },
+  "state": {
+    "filled_at": {
+      "sibling_age": 4,
+      "their_family_size": 2
+    },
+    "last_graded_turn": 4,
+    "status": "complete"
+  },
+  "topic_id": "family"
+}
