@@ -8,6 +8,18 @@ the turn cap is hit, the learner says goodbye twice, or they tap "I'm stuck."
 
 <!-- TODO: phone screenshot of a live session + the verdict card -->
 
+Three things hold that up, and each has its own section below:
+
+- **[The partner is blind to the objective](#the-partner-does-not-know-the-goal)** —
+  it is never shown the goal or the slot list, so it cannot steer you to the
+  answer. A structural omission in `kb.load_converser_block`, not an instruction.
+- **[A separate grader scores the transcript](#you-either-did-the-thing-or-you-didnt)** —
+  a different model, a different prompt, structured output. It returns which
+  slots the turn filled; `termination.py` decides pass/fail by set comparison.
+- **[CI runs the evals without spending a token](#the-evals-run-on-cassettes)** —
+  model calls replay from committed cassettes keyed by a hash of everything that
+  affects the output. The merge gate is free, so it actually runs on every PR.
+
 Each topic is a markdown knowledge base (vocab, grammar, dialogues). A
 conversation is the applied form of that KB — generated from it, scored
 against it. The goal is a set of named binary slots, not a model's opinion.
@@ -41,6 +53,16 @@ converser's output schema cannot carry `slots_filled`.
 
 > A server with no menu is a fact about a restaurant; "do not reveal
 > `recommendation` until asked" is a fact about a test.
+
+Blindness also buys a check on the grader. The partner is asked one question
+*about* the conversation rather than in it: did the learner's turn follow from
+your last line? Because it cannot see the rubric, it has no reason to say yes to
+please anyone. `_advance_or_echo` (`backend/orchestrator.py`) makes that answer a
+gate: a turn the partner marks incoherent earns no credit, even if the grader
+found a slot in it. Saying a memorized goal sentence into an unrelated question
+scores nothing. The check the learner would have to beat is held by the one
+model that does not know what is being scored — and it is a gate, never a
+deduction, so a point already on the board is never clawed back.
 
 ### You either did the thing or you didn't
 
@@ -91,26 +113,57 @@ split so one number cannot hide which failure it is:
 - **missed** — credit the learner earned and was not given
 
 The fixture corpus lives in [`tests/fixtures/sessions/`](tests/fixtures/sessions/)
-(7 recorded turns). Gold labels are kept in a separate file from the
+(11 recorded turns). Gold labels are kept in a separate file from the
 transcripts. A second-opinion label set exists; that labeller had repo access,
 so it is corroboration, not independence.
 
+### The evals run on cassettes
+
+A model call is the expensive part of an eval, so every model call in the suite
+is served from a recording. `evals/cassette/` hashes the request — model, prompt,
+tools, schema, sampling params: everything that changes the output — and replays
+the committed response for that key. A key with no recording **fails** the run
+rather than quietly calling the API, so the gate cannot silently start spending.
+Only `--record` reaches the network, and freshness is a scheduled job's problem
+([`.github/workflows/rerecord.yml`](.github/workflows/rerecord.yml)).
+
+That is what lets behavioral checks be a merge gate instead of a ritual.
+[`tests/test_worker_behavior.py`](tests/test_worker_behavior.py) asserts five
+structural invariants — a schema that parses, a reply with both halves, a slot
+credited on the ask, a bare 你好 crediting nothing — over five recorded draws
+each, because one draw says only what happened once: 25 replayed model
+judgments in `pytest -q`, at no cost.
+
+The corpus itself is walked by a separate `eval` job in
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml), so a stale prompt cannot
+hide in a case the parametrized tests do not name. Three harnesses run there.
 The grader-only harness ([`evals/coherence/replay.py`](evals/coherence/replay.py))
-holds the partner still. The turn harness ([`evals/turn/replay.py`](evals/turn/replay.py))
-drives `orchestrator.run_text_turn`, so one cassette-backed run covers the
-reply, the grade computed against that reply, and whether that reply gave
-away a `request` slot. Both replay off committed cassettes; a key miss
-fails CI. Nothing in `pytest -q` spends tokens.
+holds the partner still. The turn harness
+([`evals/turn/replay.py`](evals/turn/replay.py)) drives
+`orchestrator.run_text_turn`, so one run covers the reply, the grade computed
+against that reply, and whether that reply gave away a `request` slot. The
+review harness ([`evals/review/replay.py`](evals/review/replay.py)) replays whole
+finished sessions, at twenty draws rather than three, because it measures a rate
+and three draws cannot tell a fix from a wave. All of them replay off committed
+cassettes; a key miss fails the job. Nothing in CI spends a token.
 
-A measurement that killed a feature: V0 measured the converser's `coherence`
-tag against gold and found no threshold that could gate on it safely. No gate
-shipped. See [`docs/VALIDITY.md`](docs/VALIDITY.md) and
-[`evals/coherence/`](evals/coherence/).
+A measurement that killed a feature, and the change that revived it: V0
+measured the partner's coherence tag against gold and found no threshold that
+could gate on it safely, so no gate shipped. That partner could still see the
+rubric. Once V2 made it goal-blind the objection expired, and A4 shipped the
+gate described above; A1.5 then scored the tag against gold on the turn
+runner's cassettes, so the gate is measured where it was once only argued. See
+[`docs/VALIDITY.md`](docs/VALIDITY.md) and
+[`docs/streams/grading.md`](docs/streams/grading.md).
 
-**In flight.** V2 moved grading onto a dedicated worker. The matrix has to be
-re-run against the grader before the same conclusions hold. The corpus also
-cannot yet demonstrate the under-annotation floor earning its keep — that
-needs a case drawn from a real session, not one written from imagination.
+**A number that corrected itself.** A6 closed believing the end-of-session
+review recovered about one earlier slot in five. That rested on four hand-built
+waves of five draws on one topic. A6.5 built a labelled corpus — ten sessions,
+four topics, twenty draws each — and the real rate is **86%** (190/220 owed
+slots). The old paragraph is left standing in the stream doc with the correction
+under it, because five draws could not tell a defect from a wave, and that is
+the more useful thing to have written down. Raising the remaining 14% is the
+open eval work.
 
 ## Architecture
 
@@ -125,7 +178,7 @@ needs a case drawn from a real session, not one written from imagination.
   exists; nothing reads it. See [`AGENTS.md`](AGENTS.md).
 - CORS also allows `http://localhost:3000` for a separately-hosted frontend
 
-576 tests in the default gate; 105 more sit behind `live` / `smoke` markers
+709 tests in the default gate; 111 more sit behind `live` / `smoke` markers
 (real keys, or Playwright).
 
 ## Setup
@@ -429,7 +482,10 @@ The walking-skeleton phases live in
 | Spoken + typed loop, five topics, verdict card | Shipped |
 | Passcode gate, Fly.io, CI deploy on `main` (M1) | Shipped |
 | Goal-blind converser + dedicated grader (V2) | Shipped |
-| `coherence` measured against gold; no gate (V0) | Shipped |
+| `coherence` measured against gold (V0) | Shipped |
+| Coherence as a gate on this turn's credit (A4) | Shipped |
+| Partner's `coherent` tag scored against gold (A1.5) | Shipped |
+| Session review re-grades earlier turns; recall measured at 86% (A6/A6.5) | Shipped |
 | "I'm stuck" exit + retry card (A1) | Shipped |
 | On-demand TTS | Shipped |
 | Progress HUD — slots filled and turns used (A2) | Shipped |
@@ -439,7 +495,7 @@ The walking-skeleton phases live in
 | Durable learning state / weighted topic draw (Phase 7) | Not built |
 
 The next product work is the rest of A2 (floor and verdict copy), C0, or
-more topics — not more validity architecture. The next *eval* work is re-running the V0 matrix against the
-V2 grader. Detail in [`docs/VALIDITY.md`](docs/VALIDITY.md),
+more topics — not more validity architecture. The next *eval* work is raising
+the session review's earlier-turn recall off its measured 86%. Detail in [`docs/VALIDITY.md`](docs/VALIDITY.md),
 [`docs/ACCESSIBILITY.md`](docs/ACCESSIBILITY.md),
 [`docs/CURRICULUM.md`](docs/CURRICULUM.md).
