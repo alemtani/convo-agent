@@ -115,10 +115,31 @@ jobs:
 
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
+      # Retried, because the failure this guards is not ours. Fly allocates the
+      # build to a shared remote builder, and when that allocation stalls the
+      # deploy dies on `authentication handshake failed: EOF` after flyctl's own
+      # two five-minute waits — with a Dockerfile that builds fine minutes later.
+      # A merge should not need a human to press "re-run failed jobs".
+      #
+      # Safe to repeat: `fly deploy` on an unchanged tree rebuilds to the same
+      # cached image and re-releases it, and the `fly-deploy` concurrency group
+      # above means no other deploy is in flight to race with.
       - name: Deploy
-        run: flyctl deploy --remote-only
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          for attempt in 1 2 3; do
+            echo "::group::flyctl deploy (attempt $attempt/3)"
+            if flyctl deploy --remote-only; then
+              echo "::endgroup::"
+              exit 0
+            fi
+            echo "::endgroup::"
+            echo "::warning::deploy attempt $attempt failed"
+            [ "$attempt" = 3 ] || sleep 30
+          done
+          echo "::error::flyctl deploy failed three times"
+          exit 1
 
       # The release blocker from README#deploying, automated. A deploy that
       # comes up with the gate off puts an open Anthropic/Azure spend endpoint

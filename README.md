@@ -344,9 +344,15 @@ is baked into the image at build time, not mounted.
 ### Automatic deploys
 
 Merges to `main` deploy to Fly automatically, from the `deploy` job in
-[`.github/workflows/ci.yml`](.github/workflows/ci.yml). It runs only after both
-test jobs pass, and only on a push to `main` — a pull-request build never
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml). It runs only after all
+three test jobs pass, and only on a push to `main` — a pull-request build never
 reaches production.
+
+The deploy itself is tried up to three times. Fly builds on a shared remote
+builder, and when that allocation stalls the deploy fails with a handshake
+error on a Dockerfile that builds fine minutes later. Repeating is safe: an
+unchanged tree rebuilds to the same cached image, and the job's concurrency
+group keeps a second deploy from racing it.
 
 One-time setup, run from a checkout with `flyctl` signed in:
 
