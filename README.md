@@ -133,8 +133,9 @@ is served from a recording. `evals/cassette/` hashes the request — model, prom
 tools, schema, sampling params: everything that changes the output — and replays
 the committed response for that key. A key with no recording **fails** the run
 rather than quietly calling the API, so the gate cannot silently start spending.
-Only `--record` reaches the network, and freshness is a scheduled job's problem
-([`.github/workflows/rerecord.yml`](.github/workflows/rerecord.yml)).
+Only `--record` reaches the network, and a prompt change re-records the keys it
+moves in the same PR
+([`evals/cassettes/README.md`](evals/cassettes/README.md)).
 
 That is what lets behavioral checks be a merge gate instead of a ritual.
 [`tests/test_worker_behavior.py`](tests/test_worker_behavior.py) asserts five

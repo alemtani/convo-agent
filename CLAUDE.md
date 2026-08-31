@@ -176,14 +176,15 @@ it pass. Verification is tiered by how deterministic the code is:
   `cache_read_input_tokens > 0`, which proves the *real* API served our prefix,
   and everything Azure. Those need keys and cost money, so they are **excluded
   from the default run** — invoke with `pytest -m live`. Exclusion is paid for
-  by a schedule: `.github/workflows/rerecord.yml` runs them weekly. An excluded
+  by a schedule: `.github/workflows/live.yml` runs them weekly. An excluded
   suite with no schedule rots, and this one did — every Anthropic test under the
   marker had been broken for months before A0.6 found it.
   Evals under `evals/` are a third thing again: they judge model *behavior*, and
   they run off committed **cassettes** (`evals/cassette/`, recorded once and
   replayed by request hash) so the suite is a merge gate that spends nothing. A
-  key with no recording fails the run; only `--record` calls the API, and
-  freshness is a scheduled job's problem (`.github/workflows/rerecord.yml`).
+  key with no recording fails the run; only `--record` calls the API.
+  Re-recording is on demand — a prompt change moves the keys it affects, and
+  the PR that makes the change re-records them (`evals/cassettes/README.md`).
 - **Frontend behavior — a browser, deterministically.** `tests/smoke/` drives
   `frontend/index.html` in Chromium (`@pytest.mark.smoke`) to pin the races that
   clicking around is worst at catching: mic frames lost before the button turns

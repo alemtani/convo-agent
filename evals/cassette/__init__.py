@@ -15,9 +15,8 @@ assemble — model, system blocks, output schema, messages. See `key.py`.
 
 Cassettes live in `evals/cassettes/` and are committed. Change a prompt and the
 keys change, so only the affected cases go stale; `--record` re-records exactly
-those. Freshness against the live model is a scheduled job's problem
-(`.github/workflows/rerecord.yml`), never a per-PR probabilistic call — CI stays
-deterministic.
+those, in the PR that changes the prompt. Never a per-PR probabilistic call —
+CI stays deterministic.
 """
 from evals.cassette import cli, sweep
 from evals.cassette.client import (

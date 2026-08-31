@@ -217,9 +217,8 @@ Coefficients live in `kb/zh/pacing.json`.
   `sha256(model + system + tools + messages + params)`, and commits it to
   `evals/cassettes/`. Replay is the default and a key miss fails the run;
   only `--record` spends. Change a prompt → keys change → re-record just
-  those. Freshness is a scheduled job
-  (`.github/workflows/rerecord.yml`), never a live call on a PR: a build
-  green 90% of the time is worse than one honestly stale.
+  those, in the PR that changed the prompt. Never a live call on a PR: a
+  build green 90% of the time is worse than one honestly stale.
 - Frontend races: `tests/smoke/` (Playwright, fake mic, stubbed fetch).
   Own requirements. Not in the default run because of Chromium, not
   because it is flaky. Install with
