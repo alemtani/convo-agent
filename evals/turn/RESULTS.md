@@ -30,7 +30,7 @@ Eleven cases, five draws each, against the labels in
 negative. A tag that fired on a coherent turn would be a point the
 learner earned and did not get; none did.
 
-Read this as a floor, not a ceiling. The corpus is eleven hand-written
+Read this as a floor, not a ceiling. The corpus is eleven recorded
 turns chosen because they were hard for the *grader*, so it is thin on
 the near-misses a coherence judgment is worst at. The number that
 matters is that the gate A4 shipped unmeasured is no longer unmeasured.
