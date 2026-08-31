@@ -1,10 +1,11 @@
 """Delete the recordings no runner reached.
 
-**Why this is not a flag on a runner.** One cassette store is shared by
-`evals.coherence.replay` (the grader alone) and `evals.turn.replay` (the whole
-turn). Neither reaches the other's keys, so neither can decide on its own what
-is stale — a runner that pruned what *it* did not touch would delete the other
-runner's entire corpus.
+**Why this is not a flag on a runner.** One cassette store is shared by five
+runners — the grader (`evals.coherence.replay`), the turn and the probes
+(`evals.turn.replay` over two corpora), the whole session
+(`evals.review.replay`) and the behavioral cases (`evals.behavior.record`).
+None reaches another's keys, so none can decide on its own what is stale: a
+runner that pruned what *it* did not touch would delete the other four corpora.
 
 So each runner writes down what it reached (`--used-out`), and the sweep takes
 the union. A key nothing reached is one no prompt in the tree can produce any
@@ -12,14 +13,29 @@ more: the request is rebuilt from the code on every run, and a prompt edit
 changes the hash, so the old file is unreachable and its name is a hash nobody
 can read.
 
-    python -m evals.coherence.replay --record --refresh --samples 5 \\
-        --used-out /tmp/coherence.json
-    python -m evals.turn.replay --record --refresh --samples 5 \\
-        --used-out /tmp/turn.json
-    python -m evals.cassette.sweep --used /tmp/coherence.json /tmp/turn.json
+**Sweep only from a pass where every runner ran.** A manifest short of the full
+set is the expensive mistake this indirection exists to prevent — the missing
+runner's whole corpus reads as unreachable and goes. The full recipe, with the
+depth each corpus needs, is in `evals/cassettes/README.md`:
 
-Only the scheduled re-record job runs this. It is the one context where every
-runner sweeps the whole corpus in the same pass.
+    python -m evals.coherence.replay --record --refresh --samples 5 --repeat 5 \\
+        --used-out /tmp/coherence.json
+    python -m evals.turn.replay --record --refresh --samples 5 --repeat 5 \\
+        --used-out /tmp/turn.json
+    python -m evals.turn.replay --record --refresh --samples 5 --repeat 5 \\
+        --cases-dir evals/turn/cases --out evals/turn/observations.probes.json \\
+        --used-out /tmp/turn-probes.json
+    python -m evals.review.replay --record --refresh --samples 20 --repeat 20 \\
+        --used-out /tmp/review.json
+    python -m evals.behavior.record --record --refresh --samples 5 \\
+        --used-out /tmp/behavior.json
+    python -m evals.cassette.sweep --used /tmp/coherence.json /tmp/turn.json \\
+        /tmp/turn-probes.json /tmp/review.json /tmp/behavior.json
+
+Nothing runs this on a schedule. It is a manual step, and the manifests are what
+make it safe: run it only from a pass where **every** runner ran with
+`--used-out`, never from one runner's. `evals/cassettes/README.md` has the full
+recipe.
 """
 import argparse
 import json

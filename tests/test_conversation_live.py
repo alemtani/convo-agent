@@ -8,9 +8,9 @@ once wrote `850` into a JSON file. Cassetting these would not make them cheap,
 it would make them a lie.
 
 Excluded from the default run (`pytest.ini addopts=-m "not live"`); invoke with
-`pytest -m live` and a real `ANTHROPIC_API_KEY`. The scheduled re-record job
-runs them weekly (`.github/workflows/rerecord.yml`), which is what stops this
-file rotting a second time.
+`pytest -m live` and a real `ANTHROPIC_API_KEY`. The scheduled live job runs
+them weekly (`.github/workflows/live.yml`), which is what stops this file
+rotting a second time.
 """
 import pytest
 

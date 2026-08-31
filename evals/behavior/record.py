@@ -7,15 +7,16 @@ Without `--record` this spends nothing and answers one question: does every
 case the test asserts on have a recording? That is the check to run after a
 prompt change, before the build tells you.
 
-`--refresh` replaces each recording rather than topping it up, which is what
-the scheduled job runs (`.github/workflows/rerecord.yml`): the diff against
-what is committed is the entire output.
+`--refresh` replaces each recording rather than topping it up, so the diff
+against what is committed is the entire output of the run. That is what to use
+when re-recording the corpus wholesale rather than one case.
 
 `--used-out` writes the keys this run reached, for `evals.cassette.sweep`. One
-store, three runners: this one, `evals.coherence.replay` and
-`evals.turn.replay`. None of them reaches the others' keys, so none may prune
-alone — the sweep takes the union. A run that skipped this flag and let the
-sweep proceed would have its whole corpus deleted as unreachable.
+store, five runners: this one, `evals.coherence.replay`, `evals.review.replay`
+and `evals.turn.replay` over two corpora. None of them reaches the others'
+keys, so none may prune alone — the sweep takes the union. A run that skipped
+this flag and let the sweep proceed would have its whole corpus deleted as
+unreachable.
 """
 import argparse
 import asyncio

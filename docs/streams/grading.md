@@ -146,8 +146,9 @@ thing a cassette layer is worst at. B2 must prove the layer survives before it
 lands, or it quietly turns the eval gate off.
 
 **What shipped, and what it taught us.** `evals/cassette/` — key, store, client,
-shared CLI flags — plus `.github/workflows/rerecord.yml`. Two corrections to the
-plan above, both found in review:
+shared CLI flags — plus `.github/workflows/rerecord.yml`. (That workflow is now
+`.github/workflows/live.yml`, and re-records nothing — see A0.6.) Two
+corrections to the plan above, both found in review:
 
 - The key is **everything in the payload except `timeout`**. Not just the five
   named parts: `max_tokens`, `thinking`, `output_config.effort` and any dial
@@ -247,6 +248,19 @@ Where it landed:
 - `.github/workflows/rerecord.yml` gains a `live` job on the weekly schedule,
   and a step that re-records the behavior cases alongside the coherence ones.
 
+**The re-record half was removed on 2026-08-31; the `live` job is now the whole
+file, renamed `.github/workflows/live.yml`.** The workflow's first scheduled run
+failed both jobs for one reason — the repo had no `ANTHROPIC_API_KEY`,
+`AZURE_SPEECH_KEY` or `AZURE_SPEECH_REGION` secret, so it had never once been
+green. Adding the secrets fixed `live`. The re-record job was dropped rather
+than fixed: a cassette goes stale when a prompt moves, which is a PR's event,
+not a Monday's, and that PR already re-records the keys it moved while someone
+reads the diff. What the schedule bought on top of that was a weekly bill and a
+red build nobody had asked a question to. The recipe those steps encoded — the
+`--samples`/`--repeat` pairing, the two twenty-draw corpora, the sweep's union
+rule — moved to [`evals/cassettes/README.md`](../../evals/cassettes/README.md),
+which is now where a person re-records by hand.
+
 Merging A2 then demonstrated the layer doing its job: the trimmed partner prompt
 moved the converser key, one cassette missed, and the build went red rather than
 replaying a recording of a prompt that no longer exists. Re-recorded, and the
@@ -343,7 +357,8 @@ Two things the work settled:
 **What shipped, and what it taught us.** Cassettes recorded, 3 samples per
 key. The runner is now a merge gate: pytest replays the probes and every
 session case, a new `eval` CI job walks both this corpus and the
-grader-only one, and `.github/workflows/rerecord.yml` refreshes both.
+grader-only one. (A weekly job refreshed both until 2026-08-31; re-recording is
+now on demand — see A0.6.)
 
 The actual deliverable is what the recording found
 ([`evals/turn/RESULTS.md`](../../evals/turn/RESULTS.md)):
@@ -495,11 +510,13 @@ owes turn 2. `Observation` now carries `slots_filled_previously`, because
 `slots_filled` alone cannot tell a grader that *merged* the two lists from one
 that dropped the earlier turn. 5/5 exact.
 
-**Stale cassettes are the scheduled job's problem, not a PR's.** A prompt edit
+**Stale cassettes are not deleted by the PR that stranded them.** A prompt edit
 changes every key, and the recordings under the old ones become unreachable —
 no code can produce that key again, and the filename is a hash. The first draft
-of this PR deleted them by hand. They are kept now, and
-`.github/workflows/rerecord.yml` sweeps them.
+of this PR deleted them by hand. They are kept now, and `evals.cassette.sweep`
+prunes them in a later pass where every runner ran. That pass was the weekly job
+until 2026-08-31; it is a documented manual step now
+([`evals/cassettes/README.md`](../../evals/cassettes/README.md)).
 
 **The sweep is not a flag on a runner, and that is the point.** A1.5 (PR #93)
 gave the store a second writer: `evals.turn.replay` records the whole turn,

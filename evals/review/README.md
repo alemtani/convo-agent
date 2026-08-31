@@ -64,5 +64,5 @@ python -m evals.review.replay --case greetings-name-question-two-back
 ```
 
 Twenty draws, not five, is the whole point of the directory. Recording is the
-only thing that spends, it is committed, and freshness is the scheduled job's
-problem (`.github/workflows/rerecord.yml`).
+only thing that spends, it is committed, and it is re-recorded on demand — in
+the PR that changes what it records (`evals/cassettes/README.md`).
