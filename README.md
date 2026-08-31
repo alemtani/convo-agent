@@ -112,10 +112,19 @@ split so one number cannot hide which failure it is:
 - **spurious** — credit the learner did not earn
 - **missed** — credit the learner earned and was not given
 
-The fixture corpus lives in [`tests/fixtures/sessions/`](tests/fixtures/sessions/)
-(11 recorded turns). Gold labels are kept in a separate file from the
-transcripts. A second-opinion label set exists; that labeller had repo access,
-so it is corroboration, not independence.
+Three corpora carry that measurement, and they answer different questions:
+
+| corpus | holds | labels |
+| --- | --- | --- |
+| [`tests/fixtures/sessions/`](tests/fixtures/sessions/) | 11 recorded turns | gold, plus a second opinion |
+| [`evals/review/cases/`](evals/review/cases/) | 10 labelled sessions over 4 topics | gold |
+| [`evals/turn/cases/`](evals/turn/cases/) | 2 constructed red-team probes | none, on purpose |
+
+That is **21 gold-labelled cases**. Gold labels are kept in a separate file from
+the transcripts. A second-opinion label set exists; that labeller had repo
+access, so it is corroboration, not independence. The probes carry no gold
+because gold answers "what did this turn deserve", which is a question about the
+learner — and a probe is a question about the partner.
 
 ### The evals run on cassettes
 
@@ -129,23 +138,41 @@ Only `--record` reaches the network, and freshness is a scheduled job's problem
 
 That is what lets behavioral checks be a merge gate instead of a ritual.
 [`tests/test_worker_behavior.py`](tests/test_worker_behavior.py) asserts five
-structural invariants — a schema that parses, a reply with both halves, a slot
-credited on the ask, a bare 你好 crediting nothing — over five recorded draws
+structural invariants across all three workers — a partner reply with both
+halves, a sketch that parses, a slot credited on the ask, an elliptical question
+that fills its slot, a bare 你好 crediting nothing — over five recorded draws
 each, because one draw says only what happened once: 25 replayed model
-judgments in `pytest -q`, at no cost.
+judgments in `pytest -q`, at no cost. These are asserted at *every* draw, not as
+a rate. They are invariants, not measurements with a known miss rate, and a rate
+gate on "a bare 你好 credits nothing" would be a licence to be wrong sometimes.
 
-The corpus itself is walked by a separate `eval` job in
+The corpora are walked by a separate `eval` job in
 [`.github/workflows/ci.yml`](.github/workflows/ci.yml), so a stale prompt cannot
-hide in a case the parametrized tests do not name. Three harnesses run there.
-The grader-only harness ([`evals/coherence/replay.py`](evals/coherence/replay.py))
-holds the partner still. The turn harness
-([`evals/turn/replay.py`](evals/turn/replay.py)) drives
-`orchestrator.run_text_turn`, so one run covers the reply, the grade computed
-against that reply, and whether that reply gave away a `request` slot. The
-review harness ([`evals/review/replay.py`](evals/review/replay.py)) replays whole
-finished sessions, at twenty draws rather than three, because it measures a rate
-and three draws cannot tell a fix from a wave. All of them replay off committed
-cassettes; a key miss fails the job. Nothing in CI spends a token.
+hide in a case the parametrized tests do not name. **Three harnesses** run
+there, in four steps — the turn harness runs twice, over two corpora.
+
+- **The grader alone** ([`evals/coherence/replay.py`](evals/coherence/replay.py))
+  holds the partner still and replays only the grade, over the 11 recorded
+  turns. What it measures is which slots get credited, scored spurious against
+  missed.
+- **A whole turn** ([`evals/turn/replay.py`](evals/turn/replay.py)) drives
+  `orchestrator.run_text_turn`, so one run covers the reply, the grade computed
+  against that reply, the partner's `coherent` tag, and whether the reply gave
+  away a `request` slot. It runs over the 11 recorded turns and again over the 2
+  probes. The over-volunteering judge in
+  [`evals/turn/withholding.py`](evals/turn/withholding.py) pins its own model
+  rather than reading `config`: it judges the partner, and an instrument that
+  moved when the partner moved would report a regression and a model change as
+  one number. Both leaks it has found came from the recorded corpus, not the
+  probes — the probes passed 10/10.
+- **A finished session** ([`evals/review/replay.py`](evals/review/replay.py))
+  replays whole sessions through `feedback.review_session` to measure how much
+  earlier-turn credit the end-of-session review recovers, at twenty draws rather
+  than three, because it measures a rate and three draws cannot tell a fix from
+  a wave.
+
+All of them replay off committed cassettes; a key miss fails the job. Nothing in
+CI spends a token.
 
 A measurement that killed a feature, and the change that revived it: V0
 measured the partner's coherence tag against gold and found no threshold that
